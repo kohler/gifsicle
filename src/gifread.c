@@ -234,7 +234,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   codemask = 0;
   for (code = 0; code < clear_code; code++) {
     gfc->prefix[code] = 49428;
-    gfc->suffix[code] = code;
+    gfc->suffix[code] = (byte)code;
     gfc->length[code] = 1;
   }
   eoi_code = clear_code + 1;
@@ -273,7 +273,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     accum = buffer[i] + (buffer[i+1] << 8);
     if (bits_needed >= 8)
       accum |= (buffer[i+2]) << 16;
-    code = (accum >> (bit_position % 8)) & codemask;
+    code = (Gif_Code)((accum >> (bit_position % 8)) & codemask);
     bit_position += bits_needed;
     
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
@@ -401,9 +401,9 @@ read_logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
 static int
 read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
-  if (grr->is_record && 0) {
+  if (grr->is_record) {
     byte *first = grr->v;
-    int pos;
+    u_int32_t pos;
     
     /* scan over image */
     pos = 1;			/* skip min code size */

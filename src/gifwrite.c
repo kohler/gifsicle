@@ -360,7 +360,7 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   if (ncolor < 0 || ncolor > 256) ncolor = 256;
   
   ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-			ncolor, &gfc, &grr);
+			(u_int16_t)ncolor, &gfc, &grr);
   
  done:
   if (!ok) {
@@ -493,7 +493,7 @@ write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
   packed |= (gfi->disposal & 0x07) << 2;
   gifputbyte(packed, grr);
   gifputunsigned(gfi->delay, grr);
-  gifputbyte(gfi->transparent, grr);
+  gifputbyte((byte)gfi->transparent, grr);
   gifputbyte(0, grr);
 }
 
