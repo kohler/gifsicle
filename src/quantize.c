@@ -916,6 +916,16 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   int new_ncol = new_cm->ncol;
   int imagei, j;
   int compress_new_cm = 1;
+
+  /* make sure colormap has enough space */
+  if (new_cm->capacity < 256) {
+    Gif_Color *x = Gif_NewArray(Gif_Color, 256);
+    memcpy(x, new_col, sizeof(Gif_Color) * new_ncol);
+    Gif_DeleteArray(new_col);
+    new_cm->col = new_col = x;
+    new_cm->capacity = 256;
+  }
+  assert(new_cm->capacity >= 256);
   
   /* new_col[j].pixel == number of pixels with color j in the new image. */
   for (j = 0; j < 256; j++)
@@ -924,7 +934,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    
+
     if (gfcm) {
       /* If there was an old colormap, change the image data */
       byte *new_data = Gif_NewArray(byte, gfi->width * gfi->height);

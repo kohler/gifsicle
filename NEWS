@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.19   25.Apr.2000
+
+* Fixed memory corruption bug: `gifsicle --use-colormap=FILE.gif' would
+  formerly cause a segmentation fault. Bug reported by Alan Watts
+  <alan@16color.com>.
+
+
 Version 1.18   3.Apr.2000
 
 * Gifview now uses X server memory more parsimoniously. This should make it
