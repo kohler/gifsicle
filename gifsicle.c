@@ -1215,7 +1215,7 @@ main(int argc, char **argv)
       printf("Copyright (C) 1997-8 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
-particular purpose. That's right: you're on your own!\n");
+particular purpose.\n");
       exit(0);
       break;
       
