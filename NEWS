@@ -11,8 +11,8 @@ Version 1.2
 
 * Fixed memory leaks. Changed memory usage pattern in gifsicle to
   release source image memory as soon as possible, resulting in a better
-  memory profile. Memory fix in gifview, which now keeps images in
-  compressed form.
+  memory profile. Both programs now keep images in compressed form for
+  better performance.
 
 * Fixed bugs in gifread.c that corrupted memory when uncompressing some bad
   images.
@@ -21,6 +21,9 @@ Version 1.2
 
 * Added `--no-delay' and `--no-disposal' options, which should have been there
   all along.
+
+* `--crop' will not generate an image with 0 width or height, even if a
+  frame is cropped out of existence.
 
 * Other performance improvements.
 

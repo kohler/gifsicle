@@ -131,7 +131,7 @@ Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
 
 void optimize_fragments(Gif_Stream *, int opt_trans);
 
-void crop_image(Gif_Image *, Gt_Crop *);
+int crop_image(Gif_Image *, Gt_Crop *);
 void apply_color_changes(Gif_Stream *, Gt_ColorChange *);
 
 /*****

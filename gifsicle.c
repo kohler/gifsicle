@@ -329,7 +329,7 @@ input_stream(char *name)
   FILE *f;
   Gif_Stream *gfs;
   int i;
-  int read_flags = GIF_READ_UNCOMPRESSED;
+  int read_flags = GIF_READ_COMPRESSED;
   if (netscape_workaround) read_flags |= GIF_READ_NETSCAPE_WORKAROUND;
   
   input = 0;

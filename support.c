@@ -773,6 +773,38 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 }
 
 
+static void
+fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
+{
+  /* Salvage any relevant information from a frame that's been completely
+     cropped away. This ends up being comments and delay. */
+  Gt_Frame *fr = merger[merger_index];
+  Gt_Frame *next_fr = 0;
+  Gif_Image *prev_image = 0;
+  if (dest->nimages > 0) prev_image = dest->images[dest->nimages - 1];
+  if (merger_index < nmerger - 1) next_fr = merger[merger_index + 1];
+  
+  /* Don't save identifiers since the frame that was to be identified, is
+     gone. */
+  /* Save comments though. */
+  if (!fr->no_comments && srci->comment && next_fr) {
+    if (!next_fr->comment) next_fr->comment = Gif_NewComment();
+    merge_comments(next_fr->comment, srci->comment);
+  }
+  if (fr->comment && next_fr) {
+    if (!next_fr->comment) next_fr->comment = Gif_NewComment();
+    merge_comments(next_fr->comment, fr->comment);
+    Gif_DeleteComment(fr->comment);
+    fr->comment = 0;
+  }
+  
+  /* Save delay by adding it to the previous frame's delay. */
+  if (fr->delay < 0)
+    fr->delay = srci->delay;
+  prev_image->delay += fr->delay;
+}
+
+
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 		     int compress_immediately)
@@ -846,9 +878,17 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* Make a copy of the image and crop it if we're cropping */
     if (fr->crop) {
       srci = Gif_CopyImage(fr->image);
-      crop_image(srci, fr->crop);
-    } else
+      Gif_UncompressImage(srci);
+      if (!crop_image(srci, fr->crop)) {
+	/* We cropped the image out of existence! Be careful not to make 0x0
+           frames. */
+	fix_total_crop(dest, srci, i);
+	goto merge_done;
+      }
+    } else {
       srci = fr->image;
+      Gif_UncompressImage(srci);
+    }
     
     desti = merge_image(dest, fr->stream, srci);
     
@@ -881,6 +921,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (fr->disposal >= 0)
       desti->disposal = fr->disposal;
     
+    /* compress immediately if possible to save on memory */
+    if (compress_immediately) {
+      Gif_CompressImage(dest, desti);
+      Gif_ReleaseUncompressedImage(desti);
+    }
+    
+   merge_done:
     /* Destroy the copied, cropped image if necessary */
     if (fr->crop)
       Gif_DeleteImage(srci);
@@ -890,20 +937,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     assert(srci->refcount > 1);
     if (--srci->refcount == 1) {
       /* only 1 reference ==> the reference is from the stream itself */
-      assert(srci->image_data && srci->img);
-      Gif_DeleteArray(srci->img);
-      if (srci->free_image_data)
-	(*srci->free_image_data)(srci->image_data);
-      srci->img = 0;
-      srci->image_data = 0;
-      srci->free_image_data = 0;
+      Gif_ReleaseUncompressedImage(srci);
+      Gif_ReleaseCompressedImage(srci);
       fr->image = 0;
-    }
-    
-    /* compress immediately if possible to save on memory */
-    if (compress_immediately) {
-      Gif_CompressImage(dest, desti);
-      Gif_ReleaseUncompressedImage(desti);
     }
     
     /* 5/26/98 Destroy the stream now to help with memory. Assumes that

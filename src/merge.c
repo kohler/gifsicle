@@ -735,10 +735,10 @@ optimize_fragments(Gif_Stream *gfs, int optimize_trans)
 /********************************************************/
 
 /*****
- * crop image
+ * crop image; returns true if the image exists
  **/
 
-void
+int
 crop_image(Gif_Image *gfi, Gt_Crop *crop)
 {
   int x, y, w, h, j;
@@ -758,7 +758,7 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
       crop->ready = 1;
   }
   if (crop->ready == 2)
-    return;
+    return 1;
   
   x = crop->x - gfi->left;
   y = crop->y - gfi->top;
@@ -801,6 +801,7 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
   gfi->img = img;
   gfi->width = w;
   gfi->height = h;
+  return gfi->img != 0;
 }
 
 
