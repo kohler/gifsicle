@@ -206,9 +206,7 @@ error.
 .TP
 .OP \-\-version
 '
-Prints the
-.B gifsicle
-version number, some quickie warranty information, and exits.
+Prints the version number and some quickie warranty information and exits.
 '
 .PD
 '

@@ -121,8 +121,6 @@ GIFs are always displayed unoptimized in animation mode.
 '
 .Sp
 .TP 5
-.OA \-d display
-.TP 5
 .OA \-\-display display
 '
 Sets the X display to
@@ -140,8 +138,6 @@ itself does not use the resource database, this is mostly useful for
 communication with your window manager.
 '
 .Sp
-.TP 5
-.OA \-g geometry
 .TP 5
 .OA \-\-geometry geometry
 '
@@ -161,9 +157,7 @@ Prints usage information and exits.
 .TP
 .OP \-\-version
 '
-Prints the
-.B gifview
-version number, some quickie warranty information, and exits.
+Prints the version number and some quickie warranty information and exits.
 '
 .PD
 '

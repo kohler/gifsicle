@@ -90,7 +90,7 @@ realclean: distclean
 
 dist: mostlyclean
 	rm -rf $(PACKAGE)-$(VERSION)
-	mkdir $(PACKAGE)-$(VERSION) && chmod 0777 $(PACKAGE)-$(VERSION)
+	mkdir -m 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h \
