@@ -447,7 +447,7 @@ static void
 logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 {
   byte packed = 0x70;		/* high resolution colors */
-  
+
   Gif_CalculateScreenSize(gfs, 0);
   gifputunsigned(gfs->screen_width, grr);
   gifputunsigned(gfs->screen_height, grr);
