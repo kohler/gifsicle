@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.9   10.Dec.1998
+Version 1.9   14.Dec.1998
 
 * `--no-background' is now the same as `--background=0' (set the background
   to pixel 0) instead of `--same-background'.
