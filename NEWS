@@ -1,5 +1,17 @@
 Gifsicle NEWS
 
+Version 1.8   3.Dec.1998
+
+* Fixed strange behavior when changing transparency: a new black entry was
+  added to the colormap in almost all situations. Problem reported by
+  Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at>.
+
+* Fixed `--transform-colormap' bug: commands like "thing 2" (ending in an
+  integer) will work now.
+
+* Small fixes (in a gifsicle pipline, error messages won't be interleaved).
+
+
 Version 1.7.1   2.Dec.1998
 
 * Added configuration check for `strerror'. Problem reported by Mario

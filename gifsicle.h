@@ -131,7 +131,6 @@ char *explode_filename(char *filename, int number, char *name);
  **/
 void	unmark_colors(Gif_Colormap *);
 void	unmark_colors_2(Gif_Colormap *);
-void	mark_used_colors(Gif_Stream *, Gif_Image *);
 int	find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int	merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 

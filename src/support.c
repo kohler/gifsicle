@@ -22,11 +22,22 @@ static int verbose_pos = 0;
 static void
 verror(int is_warning, const char *location, char *message, va_list val)
 {
+  char buffer[BUFSIZ];
   verbose_endline();
-  fprintf(stderr, "%s: ", location);
-  if (is_warning) fprintf(stderr, "warning: ");
-  vfprintf(stderr, message, val);
-  putc('\n', stderr);
+  
+  /* try and keep error messages together (no interleaving of error messages
+     from two gifsicle processes in the same command line) by calling fprintf
+     only once */
+  if (strlen(message) + strlen(location) + 13 < BUFSIZ) {
+    sprintf(buffer, "%s: %s%s\n", location, (is_warning ? "warning: " : ""),
+	    message);
+    vfprintf(stderr, buffer, val);
+  } else {
+    fprintf(stderr, "%s: ", location);
+    if (is_warning) fprintf(stderr, "warning: ");
+    vfprintf(stderr, message, val);
+    putc('\n', stderr);
+  }
 }
 
 void
@@ -1052,7 +1063,7 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
 		       Gt_Frame *fr, int first_image)
 {
   Gif_Stream *gfs = fr->stream;
-
+  
   u_int16_t screen_width = gfs->screen_width;
   u_int16_t screen_height = gfs->screen_height;
   
@@ -1259,7 +1270,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       dest->screen_height = fr->screen_height;
   }
   
-  /* set the background */
+  /* Set the background */
   if (dest_background.haspixel == 0)
     dest_background.pixel =
       find_color_or_error(&dest_background, dest, dest->images[0], 0);
@@ -1271,7 +1282,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       dest_background.pixel = dest->images[0]->transparent;
   }
   dest->background = dest_background.pixel;
-  
+
   return dest;
 }
 

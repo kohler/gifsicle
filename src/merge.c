@@ -36,40 +36,24 @@ unmark_colors_2(Gif_Colormap *gfcm)
 }
 
 
-void
-mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi)
+static void
+mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
 {
-  Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-  Gif_Color *col;
-  int ncol;
+  Gif_Color *col = gfcm->col;
+  int ncol = gfcm->ncol;
   byte have[256];
-  int i, j, total, old_total;
-  
-  if (!gfcm)
-    fatal_error("no global or local colormap for source image");
-  col = gfcm->col;
-  ncol = gfcm->ncol;
+  int i, j, total;
   
   /* Only mark colors until we've seen all of them. The total variable keeps
      track of how many we've seen. have[i] is true if we've seen color i */
-  total = 0;
   for (i = 0; i < ncol; i++)
     have[i] = 0;
   for (i = ncol; i < 256; i++)
     have[i] = 1;
+  total = 256 - ncol;
   
-  /* Make sure the transparent color is within bounds. */
-  if (gfi->transparent >= ncol)
-    gfi->transparent = -1;
-  if (gfi->transparent >= 0 && !have[gfi->transparent]) {
-    have[gfi->transparent] = 1;
-    total++;
-    col[gfi->transparent].haspixel = 2;
-  }
-  
-  old_total = total;
-  
-  for (j = 0; j < gfi->height && total < ncol; j++) {
+  /* Loop over every pixel (until we've seen all colors) */
+  for (j = 0; j < gfi->height && total < 256; j++) {
     byte *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++)
       if (!have[*data]) {
@@ -78,12 +62,17 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi)
       }
   }
   
-  /* If we found any new colors, mark them down. But don't mark the
-     transparent color */
-  if (old_total < total)
-    for (i = 0; i < ncol; i++)
-      if (have[i] && i != gfi->transparent)
-	col[i].haspixel = 1;
+  /* Mark the colors we've found */
+  for (i = 0; i < ncol; i++)
+    col[i].haspixel = have[i];
+  
+  /* Mark the transparent color specially. Its `haspixel' value should be 2 if
+     transparency was used, or get rid of transparency if it wasn't used */
+  if (gfi->transparent >= 0 && gfi->transparent < ncol
+      && have[gfi->transparent])
+    col[gfi->transparent].haspixel = 2;
+  else
+    gfi->transparent = -1;
 }
 
 
@@ -194,8 +183,11 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   Gif_Colormap *localcm = 0;
   Gif_Colormap *destcm = dest->global;
   
-  byte map[256];
-  byte have[256];
+  byte map[256];		/* map[input pixel value] == output pixval */
+  int trivial_map = 1;		/* does the map take input pixval --> the same
+				   pixel value for all colors in the image? */
+  byte used[256];		/* used[output pixval K] == 1 iff K was used
+				   in the image */
   
   Gif_Image *desti;
   
@@ -206,51 +198,53 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     fatal_error("no global or local colormap for source image");
   imagecol = imagecm->col;
   
-  unmark_colors(imagecm);
-  mark_used_colors(src, srci);
+  mark_used_colors(srci, imagecm);
   
-  for (i = 0; i < 256; i++)
-    map[i] = have[i] = 0;
-  
+  /* Merge the colormap */
   if (!merge_colormap_if_possible(dest->global, imagecm)) {
     /* Need a local colormap. */
     int ncol = 0;
     destcm = localcm = Gif_NewFullColormap(0, 256);
     for (i = 0; i < imagecm->ncol; i++)
-      if (imagecol[i].haspixel == 1) {
-	map[i] = ncol;
-	have[i] = 1;
-	localcm->col[ ncol++ ] = imagecm->col[i];
+      if (imagecol[i].haspixel) {
+	imagecol[i].pixel = ncol;
+	localcm->col[ ncol++ ] = imagecol[i];
       }
     localcm->ncol = ncol;
-  } else
-    for (i = 0; i < imagecm->ncol; i++)
-      if (imagecol[i].haspixel == 1) {
-	map[i] = imagecol[i].pixel;
-	have[i] = 1;
-      }
+  }
   
-  if (srci->transparent > -1) {
-    byte rev_have[256];
+  /* Create `map' (map[old_pixel_value] == new_pixel_value) */
+  for (i = 0; i < 256; i++)
+    map[i] = used[i] = 0;
+  for (i = 0; i < imagecm->ncol; i++)
+    if (imagecol[i].haspixel == 1) {
+      map[i] = imagecol[i].pixel;
+      if (map[i] != i) trivial_map = 0;
+      used[map[i]] = 1;
+    }
+  
+  /* Decide on a transparent index */
+  if (srci->transparent >= 0) {
     int found_transparent = -1;
-    for (i = 0; i < 256; i++)
-      rev_have[i] = 0;
-    for (i = 0; i < 256; i++)
-      rev_have[map[i]] = 1;
-    for (i = destcm->ncol - 1; i >= 0; i--)
-      if (!rev_have[i]) {
-	found_transparent = i;
-	if (i == srci->transparent) break; /* prefer same transparent index */
-      }
+    
+    /* try to keep the map trivial -- prefer same transparent index */
+    if (trivial_map && !used[srci->transparent])
+      found_transparent = srci->transparent;
+    else
+      for (i = destcm->ncol - 1; i >= 0; i--)
+	if (!used[i])
+	  found_transparent = i;
+    
     if (found_transparent < 0) {
       Gif_Color *c;
       found_transparent = destcm->ncol++;
       c = &destcm->col[found_transparent];
-      c->red = c->green = c->blue = 0;
-      c->haspixel = 2;
+      *c = imagecol[srci->transparent];
+      assert(c->haspixel == 2);
     }
+    
     map[srci->transparent] = found_transparent;
-    have[srci->transparent] = 1;
+    if (srci->transparent != found_transparent) trivial_map = 0;
   }
   
   assert(destcm->ncol <= 256);
@@ -278,11 +272,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   Gif_CreateUncompressedImage(desti);
   
   {
-    int i, j, trivial_map = 1;
-    /* check for a trivial map */
-    for (i = 0; i < 256 && trivial_map; i++)
-      if (map[i] != i && have[i])
-	trivial_map = 0;
+    int i, j;
     
     if (trivial_map)
       for (j = 0; j < desti->height; j++)
@@ -489,16 +479,17 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   if (!tmp_file)
     fatal_error("can't create temporary file!");
   
-  new_command = Gif_NewArray(char, strlen(command)+strlen(tmp_file)+2);
-  sprintf(new_command, "%s>%s", command, tmp_file);
+  new_command = Gif_NewArray(char, strlen(command) + strlen(tmp_file) + 4);
+  sprintf(new_command, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
   if (!f)
     fatal_error("can't run color transformation command: %s", strerror(errno));
-  Gif_Delete(new_command);
+  Gif_DeleteArray(new_command);
   
   for (i = 0; i < gfcm->ncol; i++)
     fprintf(f, "%d %d %d\n", col[i].red, col[i].green, col[i].blue);
   
+  errno = 0;
   status = pclose(f);
   if (status < 0) {
     error("color transformation error: %s", strerror(errno));
@@ -509,13 +500,14 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   }
   
   f = fopen(tmp_file, "r");
-  if (!f) {
+  if (!f || feof(f)) {
     error("color transformation command generated no output", command);
+    if (f) fclose(f);
     goto done;
   }
   new_cm = read_colormap_file("<color transformation>", f);
   fclose(f);
-
+  
   if (new_cm) {
     int nc = new_cm->ncol;
     if (nc < gfcm->ncol) {
@@ -525,7 +517,6 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
       warning("too many colors in color transformation results");
     for (i = 0; i < nc; i++)
       col[i] = new_cm->col[i];
-    Gif_DeleteColormap(new_cm);
   }
   
  done:
