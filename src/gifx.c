@@ -1,5 +1,5 @@
 /* gifx.c - Functions to turn GIFs in memory into X Pixmaps.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
    The GIF library is free software*; you can copy, distribute, or alter it at
@@ -130,9 +130,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
 {
   Pixmap pixmap = None;
   XImage *ximage;
-  
   byte *xdata;
-  byte **img;
   
   int i, j, k;
   int bytes_per_line;
@@ -170,11 +168,9 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
 		 gfi->width, gfi->height, i, 0);
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
-  xdata = Gif_NewArray(byte, ximage->bytes_per_line * gfi->height);
-  ximage->data = (char *)xdata;
-  
-  img = gfi->img;
   bytes_per_line = ximage->bytes_per_line;
+  xdata = Gif_NewArray(byte, bytes_per_line * gfi->height);
+  ximage->data = (char *)xdata;
   
   /* The main loop */
   if (ximage->bits_per_pixel % 8 == 0) {
@@ -182,11 +178,12 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     int bytes_per_pixel = ximage->bits_per_pixel / 8;
     
     for (j = 0; j < gfi->height; j++) {
+      byte *line = gfi->img[j];
       byte *writer = xdata + bytes_per_line * j;
       for (i = 0; i < gfi->width; i++) {
 	u_int32_t pixel;
-	if (img[j][i] < nct)
-	  pixel = ct[ img[j][i] ].pixel;
+	if (line[i] < nct)
+	  pixel = ct[line[i]].pixel;
 	else
 	  pixel = ct[0].pixel;
 	for (k = 0; k < bytes_per_pixel; k++) {
@@ -204,12 +201,13 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     for (j = 0; j < gfi->height; j++) {
       int imshift = 0;
       u_int32_t impixel = 0;
+      byte *line = gfi->img[j];
       byte *writer = xdata + bytes_per_line * j;
       
       for (i = 0; i < gfi->width; i++) {
 	u_int32_t pixel;
-	if (img[j][i] < nct)
-	  pixel = ct[ img[j][i] ].pixel;
+	if (line[i] < nct)
+	  pixel = ct[line[i]].pixel;
 	else
 	  pixel = ct[0].pixel;
 	
@@ -236,8 +234,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     XCreatePixmap(gfx->display, gfx->drawable,
 		  gfi->width, gfi->height, gfx->depth);
   if (pixmap) {
-    GC gc;
-    gc = XCreateGC(gfx->display, pixmap, 0, 0);
+    GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
     XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
 	      gfi->width, gfi->height);
     XFreeGC(gfx->display, gc);
@@ -268,9 +265,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
   Pixmap pixmap = None;
   XImage *ximage;
-  
   byte *xdata;
-  byte **img;
   
   int i, j;
   int transparent;
@@ -289,21 +284,21 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 		 8, 0);
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
-  xdata = Gif_NewArray(byte, ximage->bytes_per_line * gfi->height);
-  ximage->data = (char *)xdata;
   bytes_per_line = ximage->bytes_per_line;
+  xdata = Gif_NewArray(byte, bytes_per_line * gfi->height);
+  ximage->data = (char *)xdata;
   
-  img = gfi->img;
   transparent = gfi->transparent;
   
   /* The main loop */
   for (j = 0; j < gfi->height; j++) {
     int imshift = 0;
     unsigned long impixel = 0;
+    byte *line = gfi->img[j];
     byte *writer = xdata + bytes_per_line * j;
     
     for (i = 0; i < gfi->width; i++) {
-      if (img[j][i] == transparent)
+      if (line[i] == transparent)
 	impixel |= 1 << imshift;
       
       if (++imshift >= BYTESIZE) {
@@ -322,8 +317,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
     XCreatePixmap(gfx->display, gfx->drawable,
 		  gfi->width, gfi->height, 1);
   if (pixmap) {
-    GC gc;
-    gc = XCreateGC(gfx->display, pixmap, 0, 0);
+    GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
     XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
 	      gfi->width, gfi->height);
     XFreeGC(gfx->display, gc);
