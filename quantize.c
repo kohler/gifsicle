@@ -11,36 +11,70 @@
 #include "gifsicle.h"
 #include <assert.h>
 
-static void
-add_histogram_color(Gif_Color *color, Gif_Color **hist_store,
-		    int *nhist_store, int *hist_cap_store)
+typedef struct Gif_Histogram {
+  Gif_Color *c;
+  int n;
+  int cap;
+} Gif_Histogram;
+
+static void add_histogram_color(Gif_Color *, Gif_Histogram *, unsigned long);
+
+static int
+init_histogram(Gif_Histogram *new_hist, Gif_Histogram *old_hist)
 {
+  int new_cap = (old_hist ? old_hist->cap * 2 : 1024);
+  Gif_Color *nc = Gif_NewArray(Gif_Color, new_cap);
   int i;
-  Gif_Color *hist = *hist_store;
-  int nhist = *nhist_store;
+  new_hist->c = nc;
+  new_hist->n = 0;
+  new_hist->cap = new_cap;
+  for (i = 0; i < new_cap; i++)
+    new_hist->c[i].haspixel = 0;
+  if (old_hist)
+    for (i = 0; i < old_hist->cap; i++)
+      if (old_hist->c[i].haspixel)
+	add_histogram_color(&old_hist->c[i], new_hist, old_hist->c[i].pixel);
+}
+
+static void
+delete_histogram(Gif_Histogram *hist)
+{
+  Gif_DeleteArray(hist->c);
+}
+
+static void
+add_histogram_color(Gif_Color *color, Gif_Histogram *hist, unsigned long count)
+{
+  Gif_Color *hc = hist->c;
+  int hcap = hist->cap - 1;
+  int i = (((color->red & 0xF0) << 4) | (color->green & 0xF0)
+	   | (color->blue >> 4)) & hcap;
+  int hash2 = ((((color->red & 0x0F) << 8) | ((color->green & 0x0F) << 4)
+		| (color->blue & 0x0F)) & hcap) | 1;
   
-  /* have to start from 1 because the 0 slot is the transparent color. */
-  for (i = 1; i < nhist; i++)
-    if (hist[i].red == color->red && hist[i].green == color->green
-	&& hist[i].blue == color->blue) {
+  for (; hc[i].haspixel; i = (i + hash2) & hcap)
+    if (hc[i].red == color->red && hc[i].green == color->green
+	&& hc[i].blue == color->blue) {
+      hc[i].pixel += count;
       color->haspixel = 1;
       color->pixel = i;
       return;
     }
   
-  if (nhist >= *hist_cap_store) {
-    *hist_cap_store *= 2;
-    Gif_ReArray(hist, Gif_Color, *hist_cap_store);
-    *hist_store = hist;
+  if (hist->n > ((hist->cap * 7) >> 3)) {
+    Gif_Histogram new_hist;
+    init_histogram(&new_hist, hist);
+    delete_histogram(hist);
+    *hist = new_hist;
   }
-  hist[nhist] = *color;
-  hist[nhist].pixel = 0;
-  (*nhist_store)++;
-  
-  color->haspixel = 1;
-  color->pixel = nhist;
-}
 
+  hist->n++;
+  hc[i] = *color;
+  hc[i].haspixel = 1;
+  hc[i].pixel = count;
+  color->haspixel = 1;
+  color->pixel = i;
+}
 
 static int
 popularity_sort_compare(const void *va, const void *vb)
@@ -62,33 +96,18 @@ pixel_sort_compare(const void *va, const void *vb)
 Gif_Color *
 histogram(Gif_Stream *gfs, int *nhist_store)
 {
-  Gif_Color *hist = Gif_NewArray(Gif_Color, 256);
-  int hist_cap = 256;
-  int nhist = 0;
-  int background_hist = 0;
+  Gif_Histogram hist;
+  Gif_Color *linear;
+  Gif_Color transparent_color;
+  unsigned long ntransparent = 0;
+  unsigned long nbackground = 0;
   int x, y, i;
   
   unmark_colors(gfs->global);
   for (i = 0; i < gfs->nimages; i++)
     unmark_colors(gfs->images[i]->local);
-  
-  /* Put all transparent pixels in histogram slot 0. Transparent pixels are
-     marked by haspixel == 255. */
-  hist[0].haspixel = 255;
-  hist[0].pixel = 0;
-  hist[0].red = 0;
-  nhist++;
-  
-  /* Make sure the background color is in the histogram if it's not
-     transparent. (We may remove it later.) */
-  if (gfs->images[0]->transparent < 0 && gfs->global
-      && gfs->background < gfs->global->ncol) {
-    hist[1] = gfs->global->col[ gfs->background ];
-    hist[1].haspixel = 1;
-    hist[1].pixel = 0;
-    background_hist = 1;
-    nhist++;
-  }
+
+  init_histogram(&hist, 0);
   
   /* Count pixels. Be careful about values which are outside the range of the
      colormap. */
@@ -97,7 +116,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
     u_int32_t count[256];
     Gif_Color *col;
-    int ncol, colors_used;
+    int ncol;
     int transparent = gfi->transparent;
     if (!gfcm) continue;
     
@@ -113,38 +132,52 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     /* add counted colors to global histogram */
     col = gfcm->col;
     ncol = gfcm->ncol;
-    colors_used = 0;
     for (x = 0; x < ncol; x++)
       if (count[x] && x != transparent) {
-	colors_used++;
-	if (!col[x].haspixel)
-	  add_histogram_color(&col[x], &hist, &nhist, &hist_cap);
-	hist[ col[x].pixel ].pixel += count[x];
+	if (col[x].haspixel)
+	  hist.c[ col[x].pixel ].pixel += count[x];
+	else
+	  add_histogram_color(&col[x], &hist, count[x]);
       }
-    if (transparent >= 0 && transparent < ncol)
-      hist[0].pixel += count[transparent];
+    if (transparent >= 0 && transparent < ncol) {
+      if (ntransparent == 0) transparent_color = col[transparent];
+      ntransparent += count[transparent];
+    }
     
     /* if this image has background disposal, count its size towards the
        background's pixel count */
     if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-      hist[background_hist].pixel += gfi->width * gfi->height;
+      nbackground += gfi->width * gfi->height;
   }
   
-  /* get rid of the transparent slot if there was no transparency in the
-     image */
-  if (hist[0].pixel == 0) {
-    hist[0] = hist[nhist - 1];
-    nhist--;
+  /* account for background by adding it to `ntransparent' or the histogram */
+  if (gfs->images[0]->transparent < 0 && gfs->global
+      && gfs->background < gfs->global->ncol)
+    add_histogram_color(&gfs->global->col[gfs->background], &hist, nbackground);
+  else
+    ntransparent += nbackground;
+  
+  /* now, make the linear histogram from the hashed histogram */
+  linear = Gif_NewArray(Gif_Color, hist.n + 1);
+  i = 0;
+  
+  /* Put all transparent pixels in histogram slot 0. Transparent pixels are
+     marked by haspixel == 255. */
+  if (ntransparent) {
+    linear[0] = transparent_color;
+    linear[0].haspixel = 255;
+    linear[0].pixel = ntransparent;
+    i++;
   }
   
-  /* get rid of the background slot if it was unnecessary */
-  if (hist[background_hist].pixel == 0) {
-    hist[background_hist] = hist[nhist - 1];
-    nhist--;
-  }
-  
-  *nhist_store = nhist;
-  return hist;
+  /* put hash histogram colors into linear histogram */
+  for (x = 0; x < hist.n; x++)
+    if (hist.c[x].haspixel)
+      linear[i++] = hist.c[x];
+
+  delete_histogram(&hist);
+  *nhist_store = i;
+  return linear;
 }
 
 

@@ -19,6 +19,7 @@
 const char *program_name = "gifsicle";
 static int verbose_pos = 0;
 int error_count = 0;
+int no_warnings = 0;
 
 
 static void
@@ -28,15 +29,17 @@ verror(int seriousness, char *message, va_list val)
   char buffer[BUFSIZ];
   verbose_endline();
   
-  if (seriousness > 1)
+  if (seriousness > 2)
     sprintf(pattern, "%s: fatal error: %%s\n", program_name);
-  else if (seriousness == 0)
+  else if (seriousness == 1)
     sprintf(pattern, "%s: warning: %%s\n", program_name);
   else
     sprintf(pattern, "%s: %%s\n", program_name);
   
-  if (seriousness != 0)
+  if (seriousness > 1)
     error_count++;
+  else if (no_warnings)
+    return;
   
   /* try and keep error messages together (no interleaving of error messages
      from two gifsicle processes in the same command line) by calling fprintf
@@ -56,7 +59,7 @@ fatal_error(char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(2, message, val);
+  verror(3, message, val);
   va_end(val);
   exit(EXIT_USER_ERR);
 }
@@ -66,12 +69,21 @@ error(char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(1, message, val);
+  verror(2, message, val);
   va_end(val);
 }
 
 void
 warning(char *message, ...)
+{
+  va_list val;
+  va_start(val, message);
+  verror(1, message, val);
+  va_end(val);
+}
+
+void
+warncontext(char *message, ...)
 {
   va_list val;
   va_start(val, message);
@@ -123,6 +135,7 @@ General options: Also --no-OPTION for info and verbose.\n\
   -h, --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
   -o, --output FILE             Write output to FILE.\n\
+  -w, --no-warnings             Don't report warnings.\n\
 \n", program_name);
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
@@ -1003,8 +1016,8 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
       static int context = 0;
       warning("irrelevant background color");
       if (!context) {
-	warning("(The background will appear transparent because");
-	warning("the first image contains transparency.)");
+	warncontext("(The background will appear transparent because");
+	warncontext("the first image contains transparency.)");
 	context = 1;
       }
     }
@@ -1054,7 +1067,7 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
 	static int context = 0;
 	warning("input images have conflicting background colors");
 	if (!context) {
-	  warning("(This means some animation frames may appear incorrect.)");
+	  warncontext("(This means some animation frames may appear incorrect.)");
 	  context = 1;
 	}
 	break;

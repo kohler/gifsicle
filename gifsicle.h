@@ -118,9 +118,11 @@ typedef struct {
 extern const char *program_name;
 extern int verbosing;
 extern int error_count;
+extern int no_warnings;
 
 void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);
+void warncontext(char *message, ...);
 void error(char *message, ...);
 void clp_error_handler(char *clp_message);
 void usage(void);

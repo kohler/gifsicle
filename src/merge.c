@@ -175,7 +175,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
     static int context = 0;
     warning("so many colors that local colormaps were required");
     if (!context)
-      warning("(You may want to try `--colors 256'.)");
+      warncontext("(You may want to try `--colors 256'.)");
     warn_local_colormaps = 2;
     context = 1;
   }

@@ -172,6 +172,8 @@ static const char *output_option_types[] = {
 #define COLOR_TRANSFORM_OPT	353
 #define RESIZE_OPT		354
 #define SCALE_OPT		355
+#define NO_WARNINGS_OPT		356
+#define WARNINGS_OPT		357
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -274,6 +276,9 @@ Clp_Option options[] = {
   
   { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
+  
+  { 0, 'w', NO_WARNINGS_OPT, 0, Clp_Negate },
+  { "warnings", 0, WARNINGS_OPT, 0, Clp_Negate },
   
   { "xinfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   
@@ -514,8 +519,8 @@ input_stream(char *name)
       static int context = 0;
       warning("`%s' is too complex to unoptimize", name);
       if (!context) {
-	warning("(The reason was local color tables or complex transparency.");
-	warning("Try running the GIF through `gifsicle --colors=255' first.)");
+	warncontext("(The reason was local color tables or complex transparency.");
+	warncontext("Try running the GIF through `gifsicle --colors=255' first.)");
       }
       context = 1;
     }
@@ -619,7 +624,7 @@ do_colormap_change(Gif_Stream *gfs)
 	  any_locals = 1;
       hist = histogram(gfs, &nhist);
       if (nhist <= active_output_data.colormap_size && !any_locals) {
-	warning("trivial adaptive palette (only %d colors in source)", nhist);
+	warncontext("trivial adaptive palette (only %d colors in source)", nhist);
 	return;
       }
     }
@@ -949,8 +954,9 @@ redundant_option_warning(const char *option_type)
   static int context = 0;
   warning("redundant %s option", option_type);
   if (!context) {
-    warning("(An option is redundant if it had no effect before");
-    warning("being overridden by another option of the same type.)");
+    warncontext("(The %s option was overridden by another %s option",
+		option_type, option_type);
+    warncontext("before it had any effect.)");
   }
   context = 1;
 }
@@ -965,7 +971,7 @@ print_useless_options(const char *type_name, int value, const char *names[])
     if (CHANGED(value, i)) {
       warning("useless %s-related %s option", names[i], type_name);
       if (!explanation_printed)
-	warning("(It didn't affect any %s.)", type_name);
+	warncontext("(It didn't affect any %s.)", type_name);
       explanation_printed = 1;
     }
 }
@@ -1429,6 +1435,14 @@ main(int argc, char **argv)
       break;
       
       /* RANDOM OPTIONS */
+      
+     case NO_WARNINGS_OPT:
+      no_warnings = !clp->negated;
+      break;
+      
+     case WARNINGS_OPT:
+      no_warnings = clp->negated;
+      break;
       
      case VERSION_OPT:
 #ifdef GIF_UNGIF

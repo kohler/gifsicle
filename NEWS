@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.14
+
+* Added `--no-warnings' (`-w') option to inhibit warning messages.
+  Suggested by Andrea Beiser <abb9@columbia.edu>.
+
+
 Version 1.13   16.Jun.1999
 
 * Added optional support for run-length-encoded GIFs to avoid patent

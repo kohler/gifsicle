@@ -270,15 +270,30 @@ apply_frame_disposal(u_int16_t *into_data, u_int16_t *from_data,
    the changes and store it in `bounds'. */
 
 static void
-find_difference_bounds(Gif_OptData *bounds)
+find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
 {
-  int lf, rt, tp, bt, x, y;
+  int lf, rt, lf_min, rt_max, tp, bt, x, y;
   
-  for (tp = 0; tp < screen_height; tp++)
+  /* 1.Aug.99 - use current bounds if possible, since this function is a speed
+     bottleneck */
+  if (!last || last->disposal == GIF_DISPOSAL_NONE
+      || last->disposal == GIF_DISPOSAL_ASIS) {
+    lf_min = gfi->left;
+    rt_max = gfi->left + gfi->width - 1;
+    tp = gfi->top;
+    bt = gfi->top + gfi->height - 1;
+  } else {
+    lf_min = 0;
+    rt_max = screen_width - 1;
+    tp = 0;
+    bt = screen_height - 1;
+  }
+  
+  for (; tp < screen_height; tp++)
     if (memcmp(last_data + screen_width * tp, this_data + screen_width * tp,
 	       screen_width * sizeof(u_int16_t)) != 0)
       break;
-  for (bt = screen_height - 1; bt >= tp; bt--)
+  for (; bt >= tp; bt--)
     if (memcmp(last_data + screen_width * bt, this_data + screen_width * bt,
 	       screen_width * sizeof(u_int16_t)) != 0)
       break;
@@ -288,17 +303,17 @@ find_difference_bounds(Gif_OptData *bounds)
   for (y = tp; y <= bt; y++) {
     u_int16_t *ld = last_data + screen_width * y;
     u_int16_t *td = this_data + screen_width * y;
-    for (x = 0; x < lf; x++)
+    for (x = lf_min; x < lf; x++)
       if (ld[x] != td[x])
 	break;
     lf = x;
     
-    for (x = screen_width - 1; x > rt; x--)
+    for (x = rt_max; x > rt; x--)
       if (ld[x] != td[x])
 	break;
     rt = x;
   }
-  
+
   bounds->left = lf;
   bounds->top = tp;
   bounds->width = rt + 1 - lf;
@@ -530,7 +545,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
     if (image_index > 0)
-      find_difference_bounds(subimage);
+      find_difference_bounds(subimage, gfi, last_gfi);
     else {
       subimage->left = gfi->left;
       subimage->top = gfi->top;
