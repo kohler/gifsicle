@@ -452,6 +452,7 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
   viewer->scheduled = 0;
   viewer->anim_next = 0;
   viewer->anim_loop = 0;
+  viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
   
   return viewer;
 }
@@ -540,6 +541,8 @@ switch_animating(Gt_Viewer *viewer, int animating)
   for (i = 0; i < gfs->nimages; i++)
     viewer->im[i] = gfs->images[i];
   viewer->animating = animating;
+  if (!animating)
+    viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
 }
 
 
@@ -556,20 +559,22 @@ unschedule(Gt_Viewer *viewer)
     else animations = viewer->anim_next;
   }
   viewer->scheduled = 0;
+  viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
 }
 
 
 void
 schedule_next_frame(Gt_Viewer *viewer)
 {
-  struct timeval now, interval;
+  struct timeval interval;
   Gt_Viewer *prev, *trav;
   int delay = viewer->im[viewer->im_pos]->delay;
-  
-  xwGETTIME(now);
+
+  if (viewer->timer.tv_sec == 0 && viewer->timer.tv_usec == 0)
+    xwGETTIME(viewer->timer);
   interval.tv_sec = delay / 100;
   interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
-  xwADDTIME(viewer->timer, now, interval);
+  xwADDTIME(viewer->timer, viewer->timer, interval);
 
   if (viewer->scheduled)
     unschedule(viewer);
@@ -1012,11 +1017,12 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     switch_animating(viewer, !viewer->animating);
     
     if (viewer->animating) {
+      int pos = viewer->im_pos;
       if (viewer->im_pos >= viewer->nim - 1) {
-	viewer->im_pos = 0;
+	pos = 0;
 	viewer->anim_loop = 0;
       }
-      view_frame(viewer, viewer->im_pos);
+      view_frame(viewer, pos);
       
     } else
       unschedule(viewer);
@@ -1062,7 +1068,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
 void
 loop(void)
 {
-  struct timeval timeout, now, *timeout_ptr;
+  struct timeval now;
   fd_set xfds;
   XEvent e;
   int pending;
@@ -1074,23 +1080,28 @@ loop(void)
   FD_ZERO(&xfds);
   
   while (viewers) {
+    
     /* Check for any animations */
     while (animations && xwTIMEGEQ(now, animations->timer)) {
       v = animations;
       animations = v->anim_next;
       v->scheduled = 0;
       view_frame(v, v->im_pos + 1);
+      xwGETTIME(now);
     }
-    
-    if (animations) {
-      xwSUBTIME(timeout, animations->timer, now);
-      timeout_ptr = &timeout;
-    } else
-      timeout_ptr = 0;
     
     pending = XPending(display);
     if (!pending) {
+      /* select() until event arrives */
+      struct timeval timeout, *timeout_ptr;
       int retval;
+
+      if (animations) {
+	xwSUBTIME(timeout, animations->timer, now);
+	timeout_ptr = &timeout;
+      } else
+	timeout_ptr = 0;
+    
       FD_SET(x_socket, &xfds);
       retval = select(x_socket + 1, &xfds, 0, 0, timeout_ptr);
       pending = (retval <= 0 ? 0 : FD_ISSET(x_socket, &xfds));

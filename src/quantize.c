@@ -10,6 +10,7 @@
 #include <config.h>
 #include "gifsicle.h"
 #include <assert.h>
+#include <string.h>
 
 typedef struct Gif_Histogram {
   Gif_Color *c;

@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.22   23.Nov.2000
+
+* Handle time more carefully when displaying animations. Should result in
+  more precise timings. Problem reported by Iris Baye <ibaye@gwdg.de>.
+
+
 Version 1.21   9.Sep.2000
 
 * Fixed `--careful -O2', which could create bad GIFs when there were bad
