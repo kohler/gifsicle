@@ -2,6 +2,10 @@
    This file provides a definition which David Mazieres <dm@lcs.mit.edu>
    assures me works. */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char *
 strerror(int errno)
 {
@@ -12,3 +16,7 @@ strerror(int errno)
   else
     return sys_errlist[errno];
 }
+
+#ifdef __cplusplus
+}
+#endif
