@@ -32,19 +32,23 @@ EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c \
 		logo.gif logo1.gif rpm.spec \
 		Makefile.w32 win32cfg.h
 
-clp.o: clp.c clp.h
+clp.o: clp.h clp.c
 
-giffunc.o: giffunc.c gif.h
-gifread.o: gifread.c gif.h
-gifwrite.o: gifwrite.c gif.h
-gifunopt.o: gifunopt.c gif.h
-gifx.o: gifx.c gifx.h gif.h
+fmalloc.o: fmalloc.c
+dmalloc.o: dmalloc.h dmalloc.c
 
-gifsicle.o: gifsicle.c gifsicle.h
-merge.o: merge.c gifsicle.h
-support.o: support.c gifsicle.h
-quantize.o: quantize.c gifsicle.h
-optimize.o: optimize.c gifsicle.h
+giffunc.o: gif.h giffunc.c
+gifread.o: gif.h gifread.c
+gifwrite.o: gif.h gifwrite.c
+gifunopt.o: gif.h gifunopt.c
+gifx.o: gif.h gifx.h gifx.c
+
+merge.o: gifsicle.h merge.c
+optimize.o: gifsicle.h optimize.c
+quantize.o: gifsicle.h quantize.c
+support.o: gifsicle.h support.c
+xform.o: gifsicle.h xform.c
+gifsicle.o: gifsicle.h gifsicle.c
 
 gifview.o: gifview.c
 gifdiff.o: gifdiff.c

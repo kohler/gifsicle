@@ -1,6 +1,14 @@
 Gifsicle NEWS
 
-Version 1.9.2
+Version 1.10b1   31.Dec.1998
+
+* The two malloc packages that come with Gifsicle don't #define `malloc' or
+  `realloc'; they #define `xmalloc' and `xrealloc'.
+
+* Changes to Windows port from Emil Mikulic <darkmoon@connexus.net.au>.
+
+
+Version 1.9.2   28.Dec.1998
 
 * Gifsicle compiles out of the box on Windows! Port maintained by Emil
   Mikulic <darkmoon@connexus.net.au>.

@@ -81,7 +81,7 @@ typedef struct Gt_ColorChange {
 void
 color_change_transformer(Gif_Colormap *gfcm, void *thunk)
 {
-  int i, have;
+  unsigned i, have;
   Gt_ColorChange *first_change = (Gt_ColorChange *)thunk;
   Gt_ColorChange *change;
   

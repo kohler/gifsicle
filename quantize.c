@@ -529,7 +529,7 @@ free_all_color_hash_items(void)
 
 
 static int
-hash_color(byte red, byte green, byte blue,
+hash_color(int red, int green, int blue,
 	   color_hash_item **hash, Gif_Colormap *new_cm)
 {
   u_int32_t hash_code = COLOR_HASH_CODE(red, green, blue);

@@ -39,7 +39,7 @@ static Gif_Colormap *in_global_map;
 static Gif_Colormap *out_global_map;
 
 #define TRANSP (0)
-static int background;
+static u_int16_t background;
 #define NOT_IN_OUT_GLOBAL (256)
 static u_int16_t *last_data;
 static u_int16_t *this_data;
@@ -1288,7 +1288,7 @@ finalize_optimizer(Gif_Stream *gfs)
   int i;
   
   if (background == TRANSP)
-    gfs->background = gfs->images[0]->transparent;
+    gfs->background = (byte)gfs->images[0]->transparent;
 
   /* 10.Dec.1998 - prefer GIF_DISPOSAL_NONE to GIF_DISPOSAL_ASIS. This is
      semantically "wrong" -- it's better to set the disposal explicitly than

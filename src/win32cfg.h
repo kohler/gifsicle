@@ -54,8 +54,9 @@ extern "C" {
 # define Gif_DeleteFunc		(&debug_free)
 # define Gif_DeleteArrayFunc	(&debug_free)
 #else
-# define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
-# define realloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
+# define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
+# define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
+# define xfree			free
 void *fail_die_malloc(int, const char *, int);
 void *fail_die_realloc(void *, int, const char *, int);
 #endif

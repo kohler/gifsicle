@@ -9,15 +9,36 @@
 # If you have a problem mail me at the address above.
 
 CC = cl
-CFLAGS = -O2 -GA -MD
+CFLAGS = -I. -DHAVE_CONFIG_H -DWIN32 -D_CONSOLE /W3 /ML -O2
 
-SOURCE =        clp.c fmalloc.c giffunc.c gifread.c gifunopt.c gifwrite.c \
-                merge.c optimize.c quantize.c support.c xform.c \
-                gifsicle.c
+OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
+       gifwrite.obj merge.obj optimize.obj quantize.obj support.obj \
+       xform.obj gifsicle.obj
 
-gifsicle.exe: $(SOURCE)
-        copy win32cfg.h config.h
-        $(CC) $(CFLAGS) /ogifsicle.exe $(SOURCE)
+.c.obj:
+        $(CC) $(CFLAGS) /c $<
+
+gifsicle.exe: $(OBJS)
+        $(CC) $(CFLAGS) /ogifsicle.exe $(OBJS)
+
+clp.obj: config.h clp.h clp.c
+
+fmalloc.obj: config.h fmalloc.c
+
+giffunc.obj: config.h giffunc.c gif.h
+gifread.obj: config.h gifread.c gif.h
+gifwrite.obj: config.h gifwrite.c gif.h
+gifunopt.obj: config.h gifunopt.c gif.h
+
+merge.obj: config.h gifsicle.h merge.c
+optimize.obj: config.h gifsicle.h optimize.c
+quantize.obj: config.h gifsicle.h quantize.c
+support.obj: config.h gifsicle.h support.c
+xform.obj: config.h gifsicle.h xform.c
+gifsicle.obj: config.h gifsicle.h gifsicle.c
+
+config.h: win32cfg.h
+	copy win32cfg.h config.h
 
 clean:
         del *.obj
