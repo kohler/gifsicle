@@ -14,17 +14,16 @@ gifsicle:
 	@cd src && $(MAKE)
 
 srclinks:
-	test $(srcdir) = . || exit 1
 	test -d $(srcdir)/include || mkdir $(srcdir)/include
 	test -d $(srcdir)/include/lcdf || mkdir $(srcdir)/include/lcdf
 	test -d $(srcdir)/include/lcdfgif || mkdir $(srcdir)/include/lcdfgif
-	for i in clp inttypes ; do \
+	cd $(srcdir); for i in clp inttypes; do \
 	ln -sf ../../../liblcdf/include/lcdf/$$i.h include/lcdf/$$i.h ; done
-	for i in gif gifx ; do \
+	cd $(srcdir); for i in gif gifx; do \
 	ln -sf ../../../liblcdf/include/lcdfgif/$$i.h include/lcdfgif/$$i.h ; done
-	for i in clp fmalloc strerror ; do \
+	cd $(srcdir); for i in clp fmalloc strerror ; do \
 	ln -sf ../../liblcdf/liblcdf/$$i.c src/$$i.c ; done
-	for i in giffunc gifread gifwrite ungifwrt gifunopt giftoc gifx ; do \
+	cd $(srcdir); for i in giffunc gifread gifwrite ungifwrt gifunopt giftoc gifx ; do \
 	ln -sf ../../liblcdf/liblcdfgif/$$i.c src/$$i.c ; done
 
 versionize:

@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.40
+Version 1.40   28.Aug.2003
 
 * Fix longstanding bug where '--disposal=previous' was mistakenly
   equivalent to '--disposal=asis'.
