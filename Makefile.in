@@ -89,7 +89,7 @@ distclean: mostlyclean
 	rm -f Makefile config.status config.log config.cache
 realclean: distclean
 
-dist: mostlyclean
+dist:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
