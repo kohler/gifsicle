@@ -1010,7 +1010,7 @@ is commonly used.
 .PP
 First, let's create an animation, `anim.gif':
 .Es
-% \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif
+% \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 This animation will move very quickly: since we didn't specify a delay, a
 browser will cycle through the frames as fast as it can. Let's slow it down
@@ -1018,12 +1018,12 @@ and pause .5 seconds between frames, using the
 .OP \-\-delay
 option.
 .Es
-% \fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif
+% \fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 If we also want the GIF to loop three times, we can use
 .OP \-\-loopcount :
 .Es
-% \fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif
+% \fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 (Rather than type
 .OP \-\-delay
@@ -1047,11 +1047,11 @@ anim.gif      anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
 .Ee
 To optimize `anim.gif':
 .Es
-% \fBgifsicle \-b \-O2 anim.gif
+% \fBgifsicle \-b \-O2 anim.gif\fR
 .Ee
 To change the second frame of `anim.gif' to `x.gif':
 .Es
-% \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace '#1' x.gif
+% \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace '#1' x.gif\fR
 .Ee
 .OP \-\-unoptimize
 is used since `anim.gif' was optimized in the last step. Editing
