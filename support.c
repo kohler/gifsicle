@@ -411,12 +411,9 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
   if (gfi->transparent >= 0)
     fprintf(where, " transparent %d", gfi->transparent);
   
-#if defined(PRINT_SIZE) || 1
-  if (gfi->compressed) {
+#if defined(PRINT_SIZE)
+  if (gfi->compressed)
     fprintf(where, " compressed size %u", gfi->compressed_len);
-    Gif_UncompressImage(gfi);
-    Gif_ReleaseUncompressedImage(gfi);
-  }
 #endif
   
   fprintf(where, "\n");
