@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <errno.h>
 #ifndef FD_SET
 #include <sys/select.h>
 #endif
@@ -374,7 +375,7 @@ get_input_stream(char *name)
   } else
     f = fopen(name, "rb");
   if (!f) {
-    error("can't open `%s' for reading", name);
+    error("%s: %s", name, strerror(errno));
     return 0;
   }
   

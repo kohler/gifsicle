@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
+#include <errno.h>
 
 
 Gt_Frame def_frame;
@@ -394,7 +395,7 @@ input_stream(char *name)
   } else
     f = fopen(name, "rb");
   if (!f) {
-    error("can't open `%s' for reading", name);
+    error("%s: %s", name, strerror(errno));
     return;
   }
   
@@ -593,7 +594,7 @@ read_colormap_file(char *name, FILE *f)
     else
       f = fopen(name, "rb");
     if (!f) {
-      error("can't open `%s' for reading", name);
+      error("%s: %s", name, strerror(errno));
       return 0;
     }
   }
@@ -643,7 +644,7 @@ output_stream(char *output_name, Gif_Stream *gfs)
     Gif_WriteFile(gfs, f);
     fclose(f);
   } else
-    error("couldn't open %s for writing", output_name);
+    error("%s: %s", output_name, strerror(errno));
 }
 
 static void

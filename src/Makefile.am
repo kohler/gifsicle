@@ -5,12 +5,12 @@ bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
 EXTRA_PROGRAMS = gifview gifdiff
 man_MANS = gifsicle.1 @OTHERMANS@
 
-LDADD = @MALLOC_O@
-gifview_LDADD = @MALLOC_O@ @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
+LDADD = @MALLOC_O@ @STRERROR_O@
+gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
-gifsicle_DEPENDENCIES = @MALLOC_O@
-gifview_DEPENDENCIES = @MALLOC_O@
-gifdiff_DEPENDENCIES = @MALLOC_O@
+gifsicle_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
+gifview_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
+gifdiff_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
 
 gifsicle_SOURCES = clp.c clp.h \
 		giffunc.c gifread.c gifunopt.c gifwrite.c \
@@ -28,7 +28,7 @@ gifdiff_SOURCES = clp.c clp.h \
 INCLUDES = $(X_CFLAGS)
 
 EXTRA_DIST = README.win \
-		dmalloc.c dmalloc.h fmalloc.c \
+		dmalloc.c dmalloc.h fmalloc.c strerror.c \
 		gifsicle.1 gifview.1 gifdiff.1 \
 		logo.gif logo1.gif rpm.spec
 

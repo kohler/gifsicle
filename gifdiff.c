@@ -11,6 +11,7 @@
 #include "clp.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <errno.h>
 
 #define QUIET_OPT		300
 #define HELP_OPT		301
@@ -409,17 +410,20 @@ particular purpose.\n");
     filename1 = "<stdin>";
   } else {
     f1 = fopen(filename1, "rb");
-    if (!f1) fatal_error("can't open `%s' for reading", filename1);
+    if (!f1)
+      fatal_error("%s: %s", filename1, strerror(errno));
   }
   gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED);
-  if (!gfs1) fatal_error("`%s' doesn't seem to contain a GIF", filename1);
+  if (!gfs1)
+    fatal_error("`%s' doesn't seem to contain a GIF", filename1);
   
   if (filename2 == 0) {
     f2 = stdin;
     filename2 = "<stdin>";
   } else {
     f2 = fopen(filename2, "rb");
-    if (!f2) fatal_error("can't open `%s' for reading", filename2);
+    if (!f2)
+      fatal_error("%s: %s", filename2, strerror(errno));
   }
   gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED);
   if (!gfs2) fatal_error("`%s' doesn't seem to contain a GIF", filename2);

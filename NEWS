@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.7.1   2.Dec.1998
+
+* Added configuration check for `strerror'. Problem reported by Mario
+  Gallotta <Mario_Gallotta@optilink.dsccc.com>.
+
+
 Version 1.7   28.Nov.1998
 
 * Added `--use-colormap=gray' and `--use-colormap=bw'. Idea and some code
