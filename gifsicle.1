@@ -38,10 +38,6 @@
 .RE
 .PP
 ..
-.\"html <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-.\"html <html><head><title>Gifsicle Man Page</title></head>
-.\"html <body bgcolor="#FFFFFF" text="#000000" link="#FF0000" vlink="#000080">
-.\"html <h1>Gifsicle Man Page</h1>
 .TH GIFSICLE 1 "9 Aug 1999" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
@@ -345,17 +341,13 @@ Select the frame named \fIname\fR.
 .PD
 .PP
 For example,
-.Sp
-.RS 5
+.Es
 \fBgifsicle\fR happy.gif
-.RE
-.Sp
+.Ee
 will use all of `happy.gif's frames, while
-.Sp
-.RS 5
+.Es
 \fBgifsicle\fR happy.gif '#0'
-.RE
-.Sp
+.Ee
 will only use the first. (Note the single quotes around the frame
 specification. The `#' character has special meaning for many shells, so
 you may need to quote it.)
@@ -1043,9 +1035,7 @@ Adaptive tree method for GIF writing.
 .PP
 http://www.lcdf.org/~eddietwo/gifsicle/
 .br
-.\"html <a href="index.html">Back to
 The 
 .B gifsicle
 home page.
-.\"html </a>
 '
