@@ -280,7 +280,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 }
 
 
-int
+static int
 image_data(byte **img, u_int16_t width, u_int16_t height, byte interlaced,
 	   u_int16_t num_colors, Gif_Context *gfc, Gif_Writer *grr)
 {
@@ -545,7 +545,7 @@ static void
 generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 {
   u_int32_t pos = 0;
-  if (gfex->type < 0) return;	/* ignore our private extensions */
+  if (gfex->kind < 0) return;	/* ignore our private extensions */
   
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);

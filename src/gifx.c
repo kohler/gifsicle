@@ -523,6 +523,7 @@ Gif_NewXContextFromVisual(Display *display, int screen_number,
   
   gfx = Gif_New(Gif_XContext);
   gfx->display = display;
+  gfx->screen_number = screen_number;
   gfx->drawable = RootWindow(display, screen_number);
   
   gfx->visual = visual;
@@ -557,6 +558,8 @@ Gif_NewXContext(Display *display, Window window)
 void
 Gif_DeleteXContext(Gif_XContext *gfx)
 {
+  if (!gfx) return;
+  if (--gfx->refcount > 0) return;
   while (gfx->xcolormap)
     delete_xcolormap(gfx->xcolormap);
   Gif_DeleteArray(gfx->closest);
