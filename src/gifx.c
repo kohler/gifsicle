@@ -2,14 +2,18 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software; you can copy, distribute, or alter it at
+   The GIF library is free software*; you can copy, distribute, or alter it at
    will, as long as this notice is kept intact and this source code is made
    available. Hypo(pa)thetical commerical developers are asked to write the
    author a note, which might make his day. There is no warranty, express or
-   implied. */
+   implied.
+
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
 
 #include "gifx.h"
-#include "gifint.h"
+#include "gif.h"
 #include <X11/Xutil.h>
 #include <assert.h>
 #ifdef __cplusplus
@@ -23,8 +27,8 @@ static void
 loadclosest(Gif_XContext *gfx)
 {
   XColor *color;
-  UINT16 ncolor;
-  UINT16 ncolormap;
+  u_int16_t ncolor;
+  u_int16_t ncolormap;
   int i;
   
   if (gfx->closest) return;
@@ -57,11 +61,11 @@ loadclosest(Gif_XContext *gfx)
 
 
 static int
-allocateclosest(Gif_XContext *gfx, Gif_Color *c)
+allocate_closest(Gif_XContext *gfx, Gif_Color *c)
 {
   Gif_Color *closer;
   Gif_Color *got = 0;
-  UINT32 distance = 0x4000000;
+  u_int32_t distance = 0x4000000;
   int i;
   
   loadclosest(gfx);
@@ -70,7 +74,7 @@ allocateclosest(Gif_XContext *gfx, Gif_Color *c)
     int redd = c->red - closer->red;
     int greend = c->green - closer->green;
     int blued = c->blue - closer->blue;
-    UINT32 d = redd * redd + greend * greend + blued * blued;
+    u_int32_t d = redd * redd + greend * greend + blued * blued;
     if (d < distance) {
       distance = d;
       got = closer;
@@ -87,7 +91,7 @@ allocateclosest(Gif_XContext *gfx, Gif_Color *c)
       /* Probably was a read/write color cell. Get rid of it!! */
       *got = gfx->closest[gfx->nclosest - 1];
       gfx->nclosest--;
-      return allocateclosest(gfx, c);
+      return allocate_closest(gfx, c);
     }
     got->pixel = xcol.pixel;
     got->haspixel = 1;
@@ -100,7 +104,7 @@ allocateclosest(Gif_XContext *gfx, Gif_Color *c)
 
 
 static void
-allocatecolors(Gif_XContext *gfx, UINT16 size, Gif_Color *c)
+allocate_colors(Gif_XContext *gfx, u_int16_t size, Gif_Color *c)
 {
   XColor xcol;
   int i;
@@ -113,7 +117,7 @@ allocatecolors(Gif_XContext *gfx, UINT16 size, Gif_Color *c)
 	c->pixel = xcol.pixel;
 	c->haspixel = 1;
       } else
-	allocateclosest(gfx, c);
+	allocate_closest(gfx, c);
     }
 }
 
@@ -136,7 +140,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   int bytesperline;
   
   unsigned long savedtransparent = 0;
-  UINT16 nct;
+  u_int16_t nct;
   Gif_Color *ct;
   
   /* Find the correct image */
@@ -145,8 +149,6 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     return None;
   
   /* Find the right colormap */
-  if (gfi->local) gfcm = gfi->local;
-  if (!gfcm) gfcm = Gif_GetColormap(gfs, 0);
   if (!gfcm) /* can't find a colormap to use */
     return None;
 
@@ -154,7 +156,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
    * has the given pixel value */
   ct = gfcm->col;
   nct = gfcm->ncol;
-  allocatecolors(gfx, nct, ct);
+  allocate_colors(gfx, nct, ct);
   if (gfi->transparent > -1 && gfi->transparent < nct) {
     savedtransparent = ct[ gfi->transparent ].pixel;
     ct[ gfi->transparent ].pixel = gfx->transparentvalue;
@@ -232,9 +234,14 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
 Pixmap
 Gif_XImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
-  return Gif_XImageColormap(gfx, gfs, Gif_GetColormap(gfs, 0), gfi);
+  Gif_Colormap *gfcm;
+  if (!gfi && gfs->nimages) gfi = gfs->images[0];
+  if (!gfi) /* can't find an image to return */
+    return None;
+  gfcm = gfi->local;
+  if (!gfcm) gfcm = gfs->global;
+  return Gif_XImageColormap(gfx, gfs, gfcm, gfi);
 }
-
 
 
 Pixmap
@@ -313,7 +320,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 void
 Gif_XPreallocateColors(Gif_XContext *gfx, Gif_Colormap *gfcm)
 {
-  allocatecolors(gfx, gfcm->ncol, gfcm->col);
+  allocate_colors(gfx, gfcm->ncol, gfcm->col);
 }
 
 

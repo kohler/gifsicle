@@ -2,13 +2,17 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software; you can copy, distribute, or alter it at
+   The GIF library is free software*; you can copy, distribute, or alter it at
    will, as long as this notice is kept intact and this source code is made
    available. Hypo(pa)thetical commerical developers are asked to write the
    author a note, which might make his day. There is no warranty, express or
-   implied. */
+   implied.
 
-#include "gifint.h"
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
+
+#include "gif.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

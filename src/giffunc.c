@@ -2,13 +2,17 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software; you can copy, distribute, or alter it at
+   The GIF library is free software*; you can copy, distribute, or alter it at
    will, as long as this notice is kept intact and this source code is made
    available. Hypo(pa)thetical commerical developers are asked to write the
    author a note, which might make his day. There is no warranty, express or
-   implied. */
+   implied.
 
-#include "gifint.h"
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
+
+#include "gif.h"
 #include <stdlib.h>
 #ifdef __cplusplus
 extern "C" {
@@ -27,8 +31,6 @@ Gif_NewStream(void)
   gfs->comment = 0;
   gfs->images = 0;
   gfs->nimages = gfs->imagescap = 0;
-  gfs->extra = 0;
-  gfs->nextra = gfs->extracap = 0;
   gfs->errors = gfs->odd_extensions = gfs->odd_app_extensions = 0;
   gfs->userflags = 0;
   gfs->refcount = 0;
@@ -62,7 +64,6 @@ Gif_NewColormap(void)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
   if (!gfcm) return 0;
-  gfcm->identifier = 0;
   gfcm->ncol = 0;
   gfcm->col = 0;
   return gfcm;
@@ -74,7 +75,6 @@ Gif_NewFullColormap(int nc)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
   if (!gfcm) return 0;
-  gfcm->identifier = 0;
   gfcm->ncol = nc;
   gfcm->col = Gif_NewArray(Gif_Color, nc);
   if (!gfcm->col) {
@@ -128,20 +128,6 @@ Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi)
 
 
 int
-Gif_AddColormap(Gif_Stream *gfs, Gif_Colormap *gfcm)
-{
-  if (gfs->nextra >= gfs->extracap) {
-    if (gfs->extracap) gfs->extracap *= 2;
-    else gfs->extracap = 2;
-    Gif_ReArray(gfs->extra, Gif_Colormap *, gfs->extracap);
-    if (!gfs->extra) return 0;
-  }
-  gfs->extra[ gfs->nextra++ ] = gfcm;
-  return 1;
-}
-
-
-int
 Gif_AddComment(Gif_Comment *gfcom, char *x, int xlen)
 {
   if (gfcom->count >= gfcom->cap) {
@@ -156,62 +142,6 @@ Gif_AddComment(Gif_Comment *gfcom, char *x, int xlen)
   gfcom->len[ gfcom->count ] = xlen;
   gfcom->count++;
   return 1;
-}
-
-
-int
-Gif_ScreenWidth(Gif_Stream *gfs)
-{
-  return gfs->screen_width;
-}
-
-
-int
-Gif_ScreenHeight(Gif_Stream *gfs)
-{
-  return gfs->screen_height;
-}
-
-
-int
-Gif_ImageCount(Gif_Stream *gfs)
-{
-  return gfs->nimages;
-}
-
-
-int
-Gif_ImageWidth(Gif_Image *gfi)
-{
-  return gfi->width;
-}
-
-
-int
-Gif_ImageHeight(Gif_Image *gfi)
-{
-  return gfi->height;
-}
-
-
-UINT16
-Gif_ImageDelay(Gif_Image *gfi)
-{
-  return gfi->delay;
-}
-
-
-void *
-Gif_ImageUserData(Gif_Image *gfi)
-{
-  return gfi->userdata;
-}
-
-
-void
-Gif_SetImageUserData(Gif_Image *gfi, void *ud)
-{
-  gfi->userdata = ud;
 }
 
 
@@ -249,12 +179,6 @@ Gif_CopyColormap(Gif_Colormap *src)
   
   dest = Gif_NewFullColormap(src->ncol);
   if (!dest) return 0;
-  
-  dest->identifier = Gif_CopyString(src->identifier);
-  if (!dest->identifier && src->identifier) {
-    Gif_DeleteColormap(dest);
-    return 0;
-  }
   
   for (i = 0; i < src->ncol; i++) {
     dest->col[i] = src->col[i];
@@ -333,10 +257,6 @@ Gif_DeleteStream(Gif_Stream *gfs)
     Gif_DeleteImage(gfs->images[i]);
   Gif_DeleteArray(gfs->images);
   
-  for (i = 0; i < gfs->nextra; i++)
-    Gif_DeleteColormap(gfs->extra[i]);
-  Gif_DeleteArray(gfs->extra);
-  
   Gif_Delete(gfs);
 }
 
@@ -360,7 +280,6 @@ void
 Gif_DeleteColormap(Gif_Colormap *gfcm)
 {
   if (!gfcm) return;
-  Gif_DeleteArray(gfcm->identifier);
   Gif_DeleteArray(gfcm->col);
   Gif_Delete(gfcm);
 }
@@ -406,39 +325,12 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 }
 
 
-Gif_Colormap *
-Gif_GetColormap(Gif_Stream *gfs, int cmnumber)
-{
-  if (cmnumber == 0)
-    return gfs->global;
-  else if (cmnumber > 0 && cmnumber <= gfs->nextra)
-    return gfs->extra[ cmnumber - 1 ];
-  else
-    return 0;
-}
-
-
-Gif_Colormap *
-Gif_GetNamedColormap(Gif_Stream *gfs, const char *name)
-{
-  int i;
-  
-  if (!name)
-    return gfs->global;
-  
-  for (i = 0; i < gfs->nextra; i++)
-    if (gfs->extra[i]->identifier &&
-	strcmp(gfs->extra[i]->identifier, name) == 0)
-      return gfs->extra[i];
-  
-  return 0;
-}
-
-
 Gif_Color *
 Gif_GetBackground(Gif_Stream *gfs, Gif_Colormap *gfcm)
 {
-  if (gfs->background < gfcm->ncol)
+  if (!gfcm)
+    gfcm = gfs->global;
+  if (gfcm && gfs->background < gfcm->ncol)
     return &gfcm->col[gfs->background];
   else
     return 0;

@@ -2,13 +2,17 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software; you can copy, distribute, or alter it at
+   The GIF library is free software*; you can copy, distribute, or alter it at
    will, as long as this notice is kept intact and this source code is made
    available. Hypo(pa)thetical commerical developers are asked to write the
    author a note, which might make his day. There is no warranty, express or
-   implied. */
+   implied.
 
-#include "gifint.h"
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
+
+#include "gif.h"
 #include <stdarg.h>
 #include <assert.h>
 #ifdef __cplusplus
@@ -43,14 +47,14 @@ gifputbyte(byte b, Gif_Writer *grr)
 }
 
 static void
-gifputunsigned(UINT16 uns, Gif_Writer *grr)
+gifputunsigned(u_int16_t uns, Gif_Writer *grr)
 {
   gifputbyte(uns & 0xFF, grr);
   gifputbyte(uns >> 8, grr);
 }
 
 static void
-gifputblock(byte *block, UINT16 size, Gif_Writer *grr)
+gifputblock(byte *block, u_int16_t size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
 }
@@ -67,11 +71,11 @@ Gif_Debug(char *x, ...)
 }
 
 
-static UINT32
+static u_int32_t
 codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
 {
-  UINT32 hashish1 = (suffix << 10 ^ prefix) % HASH_SIZE;
-  UINT32 hashish2 = (prefix % HASH_SIZE) | 1;
+  u_int32_t hashish1 = (suffix << 10 ^ prefix) % HASH_SIZE;
+  u_int32_t hashish2 = (prefix % HASH_SIZE) | 1;
   Gif_Code *prefixes = gfc->prefix;
   byte *suffixes = gfc->suffix;
   
@@ -84,16 +88,16 @@ codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
 
 
 static int
-imagedata(byte **img, UINT16 width, UINT16 height, UINT16 num_colors,
+imagedata(byte **img, u_int16_t width, u_int16_t height, u_int16_t num_colors,
 	  Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
   
-  UINT16 xleft;
+  u_int16_t xleft;
   byte *imageline;
   
-  UINT32 leftover;
+  u_int32_t leftover;
   byte amountleftover;
   
   Gif_Code work_code;
@@ -104,7 +108,7 @@ imagedata(byte **img, UINT16 width, UINT16 height, UINT16 num_colors,
   Gif_Code bump_code;
   byte suffix;
   
-  UINT32 hash;
+  u_int32_t hash;
   
   byte min_code_size;
   byte need;
@@ -262,7 +266,7 @@ imagedata(byte **img, UINT16 width, UINT16 height, UINT16 num_colors,
 
 
 static void
-color_table(Gif_Color *c, UINT16 size, Gif_Writer *grr)
+color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
 {
   /* GIF format doesn't allow a colormap with only 1 entry. */
   int extra = 2, i;
@@ -288,8 +292,8 @@ static void
 gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte packed = 0;
-  UINT16 ncolor = 0;
-  UINT16 size = 2;
+  u_int16_t ncolor = 0;
+  u_int16_t size = 2;
   
   gifputbyte(',', grr);
   gifputunsigned(gfi->left, grr);
@@ -345,7 +349,7 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   gifputunsigned(gfs->screen_height, grr);
   
   if (gfs->global) {
-    UINT16 size = 2;
+    u_int16_t size = 2;
     packed |= 0x80;
     while (size < gfs->global->ncol)
       size *= 2, packed++;
@@ -445,7 +449,7 @@ comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 
 
 static void
-netscape_loop_extension(UINT16 value, Gif_Writer *grr)
+netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
 {
   gifputbyte('!', grr);
   gifputbyte(255, grr);
@@ -471,7 +475,7 @@ gif_write(Gif_Stream *gfs, Gif_Writer *grr)
   
   {
     byte isgif89a = 0;
-    if (gfs->nextra || gfs->comment || gfs->loopcount > -1)
+    if (gfs->comment || gfs->loopcount > -1)
       isgif89a = 1;
     for (i = 0; i < gfs->nimages && !isgif89a; i++) {
       gfi = gfs->images[i];
@@ -489,12 +493,6 @@ gif_write(Gif_Stream *gfs, Gif_Writer *grr)
   
   if (gfs->loopcount > -1)
     netscape_loop_extension(gfs->loopcount, grr);
-  
-  for (i = 0; i < gfs->nextra; i++) {
-    if (gfs->extra[i]->identifier)
-      name_extension(gfs->extra[i]->identifier, grr);
-    colormap_extension(gfs->extra[i], grr);
-  }
   
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];

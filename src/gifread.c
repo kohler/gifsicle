@@ -2,13 +2,17 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software; you can copy, distribute, or alter it at
+   The GIF library is free software*; you can copy, distribute, or alter it at
    will, as long as this notice is kept intact and this source code is made
    available. Hypo(pa)thetical commerical developers are asked to write the
    author a note, which might make his day. There is no warranty, express or
-   implied. */
+   implied.
 
-#include "gifint.h"
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
+
+#include "gif.h"
 #include <stdarg.h>
 #include <assert.h>
 #ifdef __cplusplus
@@ -24,10 +28,10 @@ typedef struct {
   
   Gif_Code *prefix;
   byte *suffix;
-  UINT16 *length;
+  u_int16_t *length;
   
-  UINT16 width;
-  UINT16 height;
+  u_int16_t width;
+  u_int16_t height;
   
   byte *image;
   byte *maximage;
@@ -104,7 +108,7 @@ Gif_Error(char *message)
 }
 
 
-static UINT16
+static u_int16_t
 gifgetunsigned(Gif_Reader *grr)
 {
   byte one = gifgetbyte(grr);
@@ -122,7 +126,7 @@ one_code(Gif_Context *gfc, Gif_Code code)
   Gif_Code *prefixes = gfc->prefix;
   byte *ptr;
   int lastsuffix;
-  UINT16 codelength = gfc->length[code];
+  u_int16_t codelength = gfc->length[code];
   
   gfc->decodepos += codelength;
   ptr = gfc->image + gfc->decodepos;
@@ -421,64 +425,6 @@ graphic_control_extension(Gif_Stream *gfs, Gif_Image *gfi, Gif_Reader *grr)
 static char *last_name;
 
 
-static int
-colormap_extension(Gif_Stream *gfs, Gif_Reader *grr)
-{
-  byte len;
-  Gif_Colormap *gfcm = Gif_NewColormap();
-  UINT16 csize;
-  Gif_Color *c;
-  byte stuff[GIF_MAX_BLOCK];
-  int i, whichcolor, rgb;
-
-  if (!gfcm) return 0;
-  gfcm->identifier = last_name;
-  last_name = 0;
-  
-  csize = 0;
-  c = 0;
-  whichcolor = rgb = 0;
-  
-  len = gifgetbyte(grr);
-  while (len > 0) {
-    Gif_Color *d;
-    
-    Gif_ReArray(c, Gif_Color, whichcolor + (len / 3) + 1);
-    gifgetblock(stuff, len, grr);
-    d = c + whichcolor;
-    
-    for (i = 0; i < len; i++)
-      switch (rgb++) {
-	
-       case 0:
-	d->red = stuff[i];
-	break;
-	
-       case 1:
-	d->green = stuff[i];
-	break;
-	
-       case 2:
-	d->blue = stuff[i];
-	d->haspixel = 0;
-	d++;
-	whichcolor++;
-	rgb = 0;
-	break;
-	
-      }
-    
-    csize = whichcolor;
-    len = gifgetbyte(grr);
-  }
-  
-  gfcm->ncol = csize;
-  gfcm->col = c;
-  Gif_AddColormap(gfs, gfcm);
-  return 1;
-}
-
-
 static char *
 suck_data(char *data, int *store_len, Gif_Reader *grr)
 {
@@ -566,7 +512,7 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
   gfc.stream = gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
-  gfc.length = Gif_NewArray(UINT16, GIF_MAX_CODE + 1);
+  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
@@ -616,10 +562,6 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
 	
        case 0xF9:
 	graphic_control_extension(gfs, gfi, grr);
-	break;
-	
-       case 0x43:
-	if (!colormap_extension(gfs, grr)) goto done;
 	break;
 	
        case 0xCE:
