@@ -5,7 +5,7 @@ Version 1.16.2
 * Changed behavior of `--no-logical-screen'. Now gifsicle will include all
   visible GIFs when calculating the size of the logical screen.
 
-* Got rid of spurious warnings for redundant options.
+* Got rid of spurious redundant-option warnings.
 
 
 Version 1.16.1   10.Sep.1999
