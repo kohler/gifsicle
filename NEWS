@@ -9,6 +9,8 @@ Version 1.13
 * Added `--background' option to gifview, so you can set the color used for
   transparent pixels.
 
+* Added support for run-length-encoded GIFs to avoid patent problems.
+
 * Gifdiff is built by default on Unix.
 
 

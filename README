@@ -34,22 +34,26 @@ THE GIF PATENTS AND UNGIFS
    Unisys owns patents on the Lempel-Ziv-Welch compression algorithm used
 in GIFs, which means that GIF-manipulating software cannot be truly free.
 Some people in the know have said that decompression is not covered by the
-LZW patents (I have my doubts). That leaves compression. Toshio Kuratomi
-<badger@prtr-13.ucsc.edu>, dazzlingly, cut the Gordian knot: his `libungif'
-package writes uncompressed GIFs, which are perfectly readable by normal
-GIF software but, since there's no compression, avoid the Unisys patents.
+LZW patents (I have my doubts). That leaves compression. Independently,
+Toshio Kuratomi <badger@prtr-13.ucsc.edu> and Hutchison Avenue Software
+Corporation (http://www.hasc.com/, <info@hasc.com>) dazzlingly cut the
+Gordian knot by writing GIFs without LZW compression. These GIFs are
+slightly larger, but perfectly readable by normal GIF viewers, and they
+avoid the Unisys patents.
 
-   Gifsicle can also be configured to write uncompressed GIFs, making
-`ungifsicle' completely free software. (If you believe that decompression
-isn't patented.) You enable this by giving `./configure' the
-`--enable-ungif' switch. The disadvantage: your GIF outputs will be larger,
-often by a factor of 8 or more. You can tell which gifsicle you are running
-by typing `gifsicle --version': if it says `(ungif)', gifsicle is writing
-uncompressed GIFs.
+   Gifsicle can be configured to write run-length-encoded GIFs, rather than
+LZW-compressed GIFs, making it completely free software (if you believe
+that decompression isn't patented). Turn this on by giving `./configure'
+the `--enable-ungif' switch. The disadvantage: your GIF outputs will be
+larger, often by a factor of 2 or more. You can tell which gifsicle you are
+running by typing `gifsicle --version': if it says `(ungif)', gifsicle is
+writing run-length-encoded GIFs.
 
-   Gifsicle may be distributed without the file that implements GIF
-compression. If you try to configure such a distribution without
-`--enable-ungif', you will get an error message.
+   This gifsicle package may have been distributed without the file that
+implements LZW compression. If you try to configure such a distribution
+without `--enable-ungif', you will get an error message. See the Gifsicle
+web page <http://www.lcdf.org/gifsicle/> if you have such a distribution
+but want LZW compression.
 
 MAKING GIFSICLE ON UNIX
 -----------------------
@@ -92,19 +96,19 @@ GIFSICLE HOME PAGE
    For latest distributions, bug reports, and other stuff, see the Gifsicle
 home page at
 
-	http://www.lcdf.org/~eddietwo/gifsicle/
+	http://www.lcdf.org/gifsicle/
 
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-8 Eddie Kohler.
+   All source code is Copyright (C) 1997-9 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE TO CREATE OR MODIFY GIF IMAGES, BUT NOT TO
 REDISTRIBUTE ITS CODE, DON'T WORRY ABOUT THE REST OF THIS SECTION. Anyone
 can use Gifsicle however they wish; the license applies only to those who
 plan to copy, distribute, or alter its code. If you plan to use Gifsicle
 for an organizational or commercial Web site, I would appreciate a link to
-the Gifsicle home page on an `About This Server' page, if one exists, but
-it's not required.
+the Gifsicle home page on any `About This Server' page, but it's not
+required.
 
    This code, with the exception of the GIF compression code in gifwrite.c,
 is distributed under the GNU General Public License, Version 2, or, at your
