@@ -108,9 +108,12 @@ typedef struct {
   int colormap_dither;
   
   int optimizing;
-  
+
+  int scaling;
   int resize_width;
   int resize_height;
+  double scale_x;
+  double scale_y;
   
 } Gt_OutputData;
 
@@ -218,10 +221,13 @@ extern int	position_x;
 extern int	position_y;
 extern Gif_Color parsed_color;
 extern Gif_Color parsed_color2;
+extern double	parsed_scale_factor_x;
+extern double	parsed_scale_factor_y;
 
 int		parse_frame_spec(Clp_Parser *, const char *, int, void *);
 int		parse_dimensions(Clp_Parser *, const char *, int, void *);
 int		parse_position(Clp_Parser *, const char *, int, void *);
+int		parse_scale_factor(Clp_Parser *, const char *, int, void *);
 int		parse_color(Clp_Parser *, const char *, int, void *);
 int		parse_rectangle(Clp_Parser *, const char *, int, void *);
 int		parse_two_colors(Clp_Parser *, const char *, int, void *);

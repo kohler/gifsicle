@@ -341,71 +341,81 @@ void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 {
   byte *new_data;
-  int new_width, new_height;
+  int new_left, new_top, new_right, new_bottom, new_width, new_height;
   
   int i, j, new_x, new_y;
   int scaled_xstep, scaled_ystep, scaled_new_x, scaled_new_y;
+
+  /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled from
+     left edge of the *subimage* to right edge of the subimage, causing
+     consistency problems when several subimages overlap. Solution: always use
+     scale factors relating to the *whole image* (the screen size). */
+  
+  /* use fixed-point arithmetic */
+  scaled_xstep = (int)(SCALE_FACTOR * xfactor + 0.5);
+  scaled_ystep = (int)(SCALE_FACTOR * yfactor + 0.5);
   
   /* calculate new width and height based on the four edges (left, right, top,
      bottom). This is better than simply multiplying the width and height by
      the scale factors because it avoids roundoff inconsistencies between
-     frames on animated GIFs */
-  {
-    int new_left = (int)(gfi->left * xfactor + 0.5);
-    int new_right = (int)((gfi->left + gfi->width) * xfactor + 0.5);
-    int new_top = (int)(gfi->top * yfactor + 0.5);
-    int new_bottom = (int)((gfi->top + gfi->height) * yfactor + 0.5);
-    new_width = new_right - new_left;
-    new_height = new_bottom - new_top;
-    if (new_width <= 0) new_width = 1;
-    if (new_height <= 0) new_height = 1;
-  }
-
-  assert(gfi->img);
-  new_data = Gif_NewArray(byte, new_width * new_height);
+     frames on animated GIFs. Don't allow 0-width or 0-height images; GIF
+     doesn't support them well. */
+  new_left = UNSCALE(scaled_xstep * gfi->left);
+  new_top = UNSCALE(scaled_ystep * gfi->top);
+  new_right = UNSCALE(scaled_xstep * (gfi->left + gfi->width));
+  new_bottom = UNSCALE(scaled_ystep * (gfi->top + gfi->height));
   
+  new_width = new_right - new_left;
+  new_height = new_bottom - new_top;
+
+  if (new_width <= 0) new_width = 1, new_right = new_left + 1;
+  if (new_height <= 0) new_height = 1, new_bottom = new_top + 1;
   if (new_width > UNSCALE(INT_MAX) || new_height > UNSCALE(INT_MAX))
     fatal_error("new image size is too big for me to handle");
   
-  /* use fixed-point arithmetic */
-  scaled_xstep = (int)(SCALE_FACTOR * (double)new_width / gfi->width + 0.5);
-  scaled_ystep = (int)(SCALE_FACTOR * (double)new_height / gfi->height + 0.5);
+  assert(gfi->img);
+  new_data = Gif_NewArray(byte, new_width * new_height);
   
-  /* this calculation (and the scaled_new_x calculation below) avoids roundoff
-     errors (leaving last row/column blank): it ensures that
-     (initial_scaled_new_y + scaled_ystep * gfi_height) >= SCALE(new_height),
-     so we'll definitely get to the last row/column */
-  scaled_new_y = SCALE(new_height) - scaled_ystep * gfi->height;
-  new_y = 0;
+  new_y = new_top;
+  scaled_new_y = scaled_ystep * gfi->top;
   
   for (j = 0; j < gfi->height; j++) {
-    byte *old_line = gfi->img[j];
+    byte *in_line = gfi->img[j];
+    byte *out_data;
     int x_delta, y_delta, yinc;
     
     scaled_new_y += scaled_ystep;
+    /* account for images which should've had 0 height but don't */
+    if (j == gfi->height - 1) scaled_new_y = SCALE(new_bottom);
+    
     if (scaled_new_y < SCALE(new_y + 1)) continue;
     y_delta = UNSCALE(scaled_new_y - SCALE(new_y));
     
-    new_x = 0;
-    scaled_new_x = SCALE(new_width) - scaled_xstep * gfi->width;
+    new_x = new_left;
+    scaled_new_x = scaled_xstep * gfi->left;
+    out_data = &new_data[(new_y - new_top) * new_width + (new_x - new_left)];
     
     for (i = 0; i < gfi->width; i++) {
-      byte *column = &new_data[new_y * new_width + new_x];
       scaled_new_x += scaled_xstep;
+      /* account for images which should've had 0 width but don't */
+      if (i == gfi->width - 1) scaled_new_x = SCALE(new_right);
+      
       x_delta = UNSCALE(scaled_new_x - SCALE(new_x));
-      for (; x_delta > 0; new_x++, x_delta--, column++)
+      
+      for (; x_delta > 0; new_x++, x_delta--, out_data++)
 	for (yinc = 0; yinc < y_delta; yinc++)
-	  column[yinc * new_width] = old_line[i];
+	  out_data[yinc * new_width] = in_line[i];
     }
     
     new_y += y_delta;
   }
   
   Gif_ReleaseUncompressedImage(gfi);
+  Gif_ReleaseCompressedImage(gfi);
   gfi->width = new_width;
   gfi->height = new_height;
-  gfi->left = (int)(gfi->left * xfactor + 0.5);
-  gfi->top = (int)(gfi->top * yfactor + 0.5);
+  gfi->left = UNSCALE(scaled_xstep * gfi->left);
+  gfi->top = UNSCALE(scaled_ystep * gfi->top);
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
 }
 

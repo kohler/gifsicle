@@ -1,5 +1,23 @@
 Gifsicle NEWS
 
+Version 1.11
+
+* Added `--scale XFACTORxYFACTOR' to complement `--resize'.
+
+* Made `--resize' work better on animations (no more off-by-one errors).
+
+* Fixed bug in `--use-colormap': If transparency was added to the new
+  colormap, the transparent color index could later be used (incorrectly)
+  as a real image color. This was particularly common if the image was
+  dithered.
+
+* `--dither' now tries to mitigate "jumping dither" animation artifacts
+  (where adjacent frames in an animation have different dithering patterns,
+  so the animation shifts). It does an OK job.
+
+* Improvements to `--color-method=blend-diversity'.
+
+
 Version 1.10   6.Jan.1999
 
 * Gifview is built by default.

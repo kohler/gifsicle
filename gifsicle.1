@@ -126,7 +126,7 @@ options are on the right.
 .Ix "Image transformations"
 .Ix "\ \ \ cropping" "\fB\-\-crop\fP"
 .Ix "\ \ \ flipping" "\fB\-\-flip\-*\fP"
-.Ix "\ \ \ resizing" "\fB\-\-resize\fP"
+.Ix "\ \ \ resizing" "\fB\-\-resize\fP, \fB\-\-scale\fP"
 .Ix "\ \ \ rotating" "\fB\-\-rotate\-*\fP"
 .Ix "Grayscale" "\fB\-\-use\-colormap\fP"
 .Ix "Interlacing" "\fB\-\-interlace\fP"
@@ -821,6 +821,19 @@ animation artifacts, so it is off by default.
 Resizes the output GIF to
 .IR width x height .
 Resizing happens after all input frames have been combined and before
+optimization.
+'
+.Sp
+.TP
+.OA \-\-scale Xfactor [x Yfactor ]
+'
+Scales the output GIF's width and height by
+.IR Xfactor " and " Yfactor .
+If
+.I Yfactor
+is not given, it defaults to
+.IR Xfactor .
+Scaling happens after all input frames have been combined and before
 optimization.
 '
 .Sp

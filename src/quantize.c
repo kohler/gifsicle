@@ -232,11 +232,9 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     u_int32_t total = 0;
     for (i = 0; i < nhist; i++)
       total += hist[i].pixel;
-    
     slots[0].first = 0;
     slots[0].count = nhist;
     slots[0].pixel = total;
-    
     qsort(hist, nhist, sizeof(Gif_Color), pixel_sort_compare);
   }
   
@@ -290,8 +288,19 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     {
       u_int32_t half_pixels = split->pixel / 2;
       u_int32_t pixel_accum = slice[0].pixel;
+      u_int32_t diff1, diff2;
       for (i = 1; i < split->count - 1 && pixel_accum < half_pixels; i++)
 	pixel_accum += slice[i].pixel;
+
+      /* We know the area before the split has more pixels than the area
+         after, possibly by a large margin (bad news). If it would shrink the
+         margin, change the split. */
+      diff1 = 2*pixel_accum - split->pixel;
+      diff2 = split->pixel - 2*(pixel_accum - slice[i-1].pixel);
+      if (diff2 < diff1 && i > 1) {
+	i--;
+	pixel_accum -= slice[i].pixel;
+      }
       
       slots[nadapt].first = split->first + i;
       slots[nadapt].count = split->count - i;
@@ -331,7 +340,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
   Gif_Color *adapt = gfcm->col;
   int nadapt = 0;
-  int i, j;
+  int i, j, match = 0;
   
   /* This code was uses XV's modified diversity algorithm, and was written
      with reference to XV's implementation of that algorithm by John Bradley
@@ -416,32 +425,49 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   }
   
   /* 3. make the new palette by choosing one color from each slot. */
-  for (i = 0; i < nadapt; i++) {
-    double red_total = 0, green_total = 0, blue_total = 0;
-    u_int32_t pixel_total = 0, mismatch_pixel_total = 0;
-    int match;
-    for (j = 0; j < nhist; j++)
-      if (closest[j] == i) {
-	u_int32_t pixel = hist[j].pixel;
-	red_total += hist[j].red * pixel;
-	green_total += hist[j].green * pixel;
-	blue_total += hist[j].blue * pixel;
-	pixel_total += pixel;
-	if (min_dist[j])
-	  mismatch_pixel_total += pixel;
-	else
+  if (!blend) {
+    for (i = 0; i < nadapt; i++) {
+      for (j = 0; j < nhist; j++)
+	if (closest[j] == i && !min_dist[j])
 	  match = j;
-      }
-    /* Only blend if total number of mismatched pixels exceeds total number of
-       matched pixels. */
-    if (!blend || 2 * mismatch_pixel_total <= pixel_total)
       adapt[i] = hist[match];
-    else {
-      adapt[i].red = (byte)(red_total / pixel_total);
-      adapt[i].green = (byte)(green_total / pixel_total);
-      adapt[i].blue = (byte)(blue_total / pixel_total);
+      adapt[i].haspixel = 0;
     }
-    adapt[i].haspixel = 0;
+    
+  } else {
+    for (i = 0; i < nadapt; i++) {
+      double red_total = 0, green_total = 0, blue_total = 0;
+      u_int32_t pixel_total = 0, mismatch_pixel_total = 0;
+      for (j = 0; j < nhist; j++)
+	if (closest[j] == i) {
+	  u_int32_t pixel = hist[j].pixel;
+	  red_total += hist[j].red * pixel;
+	  green_total += hist[j].green * pixel;
+	  blue_total += hist[j].blue * pixel;
+	  pixel_total += pixel;
+	  if (min_dist[j])
+	    mismatch_pixel_total += pixel;
+	  else
+	    match = j;
+	}
+      /* Only blend if total number of mismatched pixels exceeds total number
+	 of matched pixels by a large margin. */
+      if (3 * mismatch_pixel_total <= 2 * pixel_total)
+	adapt[i] = hist[match];
+      else {
+	/* Favor, by a smallish amount, the color the plain diversity
+           algorithm would pick. */
+	u_int32_t pixel = hist[match].pixel * 2;
+	red_total += hist[match].red * pixel;
+	green_total += hist[match].green * pixel;
+	blue_total += hist[match].blue * pixel;
+	pixel_total += pixel;
+	adapt[i].red = (byte)(red_total / pixel_total);
+	adapt[i].green = (byte)(green_total / pixel_total);
+	adapt[i].blue = (byte)(blue_total / pixel_total);
+      }
+      adapt[i].haspixel = 0;
+    }
   }
   
   Gif_DeleteArray(min_dist);
@@ -644,12 +670,15 @@ colormap_image_posterize(Gif_Image *gfi, byte *new_data,
 
 #define DITHER_SCALE	1024
 #define DITHER_SCALE_M1	(DITHER_SCALE-1)
+#define N_RANDOM_VALUES	512
 
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 			       Gif_Colormap *old_cm, Gif_Colormap *new_cm,
 			       color_hash_item **hash, u_int32_t *histogram)
 {
+  static int32_t *random_values = 0;
+  
   int width = gfi->width;
   int dither_direction = 0;
   int transparent = gfi->transparent;
@@ -661,19 +690,28 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
   
-  /* Initialize Floyd-Steinberg error vectors to small random values, so
-     we don't get an artifact on the top row */
+  /* Initialize Floyd-Steinberg error vectors to small random values, so we
+     don't get artifacts on the top row */
   r_err = Gif_NewArray(int32_t, width + 2);
   g_err = Gif_NewArray(int32_t, width + 2);
   b_err = Gif_NewArray(int32_t, width + 2);
   r_err1 = Gif_NewArray(int32_t, width + 2);
   g_err1 = Gif_NewArray(int32_t, width + 2);
   b_err1 = Gif_NewArray(int32_t, width + 2);
-  for (i = 0; i < width + 2; i++) {
-    r_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
-    g_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
-    b_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+  /* Use the same random values on each call in an attempt to minimize
+     "jumping dithering" effects on animations */
+  if (!random_values) {
+    random_values = Gif_NewArray(int32_t, N_RANDOM_VALUES);
+    for (i = 0; i < N_RANDOM_VALUES; i++)
+      random_values[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
   }
+  for (i = 0; i < gfi->width + 2; i++) {
+    int j = (i + gfi->left) * 3;
+    r_err[i] = random_values[ (j + 0) % N_RANDOM_VALUES ];
+    g_err[i] = random_values[ (j + 1) % N_RANDOM_VALUES ];
+    b_err[i] = random_values[ (j + 2) % N_RANDOM_VALUES ];
+  }
+  /* *_err1 initialized below */
   
   /* Do the image! */
   for (j = 0; j < gfi->height; j++) {
@@ -752,9 +790,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
     /* change dithering directions */
     {
       int32_t *temp;
-      temp = r_err;  r_err = r_err1;  r_err1 = temp;
-      temp = g_err;  g_err = g_err1;  g_err1 = temp;
-      temp = b_err;  b_err = b_err1;  b_err1 = temp;
+      temp = r_err; r_err = r_err1; r_err1 = temp;
+      temp = g_err; g_err = g_err1; g_err1 = temp;
+      temp = b_err; b_err = b_err1; b_err1 = temp;
       dither_direction = !dither_direction;
     }
   }
@@ -772,7 +810,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 /* return value 1 means run the image_changer again */
 static int
 try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
-			Gif_Colormap *new_cm, u_int32_t *histogram)
+			Gif_Colormap *new_cm, int *new_ncol,
+			u_int32_t *histogram)
 {
   u_int32_t min_used;
   int i, j;
@@ -788,29 +827,29 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
   
   /* look for an unused pixel in the existing colormap; prefer the same color
      we had */
-  for (i = 0; i < new_cm->ncol; i++)
+  for (i = 0; i < *new_ncol; i++)
     if (histogram[i] == 0 && GIF_COLOREQ(&transp_value, &new_cm->col[i])) {
       new_transparent = i;
       goto found;
     }
-  for (i = 0; i < new_cm->ncol; i++)
+  for (i = 0; i < *new_ncol; i++)
     if (histogram[i] == 0) {
       new_transparent = i;
       goto found;
     }
   
   /* try to expand the colormap */
-  if (new_cm->ncol < 256) {
-    assert(new_cm->ncol < new_cm->capacity);
-    new_transparent = new_cm->ncol;
+  if (*new_ncol < 256) {
+    assert(*new_ncol < new_cm->capacity);
+    new_transparent = *new_ncol;
     new_cm->col[new_transparent] = transp_value;
-    new_cm->ncol++;
+    (*new_ncol)++;
     goto found;
   }
   
   /* not found: mark the least-frequently-used color as the new transparent
      color and return 1 (meaning `dither again') */
-  assert(new_cm->ncol == 256);
+  assert(*new_ncol == 256);
   min_used = 0xFFFFFFFFU;
   for (i = 0; i < 256; i++)
     if (histogram[i] < min_used) {
@@ -839,9 +878,10 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   color_hash_item **hash = new_color_hash();
   int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
+  int new_ncol = new_cm->ncol;
   int imagei, j;
   int compress_new_cm = 1;
-
+  
   /* new_col[j].pixel == number of pixels with color j in the new image. */
   for (j = 0; j < 256; j++)
     new_col[j].pixel = 0;
@@ -860,7 +900,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       do {
 	for (j = 0; j < 256; j++) histogram[j] = 0;
 	image_changer(gfi, new_data, gfcm, new_cm, hash, histogram);
-      } while (try_assign_transparency(gfi, gfcm, new_data, new_cm,
+      } while (try_assign_transparency(gfi, gfcm, new_data, new_cm, &new_ncol,
 				       histogram));
       
       Gif_ReleaseUncompressedImage(gfi);
@@ -885,6 +925,11 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       gfi->local = 0;
     }
   }
+
+  /* Set new_cm->ncol from new_ncol. We didn't update new_cm->ncol before so
+     the closest-color algorithms wouldn't see any new transparent colors.
+     That way added transparent colors were only used for transparency. */
+  new_cm->ncol = new_ncol;
   
   /* change the background. I hate the background by now */
   if (background_transparent)

@@ -163,6 +163,7 @@ Whole-GIF options: Also --no-OPTION.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
   --dither, -f                  Dither image after changing colormap.\n\
   --resize WxH                  Resizes the output GIF to WxH.\n\
+  --scale XFACTOR[xYFACTOR]     Scales the output GIF by XFACTORxYFACTOR.\n\
   --transform-colormap CMD      Transform each output colormap by shell CMD.\n\
   --use-colormap CMAP           Set output GIF's colormap to CMAP, which can\n\
                                 be `web', `gray', `bw', or a GIF file.\n\
@@ -447,6 +448,8 @@ int position_x;
 int position_y;
 Gif_Color parsed_color;
 Gif_Color parsed_color2;
+double parsed_scale_factor_x;
+double parsed_scale_factor_y;
 
 int
 parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
@@ -557,6 +560,27 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
   if (complain)
     return Clp_OptionError(clp, "invalid position `%s' (want `X,Y')", arg);
+  else
+    return 0;
+}
+
+int
+parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
+{
+  char *val;
+  
+  parsed_scale_factor_x = strtod(arg, &val);
+  if (*val == 'x') {
+    parsed_scale_factor_y = strtod(val + 1, &val);
+    if (*val == 0)
+      return 1;
+  } else if (*val == 0) {
+    parsed_scale_factor_y = parsed_scale_factor_x;
+    return 1;
+  }
+  
+  if (complain)
+    return Clp_OptionError(clp, "invalid scale factor `%s' (want XxY)", arg);
   else
     return 0;
 }

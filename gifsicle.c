@@ -106,13 +106,14 @@ static int any_output_successful = 0;
 #define CH_COLORMAP		4
 #define CH_DITHER		5
 #define CH_USE_COLORMAP		6
-#define CH_BACKGROUND		7
-#define CH_COLOR_TRANSFORM	8
-#define CH_RESIZE		9
+#define CH_COLORMAP_METHOD	7
+#define CH_BACKGROUND		8
+#define CH_COLOR_TRANSFORM	9
+#define CH_RESIZE		10
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
-  "colormap size", "dither", "colormap", "background",
-  "color transformation", "resize"
+  "colormap size", "dither", "colormap", "colormap method",
+  "background", "color transformation", "resize"
 };
 
 
@@ -169,6 +170,7 @@ static const char *output_option_types[] = {
 #define EXTENSION_OPT		352
 #define COLOR_TRANSFORM_OPT	353
 #define RESIZE_OPT		354
+#define SCALE_OPT		355
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -179,6 +181,7 @@ static const char *output_option_types[] = {
 #define RECTANGLE_TYPE		(Clp_MaxDefaultType + 7)
 #define TWO_COLORS_TYPE		(Clp_MaxDefaultType + 8)
 #define COLORMAP_ALG_TYPE	(Clp_MaxDefaultType + 9)
+#define SCALE_FACTOR_TYPE	(Clp_MaxDefaultType + 10)
 
 Clp_Option options[] = {
   
@@ -242,7 +245,8 @@ Clp_Option options[] = {
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
   { "no-rotate", 0, NO_ROTATE_OPT, 0, 0 },
-  
+
+  { "scale", 0, SCALE_OPT, SCALE_FACTOR_TYPE, Clp_Negate },
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-bg", 0, SAME_BACKGROUND_OPT, 0, 0 },
@@ -691,7 +695,7 @@ merge_and_write_frames(char *outfile, int f1, int f2)
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
   compress_immediately = !colormap_change
-    && active_output_data.resize_width <= 0
+    && active_output_data.scaling == 0
     && active_output_data.optimizing <= 0;
   warn_local_colormaps = !colormap_change;
   
@@ -699,9 +703,12 @@ merge_and_write_frames(char *outfile, int f1, int f2)
 			     compress_immediately);
   
   if (out) {
-    if (active_output_data.resize_width > 0)
+    if (active_output_data.scaling == 1)
       resize_stream(out, active_output_data.resize_width,
 		    active_output_data.resize_height);
+    else if (active_output_data.scaling == 2)
+      resize_stream(out, active_output_data.scale_x * out->screen_width,
+		    active_output_data.scale_y * out->screen_height);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -868,9 +875,7 @@ initialize_def_frame(void)
   def_output_data.colormap_dither = 0;
   
   def_output_data.optimizing = 0;
-  
-  def_output_data.resize_width = 0;
-  def_output_data.resize_height = 0;
+  def_output_data.scaling = 0;
   
   active_output_data = def_output_data;
 }
@@ -897,12 +902,8 @@ combine_output_options(void)
   COMBINE_ONE_OUTPUT_OPTION(CH_LOOPCOUNT, loopcount);
   
   COMBINE_ONE_OUTPUT_OPTION(CH_OPTIMIZE, optimizing);
-  
-  if (CHANGED(recent, CH_COLORMAP)) {
-    MARK_CH(output, CH_COLORMAP);
-    active_output_data.colormap_size = def_output_data.colormap_size;
-    active_output_data.colormap_algorithm = def_output_data.colormap_algorithm;
-  }
+  COMBINE_ONE_OUTPUT_OPTION(CH_COLORMAP, colormap_size);
+  COMBINE_ONE_OUTPUT_OPTION(CH_COLORMAP_METHOD, colormap_algorithm);
   if (CHANGED(recent, CH_USE_COLORMAP)) {
     MARK_CH(output, CH_USE_COLORMAP);
     if (def_output_data.colormap_fixed)
@@ -914,8 +915,11 @@ combine_output_options(void)
   
   if (CHANGED(recent, CH_RESIZE)) {
     MARK_CH(output, CH_RESIZE);
+    active_output_data.scaling = def_output_data.scaling;
     active_output_data.resize_width = def_output_data.resize_width;
     active_output_data.resize_height = def_output_data.resize_height;
+    active_output_data.scale_x = def_output_data.scale_x;
+    active_output_data.scale_y = def_output_data.scale_y;
   }
   
   def_output_data.colormap_fixed = 0;
@@ -983,6 +987,7 @@ main(int argc, char **argv)
      0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
+  Clp_AddType(clp, SCALE_FACTOR_TYPE, 0, parse_scale_factor, 0);
   Clp_AddType(clp, FRAME_SPEC_TYPE, 0, parse_frame_spec, 0);
   Clp_AddType(clp, COLOR_TYPE, Clp_DisallowOptions, parse_color, 0);
   Clp_AddType(clp, RECTANGLE_TYPE, 0, parse_rectangle, 0);
@@ -1373,7 +1378,7 @@ main(int argc, char **argv)
       break;
       
      case COLORMAP_ALGORITHM_OPT:
-      MARK_CH(output, CH_COLORMAP);
+      MARK_CH(output, CH_COLORMAP_METHOD);
       def_output_data.colormap_algorithm = clp->val.i;
       break;
       
@@ -1385,13 +1390,28 @@ main(int argc, char **argv)
      case RESIZE_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.resize_width = def_output_data.resize_height = 0;
+	def_output_data.scaling = 0;
       else if (dimensions_x <= 0 || dimensions_y <= 0) {
 	error("`--resize' width and height must be positive");
-	def_output_data.resize_width = def_output_data.resize_height = 0;
+	def_output_data.scaling = 0;
       } else {
+	def_output_data.scaling = 1; /* use resize dimensions */
 	def_output_data.resize_width = dimensions_x;
 	def_output_data.resize_height = dimensions_y;
+      }
+      break;
+      
+     case SCALE_OPT:
+      MARK_CH(output, CH_RESIZE);
+      if (clp->negated)
+	def_output_data.scaling = 0;
+      else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
+	error("`--scale' X and Y factors must be positive");
+	def_output_data.scaling = 0;
+      } else {
+	def_output_data.scaling = 2; /* use scale factor */
+	def_output_data.scale_x = parsed_scale_factor_x;
+	def_output_data.scale_y = parsed_scale_factor_y;
       }
       break;
       
