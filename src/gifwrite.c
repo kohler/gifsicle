@@ -545,6 +545,8 @@ static void
 generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 {
   u_int32_t pos = 0;
+  if (gfex->type < 0) return;	/* ignore our private extensions */
+  
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);
   if (gfex->kind == 255) {	/* an application extension */

@@ -20,8 +20,11 @@ extern "C" {
 #include "gif.h"
 #include <X11/Xlib.h>
 
+#define GIFX_COLORMAP_EXTENSION -107
+
 
 typedef struct Gif_XContext Gif_XContext;
+typedef struct Gif_XColormap Gif_XColormap;
 
 struct Gif_XContext {
   
@@ -34,6 +37,9 @@ struct Gif_XContext {
   
   u_int16_t nclosest;
   Gif_Color *closest;
+
+  int free_deleted_colormap_pixels;
+  Gif_XColormap *xcolormap;
   
   unsigned long transparent_value;
   int refcount;
@@ -59,7 +65,8 @@ Pixmap		Gif_XMask(Gif_XContext *, Gif_Stream *, Gif_Image *);
 Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Stream *, Gif_Image *,
 				int l, int t, int w, int h);
 
-void		Gif_XPreallocateColors(Gif_XContext *, Gif_Colormap *);
+int		Gif_XAllocateColors(Gif_XContext *, Gif_Colormap *);
+void		Gif_XDeallocateColors(Gif_XContext *, Gif_Colormap *);
 
 
 #ifdef __cplusplus

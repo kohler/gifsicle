@@ -19,6 +19,19 @@
 extern "C" {
 #endif
 
+struct Gif_XColormap {
+  
+  Gif_XContext *x_context;
+  Gif_Colormap *colormap;
+  
+  int allocated;
+  u_int16_t npixels;
+  unsigned long *pixels;
+  
+  Gif_XColormap *next;
+  
+};
+
 
 #define SAFELS(a,b) ((b) < 0 ? (a) >> -(b) : (a) << (b))
 
@@ -59,7 +72,7 @@ load_closest(Gif_XContext *gfx)
 }
 
 
-static int
+static unsigned long
 allocate_closest(Gif_XContext *gfx, Gif_Color *c)
 {
   Gif_Color *closer;
@@ -96,28 +109,101 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
     got->haspixel = 1;
   }
   
-  c->pixel = got->pixel;
-  c->haspixel = 1;
-  return 1;
+  return got->pixel;
 }
 
 
 static void
-allocate_colors(Gif_XContext *gfx, u_int16_t size, Gif_Color *c)
+allocate_colors(Gif_XColormap *gfxc)
 {
+  Gif_XContext *gfx = gfxc->x_context;
+  u_int16_t size = gfxc->colormap->ncol;
+  Gif_Color *c = gfxc->colormap->col;
+  unsigned long *pixels = gfxc->pixels;
   XColor xcol;
   int i;
-  for (i = 0; i < size; i++, c++)
-    if (!c->haspixel) {
+  if (!gfxc->allocated) {
+    if (size > gfxc->npixels) size = gfxc->npixels;
+    for (i = 0; i < size; i++, c++) {
       xcol.red = c->red | (c->red << 8);
       xcol.green = c->green | (c->green << 8);
       xcol.blue = c->blue | (c->blue << 8);
-      if (XAllocColor(gfx->display, gfx->colormap, &xcol)) {
-	c->pixel = xcol.pixel;
-	c->haspixel = 1;
-      } else
-	allocate_closest(gfx, c);
+      if (XAllocColor(gfx->display, gfx->colormap, &xcol))
+	pixels[i] = xcol.pixel;
+      else
+	pixels[i] = allocate_closest(gfx, c);
     }
+    gfxc->allocated = 1;
+  }
+}
+
+static void
+deallocate_colors(Gif_XColormap *gfxc)
+{
+  Gif_XContext *gfx = gfxc->x_context;
+  if (gfxc->allocated) {
+    XFreeColors(gfx->display, gfx->colormap, gfxc->pixels, gfxc->npixels, 0);
+    gfxc->allocated = 0;
+  }
+}
+
+
+static Gif_XColormap *
+create_x_colormap_extension(Gif_XContext *gfx, Gif_Colormap *gfcm)
+{
+  Gif_XColormap *gfxc;
+  unsigned long *pixels;
+  if (!gfcm) return 0;
+  gfxc = Gif_New(Gif_XColormap);
+  pixels = gfxc ? Gif_NewArray(unsigned long, gfcm->ncol) : 0;
+  if (pixels) {
+    gfxc->x_context = gfx;
+    gfxc->colormap = gfcm;
+    gfxc->allocated = 0;
+    gfxc->npixels = gfcm->ncol;
+    gfxc->pixels = pixels;
+    gfxc->next = gfx->xcolormap;
+    gfx->xcolormap = gfxc;
+    return gfxc;
+  } else {
+    Gif_Delete(gfxc);
+    Gif_DeleteArray(pixels);
+    return 0;
+  }
+}
+
+static Gif_XColormap *
+find_x_colormap_extension(Gif_XContext *gfx, Gif_Colormap *gfcm, int create)
+{
+  Gif_XColormap *gfxc = gfx->xcolormap;
+  while (gfxc) {
+    if (gfxc->colormap == gfcm)
+      return gfxc;
+    gfxc = gfxc->next;
+  }
+  if (create)
+    return create_x_colormap_extension(gfx, gfcm);
+  else
+    return 0;
+}
+
+int
+Gif_XAllocateColors(Gif_XContext *gfx, Gif_Colormap *gfcm)
+{
+  Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 1);
+  if (gfxc) {
+    allocate_colors(gfxc);
+    return 1;
+  } else
+    return 0;
+}
+
+void
+Gif_XDeallocateColors(Gif_XContext *gfx, Gif_Colormap *gfcm)
+{
+  Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 0);
+  if (gfxc)
+    deallocate_colors(gfxc);
 }
 
 
@@ -138,7 +224,7 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   unsigned long saved_transparent = 0;
   int release_uncompressed = 0;
   u_int16_t nct;
-  Gif_Color *ct;
+  unsigned long *pixels;
   
   /* Find the correct image and colormap */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
@@ -159,12 +245,16 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   
   /* Allocate colors from the colormap; make sure the transparent color
    * has the given pixel value */
-  ct = gfcm->col;
-  nct = gfcm->ncol;
-  allocate_colors(gfx, nct, ct);
+  {
+    Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 1);
+    if (!gfxc) return None;
+    allocate_colors(gfxc);
+    nct = gfxc->npixels;
+    pixels = gfxc->pixels;
+  }
   if (gfi->transparent > -1 && gfi->transparent < nct) {
-    saved_transparent = ct[ gfi->transparent ].pixel;
-    ct[ gfi->transparent ].pixel = gfx->transparent_value;
+    saved_transparent = pixels[ gfi->transparent ];
+    pixels[ gfi->transparent ] = gfx->transparent_value;
   }
   
   /* Set up the X image */
@@ -190,11 +280,11 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
       byte *line = gfi->img[top + j] + left;
       byte *writer = xdata + bytes_per_line * j;
       for (i = 0; i < width; i++) {
-	u_int32_t pixel;
+	unsigned long pixel;
 	if (line[i] < nct)
-	  pixel = ct[line[i]].pixel;
+	  pixel = pixels[line[i]];
 	else
-	  pixel = ct[0].pixel;
+	  pixel = pixels[0];
 	for (k = 0; k < bytes_per_pixel; k++) {
 	  *writer++ = pixel;
 	  pixel >>= 8;
@@ -214,11 +304,11 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
       byte *writer = xdata + bytes_per_line * j;
       
       for (i = 0; i < width; i++) {
-	u_int32_t pixel;
+	unsigned long pixel;
 	if (line[i] < nct)
-	  pixel = ct[line[i]].pixel;
+	  pixel = pixels[line[i]];
 	else
-	  pixel = ct[0].pixel;
+	  pixel = pixels[0];
 	
 	impixel |= SAFELS(pixel & bits_per_pixel_mask, imshift);
 	while (imshift + bits_per_pixel >= BYTESIZE) {
@@ -236,7 +326,7 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   
   /* Restore saved transparent pixel value */
   if (gfi->transparent > -1 && gfi->transparent < nct)
-    ct[ gfi->transparent ].pixel = saved_transparent;
+    pixels[ gfi->transparent ] = saved_transparent;
 
   /* Create the pixmap */
   pixmap =
@@ -343,7 +433,7 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
   /* The main loop */
   for (j = 0; j < height; j++) {
     int imshift = 0;
-    unsigned long impixel = 0;
+    u_int32_t impixel = 0;
     byte *line = gfi->img[top + j] + left;
     byte *writer = xdata + bytes_per_line * j;
     
@@ -392,11 +482,36 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 }
 
 
+/** CREATING AND DESTROYING XCONTEXTS **/
 
-void
-Gif_XPreallocateColors(Gif_XContext *gfx, Gif_Colormap *gfcm)
+static void
+delete_xcolormap(Gif_XColormap *gfxc)
 {
-  allocate_colors(gfx, gfcm->ncol, gfcm->col);
+  Gif_XContext *gfx = gfxc->x_context;
+  Gif_XColormap *prev = 0, *trav = gfx->xcolormap;
+  while (trav != gfxc && trav) {
+    prev = trav;
+    trav = trav->next;
+  }
+  if (gfx->free_deleted_colormap_pixels)
+    deallocate_colors(gfxc);
+  if (prev) prev->next = gfxc->next;
+  else gfx->xcolormap = gfxc->next;
+  Gif_DeleteArray(gfxc->pixels);
+  Gif_Delete(gfxc);
+}
+
+static void
+delete_colormap_hook(int dummy, void *colormap_x, void *callback_x)
+{
+  Gif_Colormap *gfcm = (Gif_Colormap *)colormap_x;
+  Gif_XContext *gfx = (Gif_XContext *)callback_x;
+  Gif_XColormap *gfxc;
+  for (gfxc = gfx->xcolormap; gfxc; gfxc = gfxc->next)
+    if (gfxc->colormap == gfcm) {
+      delete_xcolormap(gfxc);
+      return;
+    }
 }
 
 
@@ -417,10 +532,14 @@ Gif_NewXContextFromVisual(Display *display, int screen_number,
   
   gfx->closest = 0;
   gfx->nclosest = 0;
+
+  gfx->free_deleted_colormap_pixels = 0;
+  gfx->xcolormap = 0;
   
   gfx->transparent_value = 0UL;
   gfx->refcount = 0;
-  
+
+  Gif_AddDeletionHook(GIF_T_COLORMAP, delete_colormap_hook, gfx);
   return gfx;
 }
 
@@ -438,8 +557,11 @@ Gif_NewXContext(Display *display, Window window)
 void
 Gif_DeleteXContext(Gif_XContext *gfx)
 {
+  while (gfx->xcolormap)
+    delete_xcolormap(gfx->xcolormap);
   Gif_DeleteArray(gfx->closest);
   Gif_Delete(gfx);
+  Gif_RemoveDeletionHook(GIF_T_COLORMAP, delete_colormap_hook, gfx);
 }
 
 

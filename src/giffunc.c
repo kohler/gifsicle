@@ -361,10 +361,22 @@ Gif_CopyImage(Gif_Image *src)
 }
 
 
+/** DELETION **/
+
+typedef struct Gif_DeletionHook {
+  int kind;
+  Gif_DeletionHookFunc func;
+  void *callback_data;
+  struct Gif_DeletionHook *next;
+} Gif_DeletionHook;
+
+static Gif_DeletionHook *all_hooks;
+
 void
 Gif_DeleteStream(Gif_Stream *gfs)
 {
   Gif_Extension *gfex;
+  Gif_DeletionHook *hook;
   int i;
   if (!gfs) return;
   if (--gfs->refcount > 0) return;
@@ -384,6 +396,9 @@ Gif_DeleteStream(Gif_Stream *gfs)
     gfex = next;
   }
   
+  for (hook = all_hooks; hook; hook = hook->next)
+    if (hook->kind == GIF_T_STREAM)
+      (*hook->func)(GIF_T_STREAM, gfs, hook->callback_data);
   Gif_Delete(gfs);
 }
 
@@ -391,8 +406,13 @@ Gif_DeleteStream(Gif_Stream *gfs)
 void
 Gif_DeleteImage(Gif_Image *gfi)
 {
+  Gif_DeletionHook *hook;
   if (!gfi) return;
   if (--gfi->refcount > 0) return;
+  
+  for (hook = all_hooks; hook; hook = hook->next)
+    if (hook->kind == GIF_T_IMAGE)
+      (*hook->func)(GIF_T_IMAGE, gfi, hook->callback_data);
   
   Gif_DeleteArray(gfi->identifier);
   Gif_DeleteComment(gfi->comment);
@@ -409,7 +429,13 @@ Gif_DeleteImage(Gif_Image *gfi)
 void
 Gif_DeleteColormap(Gif_Colormap *gfcm)
 {
+  Gif_DeletionHook *hook;
   if (!gfcm) return;
+
+  for (hook = all_hooks; hook; hook = hook->next)
+    if (hook->kind == GIF_T_COLORMAP)
+      (*hook->func)(GIF_T_COLORMAP, gfcm, hook->callback_data);
+  
   Gif_DeleteArray(gfcm->col);
   Gif_Delete(gfcm);
 }
@@ -431,6 +457,7 @@ Gif_DeleteComment(Gif_Comment *gfcom)
 void
 Gif_DeleteExtension(Gif_Extension *gfex)
 {
+  if (!gfex) return;
   if (gfex->data && gfex->free_data)
     (*gfex->free_data)(gfex->data);
   Gif_DeleteArray(gfex->application);
@@ -447,6 +474,40 @@ Gif_DeleteExtension(Gif_Extension *gfex)
     }
   }
   Gif_Delete(gfex);
+}
+
+
+/** DELETION HOOKS **/
+
+int
+Gif_AddDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
+{
+  Gif_DeletionHook *hook = Gif_New(Gif_DeletionHook);
+  if (!hook) return 0;
+  Gif_RemoveDeletionHook(kind, func, cb);
+  hook->kind = kind;
+  hook->func = func;
+  hook->callback_data = cb;
+  hook->next = all_hooks;
+  all_hooks = hook;
+  return 1;
+}
+
+void
+Gif_RemoveDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
+{
+  Gif_DeletionHook *hook = all_hooks, *prev = 0;
+  while (hook) {
+    if (hook->kind == kind && hook->func == func
+	&& hook->callback_data == cb) {
+      if (prev) prev->next = hook->next;
+      else all_hooks = hook->next;
+      Gif_Delete(hook);
+      return;
+    }
+    prev = hook;
+    hook = hook->next;
+  }
 }
 
 
@@ -511,6 +572,19 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 	strcmp(gfs->images[i]->identifier, name) == 0)
       return gfs->images[i];
   
+  return 0;
+}
+
+
+Gif_Extension *
+Gif_GetExtension(Gif_Stream *gfs, int id, Gif_Extension *search_from)
+{
+  if (!search_from) search_from = gfs->extensions;
+  while (search_from) {
+    if (search_from->kind == id)
+      return search_from;
+    search_from = search_from->next;
+  }
   return 0;
 }
 

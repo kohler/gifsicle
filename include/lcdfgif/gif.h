@@ -196,8 +196,8 @@ int		Gif_AddComment(Gif_Comment *, char *, int);
 /** GIF_EXTENSION **/
 
 struct Gif_Extension {
-
-  int kind;
+  
+  int kind;			/* negative kinds are reserved */
   char *application;
   byte *data;
   u_int32_t length;
@@ -213,6 +213,7 @@ struct Gif_Extension {
 Gif_Extension *	Gif_NewExtension(int, char *);
 void		Gif_DeleteExtension(Gif_Extension *);
 int		Gif_AddExtension(Gif_Stream *, Gif_Extension *, int);
+Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
 
 
 /** READING AND WRITING **/
@@ -234,8 +235,18 @@ Gif_Stream *	Gif_FullReadFile(FILE *, int read_flags);
 Gif_Stream *	Gif_FullReadRecord(Gif_Record *, int read_flags);
 int 		Gif_WriteFile(Gif_Stream *, FILE *);
 
+
+/** HOOKS AND MISCELLANEOUS **/
+
 int		Gif_InterlaceLine(int y, int height);
 char *		Gif_CopyString(char *);
+
+#define GIF_T_STREAM			(0)
+#define GIF_T_IMAGE			(1)
+#define GIF_T_COLORMAP			(2)
+typedef void	(*Gif_DeletionHookFunc)(int, void *, void *);
+int		Gif_AddDeletionHook(int, Gif_DeletionHookFunc, void *);
+void		Gif_RemoveDeletionHook(int, Gif_DeletionHookFunc, void *);
 
 #ifdef GIF_DEBUGGING
 #define		GIF_DEBUG(x)			Gif_Debug x
