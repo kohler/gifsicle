@@ -413,7 +413,7 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
   
 #if defined(PRINT_SIZE)
   if (gfi->compressed)
-    fprintf(where, " compressed size %u", gfi->compressed_len);
+    fprintf(where, " compressed size %u min_code_size %d", gfi->compressed_len, *gfi->compressed);
 #endif
   
   fprintf(where, "\n");

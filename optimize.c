@@ -776,7 +776,7 @@ create_out_global_map(Gif_Stream *gfs)
 	if (need[i] == REQUIRED)
 	  num_colors++;
       if (num_colors == 0) continue;
-      /* change color count into a rank (9 - ceil(lg num_colors)) */
+      /* change color count into a rank: (9 - ceil(lg num_colors)) */
       for (i = 128, rank_incr = 1; i >= num_colors; i >>= 1)
 	rank_incr++;
       /* add rank_incr to all required colors */
