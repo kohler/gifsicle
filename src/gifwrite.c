@@ -366,36 +366,11 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 
 /* extension byte table:
    0x01 plain text extension
-   0x43 colormap*
    0xCE name*
    0xF9 graphic control extension
    0xFE comment extension
    0xFF application extension
    */
-
-static void
-colormap_extension(Gif_Colormap *cm, Gif_Writer *grr)
-{
-  int size = cm->ncol;
-  Gif_Color *c = cm->col;
-  int maxsize = GIF_MAX_BLOCK / 3;
-  gifputbyte('!', grr);
-  gifputbyte(0x43, grr);
-  while (size > 0) {
-    byte m = size > maxsize ? maxsize : size;
-    int i;
-    gifputbyte(m * 3, grr);
-    for (i = 0; i < m; i++) {
-      gifputbyte(c[i].red, grr);
-      gifputbyte(c[i].green, grr);
-      gifputbyte(c[i].blue, grr);
-    }
-    c += m;
-    size -= m;
-  }
-  gifputbyte(0, grr);
-}
-
 
 static void
 graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
