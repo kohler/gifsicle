@@ -966,7 +966,8 @@ do_flip(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
 
 
 static void
-do_rotate(Gif_Image *gfi, int screen_width, int screen_height, int is_90)
+do_rotate(Gif_Image *gfi, int screen_width, int screen_height, Gt_Frame *fr,
+	  int first_image)
 {
   int x, y;
   int width = gfi->width;
@@ -975,7 +976,7 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, int is_90)
   byte *new_data = Gif_NewArray(byte, width * height);
   byte *trav = new_data;
 
-  if (is_90) {
+  if (fr->rotation == 1) {
     for (x = 0; x < width; x++)
       for (y = height - 1; y >= 0; y--)
 	*trav++ = img[y][x];
@@ -992,6 +993,14 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, int is_90)
     gfi->left = y;
   }
 
+  /* If this is the first frame, set the frame's screen width & height as the
+     flipped screen height & width. This ensures that if a single rotated
+     frame is output, its logical screen will be rotated too. */
+  if (fr->screen_width <= 0 && first_image) {
+    fr->screen_width = screen_height;
+    fr->screen_height = screen_width;
+  }
+  
   Gif_ReleaseUncompressedImage(gfi);
   gfi->width = height;
   gfi->height = width;
@@ -1000,7 +1009,7 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, int is_90)
 
 
 static void
-handle_flips(Gif_Image *desti, Gt_Frame *fr)
+handle_flips(Gif_Image *desti, Gt_Frame *fr, int first_image)
 {
   Gif_Stream *gfs = fr->stream;
   Gif_CalculateScreenSize(gfs, 0);
@@ -1011,12 +1020,12 @@ handle_flips(Gif_Image *desti, Gt_Frame *fr)
     do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
 
   if (fr->rotation == 1)
-    do_rotate(desti, gfs->screen_width, gfs->screen_height, 1);
+    do_rotate(desti, gfs->screen_width, gfs->screen_height, fr, first_image);
   else if (fr->rotation == 2) {
     do_flip(desti, gfs->screen_width, gfs->screen_height, 0);
     do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
   } else if (fr->rotation == 3)
-    do_rotate(desti, gfs->screen_width, gfs->screen_height, 0);
+    do_rotate(desti, gfs->screen_width, gfs->screen_height, fr, first_image);
 }
 
 
@@ -1116,7 +1125,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     
     /* Flipping and rotating */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-      handle_flips(desti, fr);
+      handle_flips(desti, fr, i == 0);
     
     /* Names and comments */
     if (fr->name || fr->no_name) {

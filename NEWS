@@ -4,6 +4,9 @@ Version 1.3   3.Sep.1998
 
 * Added `--flip-*' and `--rotate-*' options.
 
+* Fixed rare bug in GIF writing code: the last pixel in a frame could
+  previously become corrupted.
+
 
 Version 1.3b1   2.Aug.1998
 
