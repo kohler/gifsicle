@@ -5,13 +5,20 @@ extern "C" {
 #endif
 
 /* clp.h - Public interface to CLP.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of CLP, the command line parser package.
-
-   CLP is free software. It is distributed under the GNU Lesser General Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
-   as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied. */
+ * This file is part of CLP, the command line parser package.
+ *
+ * Copyright (c) 1997-2002 Eddie Kohler, kohler@icir.org
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Click LICENSE file, which is available in full at
+ * http://www.pdos.lcs.mit.edu/click/license.html. The conditions include: you
+ * must preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Click LICENSE file; the license in that file is
+ * legally binding. */
 
 
 /* Argument types */
@@ -52,6 +59,10 @@ extern "C" {
 #define Clp_BadOption		-2
 #define Clp_Error		-3
 
+/* Sizes of clp->val */
+#define Clp_ValSize		40
+#define Clp_ValIntSize		10
+
 
 typedef struct Clp_Option Clp_Option;
 typedef struct Clp_Parser Clp_Parser;
@@ -88,6 +99,14 @@ struct Clp_Parser {
     double d;
     const char *s;
     void *pv;
+#ifdef HAVE_INT64_TYPES
+    int64_t i64;
+    uint64_t u64;
+#endif
+    char cs[Clp_ValSize];
+    unsigned char ucs[Clp_ValSize];
+    int is[Clp_ValIntSize];
+    unsigned us[Clp_ValIntSize];
   } val;
   
   Clp_Internal *internal;
@@ -123,6 +142,8 @@ void		Clp_SaveParser(Clp_Parser *, Clp_ParserState *);
 void		Clp_RestoreParser(Clp_Parser *, Clp_ParserState *);
 
 int		Clp_OptionError(Clp_Parser *, const char *, ...);
+int		Clp_CurOptionNameBuf(Clp_Parser *, char *buf, int buflen);
+const char *	Clp_CurOptionName(Clp_Parser *); /* uses static memory */
 
 #ifdef __cplusplus
 }

@@ -1,11 +1,18 @@
 /* clp.c - Complete source code for CLP.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of CLP, the command line parser package.
-
-   CLP is free software. It is distributed under the GNU Lesser General Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
-   as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied. */
+ * This file is part of CLP, the command line parser package.
+ *
+ * Copyright (c) 1997-2002 Eddie Kohler, kohler@icir.org
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Click LICENSE file, which is available in full at
+ * http://www.pdos.lcs.mit.edu/click/license.html. The conditions include: you
+ * must preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Click LICENSE file; the license in that file is
+ * legally binding. */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -410,7 +417,7 @@ argcmp(const char *ref, const char *arg, int min_match)
      /* Returns 0 if ref and arg don't match.
 	Returns -1 if ref and arg match, but fewer than min_match characters.
 	Returns len if ref and arg match min_match or more characters;
-	len is the number of charcters that matched.
+	len is the number of characters that matched.
 	
 	Examples:
 	argcmp("x", "y", 1)	-->  0	/ just plain wrong
@@ -421,6 +428,7 @@ argcmp(const char *ref, const char *arg, int min_match)
 	*/
 {
   const char *refstart = ref;
+  assert(min_match > 0);
   while (*ref && *arg && *arg != '=' && *ref == *arg)
     ref++, arg++;
   if (*arg && *arg != '=')
@@ -529,8 +537,11 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 #if HAVE_STRTOUL
     clp->val.u = strtoul(arg, &val, base);
 #else
-    /* don't bother trying to do it right */
-    clp->val.u = strtol(arg, &val, base);
+    /* don't bother really trying to do it right */
+    if (arg[0] == '-')
+      val = arg;
+    else
+      clp->val.u = strtol(arg, &val, base);
 #endif
   } else
     clp->val.i = strtol(arg, &val, base);
@@ -978,7 +989,7 @@ find_long(Clp_Parser *clp, const char *arg)
 	to 1 iff there was no match because the argument was ambiguous. */
 {
   Clp_Internal *cli = clp->internal;
-  int value, len;
+  int value, len, min_match;
   Clp_Option *opt = cli->opt;
   int first_negative_ambiguous;
   
@@ -1014,7 +1025,9 @@ find_long(Clp_Parser *clp, const char *arg)
   }
   
  worked:
-  len = argcmp(opt[value].long_name, arg, cli->long_min_match[value].pos);
+  min_match = (clp->negated ? cli->long_min_match[value].neg : cli->long_min_match[value].pos);
+  len = argcmp(opt[value].long_name, arg, min_match);
+  assert(len > 0);
   if (arg[len] == '=') {
     clp->have_arg = 1;
     clp->arg = arg + len + 1;
