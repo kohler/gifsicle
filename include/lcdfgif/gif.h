@@ -205,6 +205,7 @@ struct Gif_Extension {
   
   Gif_Stream *stream;
   Gif_Extension *next;
+  void (*free_data)(void *);
   
 };
 

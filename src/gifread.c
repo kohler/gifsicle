@@ -606,8 +606,8 @@ unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
   Gif_Extension *gfex = 0;
 
   while (block_len > 0) {
-    if (data) Gif_ReArray(data, byte, data_len + block_len);
-    else data = Gif_NewArray(byte, block_len);
+    if (data) Gif_ReArray(data, byte, data_len + block_len + 1);
+    else data = Gif_NewArray(byte, block_len + 1);
     if (!data) goto done;
     gifgetblock(data + data_len, block_len, grr);
     data_len += block_len;
@@ -618,6 +618,7 @@ unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
   if (gfex) {
     gfex->data = data;
     gfex->length = data_len;
+    data[data_len] = 0;
     Gif_AddExtension(gfs, gfex, position);
   }
   
