@@ -71,6 +71,7 @@ Gif_NewColormap(void)
   gfcm->ncol = 0;
   gfcm->capacity = 0;
   gfcm->col = 0;
+  gfcm->refcount = 0;
   return gfcm;
 }
 
@@ -84,6 +85,7 @@ Gif_NewFullColormap(int count, int capacity)
   gfcm->ncol = count;
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
+  gfcm->refcount = 0;
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;
@@ -151,6 +153,19 @@ Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi)
   gfs->nimages++;
   gfi->refcount++;
   return 1;
+}
+
+
+void
+Gif_RemoveImage(Gif_Stream *gfs, int inum)
+{
+  int j;
+  if (inum < 0 || inum >= gfs->nimages)
+    return;
+  Gif_DeleteImage(gfs->images[inum]);
+  for (j = inum; j < gfs->nimages - 1; j++)
+    gfs->images[j] = gfs->images[j+1];
+  gfs->nimages--;
 }
 
 
@@ -431,6 +446,7 @@ Gif_DeleteColormap(Gif_Colormap *gfcm)
 {
   Gif_DeletionHook *hook;
   if (!gfcm) return;
+  if (--gfcm->refcount > 0) return;
 
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_COLORMAP)

@@ -366,6 +366,7 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
     int ncol = 1 << ((packed & 0x07) + 1);
     gfs->global = color_table(ncol, grr);
     if (!gfs->global) return 0;
+    gfs->global->refcount = 1;
   }
   
   return 1;
@@ -506,6 +507,7 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
     int ncol = 1 << ((packed & 0x07) + 1);
     gfi->local = color_table(ncol, grr);
     if (!gfi->local) return 0;
+    gfi->local->refcount = 1;
   }
   
   gfi->interlace = (packed & 0x40) != 0;

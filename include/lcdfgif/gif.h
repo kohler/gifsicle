@@ -118,6 +118,7 @@ Gif_Image *	Gif_NewImage(void);
 void		Gif_DeleteImage(Gif_Image *);
 
 int		Gif_AddImage(Gif_Stream *, Gif_Image *);
+void		Gif_RemoveImage(Gif_Stream *, int);
 Gif_Image *	Gif_CopyImage(Gif_Image *);
 
 Gif_Image *	Gif_GetImage(Gif_Stream *, int);
@@ -160,6 +161,7 @@ struct Gif_Colormap {
   u_int16_t ncol;
   u_int16_t capacity;
   u_int32_t userflags;
+  int refcount;
   Gif_Color *col;
   
 };

@@ -42,7 +42,8 @@ struct Gif_XContext {
   int free_deleted_colormap_pixels;
   Gif_XColormap *xcolormap;
   
-  unsigned long transparent_value;
+  unsigned long transparent_pixel;
+  unsigned long foreground_pixel;
   int refcount;
   
 };
@@ -68,6 +69,7 @@ Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Stream *, Gif_Image *,
 
 int		Gif_XAllocateColors(Gif_XContext *, Gif_Colormap *);
 void		Gif_XDeallocateColors(Gif_XContext *, Gif_Colormap *);
+unsigned long *	Gif_XClaimStreamColors(Gif_XContext *, Gif_Stream *, int *);
 
 
 #ifdef __cplusplus
