@@ -1,67 +1,122 @@
 /* Hand-edited file based on config.h.in */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef GIFSICLE_CONFIG_H
+#define GIFSICLE_CONFIG_H
 
 /* Define when using the debugging malloc library. */
 /* #undef DMALLOC */
 
-/* Define to a function that returns a random number. */
-#define RANDOM rand
-
-/* Define to the number of arguments to gettimeofday. (gifview only) */
+/* Define to the number of arguments to gettimeofday (gifview only). */
 /* #undef GETTIMEOFDAY_PROTO */
-
-/* Get the [u_]int*_t typedefs. */
-typedef unsigned __int8 uint8_t;
-typedef unsigned __int16 uint16_t;
-typedef unsigned __int32 uint32_t;
-typedef signed __int16 int16_t;
-typedef signed __int32 int32_t;
-
-/* Pathname separator character ('/' on Unix). */
-#define PATHNAME_SEPARATOR '\\'
-
-/* Define this to write GIFs to stdout even when stdout is a terminal. */
-/* #undef OUTPUT_GIF_TO_TERMINAL */
 
 /* Define if GIF LZW compression is off. */
 /* #undef GIF_UNGIF */
 
-/* Windows doesn't have popen, but it does have _popen. */
-#define popen _popen
-#define pclose _pclose
+/* Define if intXX_t types are not available. */
+#define HAVE_FAKE_INT_TYPES 1
 
-
-/* Define to empty if the keyword does not work.  */
-/* #undef const */
-
-/* Define as __inline if that's what the C compiler calls it.  */
-#ifndef inline
-# define inline __inline
-#endif
-
-/* Define if the X Window System is missing or not being used.  */
-#define X_DISPLAY_MISSING 1
-
-/* Define if you have the strerror function.  */
-#define HAVE_STRERROR 1
-
-/* Define if you have the strtoul function.  */
-#define HAVE_STRTOUL 1
-
-/* Define if you have the <inttypes.h> header file.  */
+/* Define to 1 if you have the <inttypes.h> header file. */
 /* #undef HAVE_INTTYPES_H */
 
-/* Define if you have the <sys/select.h> header file.  */
+/* Define to 1 if you have the <memory.h> header file. */
+/* #undef HAVE_MEMORY_H */
+
+/* Define to 1 if you have the `mkstemp' function. */
+/* #undef HAVE_MKSTEMP */
+
+/* Define to 1 if you have the <stdint.h> header file. */
+/* #undef HAVE_STDINT_H */
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the `strerror' function. */
+#define HAVE_STRERROR 1
+
+/* Define to 1 if you have the <strings.h> header file. */
+/* #undef HAVE_STRINGS_H */
+
+/* Define to 1 if you have the <string.h> header file. */
+#define HAVE_STRING_H 1
+
+/* Define to 1 if you have the `strtoul' function. */
+#define HAVE_STRTOUL 1
+
+/* Define to 1 if you have the <sys/select.h> header file. */
 /* #undef HAVE_SYS_SELECT_H */
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+/* #undef HAVE_SYS_STAT_H */
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+/* #undef HAVE_SYS_TYPES_H */
+
+/* Define to 1 if the system has the type `uintptr_t'. */
+/* #undef HAVE_UINTPTR_T */
+
+/* Define to 1 if you have the <unistd.h> header file. */
+/* #undef HAVE_UNISTD_H */
+
+/* Define if you have u_intXX_t types but not uintXX_t types. */
+/* #undef HAVE_U_INT_TYPES */
+
+/* Define to write GIFs to stdout even when stdout is a terminal. */
+/* #undef OUTPUT_GIF_TO_TERMINAL */
 
 /* Name of package */
 #define PACKAGE "gifsicle"
 
-/* Version number of package */
-#define VERSION "1.39 (Windows)"
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT ""
 
+/* Define to the full name of this package. */
+#define PACKAGE_NAME ""
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING ""
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME ""
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION ""
+
+/* Pathname separator character ('/' on Unix). */
+#define PATHNAME_SEPARATOR '\\'
+
+/* Define to a function that returns a random number. */
+#define RANDOM rand
+
+/* The size of a `unsigned int', as computed by sizeof. */
+#define SIZEOF_UNSIGNED_INT 4
+
+/* The size of a `unsigned long', as computed by sizeof. */
+#define SIZEOF_UNSIGNED_LONG 4
+
+/* The size of a `void *', as computed by sizeof. */
+#define SIZEOF_VOID_P 4
+
+/* Define to 1 if you have the ANSI C header files. */
+#define STDC_HEADERS 1
+
+/* Version number of package */
+#define VERSION "1.40 (Windows)"
+
+/* Define if the X Window System is missing or not being used.  */
+#define X_DISPLAY_MISSING 1
+
+/* Define to empty if `const' does not conform to ANSI C. */
+/* #undef const */
+
+/* Define as __inline if that's what the C compiler calls it, or to nothing if
+   it is not supported. */
+#ifndef inline
+# define inline __inline
+#endif
+
+/* Windows doesn't have popen, but it does have _popen. */
+#define popen _popen
+#define pclose _pclose
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +145,7 @@ char *strerror(int errno);
 #ifdef __cplusplus
 }
 /* Get rid of a possible inline macro under C++. */
-# undef inline
+# define inline inline
 #endif
-#endif
+
+#endif /* GIFSICLE_CONFIG_H */
