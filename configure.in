@@ -29,9 +29,19 @@ else
 fi
 AC_SUBST(BUILD_GIFVIEW)
 
-AC_MSG_CHECKING(for a 16-bit value)
-AC_CACHE_VAL(ac_cv_int16,
-[AC_TRY_RUN([#include <stdio.h>
+AC_CACHE_CHECK(for integer typedefs in sys/types.h, ac_cv_sys_types_int,
+[AC_EGREP_HEADER(u_int32_t, sys/types.h,
+ac_cv_sys_types_int=yes, ac_cv_sys_types_int=no)])
+
+if test $ac_cv_sys_types_int = yes ;
+then
+  # Found int typedefs in sys/types.h
+  INTEGER_TYPES='#include <sys/types.h>'
+  
+else
+  # Define our own versions
+  AC_CACHE_CHECK(for a 16-bit value, ac_cv_int16,
+  [AC_TRY_RUN([#include <stdio.h>
 #include <stdlib.h>
 int main(int argc, char **argv) {
   FILE *f = fopen("conftestval", "w");
@@ -41,15 +51,11 @@ int main(int argc, char **argv) {
   fclose(f);
   exit(0);
 }], ac_cv_int16=`cat conftestval`,
-AC_MSG_ERROR(no 16-bit value found),
-ac_cv_int16=short)])dnl
-INT16=$ac_cv_int16
-AC_SUBST(INT16)
-AC_MSG_RESULT($ac_cv_int16)
+  AC_MSG_ERROR(no 16-bit value found),
+  ac_cv_int16=short)])
 
-AC_MSG_CHECKING(for a 32-bit value)
-AC_CACHE_VAL(ac_cv_int32,
-[AC_TRY_RUN([#include <stdio.h>
+  AC_CACHE_CHECK(for a 32-bit value, ac_cv_int32,
+  [AC_TRY_RUN([#include <stdio.h>
 #include <stdlib.h>
 int main(int argc, char **argv) {
   FILE *f = fopen("conftestval", "w");
@@ -60,10 +66,12 @@ int main(int argc, char **argv) {
   fclose(f);
   exit(0);
 }], ac_cv_int32=`cat conftestval`, 
-AC_MSG_ERROR(no 32-bit value found),
-ac_cv_int32=int)])dnl
-INT32=$ac_cv_int32
-AC_SUBST(INT32)
-AC_MSG_RESULT($ac_cv_int32)
+  AC_MSG_ERROR(no 32-bit value found),
+  ac_cv_int32=int)])
+  
+  INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
+typedef unsigned $ac_cv_int32 u_int32_t;"
+fi
+AC_SUBST(INTEGER_TYPES)dnl
 
 AC_OUTPUT(Makefile gif.h gifsicle.man:gifsicle.min)

@@ -1770,8 +1770,39 @@ else
 fi
 
 
-echo $ac_n "checking for a 16-bit value""... $ac_c" 1>&6
-echo "configure:1775: checking for a 16-bit value" >&5
+echo $ac_n "checking for integer typedefs in sys/types.h""... $ac_c" 1>&6
+echo "configure:1775: checking for integer typedefs in sys/types.h" >&5
+if eval "test \"`echo '$''{'ac_cv_sys_types_int'+set}'`\" = set"; then
+  echo $ac_n "(cached) $ac_c" 1>&6
+else
+  cat > conftest.$ac_ext <<EOF
+#line 1780 "configure"
+#include "confdefs.h"
+#include <sys/types.h>
+EOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  egrep "u_int32_t" >/dev/null 2>&1; then
+  rm -rf conftest*
+  ac_cv_sys_types_int=yes
+else
+  rm -rf conftest*
+  ac_cv_sys_types_int=no
+fi
+rm -f conftest*
+
+fi
+
+echo "$ac_t""$ac_cv_sys_types_int" 1>&6
+
+if test $ac_cv_sys_types_int = yes ;
+then
+  # Found int typedefs in sys/types.h
+  INTEGER_TYPES='#include <sys/types.h>'
+  
+else
+  # Define our own versions
+  echo $ac_n "checking for a 16-bit value""... $ac_c" 1>&6
+echo "configure:1806: checking for a 16-bit value" >&5
 if eval "test \"`echo '$''{'ac_cv_int16'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -1779,7 +1810,7 @@ else
   ac_cv_int16=short
 else
   cat > conftest.$ac_ext <<EOF
-#line 1783 "configure"
+#line 1814 "configure"
 #include "confdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1792,7 +1823,7 @@ int main(int argc, char **argv) {
   exit(0);
 }
 EOF
-if { (eval echo configure:1796: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+if { (eval echo configure:1827: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
 then
   ac_cv_int16=`cat conftestval`
 else
@@ -1805,12 +1836,11 @@ rm -fr conftest*
 fi
 
 fi
-INT16=$ac_cv_int16
 
 echo "$ac_t""$ac_cv_int16" 1>&6
 
-echo $ac_n "checking for a 32-bit value""... $ac_c" 1>&6
-echo "configure:1814: checking for a 32-bit value" >&5
+  echo $ac_n "checking for a 32-bit value""... $ac_c" 1>&6
+echo "configure:1844: checking for a 32-bit value" >&5
 if eval "test \"`echo '$''{'ac_cv_int32'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -1818,7 +1848,7 @@ else
   ac_cv_int32=int
 else
   cat > conftest.$ac_ext <<EOF
-#line 1822 "configure"
+#line 1852 "configure"
 #include "confdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1832,7 +1862,7 @@ int main(int argc, char **argv) {
   exit(0);
 }
 EOF
-if { (eval echo configure:1836: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+if { (eval echo configure:1866: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
 then
   ac_cv_int32=`cat conftestval`
 else
@@ -1845,9 +1875,12 @@ rm -fr conftest*
 fi
 
 fi
-INT32=$ac_cv_int32
 
 echo "$ac_t""$ac_cv_int32" 1>&6
+  
+  INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
+typedef unsigned $ac_cv_int32 u_int32_t;"
+fi
 
 trap '' 1 2 15
 cat > confcache <<\EOF
@@ -2004,8 +2037,7 @@ s%@X_PRE_LIBS@%$X_PRE_LIBS%g
 s%@X_LIBS@%$X_LIBS%g
 s%@X_EXTRA_LIBS@%$X_EXTRA_LIBS%g
 s%@BUILD_GIFVIEW@%$BUILD_GIFVIEW%g
-s%@INT16@%$INT16%g
-s%@INT32@%$INT32%g
+s%@INTEGER_TYPES@%$INTEGER_TYPES%g
 
 CEOF
 EOF
