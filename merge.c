@@ -66,10 +66,8 @@ mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
   for (i = 0; i < ncol; i++)
     col[i].haspixel = have[i];
   
-  /* Mark the transparent color specially. Its `haspixel' value should be 2 if
-     transparency was used, or get rid of transparency if it wasn't used */
-  if (gfi->transparent >= 0 && gfi->transparent < ncol
-      && have[gfi->transparent])
+  /* Mark the transparent color specially */
+  if (gfi->transparent >= 0 && gfi->transparent < ncol)
     col[gfi->transparent].haspixel = 2;
   else
     gfi->transparent = -1;
@@ -92,7 +90,6 @@ ensure_slot_255(Gif_Colormap *dest, int ncol)
 {
   Gif_Color *background = &dest->col[255];
   int i;
-  dest->userflags &= ~COLORMAP_ENSURE_SLOT_255;
   for (i = 0; i < ncol; i++)
     if (GIF_COLOREQ(&dest->col[i], background))
       return ncol;
@@ -105,6 +102,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
   Gif_Color *srccol = src->col;
   Gif_Color *destcol = dest->col;
   int ndestcol = dest->ncol;
+  int dest_userflags = dest->userflags;
   int i, x;
   int trivial_map = 1;
   
@@ -116,8 +114,13 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 	mapto = find_color_index(destcol, ndestcol, &srccol[i]);
       
       if (mapto == -1 && ndestcol == 255
-	  && (dest->userflags & COLORMAP_ENSURE_SLOT_255) != 0)
+	  && (dest_userflags & COLORMAP_ENSURE_SLOT_255) != 0) {
 	ndestcol = ensure_slot_255(dest, ndestcol);
+	dest_userflags &= ~COLORMAP_ENSURE_SLOT_255;
+	/* slot 255 might have been equal to `srccol[i]'! */
+	if (ndestcol == 256 && GIF_COLOREQ(&destcol[255], &srccol[i]))
+	  mapto = 255;
+      }
       
       if (mapto == -1 && ndestcol < 256) {
 	/* add the color */
@@ -138,9 +141,12 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
       if (mapto == -1) {
 	/* local colormap required */
 	if (warn_local_colormaps == 1) {
-	  warning("too many colors, had to use some local colormaps");
-	  warning("  (you may want to try `--colors 256')");
+	  static context = 0;
+	  warning("so many colors that local colormaps were required");
+	  if (!context)
+	    warning("(You may want to try `--colors 256'.)");
 	  warn_local_colormaps = 2;
+	  context = 1;
 	}
 	return 0;
       }
@@ -162,6 +168,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
       }
   
   dest->ncol = ndestcol;
+  dest->userflags = dest_userflags;
   return 1;
 }
 

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.8
+.ds V 1.9b1
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -200,18 +200,18 @@ output.)
 .TP
 .OP \-\-explode ", " \-e
 '
-Separates each GIF input into its individual frames, and writes the frames
-as separate GIFs to the files `input.0', `input.1', and so on, where
-`input' represents the name of the input file (or `#stdin#' for the
-standard input).
+Writes separate GIFs containing the individual frames of each GIF input to
+files named `xxx.0', `xxx.1', and so on. `xxx' is either the name of the
+input file or whatever you specified with
+.QO \-\-output .
 '
 .TP
 .OP \-\-explode\-by\-name ", " \-E
 '
 Same as
 .OP \-\-explode ","
-but writes named frames to files `input.\fIname\fR' instead of
-`input.\fIframe-number\fR'.
+but writes named frames to files `xxx.\fIname\fR' instead of
+`xxx.\fIframe-number\fR'.
 '
 .\" -----------------------------------------------------------------
 .SS General Options

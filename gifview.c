@@ -375,7 +375,7 @@ get_input_stream(char *name)
   } else
     f = fopen(name, "rb");
   if (!f) {
-    error("%s: %s", name, strerror(errno));
+    error("%s: %s.", name, strerror(errno));
     return 0;
   }
   

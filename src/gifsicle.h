@@ -25,10 +25,6 @@ typedef struct Gt_Frame {
   Gif_Image *image;
   int use;
   
-  unsigned name_change: 1;
-  unsigned comment_change: 1;
-  unsigned extensions_change: 1;
-  
   char *name;
   int no_name;
   Gif_Comment *comment;
@@ -98,16 +94,23 @@ struct Gt_ColorTransform {
 
 typedef struct {
   
-  unsigned background_change: 1;
-  unsigned screen_change: 1;
-  unsigned loopcount_change: 1;
+  char *output_name;
   
-  Gif_Color background;
   int screen_width;
   int screen_height;
+  
+  Gif_Color background;
   int loopcount;
   
-  char *output_name;
+  int colormap_size;
+  Gif_Colormap *colormap_fixed;
+  int colormap_algorithm;
+  int colormap_dither;
+  
+  int optimizing;
+  
+  int resize_width;
+  int resize_height;
   
 } Gt_OutputData;
 
@@ -116,6 +119,7 @@ typedef struct {
  * error & verbose
  **/
 extern const char *program_name;
+extern int verbosing;
 
 void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);

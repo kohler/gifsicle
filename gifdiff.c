@@ -412,7 +412,7 @@ particular purpose.\n");
   } else {
     f1 = fopen(filename1, "rb");
     if (!f1)
-      fatal_error("%s: %s", filename1, strerror(errno));
+      fatal_error("%s: %s.", filename1, strerror(errno));
   }
   gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED);
   if (!gfs1)
@@ -424,7 +424,7 @@ particular purpose.\n");
   } else {
     f2 = fopen(filename2, "rb");
     if (!f2)
-      fatal_error("%s: %s", filename2, strerror(errno));
+      fatal_error("%s: %s.", filename2, strerror(errno));
   }
   gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED);
   if (!gfs2) fatal_error("`%s' doesn't seem to contain a GIF", filename2);

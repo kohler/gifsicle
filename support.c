@@ -13,28 +13,34 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
-
+#include <errno.h>
 
 const char *program_name = "gifsicle";
 static int verbose_pos = 0;
 
 
 static void
-verror(int is_warning, const char *location, char *message, va_list val)
+verror(int seriousness, char *message, va_list val)
 {
+  char pattern[BUFSIZ];
   char buffer[BUFSIZ];
   verbose_endline();
+  
+  if (seriousness > 1)
+    sprintf(pattern, "%s: fatal error: %%s\n", program_name);
+  else if (seriousness == 0)
+    sprintf(pattern, "%s: warning: %%s\n", program_name);
+  else
+    sprintf(pattern, "%s: %%s\n", program_name);
   
   /* try and keep error messages together (no interleaving of error messages
      from two gifsicle processes in the same command line) by calling fprintf
      only once */
-  if (strlen(message) + strlen(location) + 13 < BUFSIZ) {
-    sprintf(buffer, "%s: %s%s\n", location, (is_warning ? "warning: " : ""),
-	    message);
+  if (strlen(message) + strlen(pattern) < BUFSIZ) {
+    sprintf(buffer, pattern, message);
     vfprintf(stderr, buffer, val);
   } else {
-    fprintf(stderr, "%s: ", location);
-    if (is_warning) fprintf(stderr, "warning: ");
+    fwrite(pattern, 1, strlen(pattern) - 3, stderr);
     vfprintf(stderr, message, val);
     putc('\n', stderr);
   }
@@ -45,7 +51,7 @@ fatal_error(char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(0, program_name, message, val);
+  verror(2, message, val);
   va_end(val);
   exit(1);
 }
@@ -55,7 +61,7 @@ error(char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(0, program_name, message, val);
+  verror(1, message, val);
   va_end(val);
 }
 
@@ -64,7 +70,7 @@ warning(char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(1, program_name, message, val);
+  verror(0, message, val);
   va_end(val);
 }
 
@@ -524,7 +530,7 @@ parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be a dimension pair, WxH");
+    return Clp_OptionError(clp, "invalid dimensions `%s' (want WxH)", arg);
   else
     return 0;
 }
@@ -542,7 +548,7 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be a position, X,Y");
+    return Clp_OptionError(clp, "invalid position `%s' (want `X,Y')", arg);
   else
     return 0;
 }
@@ -550,6 +556,7 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 int
 parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
+  const char *input_arg = arg;
   char *val;
   
   int x = position_x = strtol(arg, &val, 10);
@@ -575,7 +582,7 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be a rectangle, X1,Y1-X2,Y2 or X1,Y1+WxH");
+    return Clp_OptionError(clp, "invalid rectangle `%s' (want `X1,Y1-X2,Y2' or `X1,Y1+WxH'", input_arg);
   else
     return 0;
 }
@@ -613,6 +620,7 @@ parse_hex_color_channel(const char *s, int ndigits)
 int
 parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
+  const char *input_arg = arg;
   char *str;
   int red, green, blue;
   
@@ -620,7 +628,8 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     int len = strlen(++arg);
     if (!len || len % 3 != 0 || strspn(arg, "0123456789ABCDEFabcdef") != len) {
       if (complain)
-	Clp_OptionError(clp, "invalid color in `%O': want #RGB or #RRGGBB");
+	Clp_OptionError(clp, "invalid color `%s' (want `#RGB' or `#RRGGBB')",
+			input_arg);
       return 0;
     }
     
@@ -664,7 +673,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
  error:
   if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be a valid color");
+    return Clp_OptionError(clp, "invalid color `%s'", input_arg);
   else
     return 0;
 }
@@ -689,6 +698,113 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   parsed_color2 = parsed_color;
   parsed_color = old_color;
   return 1;
+}
+
+
+/*****
+ * reading a file as a colormap
+ **/
+
+static Gif_Colormap *
+read_text_colormap(FILE *f, char *name)
+{
+  char buf[BUFSIZ];
+  Gif_Colormap *cm = Gif_NewFullColormap(0, 256);
+  Gif_Color *col = cm->col;
+  int ncol = 0;
+  unsigned red, green, blue;
+  float fred, fgreen, fblue;
+  
+  while (fgets(buf, BUFSIZ, f)) {
+    
+    if (sscanf(buf, "%g %g %g", &fred, &fgreen, &fblue) == 3) {
+      if (fred < 0) fred = 0;
+      if (fgreen < 0) fgreen = 0;
+      if (fblue < 0) fblue = 0;
+      red = (unsigned)(fred + .5);
+      green = (unsigned)(fgreen + .5);
+      blue = (unsigned)(fblue + .5);
+      goto found;
+      
+    } else if (sscanf(buf, "#%2x%2x%2x", &red, &green, &blue) == 3) {
+     found:
+      if (red > 255) red = 255;
+      if (green > 255) green = 255;
+      if (blue > 255) blue = 255;
+      if (ncol >= 256) {
+	error("%s: maximum 256 colors allowed in colormap", name);
+	break;
+      } else {
+	col[ncol].red = red;
+	col[ncol].green = green;
+	col[ncol].blue = blue;
+	ncol++;
+      }
+    }
+    
+    /* handle too-long lines gracefully */
+    if (strchr(buf, '\n') == 0) {
+      int c;
+      for (c = getc(f); c != '\n' && c != EOF; c = getc(f))
+	;
+    }
+  }
+  
+  if (ncol == 0) {
+    error("`%s' doesn't seem to contain a colormap", name);
+    Gif_DeleteColormap(cm);
+    return 0;
+  } else {
+    cm->ncol = ncol;
+    return cm;
+  }
+}
+
+Gif_Colormap *
+read_colormap_file(char *name, FILE *f)
+{
+  Gif_Colormap *cm = 0;
+  int c;
+  int my_file = 0;
+  
+  if (name && strcmp(name, "-") == 0)
+    name = 0;
+  if (!f) {
+    my_file = 1;
+    if (!name)
+      f = stdin;
+    else
+      f = fopen(name, "rb");
+    if (!f) {
+      error("%s: %s.", name, strerror(errno));
+      return 0;
+    }
+  }
+  
+  name = name ? name : "<stdin>";
+  if (verbosing) verbose_open('<', name);
+  
+  c = getc(f);
+  ungetc(c, f);
+  if (c == 'G') {
+    Gif_Stream *gfs = Gif_ReadFile(f);
+    if (!gfs)
+      error("`%s' doesn't seem to contain a GIF", name);
+    else if (!gfs->global)
+      error("can't use `%s' as a palette (no global color table)", name);
+    else {
+      if (gfs->errors)
+	warning("there were errors reading `%s'", name);
+      cm = Gif_CopyColormap(gfs->global);
+    }
+    
+    Gif_DeleteStream(gfs);
+  } else
+    cm = read_text_colormap(f, name);
+  
+  if (my_file) fclose(f);
+  if (verbosing) verbose_close('>');
+  return cm;
 }
 
 
@@ -727,13 +843,8 @@ clear_def_frame_once_options(void)
      We handle this in gifsicle.c using the _change fields. */
   
   def_frame.name = 0;
-  def_frame.name_change = 0;
-
   def_frame.comment = 0;
-  def_frame.comment_change = 0;  
-
   def_frame.extensions = 0;
-  def_frame.extensions_change = 0;
 }
 
 
@@ -785,8 +896,6 @@ static Gt_Frame **merger = 0;
 static int nmerger = 0;
 static int mergercap = 0;
 
-static int warned_background_conflicts;
-
 static void
 merger_add(Gt_Frame *fp)
 {
@@ -835,14 +944,28 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
   int i;
   /* This code is SUCH a PAIN in the PATOOTIE!! */
   
+  /* 0. report warnings if the user wants an impossible background setting */
+  if (background->haspixel) {
+    int first_img_transp = 0;
+    if (merger[0]->transparent.haspixel < 255)
+      first_img_transp = (merger[0]->image->transparent >= 0
+			  || merger[0]->transparent.haspixel);
+    if (first_img_transp) {
+      static int context = 0;
+      warning("irrelevant background color");
+      if (!context) {
+	warning("(The background will appear transparent because");
+	warning("the first image contains transparency.)");
+	context = 1;
+      }
+    }
+  }
+  
   /* 1. user set the background to a color index
-     -> find the associated color & fall through to case 2 */
+     -> find the associated color */
   if (background->haspixel == 2) {
     Gif_Stream *gfs = merger[0]->stream;
-    if (background->pixel == 256
-	|| background->pixel == gfs->images[0]->transparent)
-      background->pixel = 256;
-    else if (gfs->global && background->pixel < gfs->global->ncol) {
+    if (gfs->global && background->pixel < gfs->global->ncol) {
       *background = gfs->global->col[ background->pixel ];
       background->haspixel = 1;
     } else {
@@ -878,27 +1001,26 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
       /* check for conflicting background requirements */
       if (bg_transparent != saved_bg_transparent
 	  || (!saved_bg_transparent &&
-	      !GIF_COLOREQ(background, &gfs->global->col[gfs->background])))
-	if (!warned_background_conflicts) {
-	  warning("some required background colors conflict; I picked one");
-	  warning("  (some animation frames may appear incorrect)");
-	  warned_background_conflicts = 1;
+	      !GIF_COLOREQ(background, &gfs->global->col[gfs->background]))) {
+	static int context = 0;
+	warning("input images have conflicting background colors");
+	if (!context) {
+	  warning("(This means some animation frames may appear incorrect.)");
+	  context = 1;
 	}
+	break;
+      }
     }
-    background->pixel = (saved_bg_transparent ? 256 : 0);
     background->haspixel = relevance != 0;
   }
   
-  /* 3. user set the background to a specific color, or we need the background
-        color to make the animation work (both cases flagged with
-	haspixel == 1)
+  /* 3. we found a background color
      -> force the merging process to keep it in the global colormap with
      COLORMAP_ENSURE_SLOT_255. See merge.c function ensure_slot_255 */
   if (background->haspixel) {
-    dest_global->userflags = COLORMAP_ENSURE_SLOT_255;
+    dest_global->userflags |= COLORMAP_ENSURE_SLOT_255;
     dest_global->col[255] = *background;
-  } else
-    dest_global->userflags = 0;
+  }
 }
 
 
@@ -906,8 +1028,9 @@ static int
 find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
 		    char *color_context)
 {
-  Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+  Gif_Colormap *gfcm = gfs->global;
   int index;
+  if (gfi && gfi->local) gfcm = gfi->local;
   
   if (color->haspixel == 2) {	/* have pixel value, not color */
     if (color->pixel < gfcm->ncol)
@@ -990,16 +1113,9 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
     rotate_image(desti, screen_width, screen_height, 3);
   
   /* handle screen size, which might have height & width exchanged */
-  if (fr->rotation == 1 || fr->rotation == 3) {
-    /* If this is the first frame, set the frame's screen width & height as
-       the exchanged screen height & width. This ensures that if a single
-       rotated frame is output, its logical screen will be rotated too. */
-    /*if (fr->screen_width <= 0 && first_image) {
-      fr->screen_width = screen_height;
-      fr->screen_height = screen_width;
-      }*/
+  if (fr->rotation == 1 || fr->rotation == 3)
     handle_screen(dest, screen_height, screen_width);
-  } else
+  else
     handle_screen(dest, screen_width, screen_height);
 }
 
@@ -1042,7 +1158,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   
   /* decide on the background. use the one from output_data */
-  warned_background_conflicts = 0;
   dest_background = output_data->background;
   find_background(global, &dest_background);
   
@@ -1114,7 +1229,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     else if (fr->transparent.haspixel)
       srci->transparent =
 	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
-    
+
     desti = merge_image(dest, fr->stream, srci);
     
     srci->transparent = old_transparent; /* restore real transparent value */
@@ -1184,17 +1299,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
   
-  /* Set the background */
-  if (dest_background.haspixel == 256) {
-    if (dest->images[0]->transparent < 0) {
-      warning("no transparency in first image:");
-      warning("transparent background won't work as expected");
-    }
-    dest->background = dest->images[0]->transparent;
-  } else {
-    /* find the background color in the colormap, or add it if we can */
-    int bg = find_color_or_error(&dest_background, dest, dest->images[0], 0);
-    if (bg < 0 && global->ncol < 256) {
+  /* Find the background color in the colormap, or add it if we can */
+  {
+    int bg = find_color_or_error(&dest_background, dest, 0, 0);
+    if (bg < 0 && dest->images[0]->transparent >= 0)
+      dest->background = dest->images[0]->transparent;
+    else if (bg < 0 && global->ncol < 256) {
+      dest->background = global->ncol;
       global->col[ global->ncol ] = dest_background;
       global->ncol++;
     } else

@@ -79,13 +79,13 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
 {
   Gif_Color *src_col, *dst_col;
   int i, j;
-
+  
   /* expand dst->col if necessary. This might change dst->col */
   if (dst->ncol + src->ncol >= dst->capacity) {
     dst->capacity *= 2;
     Gif_ReArray(dst->col, Gif_Color, dst->capacity);
   }
-
+  
   src_col = src->col;
   dst_col = dst->col;
   for (i = 0; i < src->ncol; i++, src_col++) {
@@ -407,7 +407,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
 	need[data[x]] = REPLACE_TRANSP;
     }
   }
-  if (need[TRANSP] || use_transparency == 2)
+  if (need[TRANSP])
     need[TRANSP] = REQUIRED;
   
   /* check for too many colors; also force transparency if needed */
@@ -417,6 +417,11 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
     count[0] = count[1] = count[2] = 0;
     for (i = 0; i < all_ncol; i++)
       count[need[i]]++;
+    /* If use_transparency is large and there's room, add transparency */
+    if (use_transparency > 1 && !need[TRANSP] && count[REQUIRED] < 256) {
+      need[TRANSP] = REQUIRED;
+      count[REQUIRED]++;
+    }
     /* If too many "potentially transparent" pixels, force transparency */
     if (count[REPLACE_TRANSP] + count[REQUIRED] > 256)
       use_transparency = 1;
@@ -434,7 +439,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
     }
     /* If too many "actually used" pixels, fail miserably */
     if (count[REQUIRED] > 256)
-      fatal_error("more than 256 colors in a frame");
+      fatal_error("more than 256 colors required in a frame", count[REQUIRED]);
     /* If we can afford to have transparency, and we want to use it, then
        include it */
     if (count[REQUIRED] < 256 && use_transparency && !need[TRANSP]) {
@@ -443,7 +448,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
     }
     bounds->required_color_count = count[REQUIRED];
   }
-
+  
   bounds->needed_colors = need;
 }
 
@@ -590,7 +595,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
 	penalty[i] += this_penalty;
   }
   
-  /* be careful about the background!! which MUST be in the global colormap */
+  /* force the background to occur in the global colormap */
   if (background != TRANSP)
     penalty[background] = 0xFFFFFFFFU;
   
@@ -688,10 +693,10 @@ create_out_global_map(Gif_Stream *gfs)
   
   /* Now, reorder global colors. Colors used in a lot of images should appear
      first in the global colormap; then those images might be able to use a
-     smaller min_code_size, since the colors they need are clustered at the
-     beginning of the colormap. The strategy used here -- just count in how
-     many images a pixel is used and sort on that -- isn't strictly optimal,
-     but it does well for most images. */
+     smaller min_code_size, since the colors they need are clustered first.
+     The strategy used here -- just count in how many images a color is used
+     and sort on that -- isn't strictly optimal, but it does well for most
+     images. */
   {
     u_int32_t *rank = Gif_NewArray(u_int32_t, all_ncol);
     for (i = 0; i < all_ncol; i++)
@@ -709,6 +714,14 @@ create_out_global_map(Gif_Stream *gfs)
     }
     
     sort_permutation(global_all, nglobal_all, rank, 1);
+    
+    /* get rid of unused colors, but include the background even if no image
+       used it directly */
+    for (i = 0; i < nglobal_all; i++)
+      if (!rank[global_all[i]])
+	nglobal_all = i;
+    if (!rank[background] && background != TRANSP)
+      global_all[nglobal_all++] = background;
     
     Gif_DeleteArray(rank);
   }
@@ -801,14 +814,15 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
 	break;
       }
     
-    /* otherwise, add another slot to `into'; it's pure transparent. If
-       there's no room for it, then give up */
+    /* otherwise, add another slot to `into'; it's pure transparent. Use the
+       color we put into all_colormap->col[TRANSP] earlier. If there's no room
+       for it, then give up */
     if (transparent < 0) {
       if (is_global && all_col[TRANSP].pixel < NOT_IN_OUT_GLOBAL)
 	transparent = all_col[TRANSP].pixel;
       else if (ncol < 256) {
 	transparent = ncol;
-	ncol++;
+	col[ncol++] = all_col[TRANSP];
 	if (is_global) all_col[TRANSP].pixel = transparent;
       } else
 	goto error;
@@ -1028,7 +1042,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
       cur = this_data + screen_width * (y+top) + gfi->left;
     }
   }
-
+  
   
   /* Now, try compressed transparent version and pick the better of the two. */
   {
@@ -1149,15 +1163,25 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
   
   {
     int any_globals = 0;
+    int first_transparent = -1;
     for (i = 0; i < gfs->nimages; i++) {
       Gif_Image *gfi = gfs->images[i];
       if (gfi->local)
 	colormap_combine(all_colormap, gfi->local);
       else
 	any_globals = 1;
+      if (gfi->transparent >= 0 && first_transparent < 0)
+	first_transparent = i;
     }
     if (any_globals)
       colormap_combine(all_colormap, in_global_map);
+    
+    /* try and maintain transparency's pixel value */
+    if (first_transparent >= 0) {
+      Gif_Image *gfi = gfs->images[first_transparent];
+      Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+      all_colormap->col[TRANSP] = gfcm->col[gfi->transparent];
+    }
   }
   
   /* find screen_width and screen_height, and clip all images to screen */
@@ -1190,6 +1214,9 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
 static void
 finalize_optimizer(Gif_Stream *gfs)
 {
+  if (background == TRANSP)
+    gfs->background = gfs->images[0]->transparent;
+  
   Gif_DeleteColormap(in_global_map);
   Gif_DeleteColormap(all_colormap);
   

@@ -1,9 +1,30 @@
 Gifsicle NEWS
 
-Version 1.9
+Version 1.9b1   5.Dec.1998
+
+* Added `--resize WxH' option.
 
 * Made `--change-color PIXELINDEX color' work, and `--change-color color
   PIXELINDEX' illegal.
+
+* Many behavior fixes relating to background and transparency. Gifsicle
+  would tend to create GIFs which looked as expected, but lost information
+  internally; for example, a color value which was only used for
+  transparency would be changed to black, no matter what the input color
+  was. In some cases, gifsicle simply reports a warning now where it
+  ignored information before. Problems reported by Markus F.X.J. Oberhumer
+  <k3040e4@c210.edvz.uni-linz.ac.at>.
+
+* Better error messages are now given on redundant, ambiguous, or useless
+  command-line options.
+
+* Options that affect GIFs on output (such as `--output', `--optimize') now
+  behave more like other options: you should put them before the files they
+  affect. (You may still put them at the end of the argument list if they
+  should affect the last output file.) This should only affect people who
+  used batch or explode mode in complex ways.
+
+* Gifsicle will not write a GIF to stdout if it's connected to a terminal.
 
 
 Version 1.8   3.Dec.1998
@@ -15,7 +36,7 @@ Version 1.8   3.Dec.1998
 * Fixed `--transform-colormap' bug: commands like "thing 2" (ending in an
   integer) will work now.
 
-* Small fixes (in a gifsicle pipline, error messages won't be interleaved).
+* Small fixes (in a gifsicle pipeline, error messages won't be interleaved).
 
 
 Version 1.7.1   2.Dec.1998
