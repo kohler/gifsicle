@@ -354,9 +354,12 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
       for (i = 0; i < cli->nopt; i++)
 	have_short[cli->opt[i].short_name] = 1;
       for (i = 0; i < cli->nopt; i++)
-	if (cli->opt[i].long_name && cli->long_min_match[i].pos == 1
-	    && have_short[ (unsigned char)cli->opt[i].long_name[0] ])
-	  cli->long_min_match[i].pos++;
+	if (cli->opt[i].long_name && cli->long_min_match[i].pos == 1) {
+	  // if `--Cxxxx's short name is `-C', keep long_min_match == 1
+	  unsigned char first = (unsigned char)cli->opt[i].long_name[0];
+	  if (have_short[first] && first != cli->opt[i].short_name)
+	    cli->long_min_match[i].pos++;
+	}
       cli->both_short_and_long = 1;
     }
   }
