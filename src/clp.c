@@ -999,7 +999,7 @@ next_argument(Clp_Parser *clp, int want_argument)
 	return 0;
     
       default:
-	assert(0 && "misconfiguration");
+	assert(0 /* CLP misconfiguration: bad option type */);
     
     }
   
