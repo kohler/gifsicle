@@ -339,6 +339,13 @@ warning(char *message, ...)
   fputc('\n', stderr);
 }
 
+void
+gifread_error(const char *message, int which_image, void *thunk)
+{
+  const char *filename = (const char *)thunk;
+  error("error reading %s: %s", filename, message);
+}
+
 
 int
 main(int argc, char **argv)
@@ -417,7 +424,7 @@ particular purpose.\n");
     if (!f1)
       fatal_error("%s: %s", filename1, strerror(errno));
   }
-  gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED);
+  gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED, gifread_error, (void *)filename1);
   if (!gfs1)
     fatal_error("`%s' doesn't seem to contain a GIF", filename1);
   
@@ -429,7 +436,7 @@ particular purpose.\n");
     if (!f2)
       fatal_error("%s: %s", filename2, strerror(errno));
   }
-  gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED);
+  gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED, gifread_error, (void *)filename2);
   if (!gfs2) fatal_error("`%s' doesn't seem to contain a GIF", filename2);
   
   status = (compare(gfs1, gfs2) == DIFFERENT);

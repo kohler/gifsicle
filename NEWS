@@ -1,9 +1,26 @@
 Gifsicle NEWS
 
-Version 1.14
+Version 1.14   2.Aug.1999
+
+* Switched to an adaptive tree strategy for LZW GIF compression, which is
+  faster than the old hashing strategy. This method is the brainchild of
+  Hans Dinsen-Hansen <dino@danbbs.dk>.
+
+* Bug fix/optimization improvement: Some images would include a transparent
+  index that was not a valid color (it was larger than the colormap).
+  Gifsicle formerly ignored these transparent indices. It doesn't any
+  longer; furthermore, it will generate those kinds of transparent index,
+  which can mean smaller colormaps and smaller GIFs.
+
+* Speed improvements in optimization and colormap quantization.
 
 * Added `--no-warnings' (`-w') option to inhibit warning messages.
   Suggested by Andrea Beiser <abb9@columbia.edu>.
+
+* `--info' output can now be sent to a file with `-o', just as with any
+  other kind of output.
+
+* More specific error messages on invalid GIFs.
 
 
 Version 1.13   16.Jun.1999

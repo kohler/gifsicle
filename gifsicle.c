@@ -52,10 +52,7 @@ static Gt_ColorTransform *output_transforms;
 static int mode = BLANK_MODE;
 static int nested_mode = 0;
 
-static FILE *infoing = 0;
-static int colormap_infoing = 0;
-static int extension_infoing = 0;
-static int outputing = 1;
+static int infoing = 0;
 int verbosing = 0;
 
 
@@ -402,6 +399,47 @@ show_frame(int imagenumber, int usename)
  * input a stream
  **/
 
+static int gifread_error_count;
+
+static void
+gifread_error(const char *message, int which_image, void *thunk)
+{
+  static int last_which_image = 0;
+  static const char *last_message = 0;
+  static int different_error_count = 0;
+  static int same_error_count = 0;
+  const char *filename = (const char *)thunk;
+  
+  if (gifread_error_count == 0) {
+    last_which_image = -1;
+    different_error_count = 0;
+  }
+  
+  gifread_error_count++;
+  if (last_message && different_error_count <= 10
+      && (message != last_message || last_which_image != which_image)) {
+    if (same_error_count == 1)
+      error("  %s", last_message);
+    else if (same_error_count > 0)
+      error("  %s (%d times)", last_message, same_error_count);
+    same_error_count = 0;
+  }
+
+  if (message != last_message)
+    different_error_count++;
+  
+  same_error_count++;
+  last_message = message;
+  if (last_which_image != which_image && different_error_count <= 10
+      && message) {
+    error("Error while reading `%s' frame #%d:", filename, which_image);
+    last_which_image = which_image;
+  }
+  
+  if (different_error_count == 11 && message)
+    error("(more errors while reading `%s')", filename);
+}
+
 void
 input_stream(char *name)
 {
@@ -445,21 +483,19 @@ input_stream(char *name)
   ungetc(i, f);
   
   if (verbosing) verbose_open('<', name);
-  gfs = Gif_FullReadFile(f, read_flags);
+  gifread_error_count = 0;
+  gfs = Gif_FullReadFile(f, read_flags, gifread_error, (void *)name);
   fclose(f);
+  gifread_error(0, -1, (void *)name); /* print out last error message */
   
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
-    error("%s is not a GIF", name);
+    error("%s: not a GIF", name);
     Gif_DeleteStream(gfs);
     if (verbosing) verbose_close('>');
     return;
   }
   
   input = gfs;
-  gfs->userflags = 97; /* to indicate no output done */
-  
-  if (gfs->errors)
-    error("there were errors reading %s", name);
   
   /* Processing when we've got a new input frame */
   if (mode == BLANK_MODE)
@@ -507,6 +543,7 @@ input_stream(char *name)
     def_frame.comment = 0;
   if (!CHANGED(saved_next_frame, CH_EXTENSION))
     def_frame.extensions = 0;
+  def_frame.input_filename = input_name;
   
   old_def_frame = def_frame;
   first_input_frame = frames->count;
@@ -526,8 +563,6 @@ input_stream(char *name)
     }
   
   apply_color_transforms(input_transforms, gfs);
-  if (infoing)
-    stream_info(infoing, gfs, name, colormap_infoing, extension_infoing);
   gfs->refcount++;
 }
 
@@ -537,15 +572,15 @@ input_done(void)
   if (!input) return;
   
   if (verbosing) verbose_close('>');
-  if (infoing) {
+  /*if (infoing) {
     int i;
-    if (input->userflags == 97)	/* no stream info produced yet */
+    if (input->userflags == 97)
       stream_info(infoing, input, input_name,
 		  colormap_infoing, extension_infoing);
     for (i = first_input_frame; i < frames->count; i++)
       if (FRAME(frames, i).stream == input && FRAME(frames, i).use)
 	image_info(infoing, input, FRAME(frames, i).image, colormap_infoing);
-  }
+  }*/
   
   Gif_DeleteStream(input);
   input = 0;
@@ -732,6 +767,47 @@ merge_and_write_frames(char *outfile, int f1, int f2)
   if (verbosing) verbose_close(']');
 }
 
+static void
+output_information(const char *outfile)
+{
+  FILE *f;
+  int i, j;
+  Gt_Frame *fr;
+  Gif_Stream *gfs;
+  
+  if (infoing == 2)
+    f = stderr;
+  else if (outfile == 0)
+    f = stdout;
+  else {
+    f = fopen(outfile, "w");
+    if (!f) {
+      error("%s: %s", outfile, strerror(errno));
+      return;
+    }
+  }
+  
+  for (i = 0; i < frames->count; i++)
+    FRAME(frames, i).stream->userflags = 97;
+
+  for (i = 0; i < frames->count; i++)
+    if (FRAME(frames, i).stream->userflags == 97) {
+      fr = &FRAME(frames, i);
+      gfs = fr->stream;
+      gfs->userflags = 0;
+      stream_info(f, gfs, fr->input_filename, fr->colormap_info,
+		  fr->extensions_info);
+      for (j = i; j < frames->count; j++)
+	if (FRAME(frames, j).stream == gfs) {
+	  fr = &FRAME(frames, j);
+	  image_info(f, gfs, fr->image, fr->colormap_info);
+	}
+    }
+  
+  if (f != stderr && f != stdout)
+    fclose(f);
+}
+
 void
 output_frames(void)
 {
@@ -743,7 +819,11 @@ output_frames(void)
   char *outfile = active_output_data.output_name;
   active_output_data.output_name = 0;
   
-  if (outputing && frames->count > 0)
+  /* Output information only now. */
+  if (infoing)
+    output_information(outfile);
+  
+  if (infoing != 1 && frames->count > 0)
     switch (mode) {
       
      case MERGING:
@@ -1062,36 +1142,29 @@ main(int argc, char **argv)
       /* INFORMATION OPTIONS */
       
      case INFO_OPT:
-      if (clp->negated) {
-	outputing = 1;
+      if (clp->negated)
 	infoing = 0;
-      } else {
-	outputing = !outputing;
-	infoing = outputing ? stderr : stdout;
-      }
+      else
+	/* switch between infoing == 1 (suppress regular output) and 2 (don't
+           suppress) */
+	infoing = (infoing == 1 ? 2 : 1);
       break;
       
      case COLOR_INFO_OPT:
       if (clp->negated)
-	colormap_infoing = 0;
+	def_frame.colormap_info = 0;
       else {
-	colormap_infoing = 1;
-	if (!infoing) {
-	  outputing = 0;
-	  infoing = stdout;
-	}
+	def_frame.colormap_info = 1;
+	if (!infoing) infoing = 1;
       }
       break;
       
      case EXTENSION_INFO_OPT:
       if (clp->negated)
-	extension_infoing = 0;
+	def_frame.extensions_info = 0;
       else {
-	extension_infoing = 1;
-	if (!infoing) {
-	  outputing = 0;
-	  infoing = stdout;
-	}
+	def_frame.extensions_info = 1;
+	if (!infoing) infoing = 1;
       }
       break;
       

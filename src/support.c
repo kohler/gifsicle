@@ -349,14 +349,13 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 
 
 void
-stream_info(FILE *where, Gif_Stream *gfs, char *filename,
+stream_info(FILE *where, Gif_Stream *gfs, const char *filename,
 	    int colormaps, int extensions)
 {
   Gif_Extension *gfex;
   int n;
   
   if (!gfs) return;
-  gfs->userflags = 0; /* clear userflags to indicate stream info produced */
   
   verbose_endline();
   fprintf(where, "* %s %d image%s\n", filename, gfs->nimages,

@@ -457,7 +457,7 @@ get_input_stream(char *name)
     return 0;
   }
   
-  gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED);
+  gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, 0, 0);
   fclose(f);
   
   if (!gfs || Gif_ImageCount(gfs) == 0) {

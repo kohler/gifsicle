@@ -138,16 +138,20 @@ contact the author and obtain permission before doing so.
 
 AUTHORS
 -------
-Eddie Kohler, <eddietwo@lcs.mit.edu>
+Eddie Kohler <eddietwo@lcs.mit.edu>
 http://www.pdos.lcs.mit.edu/~eddietwo/
 He wrote it.
 
-Anne Dudfield, <anne@lvld.hp.com>
-http://web.mit.edu/annied/www/home.html
+Anne Dudfield <anne@lvld.hp.com>
+http://www.frii.com/~annied/
 She named it.
 
-David Hedbor, <david@hedbor.org>
+David Hedbor <david@hedbor.org>
 Many bug reports and constructive whining about the optimizer.
 
-Emil Mikulic, <darkmoon@connexus.net.au>
+Emil Mikulic <darkmoon@connexus.net.au>
 Win32 port help.
+
+Hans Dinsen-Hansen <dino@danbbs.dk>
+http://www.danbbs.dk/~dino/
+Adaptive tree method for GIF writing.

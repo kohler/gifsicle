@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.13
+.ds V 1.14
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -143,6 +143,7 @@ options are on the right.
 .Ix "Screen, logical" "\fB\-\-logical\-screen\fP"
 .Ix "Selecting frames" "frame selections (like \fB#0\fP)"
 .Ix "Transparency" "\fB\-\-transparent\fP"
+.Ix "Warnings" "\fB\-\-no\-warnings\fP"
 .Ix "Web-safe palette" "\fB\-\-use\-colormap\fP"
 .PD
 '
@@ -269,13 +270,15 @@ Print usage information and exit.
 .TP 5
 .OP \-\-info ", " \-I
 '
-Print a summary of the contents of each input GIF to standard output. This
-option suppresses normal output. (If you give two
+Print a human-readable description of each input GIF to the standard
+output, or whatever file you specify with
+.OP \-o .
+This option suppresses normal output. (If you give two
 .OP \-\-info
 or
 .OP \-I
-options, the summary will be written to standard error, not standard
-output, and output will occur as usual.)
+options, the description will be printed on standard error and output will
+occur as usual.)
 '
 .Sp
 .TP
@@ -1008,17 +1011,23 @@ eddietwo@lcs.mit.edu.
 '
 .SH AUTHORS
 .na
-Eddie Kohler, eddietwo@lcs.mit.edu
+Eddie Kohler <eddietwo@lcs.mit.edu>
 .br
 http://www.pdos.lcs.mit.edu/~eddietwo/
 .br
 He wrote it.
 .PP
-Anne Dudfield, anne@lvld.hp.com
+Anne Dudfield <anne@lvld.hp.com>
 .br
-http://web.mit.edu/annied/www/home.html
+http://www.frii.com/~annied/
 .br
 She named it.
+.PP
+Hans Dinsen-Hansen <dino@danbbs.dk>
+.br
+http://www.danbbs.dk/~dino/
+.br
+Adaptive tree method for GIF writing.
 .PP
 http://www.lcdf.org/~eddietwo/gifsicle/
 .br
