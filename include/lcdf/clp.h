@@ -5,13 +5,13 @@ extern "C" {
 #endif
 
 /* clp.h - Public interface to CLP.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of CLP, the command line parser package.
 
-   CLP is free software. It is distributed under the GNU Public License,
-   version 2 or later; you can copy, distribute, or alter it at will, as long
-   as this notice is kept intact and this source code is made available. There
-   is no warranty, express or implied. */
+   CLP is free software. It is distributed under the GNU Lesser General Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied. */
 
 
 /* Argument types */
