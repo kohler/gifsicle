@@ -1420,9 +1420,15 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->disposal = fr->disposal;
 
     /* compress immediately if possible to save on memory */
-    if (compress_immediately > 0 && desti->img) {
-      Gif_FullCompressImage(dest, desti, gif_write_flags);
-      Gif_ReleaseUncompressedImage(desti);
+    if (desti->img) {
+      if (compress_immediately > 0) {
+	Gif_FullCompressImage(dest, desti, gif_write_flags);
+	Gif_ReleaseUncompressedImage(desti);
+      } else if (desti->compressed)
+	Gif_ReleaseCompressedImage(desti);
+    } else if (compress_immediately <= 0) {
+      Gif_UncompressImage(desti);
+      Gif_ReleaseCompressedImage(desti);
     }
     
    merge_frame_done:

@@ -1134,11 +1134,15 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
 	transp_frame_data(gfs, cur_gfi, map);
       else
 	simple_frame_data(cur_gfi, map);
-      
-      if (was_compressed && cur_gfi->img) {
-	Gif_FullCompressImage(gfs, cur_gfi, gif_write_flags);
-	Gif_ReleaseUncompressedImage(cur_gfi);
+
+      if (cur_gfi->img) {
+	if (was_compressed) {
+	  Gif_FullCompressImage(gfs, cur_gfi, gif_write_flags);
+	  Gif_ReleaseUncompressedImage(cur_gfi);
+	} else			/* bug fix 22.May.2001 */
+	  Gif_ReleaseCompressedImage(cur_gfi);
       }
+      
       Gif_DeleteArray(map);
     }
     

@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.29   22.May.2001
+
+* Fixed an optimization bug that could produce bad images. Again, reported
+  by Dale Wiles <dwiles@buffalo.veridian.com>. It turns out that 1.26 was a
+  bad release! I've reconstructed and run some regression tests; hopefully
+  Dale and I have exhausted the bug stream.
+
+
 Version 1.28   13.May.2001
 
 * `--colors' option still didn't work; it produced bad images. Again,
