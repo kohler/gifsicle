@@ -20,8 +20,8 @@ extern "C" {
    software distributed at no cost to the user. */
 
 #define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	95
-#define GIF_VERSION		"0.95"
+#define GIF_MINOR_VERSION	97
+#define GIF_VERSION		"0.97"
 
 #ifndef BYTE
 #define BYTE
