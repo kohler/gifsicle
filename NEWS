@@ -1,9 +1,17 @@
 Gifsicle NEWS
 
+Version 1.21   9.Sep.2000
+
+* Fixed `--careful -O2', which could create bad GIFs when there were bad
+  interactions with transparency. Bug reported by Manfred Schwarb
+  <schwarb@geo.umnw.ethz.ch>.
+
+
 Version 1.20   23.Jun.2000
 
 * Added `--careful' option, because some bad GIF implementations (Java,
-  Internet Explorer) don't support Gifsicle's super-optimized GIFs.
+  Internet Explorer) don't support Gifsicle's super-optimized, but legal,
+  GIFs. Problem reported by Andrea Beiser <abb9@columbia.edu>.
 
 * Gifdiff will work on very large images (better memory usage).
 

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.20
+.ds V 1.21
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -63,7 +63,7 @@ acts like a filter: you feed it a GIF on standard input, and it writes that
 GIF on standard output. That means these two commands do the same thing:
 .Es
 % \fBgifsicle < in.gif > out.gif\fR
-% \fBgifsicle < in.gif | gifsicle | gifsicle | gifsicle > out.gif\fR
+% \fBgifsicle < in.gif | gifsicle | gifsicle > out.gif\fR
 .Ee
 Well, that's not very interesting! Most times you'll tell
 .B gifsicle

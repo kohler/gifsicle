@@ -785,7 +785,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
       val = all_col[i].pixel;
       if (val >= ncol) goto error;
     } else {
-      /* always place colors in a local colormap */    
+      /* always place colors in a local colormap */
       if (ncol == 256) goto error;
       val = ncol;
       col[val] = all_col[i];
