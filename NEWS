@@ -1,10 +1,39 @@
 Gifsicle NEWS
 
+Version 1.7   28.Nov.1998
+
+* Added `--use-colormap=gray' and `--use-colormap=bw'. Idea and some code
+  thanks to XXX.
+
+* Added `--transform-colormap', which allows you to plug programs into
+  gifsicle that arbitrarily change GIF files' colormaps.
+
+* All `--change-color' options now happen simultaneously, so you can safely
+  swap two colors with `--change-color C1 C2 --change-color C2 C1'.
+
+* Colormap modifications are slightly more powerful (they don't reserve a
+  color for transparency if they don't need one, and if a subset of the
+  modified colormap is used, only that subset is output).
+
+* Fixed `--use-colormap' bug: the last color in a used colormap would be
+  ignored (it was reserved for transparency). Symptom: if you put a
+  partially transparent image into the Web-safe palette, the result would
+  never contain white.
+
+* When changing to a grayscale colormap, gifsicle now uses luminance
+  difference to find the closest color. This gives better results for
+  `--use-colormap=gray' and the like.
+
+* Added Introduction and Concept Index sections to the gifsicle manpage.
+
+* The gifsicle package now uses automake.
+
+
 Version 1.6   23.Nov.1998
 
 * A frame extracted from the middle of an animation will now have the
-  animation's screen size. Problem reported by Mr. Moose
-  <mrmoose@execpc.com>.
+  animation's screen size rather than 640x480. Problem reported by Mr.
+  Moose <mrmoose@execpc.com>.
 
 
 Version 1.5   27.Sep.1998

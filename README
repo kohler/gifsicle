@@ -1,4 +1,4 @@
-GIFSICLE 1.6
+GIFSICLE 1.7
 ============
 
 ABOUT GIFSICLE
@@ -15,18 +15,18 @@ flipping and rotation; optimizing animations for space; and changing
 images' colormaps, among other things. Extensive command-line options
 control which, if any, of these occur.
 
-   Please see the man page, `gifsicle.man', for more information.
+   Please see the man page, `gifsicle.1', for more information.
 
    Gifview, a companion program requiring X11, displays GIF images and
 animations on an X display. It can display multi-frame GIFs either as
-slideshows, displaying one frame at a time, or as real-time animations.
-Note that you must give `./configure' the `--enable-gifview' option to
-build gifview. See its man page, `gifview.man', for more information.
+slideshows, displaying one frame at a time, or as real-time animations. You
+must give `./configure' the `--enable-gifview' option to build gifview. See
+its man page, `gifview.1', for more information.
 
    Gifdiff, another companion program not built by default, checks two
 GIF files for identical visual appearance. (This is probably not useful
 unless you're testing GIF-manipulating software.) See its man page,
-`gifdiff.man', for more information.
+`gifdiff.1', for more information.
 
    The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of merchantability
@@ -94,11 +94,12 @@ ago, Unisys stated that programs available at no cost to the user, like
 Gifsicle, could use LZW compression in the context of GIF images without
 obtaining a license. If you plan to distribute GIF writing code in a
 shareware or commercial product, you will need to worry about obtaining a
-license.
+license. (Many people believe that LZW decompression is not covered by the
+Unisys patent, so GIF reading code is probably all right.)
 
    2. Developers or distributors who plan to use Gifsicle code, whole or in
 part, in a product whose source code will not be made available to the end
-user -- in other words, in a context which would violate the GPL -- MUST
+user -- more precisely, in a context which would violate the GPL -- MUST
 contact the author and obtain permission before doing so.
 
 AUTHORS
@@ -116,3 +117,6 @@ Many bug reports and constructive whining about the optimizer.
 
 Emil Mikulic, <darkmoon@connexus.net.au>
 Win32 port help.
+
+XXX
+Idea and some code for `--use-colormap=gray'.

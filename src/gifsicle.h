@@ -17,7 +17,7 @@
 
 typedef struct Gt_Frameset Gt_Frameset;
 typedef struct Gt_Crop Gt_Crop;
-typedef struct Gt_ColorChange Gt_ColorChange;
+typedef struct Gt_ColorTransform Gt_ColorTransform;
 
 typedef struct Gt_Frame {
   
@@ -91,12 +91,15 @@ struct Gt_Crop {
 };
 
 
-struct Gt_ColorChange {
-  
-  struct Gt_ColorChange *next;
-  Gif_Color old_color;
-  Gif_Color new_color;
+typedef void (*colormap_transform_func)(Gif_Colormap *, void *);
 
+struct Gt_ColorTransform {
+  
+  Gt_ColorTransform *prev;
+  Gt_ColorTransform *next;
+  colormap_transform_func func;
+  void *data;
+  
 };
 
 
@@ -118,7 +121,6 @@ void verbose_endline(void);
 /*****
  * info &c
  **/
-
 void stream_info(FILE *, Gif_Stream *, char *, int colormaps, int extensions);
 void image_info(FILE *, Gif_Stream *, Gif_Image *, int colormaps);
 
@@ -127,7 +129,6 @@ char *explode_filename(char *filename, int number, char *name);
 /*****
  * merging images
  **/
-
 void	unmark_colors(Gif_Colormap *);
 void	unmark_colors_2(Gif_Colormap *);
 void	mark_used_colors(Gif_Stream *, Gif_Image *);
@@ -142,12 +143,28 @@ Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
 void	optimize_fragments(Gif_Stream *, int optimizeness);
 
 int	crop_image(Gif_Image *, Gt_Crop *);
-void	apply_color_changes(Gif_Stream *, Gt_ColorChange *);
+
+/*****
+ * colormap transformations
+ **/
+Gif_Colormap *read_colormap_file(char *, FILE *);
+void	apply_color_transforms(Gt_ColorTransform *, Gif_Stream *);
+
+typedef void (*color_transform_func)(Gif_Colormap *, void *);
+Gt_ColorTransform *append_color_transform
+	(Gt_ColorTransform *list, color_transform_func, void *);
+Gt_ColorTransform *delete_color_transforms
+	(Gt_ColorTransform *list, color_transform_func);
+
+void	color_change_transformer(Gif_Colormap *, void *);
+Gt_ColorTransform *append_color_change
+	(Gt_ColorTransform *list, Gif_Color, Gif_Color);
+
+void	pipe_color_transformer(Gif_Colormap *, void *);
 
 /*****
  * quantization
  **/
-
 Gif_Color *histogram(Gif_Stream *, int *);
 
 #define COLORMAP_DIVERSITY		0
@@ -159,12 +176,15 @@ Gif_Colormap *colormap_median_cut(Gif_Color *, int, int);
 
 typedef struct color_hash_item color_hash_item;
 typedef void (*colormap_image_func)
-     (Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+     (Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+      color_hash_item **, u_int32_t *);
 
 void	colormap_image_posterize
-	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+	(Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+	 color_hash_item **, u_int32_t *);
 void	colormap_image_floyd_steinberg
-	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+	(Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+	 color_hash_item **, u_int32_t *);
 void	colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
 
 /*****

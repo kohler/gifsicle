@@ -19,40 +19,42 @@ const char *program_name = "gifsicle";
 static int verbose_pos = 0;
 
 
+static void
+verror(int is_warning, const char *location, char *message, va_list val)
+{
+  verbose_endline();
+  fprintf(stderr, "%s: ", location);
+  if (is_warning) fprintf(stderr, "warning: ");
+  vfprintf(stderr, message, val);
+  putc('\n', stderr);
+}
+
 void
 fatal_error(char *message, ...)
 {
   va_list val;
-  verbose_endline();
   va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+  verror(0, program_name, message, val);
+  va_end(val);
   exit(1);
 }
-
 
 void
 error(char *message, ...)
 {
   va_list val;
-  verbose_endline();
   va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+  verror(0, program_name, message, val);
+  va_end(val);
 }
-
 
 void
 warning(char *message, ...)
 {
   va_list val;
-  verbose_endline();
   va_start(val, message);
-  fprintf(stderr, "%s: warning: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+  verror(1, program_name, message, val);
+  va_end(val);
 }
 
 
@@ -83,7 +85,7 @@ Mode options: at most one, before any filenames.\n\
                                 one per frame, to `input.frame-number'.\n\
   --explode-by-name, -E         Explode mode, but write `input.name'.\n\
 \n\
-General options: Also --no-opt/+o for info and verbose.\n\
+General options: Also --no-OPTION for info and verbose.\n\
   --info, -I                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
   --color-info, --cinfo         --info plus colormap details.\n\
@@ -103,7 +105,7 @@ Frame change options:\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
   --done                        Done with frame changes.\n\
 \n\
-Image options: Also --no-opt/+o and --same-opt.\n\
+Image options: Also --no-OPTION and --same-OPTION.\n\
   --background COL, -B COL      Makes COL the background color.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --flip-horizontal, --flip-vertical\n\
@@ -115,28 +117,32 @@ Image options: Also --no-opt/+o and --same-opt.\n\
                                 Rotates the image.\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
 \n\
-Extension options: Also --no-opt/+o and --same-opt.\n\
+Extension options: Also --no-OPTION and --same-OPTION.\n\
   --app-extension N D, -x N D   Adds an app extension named N with data D.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
   --extension N D               Adds an extension number N with data D.\n\
   --name TEXT, -n TEXT          Sets next frame's name.\n\
 \n");
   printf("\
-Animation options: Also --no-opt/+o and --same-opt.\n\
+Animation options: Also --no-OPTION and --same-OPTION.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
   --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
   --loopcount[=N], -l[N]        Sets loop extension to N (default forever).\n\
   --optimize[=LEV], -O[LEV]     Optimize output GIFs.\n\
   --unoptimize, -U              Unoptimize input GIFs.\n\
 \n\
-Whole-GIF options: Also --no-opt.\n\
+Whole-GIF options: Also --no-OPTION.\n\
   --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
   --colors N, -k N              Reduces the number of colors to N.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
   --dither, -f                  Dither image after changing colormap.\n\
-  --use-colormap FILE or `web'  Use specified colormap.\n\
-\n\
-Report bugs to <eddietwo@lcs.mit.edu>.\n");
+  --transform-colormap CMD      Transform each colormap by the shell CMD.\n\
+  --use-colormap CMAP           Set the GIF's colormap to CMAP, which can be\n\
+                                `web', `gray', `bw', or a GIF file.\n\
+\n");
+  printf("\
+Report bugs to <eddietwo@lcs.mit.edu>.\n\
+Too much information? Try `%s --help | more'.\n", program_name);
 }
 
 

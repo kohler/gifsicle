@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.6
+.ds V 1.7
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -11,9 +11,19 @@
 .de QO
 .RB ` "\\$1" "'\\$2"
 ..
+.de QA
+.BI "\fR`\fB\\$1" " \\$2" " \\$3" " \\$4" "\fR'\\$5"
+..
 .de Sp
 .if n .sp
 .if t .sp 0.4
+..
+.de Ix
+.TP 25
+\\$1
+.nh
+\\$2
+.hy
 ..
 .de Es
 .Sp
@@ -25,7 +35,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "3 Sep 1998" "Version \*V"
+.TH GIFSICLE 1 "28 Nov 1998" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
@@ -35,32 +45,99 @@ gifsicle \- manipulates GIF images and animations
 '
 .SH DESCRIPTION
 .B gifsicle
-manipulates GIF image files. It supports merging several GIFs into a GIF
-animation; exploding an animation into its component frames; changing
-individual frames in an animation; turning interlacing on and off; adding
-transparency; adding delays, disposals, and looping to animations; adding
-or removing comments; optimizing animations for space; and changing images'
-colormaps, among other things. Extensive command-line options control
-which, if any, of these occur.
+is a powerful command-line program for manipulating GIF image files.
+Extensive options let you control what exactly it does.
 .PP
 This man page assumes that you know what GIFs and GIF animations are. For a
 tutorial, you might try Royal Frazier's GIF Animation Page on the World
 Wide Web at http://member.aol.com/royalef/gifanim\%.htm.
-.PP
-The next sections tell you how to run
-.BR gifsicle
-in gory detail. New users might want to skip to the Examples section at the
-end.
+'
+.SH INTRODUCTION
+'
+.B gifsicle
+normally acts like a filter: you feed it a GIF on standard input, and it
+writes that GIF on standard output. That means these two commands do the
+same thing:
+.Es
+% \fBgifsicle < in.gif > out.gif\fR
+% \fBgifsicle < in.gif | gifsicle | gifsicle | gifsicle > out.gif\fR
+.Ee
+Too bad this isn't very interesting! Most times you will probably give
+.B gifsicle
+some command line options which tell it to alter the input GIF in some way.
+The
+.OP \-i
+option, for example, tells it to interlace its input files:
+.Es
+% \fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
+.Ee
+This style doesn't work very well if you want to modify GIF files in
+place\*Efor example, if you want to interlace all the GIFs in the current
+directory. For this, you should use the
+.OP \-\-batch
+option. With
+.OP \-\-batch ,
+.B gifsicle
+will modify the files you specify instead of writing a new file to the
+standard output. The interlacing example above would look like this:
+.Es
+% \fBgifsicle \-\-batch *.gif
+.Ee
+.B gifsicle
+is very proficient at creating and manipulating GIF animations. The
+simplest way to create an animation is to give
+.B gifsicle
+more than one input file; it will combine them, creating a ``flipbook''
+animation:
+.Es
+% \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
+.Ee
+That ends this quickie introduction! The next sections index
+.BR gifsicle 's
+options and tell you how to run it in gory detail. New users probably want
+to skip to the Examples section at the end.
+'
+.SH CONCEPT INDEX
+'
+This index is meant to help you find options that do what you want.
+Concepts are on the left, relevant
+.B gifsicle
+options are on the right.
+'
+.Sp
+.PD 0
+.Ix "Animations, changing" "frame selections, frame changes, etc."
+.Ix "Animations, delay" "\fB\-\-delay\fP"
+.Ix "Animations, disposal" "\fB\-\-disposal\fP"
+.Ix "Animations, file size" "see File size"
+.Ix "Animations, looping" "\fB\-\-loopcount\fP"
+.Ix "Animations, portions of" "frame selections"
+.Ix "Background color" "\fB\-\-background\fP"
+.Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
+.Ix "Colors, reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP"
+.Ix "Comments" "\fB\-\-comment\fP"
+.Ix "Cropping" "\fB\-\-crop\fP"
+.Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
+.Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
+.Ix "Flipping the image" "\fB\-\-flip\-*\fP"
+.Ix "Grayscale" "\fB\-\-use\-colormap\fP"
+.Ix "Interlacing" "\fB\-\-interlace\fP"
+.Ix "Positioning frames" "\fB\-\-position\fP"
+.Ix "Reflecting the image" "see Flipping the image"
+.Ix "Rotating the image" "\fB\-\-rotate\-*\fP"
+.Ix "Screen, logical" "\fB\-\-logical\-screen\fP"
+.Ix "Selecting frames" "frame selections (like \fB#0\fP)"
+.Ix "Shifting frames" "see Positioning frames"
+.Ix "Transparency" "\fB\-\-transparent\fP"
+.Ix "Web-safe palette" "\fB\-\-use\-colormap\fP"
+.PD
 '
 .SH COMMAND LINE
 
 .BR gifsicle 's
-command line consists of
-.IR "GIF input files" 
-and
-.IR options .
-Most options start with a dash (\-) or plus (+); frame selections, a kind
-of option, start with a number sign (#). Anything else is a GIF input file.
+command line consists of GIF input files and options. Most options start
+with a dash (\-) or plus (+); frame selections, a kind of option, start
+with a number sign (#). Anything else is a GIF input file.
 .PP
 .B gifsicle
 reads and processes GIF input files in order. If no GIF input file is
@@ -139,7 +216,7 @@ General options control what information
 prints and where it writes its output. The info options and
 .OP \-\-verbose
 can be turned off with
-.QO \-\-no\-option .
+.QO \-\-no\-X .
 '
 .Sp
 .PD 0
@@ -207,7 +284,7 @@ error.
 .TP
 .OP \-\-version
 '
-Prints the version number and some quickie warranty information and exits.
+Prints the version number and some short non-warranty information and exits.
 '
 .PD
 '
@@ -369,9 +446,9 @@ which means that \fBX\fR's value is copied from each input. The
 converse,
 .QO \-\-no\-X ,
 erases \fBX\fR; for instance,
-.QO \-\-no\-interlace
+.OP \-\-no\-interlace
 turns interlacing off, while
-.QO \-\-no\-comments
+.OP \-\-no\-comments
 strips comments. Only the
 .QO \-\-X
 form is generally described.
@@ -387,7 +464,7 @@ Sets the output GIF's background to
 .IR color .
 The argument can have the same forms as in the
 .OP \-\-transparent
-option, below.
+option below.
 '
 .Sp
 .TP
@@ -673,7 +750,10 @@ in the following input GIFs. (The
 arguments have the same forms as in the
 .OP \-t
 option.) You can change multiple colors by giving the option multiple
-times. Color changes take effect globally when an input GIF is read.
+times. Color changes don't interfere with one another, so you can safely
+swap two colors with
+.QA \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
+They all take effect as an input GIF is read.
 .OP \-\-no\-change\-color
 cancels all color changes.
 '
@@ -687,17 +767,23 @@ Reduces the number of distinct colors in each output GIF to
 .I num
 or less.
 .I Num 
-must be between 2 and 256. This can be used to shrink output GIFs or to
-eliminate any local color tables. An adaptive group of colors is chosen
-from the existing color table; you can affect this process with the
+must be between 2 and 256. This can be used to shrink output GIFs or
+eliminate any local color tables.
+.Sp
+Unless you give
+.OP \-\-use\-colormap ,
+an adaptive group of colors is chosen from the existing color table.
+You can affect this process with the
 .OP \-\-color\-method
-option.
+option. Gifsicle may need to add an additional color (making
+.IR num +1
+in all) if there is transparency in the image.
 '
 .Sp
 .TP
 .OA \-\-color\-method method
 '
-Determines how a smaller colormap is chosen. There are three options:
+Determines how a smaller colormap is chosen. There are three choices:
 .BR diversity ,
 the default, is
 .BR xv (1)'s
@@ -717,11 +803,25 @@ is a synonym for
 .TP
 .OA \-\-dither
 '
-This option only matters if the colormap was changed; with
+This option only matters if the colormap was changed. With
 .OP \-\-dither
 on, Floyd-Steinberg error diffusion is used to approximate any colors that
 were removed. This looks better, but makes bigger files and can cause
 animation artifacts, so it is off by default.
+'
+.Sp
+.TP
+.OA \-\-transform\-colormap command
+'
+.I Command
+should be a shell command that reads from standard input and writes to
+standard output. Each colormap in the output GIF will be translated into
+text colormap format (see
+.OP \-\-use\-colormap
+below) and piped to the command. The output that
+.IR command
+generates (which should also be in text colormap format) will be used as
+the colormap instead.
 '
 .Sp
 .TP
@@ -730,16 +830,29 @@ animation artifacts, so it is off by default.
 Sets the image's colormap to 
 .IR colormap .
 .I Colormap
-is either the name of a GIF file, whose global colormap will be used, or
-the word
-.BR web ,
-which represents the 216-color ``Web-safe palette''. If
+can be
+.BR web
+for the 216-color ``Web-safe palette'';
+.BR gray
+for grayscale;
+.BR bw 
+for black-and-white; or the name of a file. That file should either be a
+text file (the format is described below) or a GIF file, whose global
+colormap will be used. If
 .OP \-\-colors\fR=\fIN
 is also given, an
 .IR N \-sized
 subset of
 .I colormap
 will be used.
+.Sp
+Text colormap files have a very simple format:
+.Es
+# each non-comment line represents one color, "red green blue"
+# each component should be between 0 and 255
+0 0 0            # like this
+255 255 255
+.Ee
 '
 .PD
 '
@@ -749,31 +862,42 @@ Here are a bunch of examples showing how
 .B gifsicle
 is commonly used.
 .PP
-This command combines a bunch of GIFs into one animation, `anim.gif':
+First, let's create an animation, `anim.gif':
 .Es
 % \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif
 .Ee
-This animation will be a fast-moving sucker, though: since we didn't
-specify a delay, it defaults to no time at all. Let's allow .5 seconds
-between frames.
+This animation will move very quickly: since we didn't specify a delay, a
+browser will cycle through the frames as fast as it can. Let's slow it down
+and pause .5 seconds between frames, using the
+.OP \-\-delay
+option.
 .Es
 % \fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif
 .Ee
-If we also want the GIF to loop three times:
+If we also want the GIF to loop three times, we can use
+.OP \-\-loopcount :
 .Es
 % \fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif
 .Ee
-To separate `anim.gif' into its component frames:
+(Rather than type
+.OP \-\-delay
+again, we used its short form,
+.OP \-d .
+Many options have short forms; you can see them by running
+.RB ` "gifsicle \-\-help" '.
+We also abbreviated
+.OP \-\-loopcount
+to
+.OP \-\-loop ,
+which is OK since no other option starts with `loop'.)
+.PP
+To explode `anim.gif' into its component frames:
 .Es
 % \fBgifsicle \-\-explode anim.gif\fR
 .br
 % \fBls anim.gif*\fR
 .br
 anim.gif    anim.gif.0  anim.gif.1  anim.gif.2  anim.gif.3
-.Ee
-To interlace all the GIFs in the current directory:
-.Es
-% \fBgifsicle \-bi *.gif
 .Ee
 To optimize `anim.gif':
 .Es
@@ -811,7 +935,7 @@ To print information about the first and fourth frames of `anim.gif':
 (information printed)
 .Ee
 To make black the transparent color in all the GIFs in the current
-directory, also printing information about each:
+directory, and also print information about each:
 .Es
 % \fBgifsicle \-bII \-\-trans #000000 *.gif\fR
 .br
@@ -823,9 +947,13 @@ twice forces normal output to occur. With only one
 .OP \-I ,
 the GIFs would not have changed on disk.
 .PP
-To change `anim.gif's colors to a 64-color subset of the Web-safe palette:
+To change `anim.gif' to use only a 64-color subset of the Web-safe palette:
 .Es
 % \fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
+.Ee
+To make a dithered black-and-white version of `anim.gif':
+.Es
+% \fBgifsicle \-\-dither \-\-use\-col=bw anim.gif > anim-bw.gif\fR
 .Ee
 '
 .SH BUGS

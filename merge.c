@@ -8,10 +8,11 @@
    which might make his day. There is no warranty, express or implied. */
 
 #include "gifsicle.h"
-#include <stdio.h>
-#include <limits.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include <string.h>
 
 /* First merging stage: Mark the used colors in all colormaps. */
@@ -251,7 +252,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     map[srci->transparent] = found_transparent;
     have[srci->transparent] = 1;
   }
-
+  
   assert(destcm->ncol <= 256);
   /* Make the new image. */
   desti = Gif_NewImage();
@@ -282,7 +283,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     for (i = 0; i < 256 && trivial_map; i++)
       if (map[i] != i && have[i])
 	trivial_map = 0;
-
+    
     if (trivial_map)
       for (j = 0; j < desti->height; j++)
 	memcpy(desti->img[j], srci->img[j], desti->width);
@@ -377,30 +378,157 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
 
 
 /******
- * color changes
+ * color transforms
  **/
 
-static void
-apply_color_change_to_cmap(Gif_Colormap *gfcm, Gt_ColorChange *cc)
+Gt_ColorTransform *
+append_color_transform(Gt_ColorTransform *list,
+		       color_transform_func func, void *data)
+{
+  Gt_ColorTransform *trav;
+  Gt_ColorTransform *xform = Gif_New(Gt_ColorTransform);
+  xform->next = 0;
+  xform->func = func;
+  xform->data = data;
+  
+  for (trav = list; trav && trav->next; trav = trav->next)
+    ;
+  if (trav) {
+    trav->next = xform;
+    return list;
+  } else
+    return xform;
+}
+
+Gt_ColorTransform *
+delete_color_transforms(Gt_ColorTransform *list, color_transform_func func)
+{
+  Gt_ColorTransform *prev = 0, *trav = list;
+  while (trav) {
+    Gt_ColorTransform *next = trav->next;
+    if (trav->func == func) {
+      if (prev) prev->next = next;
+      else list = next;
+      Gif_Delete(trav);
+    } else
+      prev = trav;
+    trav = next;
+  }
+  return list;
+}
+
+void
+apply_color_transforms(Gt_ColorTransform *list, Gif_Stream *gfs)
 {
   int i;
+  Gt_ColorTransform *xform;
+  for (xform = list; xform; xform = xform->next) {
+    if (gfs->global)
+      xform->func(gfs->global, xform->data);
+    for (i = 0; i < gfs->nimages; i++)
+      if (gfs->images[i]->local)
+	xform->func(gfs->images[i]->local, xform->data);
+  }
+}
+
+
+typedef struct Gt_ColorChange {
+  struct Gt_ColorChange *next;
+  Gif_Color old_color;
+  Gif_Color new_color;
+} Gt_ColorChange;
+
+void
+color_change_transformer(Gif_Colormap *gfcm, void *thunk)
+{
+  int i;
+  Gt_ColorChange *first_change = (Gt_ColorChange *)thunk;
+  Gt_ColorChange *change;
   for (i = 0; i < gfcm->ncol; i++)
-    if (gfcm->col[i].red == cc->old_color.red
-	&& gfcm->col[i].green == cc->old_color.green
-	&& gfcm->col[i].blue == cc->old_color.blue)
-      gfcm->col[i] = cc->new_color;
+    for (change = first_change; change; change = change->next)
+      if (GIF_COLOREQ(&gfcm->col[i], &change->old_color)) {
+	gfcm->col[i] = change->new_color;
+	break;			/* ignore remaining color changes */
+      }
+}
+
+Gt_ColorTransform *
+append_color_change(Gt_ColorTransform *list,
+		    Gif_Color old_color, Gif_Color new_color)
+{
+  Gt_ColorTransform *xform;
+  Gt_ColorChange *change = Gif_New(Gt_ColorChange);
+  change->old_color = old_color;
+  change->new_color = new_color;
+  change->next = 0;
+
+  for (xform = list; xform && xform->next; xform = xform->next)
+    ;
+  if (!xform || xform->func != &color_change_transformer)
+    return append_color_transform(list, &color_change_transformer, change);
+  else {
+    Gt_ColorChange *prev = (Gt_ColorChange *)(xform->data);
+    while (prev->next) prev = prev->next;
+    prev->next = change;
+    return list;
+  }
 }
 
 
 void
-apply_color_changes(Gif_Stream *gfs, Gt_ColorChange *cc)
+pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
 {
-  int i;
-  if (!cc) return;
-  if (gfs->global)
-    apply_color_change_to_cmap(gfs->global, cc);
-  for (i = 0; i < gfs->nimages; i++)
-    if (gfs->images[i]->local)
-      apply_color_change_to_cmap(gfs->images[i]->local, cc);
-  apply_color_changes(gfs, cc->next);
+  int i, status;
+  FILE *f;
+  Gif_Color *col = gfcm->col;
+  Gif_Colormap *new_cm = 0;
+  char *command = (char *)thunk;
+  char *tmp_file = tmpnam(0);
+  char *new_command;
+  
+  if (!tmp_file)
+    fatal_error("can't create temporary file!");
+  
+  new_command = Gif_NewArray(char, strlen(command)+strlen(tmp_file)+2);
+  sprintf(new_command, "%s>%s", command, tmp_file);
+  f = popen(new_command, "w");
+  if (!f)
+    fatal_error("can't run color transformation command: %s", strerror(errno));
+  Gif_Delete(new_command);
+  
+  for (i = 0; i < gfcm->ncol; i++)
+    fprintf(f, "%d %d %d\n", col[i].red, col[i].green, col[i].blue);
+  
+  status = pclose(f);
+  if (status < 0) {
+    error("color transformation error: %s", strerror(errno));
+    goto done;
+  } else if (status > 0) {
+    error("color transformation command failed");
+    goto done;
+  }
+  
+  f = fopen(tmp_file, "r");
+  if (!f) {
+    error("color transformation command generated no output", command);
+    goto done;
+  }
+  new_cm = read_colormap_file("<color transformation>", f);
+  fclose(f);
+
+  if (new_cm) {
+    int nc = new_cm->ncol;
+    if (nc < gfcm->ncol) {
+      nc = gfcm->ncol;
+      warning("too few colors in color transformation results");
+    } else if (nc > gfcm->ncol)
+      warning("too many colors in color transformation results");
+    for (i = 0; i < nc; i++)
+      col[i] = new_cm->col[i];
+    Gif_DeleteColormap(new_cm);
+  }
+  
+ done:
+  remove(tmp_file);
+  Gif_DeleteColormap(new_cm);
 }
