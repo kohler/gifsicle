@@ -112,7 +112,7 @@ Clp_Option options[] = {
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "colors", 0, COLORMAP_OPT, Clp_ArgInt,
+  { "colors", 'k', COLORMAP_OPT, Clp_ArgInt,
     Clp_Negate | Clp_LongMinMatch, 3 }, /****/
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
@@ -122,7 +122,7 @@ Clp_Option options[] = {
   { "delay", 'd', 'd', Clp_ArgInt, 0 },
   { "delete", 0, DELETE_OPT, 0, 0 },
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, 0 },
-  { "dither", 0, DITHER_OPT, 0, Clp_Negate },
+  { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 1 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
@@ -457,16 +457,11 @@ do_colormap_change(Gif_Stream *gfs)
     switch (new_colormap_algorithm) {
       
      case COLORMAP_DIVERSITY:
-      adapt_func = new_colormap_fixed ? &colormap_flat_diversity
-	: &colormap_blend_diversity;
+      adapt_func = &colormap_flat_diversity;
       break;
 
      case COLORMAP_BLEND_DIVERSITY:
       adapt_func = &colormap_blend_diversity;
-      break;
-
-     case COLORMAP_FLAT_DIVERSITY:
-      adapt_func = &colormap_flat_diversity;
       break;
 
      case COLORMAP_MEDIAN_CUT:
@@ -648,8 +643,6 @@ main(int argc, char **argv)
     (clp, COLORMAP_ALG_TYPE, 0,
      "diversity", COLORMAP_DIVERSITY,
      "blend-diversity", COLORMAP_BLEND_DIVERSITY,
-     "no-blend-diversity", COLORMAP_FLAT_DIVERSITY,
-     "flat-diversity", COLORMAP_FLAT_DIVERSITY, 
      "median-cut", COLORMAP_MEDIAN_CUT,
      0);
   Clp_AddType(clp, DIMENSIONS_TYPE, parse_dimensions, 0);

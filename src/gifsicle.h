@@ -138,8 +138,7 @@ Gif_Color *histogram(Gif_Stream *, int *);
 
 #define COLORMAP_DIVERSITY		0
 #define COLORMAP_BLEND_DIVERSITY	1
-#define COLORMAP_FLAT_DIVERSITY		2
-#define COLORMAP_MEDIAN_CUT		3
+#define COLORMAP_MEDIAN_CUT		2
 Gif_Colormap *colormap_blend_diversity(Gif_Color *, int, int);
 Gif_Colormap *colormap_flat_diversity(Gif_Color *, int, int);
 Gif_Colormap *colormap_median_cut(Gif_Color *, int, int);

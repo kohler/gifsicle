@@ -45,7 +45,7 @@ options control which, if any, of these occur.
 This man page assumes that you already know what a GIF is and the
 possibilities of GIF animations. For a tutorial, you might try Royal
 Frazier's GIF Animation Page on the World Wide Web at
-http://member.aol.com/royalef/ gifanim.htm.
+http://member.aol.com/royalef/gif\%anim.htm.
 .PP
 The next sections tell you how to run
 .BR gifsicle
@@ -55,13 +55,12 @@ end.
 .SH COMMAND LINE
 
 .BR gifsicle 's
-command line arguments come in three categories:
-.IR "GIF input files" ,
-.IR "frame specifications" ,
+command line consists of
+.IR "GIF input files" 
 and
 .IR options .
-Options start with a dash (\-) or plus (+); frame specifications start
-with a number sign (#). Anything else is a GIF input file.
+Most options start with a dash (\-) or plus (+); frame selections, a kind
+of option, start with a number sign (#). Anything else is a GIF input file.
 .PP
 .B gifsicle
 reads and processes GIF input files in order. If no GIF input file is
@@ -69,49 +68,39 @@ given, or you give the special filename `\-',
 .B gifsicle
 reads from the standard input.
 '
-.SH FRAME SPECIFICATIONS
-
-A
-.I frame specification
-selects one or more frames from the current GIF input file, which is
-generally an animation. Frame specifications can be used to tell
-.B gifsicle
-which parts of an animation to process.
-.PP
-Here are the legal forms for frame specifications.
-.Sp
-.PD 0
-.TP 13
-.BI # num
-'
-Select frame \fInum\fR. (The first frame is
-.QO #0 .
-Negative numbers count backwards from the last frame, which is
-.QO #-1 .)
-'
-.TP 13
-.BI # num1 \- num2
-'
-Select frames \fInum1\fR through \fInum2\fR.
-'
-.TP 13
-.BI # num1 \-
-'
-Select frames \fInum1\fR through the last frame.
-'
-.TP 13
-.BI # name
-'
-Select the frame named \fIname\fR.
-.PD
-'
 .SH OPTIONS
 
+Every option has a long form,
+.QO \-\-long\-descriptive\-name .
+You don't need to type the whole long descriptive name, just enough to
+make it unambiguous.
+.PP
+Some options also have a short form,
+.QO \-X .
+You can combine short options if they don't take arguments:
+.QO \-IIb
+is the same as
+.QO "\-I \-I \-b" .
+But be careful with options that do take arguments:
+.QO \-cblah
+means
+.QO "\-c \fRblah" ,
+not
+.QO "\-c \-b \-l \-a \-h" .
+.PP
+Many options also have a converse,
+.QO \-\-no\-option ,
+which turns off the option. You can turn off a short option
+.QO \-X
+by saying
+.QO \+X
+instead.
+.PP
 There are seven option categories. First,
 .IR "mode options"
-control
-.BR gifsicle 's
-output mode. The default is
+control what
+.BR gifsicle
+does with its output. The default is
 .IR "merge mode" ,
 which combines all GIF inputs into one output animation. You can also
 specify
@@ -150,34 +139,6 @@ Finally,
 .I whole-GIF options
 affect entire GIF files rather than particular images. Colormap
 modifications are examples of whole-GIF options.
-'
-.SS General
-
-Every option has a long form,
-.QO \-\-long\-descriptive\-name .
-You don't need to type the whole long descriptive name, just enough to
-make it unambiguous.
-.PP
-Most options also have a short form,
-.QO \-X .
-You can combine short options if they don't take arguments:
-.QO \-IIb
-is the same as
-.QO "\-I \-I \-b" .
-But be careful with options that do take arguments:
-.QO \-cblah
-means
-.QO "\-c \fRblah" ,
-not
-.QO "\-c \-b \-l \-a \-h" .
-.PP
-Many options also have a converse,
-.QO \-\-no\-option ,
-which turns off the option. You can turn off a short option
-.QO \-X
-by saying
-.QO \+X
-instead.
 '
 .\" -----------------------------------------------------------------
 .SS Mode Options
@@ -278,8 +239,38 @@ The special filename `-' means the standard output.
 .\" -----------------------------------------------------------------
 .SS Frame Selections
 
-Select frames from an input file by giving frame specifications after
-the input file name. For example,
+A
+.I frame selection
+chooses one or more frames from the current GIF input file. They are useful
+only for animations, as non-animated GIFs only have one frame. Here are the
+legal forms for frame specifications.
+.Sp
+.PD 0
+.TP 13
+.BI # num
+'
+Select frame \fInum\fR. (The first frame is
+.QO #0 .
+Negative numbers count backwards from the last frame, which is
+.QO #-1 .)
+'
+.TP 13
+.BI # num1 \- num2
+'
+Select frames \fInum1\fR through \fInum2\fR.
+'
+.TP 13
+.BI # num1 \-
+'
+Select frames \fInum1\fR through the last frame.
+'
+.TP 13
+.BI # name
+'
+Select the frame named \fIname\fR.
+.PD
+.PP
+For example,
 .Sp
 .RS 5
 \fBgifsicle\fR happy.gif
@@ -304,44 +295,6 @@ output GIFs.
 .\" -----------------------------------------------------------------
 .SS Frame Change Options
 
-The
-.I frames
-arguments to frame changes are frame specifications. These arguments
-always refer to frames from the
-.I original
-input GIF. So, if `in.gif' has 11 frames, the following command will
-actually work:
-.Sp
-.RS 5
-\fBgifsicle\fR in.gif
-.OP \-\-delete " #0\-9 " \-\-replace " #10 other.gif"
-.RE
-.PP
-The
-.I other-GIFs
-arguments are any number of GIF input files and frame selections.
-These images are combined in merge mode and added to the input GIF.
-The
-.I other-GIFs
-last until the next frame change option, so this command replaces the
-first frame of `in.gif' with the merge of `a.gif' and `b.gif':
-.Sp
-.RS 5
-\fBgifsicle\fR \-b in.gif
-.OP \-\-replace " #0 a.gif b.gif"
-.RE
-.Sp
-This command, however, replaces the first frame of `in.gif' with
-`a.gif' and then processes `b.gif' separately:
-.Sp
-.RS 5
-\fBgifsicle\fR \-b in.gif 
-.OP \-\-replace " #0 a.gif " \-\-done " b.gif"
-.RE
-.PP
-Warning: You shouldn't use both frame selections and frame changes on
-the same input GIF.
-'
 .TP 5
 .OA \-\-delete frames " [" frames ".\|.\|.]"
 '
@@ -377,6 +330,48 @@ from the input GIF with
 \fB\-\-done\fR
 '
 Completes the current set of frame changes.
+'
+.PP
+The
+.I frames
+arguments are frame selections (see above). These arguments always refer to
+frames from the
+.I original
+input GIF. So, if `in.gif' has 11 frames an `other.gif' has one, this
+command
+.Sp
+.RS 5
+\fBgifsicle\fR in.gif
+.OP \-\-delete " #0\-5 " \-\-replace " #10 other.gif"
+.RE
+.Sp
+will work as you expected, producing an output animation with 5 frames:
+`in.gif' frames 6 through 9, then `other.gif'.
+.PP
+The
+.I other-GIFs
+arguments are any number of GIF input files and frame selections.
+These images are combined in merge mode and added to the input GIF.
+The
+.I other-GIFs
+last until the next frame change option, so this command replaces the
+first frame of `in.gif' with the merge of `a.gif' and `b.gif':
+.Sp
+.RS 5
+\fBgifsicle\fR \-b in.gif
+.OP \-\-replace " #0 a.gif b.gif"
+.RE
+.Sp
+This command, however, replaces the first frame of `in.gif' with
+`a.gif' and then processes `b.gif' separately:
+.Sp
+.RS 5
+\fBgifsicle\fR \-b in.gif 
+.OP \-\-replace " #0 a.gif " \-\-done " b.gif"
+.RE
+.PP
+Warning: You shouldn't use both frame selections and frame changes on
+the same input GIF.
 '
 .\" -----------------------------------------------------------------
 .SS Image Options
@@ -638,6 +633,8 @@ cancels all color changes.
 '
 .Sp
 .TP
+.OA \-k num
+.TP
 .OA \-\-colors num
 '
 Reduces the number of distinct colors in each output GIF to
@@ -654,27 +651,23 @@ option.
 .TP
 .OA \-\-color\-method method
 '
-Sets the method for reducing a colormap's size with
-.OP \-\-colors .
-There are four choices:
-.B median\-cut
-is the median cut algorithm described by Heckbert.
-.B no\-blend\-diversity
-is
+Determines how a smaller colormap is chosen. There are three options:
+.BR diversity ,
+the default, is
 .BR xv (1)'s
 diversity algorithm, which uses a strict subset of the existing colors.
 .B blend\-diversity
-is a modification of this: some color values are blended.
-.BR diversity ,
-the default, equals
-.B no\-blend\-diversity
-if
-.OP \-\-use\-colormap
-is in effect and
-.B blend\-diversity
-otherwise.
+is a modification of this: some color values are blended from a group of
+the existing colors.
+.B median\-cut
+is the median cut algorithm described by Heckbert.
+.OP \-\-method
+is a synonym for
+.OP \-\-color\-method .
 '
 .Sp
+.TP
+.OA \-f
 .TP
 .OA \-\-dither
 '
@@ -700,13 +693,11 @@ is also given, a subset of the colormap will be used.
 '
 .PD
 '
-
 .SH EXAMPLES
 
 Here are a bunch of examples showing how
 .B gifsicle
-is commonly used. The command given in each example isn't always the only,
-or even the best, way.
+is commonly used.
 .PP
 This command combines a bunch of GIFs into one animation, `anim.gif':
 .Es

@@ -107,9 +107,9 @@ Animation options: Also --no-opt/+o and --same-opt.\n\
   --unoptimize, -U              Unoptimize input GIFs.\n\
 Whole-GIF options: Also --no-opt.\n\
   --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
-  --colors N                    Reduces the number of colors to N.\n\
+  --colors N, -k N              Reduces the number of colors to N.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
-  --dither                      Dither image after changing colormap.\n\
+  --dither, -f                  Dither image after changing colormap.\n\
   --use-colormap FILE or `web'  Use specified colormap.\n\
 ",
 	  program_name);
