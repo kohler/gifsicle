@@ -19,6 +19,9 @@ Version 1.2
 
 * Added debugging malloc library (`./configure --enable-dmalloc' to use it).
 
+* Added `--no-delay' and `--no-disposal' options, which should have been there
+  all along.
+
 * Other performance improvements.
 
 

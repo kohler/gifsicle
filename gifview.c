@@ -690,15 +690,6 @@ view_frame(Gt_Viewer *viewer, int frame)
     if (!window) {
       create_viewer_window(viewer, width, height);
       window = viewer->window;
-    } else if ((viewer->width != width || viewer->height != height)
-	       && viewer->width > 0) {
-      /* If viewer->width < 0, user gave geometry; don't change window size */
-      XWindowChanges winch;
-      winch.width = viewer->width = width;
-      winch.height = viewer->height = height;
-      XReconfigureWMWindow
-	(display, window, viewer->screen_number,
-	 CWWidth | CWHeight, &winch);
     }
     
     if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
@@ -716,6 +707,18 @@ view_frame(Gt_Viewer *viewer, int frame)
     if (old_pixmap) {
       XClearWindow(display, window);
       XFreePixmap(display, old_pixmap);
+    }
+
+    /* Only change size after changing pixmap. */
+    if ((viewer->width != width || viewer->height != height)
+	&& viewer->width > 0) {
+      /* If viewer->width < 0, user gave geometry; don't change window size */
+      XWindowChanges winch;
+      winch.width = viewer->width = width;
+      winch.height = viewer->height = height;
+      XReconfigureWMWindow
+	(display, window, viewer->screen_number,
+	 CWWidth | CWHeight, &winch);
     }
   }
   

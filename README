@@ -15,34 +15,41 @@ and removing comments; optimizing animations for space; and changing
 images' colormaps, among other things. Extensive command-line options
 control which, if any, of these occur.
 
-   Please see the man page, `gifsicle.man', for more information.
+   Please see the man page, `gifsicle.man', for more information. (Run
+`./configure' to create `gifsicle.man' from `gifsicle.min'.)
 
-   Gifsicle comes with NO WARRANTY, express or implied, including, but not
-limited to, the implied warranties of merchantability and fitness for a
-particular purpose.
+   Gifview, a companion program requiring X11, displays GIF images and
+animations on an X display. It can display multi-frame GIFs either as
+slideshows, displaying one frame at a time, or as real-time animations.
+Note that you must give `./configure' the `--enable-gifview' option to
+build gifview. See its man page, `gifview.man', for more information.
 
-GIFSICLE HOME PAGE
-------------------
-   For latest distributions, bug reports, and other stuff, see the Gifsicle
-home page at
-
-	http://www.lcdf.org/~eddietwo/gifsicle/
+   The Gifsicle package comes with NO WARRANTY, express or implied,
+including, but not limited to, the implied warranties of merchantability
+and fitness for a particular purpose.
 
 MAKING GIFSICLE
 ---------------
    You need an ANSI C compiler, such as gcc.
 
    Just type `./configure', then `make'. `make install' will build and
-install gifsicle and its manual page.
+install gifsicle and its manual page (under /usr/local by default).
 
    `./configure' accepts the usual options. See `INSTALL' for more
 details.
 
-   If you have X11, you can additionally build a simple program,
-`gifview', which shows the frames of its input GIFs in an X window.
-Click on the window to move to the next frame. Gifview is an alpha
-program and is not built by default. To build gifview, give
-`./configure' the `--enable-gifview' option.
+   To build gifview as well as gifsicle, give `./configure' the
+`--enable-gifview' option.
+
+CHANGES SINCE 1.1
+-----------------
+   The optimizer has been greatly improved. Colormap shrinking and
+assignment is now available (see --colors and related options). Several
+memory leaks were plugged, making gifsicle and gifview usable even on
+massive GIFs. Several bug fixes: no more segmentation faults on erroneous
+inputs, and local colormaps are no longer corrupted. Gifview is out of
+beta, and is now fully functional. The man page should be more readable.
+See `NEWS' in this directory for a more detailed listing.
 
 BUGS, SUGGESTIONS, ETC.
 -----------------------
@@ -53,6 +60,13 @@ get on a (spam-free) Gifsicle mailing list.
 	Eddie Kohler
 	eddietwo@lcs.mit.edu
 	http://www.pdos.lcs.mit.edu/~eddietwo/
+
+GIFSICLE HOME PAGE
+------------------
+   For latest distributions, bug reports, and other stuff, see the Gifsicle
+home page at
+
+	http://www.lcdf.org/~eddietwo/gifsicle/
 
 COPYRIGHT/LICENSE
 -----------------

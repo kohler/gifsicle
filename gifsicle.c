@@ -124,9 +124,9 @@ Clp_Option options[] = {
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
   { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "delay", 'd', 'd', Clp_ArgInt, 0 },
+  { "delay", 'd', 'd', Clp_ArgInt, Clp_Negate },
   { "delete", 0, DELETE_OPT, 0, 0 },
-  { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, 0 },
+  { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, Clp_Negate },
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
@@ -902,7 +902,7 @@ main(int argc, char **argv)
       
      case 'd':
       next_frame = 1;
-      def_frame.delay = clp->val.i;
+      def_frame.delay = clp->negated ? 0 : clp->val.i;
       break;
       
      case SAME_DELAY_OPT:
@@ -910,7 +910,10 @@ main(int argc, char **argv)
       break;
       
      case DISPOSAL_OPT:
-      if (clp->val.i < 0 || clp->val.i > 7)
+      if (clp->negated) {
+	next_frame = 1;
+	def_frame.disposal = GIF_DISPOSAL_NONE;
+      } else if (clp->val.i < 0 || clp->val.i > 7)
 	error("disposal must be between 0 and 7");
       else {
 	next_frame = 1;
