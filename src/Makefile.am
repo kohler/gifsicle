@@ -46,15 +46,15 @@ ungifwrt.o: gif.h ungifwrt.c config.h
 gifunopt.o: gif.h gifunopt.c config.h
 gifx.o: gif.h gifx.h gifx.c config.h
 
-merge.o: gifsicle.h merge.c config.h
-optimize.o: gifsicle.h optimize.c config.h
-quantize.o: gifsicle.h quantize.c config.h
-support.o: gifsicle.h support.c config.h
-xform.o: gifsicle.h xform.c config.h
-gifsicle.o: gifsicle.h gifsicle.c config.h
+merge.o: gifsicle.h gif.h merge.c config.h
+optimize.o: gifsicle.h gif.h optimize.c config.h
+quantize.o: gifsicle.h gif.h quantize.c config.h
+support.o: gifsicle.h gif.h support.c config.h
+xform.o: gifsicle.h gif.h xform.c config.h
+gifsicle.o: gifsicle.h gif.h gifsicle.c config.h
 
-gifview.o: gifview.c config.h
-gifdiff.o: gifdiff.c config.h
+gifview.o: gifview.c gif.h gifx.h config.h
+gifdiff.o: gifdiff.c gif.h config.h
 
 srclinks:
 	for i in clp.c clp.h fmalloc.c strerror.c ; do \
