@@ -41,17 +41,25 @@ struct Gif_XContext {
 };
 
 
-Gif_XContext *		Gif_NewXContext(Display *, Window);
-Gif_XContext *		Gif_NewXContextFromVisual(Display *, int screen_number,
+Gif_XContext *	Gif_NewXContext(Display *, Window);
+Gif_XContext *	Gif_NewXContextFromVisual(Display *, int screen_number,
 					Visual *, int depth, Colormap);
-void			Gif_DeleteXContext(Gif_XContext *);
+void		Gif_DeleteXContext(Gif_XContext *);
 
-Pixmap			Gif_XImage(Gif_XContext *, Gif_Stream *, Gif_Image *);
-Pixmap			Gif_XImageColormap(Gif_XContext *, Gif_Stream *,
-					   Gif_Colormap *, Gif_Image *);
-Pixmap			Gif_XMask(Gif_XContext *, Gif_Stream *, Gif_Image *);
+Pixmap		Gif_XImage(Gif_XContext *, Gif_Stream *, Gif_Image *);
+Pixmap		Gif_XImageColormap(Gif_XContext *, Gif_Stream *,
+				Gif_Colormap *, Gif_Image *);
+Pixmap		Gif_XSubImage(Gif_XContext *, Gif_Stream *, Gif_Image *,
+				int l, int t, int w, int h);
+Pixmap		Gif_XSubImageColormap(Gif_XContext *, Gif_Stream *,
+				Gif_Colormap *, Gif_Image *,
+				int l, int t, int w, int h);
 
-void			Gif_XPreallocateColors(Gif_XContext *, Gif_Colormap *);
+Pixmap		Gif_XMask(Gif_XContext *, Gif_Stream *, Gif_Image *);
+Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Stream *, Gif_Image *,
+				int l, int t, int w, int h);
+
+void		Gif_XPreallocateColors(Gif_XContext *, Gif_Colormap *);
 
 
 #ifdef __cplusplus

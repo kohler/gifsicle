@@ -150,8 +150,9 @@ or:    giftoc -makename [-reckless] [-extern] giffile [giffile...]\n");
     
     if (make_name) {
       char *sin, *sout;
-      sin = argv[0];
-      sout = rec_name = (char *)malloc(strlen(argv[0]) + 2);
+      sin = strrchr(argv[0], '/') + 1;
+      if (!sin) sin = argv[0];
+      sout = rec_name = (char *)malloc(strlen(sin) + 2);
       if (isdigit(*sin)) *sout++ = 'N';
       for (; *sin; sin++, sout++)
 	if (isalnum(*sin))

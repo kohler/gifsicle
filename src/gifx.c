@@ -124,8 +124,9 @@ allocate_colors(Gif_XContext *gfx, u_int16_t size, Gif_Color *c)
 #define BYTESIZE 8
 
 Pixmap
-Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
-		   Gif_Colormap *gfcm, Gif_Image *gfi)
+Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
+		      Gif_Colormap *gfcm, Gif_Image *gfi,
+		      int left, int top, int width, int height)
 {
   Pixmap pixmap = None;
   XImage *ximage;
@@ -139,19 +140,22 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   u_int16_t nct;
   Gif_Color *ct;
   
-  /* Find the correct image */
+  /* Find the correct image and colormap */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
-  if (!gfi) /* can't find an image to return */
-    return None;
-  /* Find the right colormap */
-  if (!gfcm) /* can't find a colormap to use */
-    return None;
-
+  if (!gfi) return None;
+  if (!gfcm) return None;
+  
   /* Make sure the image is uncompressed */
   if (!gfi->img && !gfi->image_data && gfi->compressed) {
     Gif_UncompressImage(gfi);
     release_uncompressed = 1;
   }
+  
+  /* Check subimage dimensions */
+  if (width <= 0 || height <= 0 || left < 0 || top < 0
+      || left+width <= 0 || top+height <= 0
+      || left+width > gfi->width || top+height > gfi->height)
+    return None;
   
   /* Allocate colors from the colormap; make sure the transparent color
    * has the given pixel value */
@@ -170,11 +174,11 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   ximage =
     XCreateImage(gfx->display, gfx->visual, gfx->depth,
 		 gfx->depth == 1 ? XYBitmap : ZPixmap, 0, NULL,
-		 gfi->width, gfi->height, i, 0);
+		 width, height, i, 0);
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
-  xdata = Gif_NewArray(byte, bytes_per_line * gfi->height);
+  xdata = Gif_NewArray(byte, bytes_per_line * height);
   ximage->data = (char *)xdata;
   
   /* The main loop */
@@ -182,10 +186,10 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     /* Optimize for cases where a pixel is exactly one or more bytes */
     int bytes_per_pixel = ximage->bits_per_pixel / 8;
     
-    for (j = 0; j < gfi->height; j++) {
-      byte *line = gfi->img[j];
+    for (j = 0; j < height; j++) {
+      byte *line = gfi->img[top + j] + left;
       byte *writer = xdata + bytes_per_line * j;
-      for (i = 0; i < gfi->width; i++) {
+      for (i = 0; i < width; i++) {
 	u_int32_t pixel;
 	if (line[i] < nct)
 	  pixel = ct[line[i]].pixel;
@@ -203,13 +207,13 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
     int bits_per_pixel = ximage->bits_per_pixel;
     u_int32_t bits_per_pixel_mask = (1UL << bits_per_pixel) - 1;
     
-    for (j = 0; j < gfi->height; j++) {
+    for (j = 0; j < height; j++) {
       int imshift = 0;
       u_int32_t impixel = 0;
-      byte *line = gfi->img[j];
+      byte *line = gfi->img[top + j] + left;
       byte *writer = xdata + bytes_per_line * j;
       
-      for (i = 0; i < gfi->width; i++) {
+      for (i = 0; i < width; i++) {
 	u_int32_t pixel;
 	if (line[i] < nct)
 	  pixel = ct[line[i]].pixel;
@@ -236,12 +240,11 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
 
   /* Create the pixmap */
   pixmap =
-    XCreatePixmap(gfx->display, gfx->drawable,
-		  gfi->width, gfi->height, gfx->depth);
+    XCreatePixmap(gfx->display, gfx->drawable, width, height, gfx->depth);
   if (pixmap) {
     GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
     XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
-	      gfi->width, gfi->height);
+	      width, height);
     XFreeGC(gfx->display, gc);
   }
   
@@ -261,16 +264,42 @@ Gif_XImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
   Gif_Colormap *gfcm;
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
-  if (!gfi) /* can't find an image to return */
-    return None;
+  if (!gfi) return None;
   gfcm = gfi->local;
   if (!gfcm) gfcm = gfs->global;
-  return Gif_XImageColormap(gfx, gfs, gfcm, gfi);
+  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+			       0, 0, gfi->width, gfi->height);
 }
 
 
 Pixmap
-Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
+Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Colormap *gfcm,
+		   Gif_Image *gfi)
+{
+  if (!gfi && gfs->nimages) gfi = gfs->images[0];
+  if (!gfi) return None;
+  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+			       0, 0, gfi->width, gfi->height);
+}
+
+
+Pixmap
+Gif_XSubImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
+	      int left, int top, int width, int height)
+{
+  Gif_Colormap *gfcm;
+  if (!gfi && gfs->nimages) gfi = gfs->images[0];
+  if (!gfi) return None;
+  gfcm = gfi->local;
+  if (!gfcm) gfcm = gfs->global;
+  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+			       left, top, width, height);
+}
+
+
+Pixmap
+Gif_XSubMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
+	     int left, int top, int width, int height)
 {
   Pixmap pixmap = None;
   XImage *ximage;
@@ -283,7 +312,12 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   
   /* Find the correct image */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
-  if (!gfi)
+  if (!gfi) return None;
+  
+  /* Check subimage dimensions */
+  if (width <= 0 || height <= 0 || left < 0 || top < 0
+      || left+width <= 0 || top+height <= 0
+      || left+width > gfi->width || top+height > gfi->height)
     return None;
   
   /* Make sure the image is uncompressed */
@@ -296,24 +330,24 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   ximage =
     XCreateImage(gfx->display, gfx->visual, 1,
 		 XYBitmap, 0, NULL,
-		 gfi->width, gfi->height,
+		 width, height,
 		 8, 0);
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
-  xdata = Gif_NewArray(byte, bytes_per_line * gfi->height);
+  xdata = Gif_NewArray(byte, bytes_per_line * height);
   ximage->data = (char *)xdata;
   
   transparent = gfi->transparent;
   
   /* The main loop */
-  for (j = 0; j < gfi->height; j++) {
+  for (j = 0; j < height; j++) {
     int imshift = 0;
     unsigned long impixel = 0;
-    byte *line = gfi->img[j];
+    byte *line = gfi->img[top + j] + left;
     byte *writer = xdata + bytes_per_line * j;
     
-    for (i = 0; i < gfi->width; i++) {
+    for (i = 0; i < width; i++) {
       if (line[i] == transparent)
 	impixel |= 1 << imshift;
       
@@ -330,12 +364,11 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   
   /* Create the pixmap */
   pixmap =
-    XCreatePixmap(gfx->display, gfx->drawable,
-		  gfi->width, gfi->height, 1);
+    XCreatePixmap(gfx->display, gfx->drawable, width, height, 1);
   if (pixmap) {
     GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
     XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
-	      gfi->width, gfi->height);
+	      width, height);
     XFreeGC(gfx->display, gc);
   }
   
@@ -348,6 +381,16 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   
   return pixmap;
 }
+
+
+Pixmap
+Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
+{
+  if (!gfi && gfs->nimages) gfi = gfs->images[0];
+  if (!gfi) return None;
+  return Gif_XSubMask(gfx, gfs, gfi, 0, 0, gfi->width, gfi->height);
+}
+
 
 
 void

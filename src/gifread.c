@@ -809,6 +809,7 @@ Gif_Stream *
 Gif_FullReadFile(FILE *f, int read_flags)
 {
   Gif_Reader grr;
+  if (!f) return 0;
   grr.f = f;
   grr.is_record = 0;
   grr.byte_getter = file_byte_getter;
@@ -822,6 +823,7 @@ Gif_Stream *
 Gif_FullReadRecord(Gif_Record *gifrec, int read_flags)
 {
   Gif_Reader grr;
+  if (!gifrec) return 0;
   make_data_reader(&grr, gifrec->data, gifrec->length);
   if (read_flags & GIF_READ_CONST_RECORD)
     read_flags |= GIF_READ_COMPRESSED;
