@@ -1,5 +1,6 @@
 #ifndef GIFX_H
 #define GIFX_H
+#include "gif.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,7 +19,6 @@ extern "C" {
    to be used without a license in software distributed at no cost to the
    user. The decompression algorithm is not patented. */
 
-#include "gif.h"
 #include <X11/Xlib.h>
 
 #define GIFX_COLORMAP_EXTENSION -107

@@ -14,9 +14,12 @@
 
 #ifndef GIF_H /* -*- mode: c -*- */
 #define GIF_H
-#include <stdio.h>
-#include <stdlib.h>
-#ifdef __cplusplus
+#ifndef __cplusplus
+# include <stdio.h>
+# include <stdlib.h>
+#else
+# include <cstdio>
+# include <cstdlib>
 extern "C" {
 #endif
 
