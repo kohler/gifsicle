@@ -9,9 +9,10 @@ AC_SUBST(GIF_MAJOR_VERSION)
 AC_SUBST(GIF_MINOR_VERSION)
 
 AC_PROG_CC
-AC_PROG_INSTALL
-
 AC_C_CONST
+if test -n "$GCC" ; then CC="$CC -Wall" ; CXX="$CXX -Wall" ; fi
+
+AC_PROG_INSTALL
 
 build_gifview=
 AC_ARG_ENABLE(gifview,

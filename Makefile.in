@@ -1,10 +1,11 @@
+PACKAGE		= gifsicle
+VERSION		= @VERSION@
+
 .SUFFIXES:
 .SUFFIXES: .c .o
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
-
-VERSION		= @VERSION@
 
 SHELL		= /bin/sh
 prefix		= @prefix@
@@ -25,8 +26,6 @@ CPPFLAGS	= @DEFS@
 X_CPPFLAGS	= @X_CFLAGS@
 PROFILING	= 
 LDFLAGS		= @LDFLAGS@
-RM		= /bin/rm -f
-MV		= /bin/mv
 X11LIB		= @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
 INSTALL		= @INSTALL@
@@ -89,13 +88,13 @@ distclean: mostlyclean
 realclean: distclean
 
 dist: mostlyclean
-	rm -rf gifsicle-$(VERSION)
-	mkdir gifsicle-$(VERSION) && chmod 0777 gifsicle-$(VERSION)
+	rm -rf $(PACKAGE)-$(VERSION)
+	mkdir $(PACKAGE)-$(VERSION) && chmod 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h \
-	gifsicle.h merge.c support.c gifsicle.c gifsicle.man \
+	gifsicle.h merge.c support.c gifsicle.c gifsicle.min \
 	gifx.h gifx.c gifview.c \
-	gifsicle-$(VERSION)
-	gtar czf gifsicle-$(VERSION).tar.gz gifsicle-$(VERSION)
-	rm -r gifsicle-$(VERSION)
+	$(PACKAGE)-$(VERSION)
+	gtar czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
+	rm -r $(PACKAGE)-$(VERSION)
