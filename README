@@ -73,7 +73,7 @@ via the Web at <http://www.gnu.org/copyleft/gpl.html>
 
    The following alternative license may be used at your discretion.
 
-   Permission is granted to copy, distribute, or alter gifsicle, in whole
+   Permission is granted to copy, distribute, or alter gifsicle, whole
 or in part, as long as source code copyright notices are kept intact, with
 the following restrictions.
 
@@ -85,6 +85,6 @@ in the context of GIF images without obtaining a license. If you plan to
 distribute GIF writing code in a shareware or commercial product, you will
 need to worry about obtaining a license.
 
-   2. Developers or distributors who plan to use Gifsicle code, in whole or
+   2. Developers or distributors who plan to use Gifsicle code, whole or
 in part, in a product whose source code will not be made available to the
 end user, MUST contact the author and obtain permission before doing so.

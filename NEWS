@@ -3,8 +3,9 @@ Gifsicle NEWS
 Version 1.2b6
 
 * License clarification in README.
+
 
-Version 1.2b5
+Version 1.2b5	12.May.1998
 
 * Longstanding bug fix in gifunopt.c: an interlaced replacement frame
   caused strange behavior when later optimizing, as the underlying data
@@ -13,13 +14,15 @@ Version 1.2b5
 * Further improvements in optimizer; specifically, -O2 works better now --
   it uses actual image data to look for an unused pixel value when
   there's no transparency specified.
+
 
-Version 1.2b4
+Version 1.2b4	12.May.1998
 
 * Improved --optimize's performance on images where successive frames had
   different transparent color indexes.
+
 
-Version 1.2b3
+Version 1.2b3	11.May.1998
 
 * Fixed bugs in --unoptimize: it would try to unoptimize images with local
   color tables and some transparency manipulations could cause a silent
@@ -38,8 +41,9 @@ Version 1.2b3
   unrecognized extensions.
 
 * Bug fix in gifview: frame selections now prevent display of entire GIF.
+
 
-Version 1.2b2
+Version 1.2b2	9.May.1998
 
 * Fixed bad dumb bug in gif.h: lack of parens around macro argument
 
@@ -47,13 +51,15 @@ Version 1.2b2
   or less
 
 * Some optimizations to Floyd-Steinberg code
+
 
-Version 1.2b1
+Version 1.2b1	8.May.1998
 
 * Added colormap options: `--colors', `--color-method', `--dither', and
   `--use-colormap'. All this code is in quantize.c.
 
 * Renamed `--color-change' to `--change-color'.
+
 
 Version 1.1.2
 
@@ -62,16 +68,21 @@ Version 1.1.2
 * Added negative frame numbers. `#-N' no longer means `#0-N'; it means the
   `N'th frame from the end (where `#-1' is the last frame). You can use
   negative frame numbers in ranges as well (e.g., `#-5--1').
+
 
-Version 1.1.1
+Version 1.1.1	22.Nov.1997
+
+* Fixed bug in CLP which segmentation-faulted on `-' arguments.
+
+
+Version 1.1	20.Nov.1997
 
 * Added `--crop' option.
 
 * Changed usage behavior on bad command lines.
 
-* Fixed bug in CLP which segmentation-faulted on `-' arguments.
 
-Version 1.0
+Version 1.0	21.Jun.1997
 
 * Added `--output/-o' option to specify output filename.
 
@@ -80,8 +91,9 @@ Version 1.0
   replacement frame, unless you give an explicit delay.
   (Before, the replacement frame's delay would be used,
   which was probably 0.) 
+
 
-Version 0.91
+Version 0.91	15.Jun.1997
 
 * Bug fix: `--optimize' didn't handle the bottom row of
   an image's changed area correctly. This could lead to
@@ -89,8 +101,9 @@ Version 0.91
   Specific change: merge.c line 744: was y < fbt, now y <= fbt.
 
 * Added `-S' as synonym for `--logical-screen'. 
+
 
-Version 0.9
+Version 0.9	12.Jun.1997
 
 * The first release.
 
