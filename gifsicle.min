@@ -146,9 +146,9 @@ can be turned off with
 .TP 5
 .OP \-\-color\-info
 '
-Same as
+Like
 .OP \%\-\-info ,
-but additionally prints information about input files' colormaps.
+but also prints information about input files' colormaps.
 .OP \%\-\-cinfo
 is a synonym for
 .OP \%\-\-color\-info .
@@ -157,9 +157,9 @@ is a synonym for
 .TP 5
 .OP \-\-extension\-info
 '
-Same as
+Like
 .OP \%\-\-info ,
-but additionally prints any unrecognized GIF extensions in a
+but also prints any unrecognized GIF extensions in a
 .BR hexdump (1)-like
 format.
 .OP \%\-\-xinfo
