@@ -55,6 +55,10 @@ typedef struct Gt_Frame {
   
   int no_extensions;
   
+  unsigned flip_horizontal: 1;
+  unsigned flip_vertical: 1;
+  unsigned rotation;
+  
 } Gt_Frame;
 
 

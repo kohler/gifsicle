@@ -101,6 +101,13 @@ static int verbosing = 0;
 #define EXTENSION_INFO_OPT	341
 #define BACKGROUND_OPT		342
 #define SAME_BACKGROUND_OPT	343
+#define FLIP_HORIZ_OPT		344
+#define FLIP_VERT_OPT		345
+#define NO_FLIP_OPT		346
+#define ROTATE_90_OPT		347
+#define ROTATE_180_OPT		348
+#define ROTATE_270_OPT		349
+#define NO_ROTATE_OPT		350
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -113,9 +120,12 @@ static int verbosing = 0;
 #define COLORMAP_ALG_TYPE	(Clp_MaxDefaultType + 9)
 
 Clp_Option options[] = {
+  
   { "append", 0, APPEND_OPT, 0, 0 },
+  
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
+  
   { "cc", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
@@ -125,32 +135,52 @@ Clp_Option options[] = {
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
-  { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
+  { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
+  
   { "delay", 'd', 'd', Clp_ArgInt, Clp_Negate },
   { "delete", 0, DELETE_OPT, 0, 0 },
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, Clp_Negate },
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
+  
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
+  { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /****/
+  
+  { "flip-horizontal", 0, FLIP_HORIZ_OPT, 0, Clp_Negate },
+  { "flip-vertical", 0, FLIP_VERT_OPT, 0, Clp_Negate },
+  { "no-flip", 0, NO_FLIP_OPT, 0, Clp_LongMinMatch, 4 }, /****/
+  
   { "help", 'h', HELP_OPT, 0, 0 },
-  { "info", 'I', INFO_OPT, 0, Clp_Negate },
+  
+  { "info", 'I', INFO_OPT, 0, Clp_Negate },  
   { "insert-before", 0, INSERT_OPT, FRAME_SPEC_TYPE, 0 },
   { "interlace", 'i', 'i', 0, Clp_Negate },
+  
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
+  
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
+  
   { "name", 'n', NAME_OPT, Clp_ArgString, Clp_Negate },
   { "netscape-workaround", 0, NETSCAPE_WORK_OPT, 0, Clp_Negate },
   { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
-  { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /*****/
+  
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
   { "output", 'o', OUTPUT_OPT, Clp_ArgString, 0 },
+  
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
+  
   { "replace", 0, REPLACE_OPT, FRAME_SPEC_TYPE, 0 },
+  { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
+  { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
+  { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
+  { "no-rotate", 0, NO_ROTATE_OPT, 0, Clp_LongMinMatch, 4 }, /****/
+  
+  { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-clip", 0, SAME_CROP_OPT, 0, 0 },
   { "same-comments", 0, SAME_COMMENTS_OPT, 0, 0 },
@@ -165,13 +195,17 @@ Clp_Option options[] = {
   { "same-position", 0, SAME_POSITION_OPT, 0, 0 },
   { "same-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
-  { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  
   { "transparent", 't', 't', COLOR_TYPE, Clp_Negate },
+  
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
+  
   { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
+  
   { "xinfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
+  
 };
 
 
@@ -209,8 +243,11 @@ initialize_def_frame(void)
   def_frame.loopcount = -2;
   def_frame.screen_width = -1;
   def_frame.screen_height = -1;
-
+  
   def_frame.no_extensions = 0;
+  
+  def_frame.flip_horizontal = 0;
+  def_frame.flip_vertical = 0;
 }
 
 
@@ -300,8 +337,8 @@ show_frame(int imagenumber, int usename)
   switch (mode) {
     
    case MERGING:
-   case EXPLODING:
    case INSERTING:
+   case EXPLODING:
     if (!frames_done) clear_frameset(frames, first_input_frame);
     frame = add_frame(frames, -1, input, gfi);
     if (usename) frame->explode_by_name = 1;
@@ -330,6 +367,7 @@ input_stream(char *name)
   FILE *f;
   Gif_Stream *gfs;
   int i;
+  Gt_Frame old_def_frame;
   int read_flags = GIF_READ_COMPRESSED;
   if (netscape_workaround) read_flags |= GIF_READ_NETSCAPE_WORKAROUND;
   
@@ -386,47 +424,43 @@ input_stream(char *name)
     }
   }
 
-  {
-    Gt_Frame old_def_frame;
-    
-    /* This code rather sucks. Here's the problem: Since we consider options
-       strictly sequentially, one at a time, we can't tell the difference
-       between these:
-       
-       --name=X g.gif          #2 h.gif   // name on g.gif #2
-                g.gif --name=X #2 h.gif   // name on g.gif #2
-       --name=X g.gif             h.gif   // name on g.gif #0
-                g.gif --name=X    h.gif   // name on h.gif #0 !!!
-       
-       Here's the solution. Mark when we CHANGE an option. After processing
-       an input GIF, mark all the options as `unchanged' -- but leave the
-       VALUES as is. Then when we read the next frame, CLEAR the unchanged
-       options. So it's like so: (* means changed, . means not.)
-
-       [-.] --name=X [X*] g.gif [X.] #2 [-.] h.gif   == name on g.gif #2
-       [-.] g.gif [-.] --name=X [X*] #2 [-.] h.gif  == name on g.gif #2
-       [-.] --name=X [X*] g.gif [X.|-.] h.gif  == name on g.gif #0
-       [-.] g.gif [-.] --name=X [X*] h.gif  == name on h.gif #0 */
- 
-    /* Clear old options from the last input stream */
-    if (!def_frame.name_change)
-      def_frame.name = 0;
-    if (!def_frame.comment_change)
-      def_frame.comment = 0;
-    if (!def_frame.background_change)
-      def_frame.background.haspixel = 0;
-    
-    old_def_frame = def_frame;
-    first_input_frame = frames->count;
-    for (i = 0; i < gfs->nimages; i++)
-      add_frame(frames, -1, gfs, gfs->images[i]);
-    def_frame = old_def_frame;
-    
-    /* Mark the options as not having changed */
-    def_frame.name_change = 0;
-    def_frame.comment_change = 0;
-    def_frame.background_change = 0;
-  }
+  /* This code rather sucks. Here's the problem: Since we consider options
+     strictly sequentially, one at a time, we can't tell the difference
+     between these:
+     
+     --name=X g.gif          #2 h.gif   // name on g.gif #2
+              g.gif --name=X #2 h.gif   // name on g.gif #2
+     --name=X g.gif             h.gif   // name on g.gif #0
+              g.gif --name=X    h.gif   // name on h.gif #0 !!!
+      
+     Here's the solution. Mark when we CHANGE an option. After processing
+     an input GIF, mark all the options as `unchanged' -- but leave the
+     VALUES as is. Then when we read the next frame, CLEAR the unchanged
+     options. So it's like so: (* means changed, . means not.)
+     
+     [-.] --name=X [X*] g.gif [X.] #2 [-.] h.gif   == name on g.gif #2
+     [-.] g.gif [-.] --name=X [X*] #2 [-.] h.gif  == name on g.gif #2
+     [-.] --name=X [X*] g.gif [X.|-.] h.gif  == name on g.gif #0
+     [-.] g.gif [-.] --name=X [X*] h.gif  == name on h.gif #0 */
+  
+  /* Clear old options from the last input stream */
+  if (!def_frame.name_change)
+    def_frame.name = 0;
+  if (!def_frame.comment_change)
+    def_frame.comment = 0;
+  if (!def_frame.background_change)
+    def_frame.background.haspixel = 0;
+  
+  old_def_frame = def_frame;
+  first_input_frame = frames->count;
+  for (i = 0; i < gfs->nimages; i++)
+    add_frame(frames, -1, gfs, gfs->images[i]);
+  def_frame = old_def_frame;
+  
+  /* Mark the options as not having changed */
+  def_frame.name_change = 0;
+  def_frame.comment_change = 0;
+  def_frame.background_change = 0;
   
   if (unoptimizing)
     if (!Gif_Unoptimize(gfs)) {
@@ -562,7 +596,7 @@ do_frames_output(char *outfile, int f1, int f2)
   int compress_immediately;
   assert(!nested_mode);
   if (verbosing) verbose_open('[', outfile ? outfile : "#stdout#");
-
+  
   compress_immediately = new_colormap_size <= 0 && !new_colormap_fixed
     && optimizing <= 0;
   out = merge_frame_interval(frames, f1, f2, compress_immediately);
@@ -612,6 +646,12 @@ output_frames(void)
 	char *imagename = 0;
 	if (fr->explode_by_name)
 	  imagename = fr->name ? fr->name : fr->image->identifier;
+	
+	/* Save the screen size from the unexploded GIF */
+	if (fr->screen_width <= 0) {
+	  fr->screen_width = fr->stream->screen_width;
+	  fr->screen_height = fr->stream->screen_height;
+	}
 	
 	explodename = explode_filename(outfile, imagenumber, imagename);
 	do_frames_output(explodename, i, i);
@@ -971,7 +1011,44 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.no_extensions = 0;
       break;
+
+      /* IMAGE DATA OPTIONS */
+
+     case FLIP_HORIZ_OPT:
+      next_frame = 1;
+      def_frame.flip_horizontal = !clp->negated;
+      break;
       
+     case FLIP_VERT_OPT:
+      next_frame = 1;
+      def_frame.flip_vertical = !clp->negated;
+      break;
+       
+     case NO_FLIP_OPT:
+      next_frame = 1;
+      def_frame.flip_horizontal = def_frame.flip_vertical = 0;
+      break;
+       
+     case NO_ROTATE_OPT:
+      next_frame = 1;
+      def_frame.rotation = 0;
+      break;
+       
+     case ROTATE_90_OPT:
+      next_frame = 1;
+      def_frame.rotation = 1;
+      break;
+       
+     case ROTATE_180_OPT:
+      next_frame = 1;
+      def_frame.rotation = 2;
+      break;
+      
+     case ROTATE_270_OPT:
+      next_frame = 1;
+      def_frame.rotation = 3;
+      break;
+       
       /* ANIMATION OPTIONS */
       
      case 'd':

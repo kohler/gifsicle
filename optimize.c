@@ -1324,9 +1324,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     {
       byte *map = prepare_colormap(new_gfi, optdata->needed_colors);
       byte *data = Gif_NewArray(byte, new_gfi->width * new_gfi->height);
-      new_gfi->image_data = data;
-      new_gfi->free_image_data = Gif_DeleteArrayFunc;
-      Gif_MakeImg(new_gfi, data, 0);
+      Gif_SetUncompressedImage(new_gfi, data, Gif_DeleteArrayFunc, 0);
       
       /* don't use transparency on first frame */
       if (optimize_level > 1 && image_index > 0)

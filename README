@@ -1,5 +1,5 @@
-GIFSICLE 1.3b1
-==============
+GIFSICLE 1.3
+============
 
 ABOUT GIFSICLE
 --------------
@@ -11,9 +11,9 @@ thing, it has more options.
 animation into its component frames; changing individual frames in an
 animation; turning interlacing on and off; adding transparency; adding
 delays, disposals, and looping to animations; adding or removing comments;
-optimizing animations for space; and changing images' colormaps, among
-other things. Extensive command-line options control which, if any, of
-these occur.
+flipping and rotation; optimizing animations for space; and changing
+images' colormaps, among other things. Extensive command-line options
+control which, if any, of these occur.
 
    Please see the man page, `gifsicle.man', for more information.
 
@@ -42,13 +42,13 @@ install gifsicle and its manual page (under /usr/local by default).
    `./configure' accepts the usual options. See `INSTALL' for more
 details.
 
-   To build gifview as well as gifsicle, give `./configure' the
-`--enable-gifview' option. To build gifdiff too, give the `--enable-gifdiff'
-option.
+   To build gifview also, give `./configure' the `--enable-gifview' option.
+To build gifdiff, give the `--enable-gifdiff' option.
 
 CHANGES SINCE 1.2
 -----------------
-   More great improvements in the optimizer. Also added gifdiff.
+   More significant optimizer improvements. Also added flipping, rotation,
+and gifdiff.
 
 CHANGES SINCE 1.1
 -----------------
@@ -102,11 +102,11 @@ the following restrictions.
 
    1. Unisys Corp. holds a patent on the Lempel-Ziv-Welch compression
 algorithm used by GIF images. When this first became an issue several years
-ago, Unisys put up a statement on their page stating that programs
-available at no cost to the user, like Gifsicle, could use LZW compression
-in the context of GIF images without obtaining a license. If you plan to
-distribute GIF writing code in a shareware or commercial product, you will
-need to worry about obtaining a license.
+ago, Unisys stated that programs available at no cost to the user, like
+Gifsicle, could use LZW compression in the context of GIF images without
+obtaining a license. If you plan to distribute GIF writing code in a
+shareware or commercial product, you will need to worry about obtaining a
+license.
 
    2. Developers or distributors who plan to use Gifsicle code, whole or in
 part, in a product whose source code will not be made available to the end

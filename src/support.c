@@ -95,11 +95,15 @@ Frame change options:\n\
 Image options: Also --no-opt/+o and --same-opt.\n\
   --background COL, -B COL      Makes COL the background color.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
+  --flip-horizontal, --flip-vertical\n\
+                                Flips the image.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
   --logical-screen WxH, -S WxH  Sets logical screen to WxH.\n\
   --name TEXT, -n TEXT          Sets next frame's name.\n\
   --position X,Y, -p X,Y        Sets frame position to (X,Y).\n\
+  --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
+                                Rotates the image.\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
 Animation options: Also --no-opt/+o and --same-opt.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
@@ -908,8 +912,7 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
   if (merger_index < nmerger - 1) next_fr = merger[merger_index + 1];
   
   /* Don't save identifiers since the frame that was to be identified, is
-     gone. */
-  /* Save comments though. */
+     gone. Save comments though. */
   if (!fr->no_comments && srci->comment && next_fr) {
     if (!next_fr->comment) next_fr->comment = Gif_NewComment();
     merge_comments(next_fr->comment, srci->comment);
@@ -925,6 +928,95 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
   if (fr->delay < 0)
     fr->delay = srci->delay;
   prev_image->delay += fr->delay;
+}
+
+
+static void
+do_flip(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
+{
+  int x, y;
+  int width = gfi->width;
+  int height = gfi->height;
+  byte **img = gfi->img;
+  
+  /* horizontal flips */
+  if (!is_vert) {
+    byte *buffer = Gif_NewArray(byte, width);
+    byte *trav;
+    for (y = 0; y < height; y++) {
+      memcpy(buffer, img[y], width);
+      trav = img[y] + width - 1;
+      for (x = 0; x < width; x++)
+	*trav-- = buffer[x];
+    }
+    gfi->left = screen_width - (gfi->left + width);
+    Gif_DeleteArray(buffer);
+  }
+  
+  /* vertical flips */
+  if (is_vert) {
+    byte **buffer = Gif_NewArray(byte *, height);
+    memcpy(buffer, img, height * sizeof(byte *));
+    for (y = 0; y < height; y++)
+      img[y] = buffer[height - y - 1];
+    gfi->top = screen_height - (gfi->top + height);
+    Gif_DeleteArray(buffer);
+  }
+}
+
+
+static void
+do_rotate(Gif_Image *gfi, int screen_width, int screen_height, int is_90)
+{
+  int x, y;
+  int width = gfi->width;
+  int height = gfi->height;
+  byte **img = gfi->img;
+  byte *new_data = Gif_NewArray(byte, width * height);
+  byte *trav = new_data;
+
+  if (is_90) {
+    for (x = 0; x < width; x++)
+      for (y = height - 1; y >= 0; y--)
+	*trav++ = img[y][x];
+    x = gfi->left;
+    gfi->left = screen_height - (gfi->top + height);
+    gfi->top = x;
+    
+  } else {
+    for (x = width - 1; x >= 0; x--)
+      for (y = 0; y < height; y++)
+	*trav++ = img[y][x];
+    y = gfi->top;
+    gfi->top = screen_width - (gfi->left + width);
+    gfi->left = y;
+  }
+
+  Gif_ReleaseUncompressedImage(gfi);
+  gfi->width = height;
+  gfi->height = width;
+  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+}
+
+
+static void
+handle_flips(Gif_Image *desti, Gt_Frame *fr)
+{
+  Gif_Stream *gfs = fr->stream;
+  Gif_CalculateScreenSize(gfs, 0);
+  
+  if (fr->flip_horizontal)
+    do_flip(desti, gfs->screen_width, gfs->screen_height, 0);
+  if (fr->flip_vertical)
+    do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
+
+  if (fr->rotation == 1)
+    do_rotate(desti, gfs->screen_width, gfs->screen_height, 1);
+  else if (fr->rotation == 2) {
+    do_flip(desti, gfs->screen_width, gfs->screen_height, 0);
+    do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
+  } else if (fr->rotation == 3)
+    do_rotate(desti, gfs->screen_width, gfs->screen_height, 0);
 }
 
 
@@ -977,7 +1069,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 	merger[0]->crop->whole_stream = 0;
   }
   
-  /* Actually merge images together */
+  /** ACTUALLY MERGE FRAMES INTO THE NEW STREAM **/
   for (i = 0; i < nmerger; i++) {
     Gt_Frame *fr = merger[i];
     Gif_Image *srci;
@@ -1002,13 +1094,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 	/* We cropped the image out of existence! Be careful not to make 0x0
            frames. */
 	fix_total_crop(dest, srci, i);
-	goto merge_done;
+	goto merge_frame_done;
       }
     } else {
       srci = fr->image;
       Gif_UncompressImage(srci);
     }
-    
+
     /* It was pretty stupid to remove this code, which I did between 1.2b6 and
        1.2 */
     old_transparent = srci->transparent;
@@ -1022,6 +1114,11 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     
     srci->transparent = old_transparent; /* restore real transparent value */
     
+    /* Flipping and rotating */
+    if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
+      handle_flips(desti, fr);
+    
+    /* Names and comments */
     if (fr->name || fr->no_name) {
       Gif_DeleteArray(desti->identifier);
       desti->identifier = Gif_CopyString(fr->name);
@@ -1057,7 +1154,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_ReleaseUncompressedImage(desti);
     }
     
-   merge_done:
+   merge_frame_done:
     /* Destroy the copied, cropped image if necessary */
     if (fr->crop)
       Gif_DeleteImage(srci);
@@ -1066,7 +1163,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     srci = fr->image;
     assert(srci->refcount > 1);
     if (--srci->refcount == 1) {
-      /* only 1 reference ==> the reference is from the stream itself */
+      /* only 1 reference ==> the reference is from the input stream itself */
       Gif_ReleaseUncompressedImage(srci);
       Gif_ReleaseCompressedImage(srci);
       fr->image = 0;
@@ -1078,6 +1175,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     Gif_DeleteStream(fr->stream);
     fr->stream = 0;
   }
+  /** END MERGE LOOP **/
   
   /* Copy stream-wide information from the last frame in the set */
   {

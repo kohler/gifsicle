@@ -32,11 +32,11 @@ INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 
 PROGRAMS	= @PROGRAMS@
-GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o clp.o @DMALLOC_O@ \
+GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o clp.o @MALLOC_O@ \
 		gifview.o
 GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o clp.o \
-		merge.o support.o quantize.o optimize.o @DMALLOC_O@ gifsicle.o
-GIFDIFFOBJS	= gifread.o giffunc.o clp.o @DMALLOC_O@ gifdiff.o
+		merge.o support.o quantize.o optimize.o @MALLOC_O@ gifsicle.o
+GIFDIFFOBJS	= gifread.o giffunc.o clp.o @MALLOC_O@ gifdiff.o
 
 all: $(PROGRAMS)
 

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.3b1
+.ds V 1.3
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -25,7 +25,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "2 Aug 1998" "Version \*V"
+.TH GIFSICLE 1 "3 Sep 1998" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
@@ -65,8 +65,7 @@ of option, start with a number sign (#). Anything else is a GIF input file.
 .B gifsicle
 reads and processes GIF input files in order. If no GIF input file is
 given, or you give the special filename `\-',
-.B gifsicle
-reads from the standard input.
+it reads from the standard input.
 '
 .SH OPTIONS
 
@@ -429,6 +428,14 @@ will shave 2 pixels off each side of the image.
 '
 .Sp
 .TP
+.OP \-\-flip\-horizontal
+.TP
+.OP \-\-flip\-vertical
+'
+Flips the following frames horizontally or vertically.
+'
+.Sp
+.TP
 .OP \-i
 .TP
 .OP \-\-interlace
@@ -480,6 +487,18 @@ Sets the following frames' positions to
 .OP \-\-no\-position
 means
 .OP \-\-position " 0,0."
+'
+.Sp
+.TP
+.OP \-\-rotate\-90
+.TP
+.OP \-\-rotate\-180
+.TP
+.OP \-\-rotate\-270
+'
+Rotates the following frames by 90, 180, or 270 degrees.
+.OP \-\-no\-rotate
+turns off any rotation.
 '
 .Sp
 .TP
@@ -565,11 +584,7 @@ levels:
 Stores only the changed portion of each image. This is the default.
 .TP 5
 .OP \-O2
-Same as
-.OP \-O1 ,
-but additionally uses transparency to shrink the file further. This will
-always do at least as well as
-.OP \-O1 .
+Also uses transparency to shrink the file further.
 .Sp
 .PP
 There is no
@@ -616,10 +631,10 @@ to
 .I color2
 in the following input GIFs. (The 
 .I color
-arguments can have the same forms as in the
+arguments have the same forms as in the
 .OP \-t
 option.) You can change multiple colors by giving the option multiple
-times. Color changes take effect globally when each input GIF is read.
+times. Color changes take effect globally when an input GIF is read.
 .OP \-\-no\-change\-color
 cancels all color changes.
 '
