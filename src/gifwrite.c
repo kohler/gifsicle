@@ -34,18 +34,23 @@ typedef struct Gif_Context {
 
 
 typedef struct Gif_Writer {
-
+  
   FILE *f;
-
+  byte *v;
+  u_int32_t pos;
+  u_int32_t cap;
+  void (*byte_putter)(byte, struct Gif_Writer *);
+  void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
+  
 } Gif_Writer;
 
 
-static void
-gifputbyte(byte b, Gif_Writer *grr)
-{
-  fputc(b, grr->f);
-}
+#define gifputbyte(b, grr)	((*grr->byte_putter)(b, grr))
+#define gifputblock(b, l, grr)	((*grr->block_putter)(b, l, grr))
 
+#ifdef __GNUC__
+__inline__
+#endif
 static void
 gifputunsigned(u_int16_t uns, Gif_Writer *grr)
 {
@@ -53,10 +58,44 @@ gifputunsigned(u_int16_t uns, Gif_Writer *grr)
   gifputbyte(uns >> 8, grr);
 }
 
+
 static void
-gifputblock(byte *block, u_int16_t size, Gif_Writer *grr)
+file_byte_putter(byte b, Gif_Writer *grr)
+{
+  fputc(b, grr->f);
+}
+
+static void
+file_block_putter(byte *block, u_int16_t size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
+}
+
+
+static void
+memory_byte_putter(byte b, Gif_Writer *grr)
+{
+  if (grr->pos >= grr->cap) {
+    grr->cap *= 2;
+    grr->v = Gif_ReArray(grr->v, byte, grr->cap);
+  }
+  if (grr->v) {
+    grr->v[grr->pos] = b;
+    grr->pos++;
+  }
+}
+
+static void
+memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
+{
+  if (grr->pos + len >= grr->cap) {
+    grr->cap *= 2;
+    grr->v = Gif_ReArray(grr->v, byte, grr->cap);
+  }
+  if (grr->v) {
+    memcpy(grr->v + grr->pos, data, len);
+    grr->pos += len;
+  }
 }
 
 
@@ -87,9 +126,9 @@ codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
 }
 
 
-static int
-imagedata(byte **img, u_int16_t width, u_int16_t height, u_int16_t num_colors,
-	  Gif_Context *gfc, Gif_Writer *grr)
+static void
+write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
+		      byte min_code_size, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
@@ -110,26 +149,13 @@ imagedata(byte **img, u_int16_t width, u_int16_t height, u_int16_t num_colors,
   
   u_int32_t hash;
   
-  byte min_code_size;
   byte need;
   
   Gif_Code *prefixes = gfc->prefix;
   byte *suffixes = gfc->suffix;
   Gif_Code *codes = gfc->code;
   
-  {
-    int i = 2;
-    min_code_size = 1;
-    while (i < num_colors) {
-      min_code_size++;
-      i *= 2;
-    }
-    if (min_code_size == 1)
-      min_code_size = 2;
-    GIF_DEBUG(("mcs(%d)", min_code_size));
-    gifputbyte(min_code_size, grr);
-  }
-    
+  gifputbyte(min_code_size, grr);
   clear_code = 1 << min_code_size;
   eoi_code = clear_code + 1;
   
@@ -261,7 +287,87 @@ imagedata(byte **img, u_int16_t width, u_int16_t height, u_int16_t num_colors,
   }
   
   gifputbyte(0, grr);
+}
+
+
+int
+image_data(byte **img, u_int16_t width, u_int16_t height, byte interlaced,
+	   u_int16_t num_colors, Gif_Context *gfc, Gif_Writer *grr)
+{
+  int i = 2;
+  byte min_code_size = 1;
+  while (i < num_colors) {
+    min_code_size++;
+    i *= 2;
+  }
+  if (min_code_size == 1)
+    min_code_size = 2;
+  
+  if (interlaced) {
+    int y;
+    byte **nimg = Gif_NewArray(byte *, height + 1);
+    if (!nimg) return 0;
+    
+    for (y = 0; y < height; y++)
+      nimg[y] = img[Gif_InterlaceLine(y, height)];
+    nimg[height] = 0;
+    
+    write_compressed_data(nimg, width, height, min_code_size, gfc, grr);
+    
+    Gif_DeleteArray(nimg);
+  } else
+    write_compressed_data(img, width, height, min_code_size, gfc, grr);
+  
   return 1;
+}
+
+
+int
+Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
+{
+  int ok = 0;
+  int ncolor;
+  Gif_Writer grr;
+  Gif_Context gfc;
+  
+  if (gfi->compressed && gfi->free_compressed)
+    (*gfi->free_compressed)((void *)gfi->compressed);
+  
+  gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
+  gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
+  gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
+  
+  grr.v = Gif_NewArray(byte, 1024);
+  grr.pos = 0;
+  grr.cap = 1024;
+  grr.byte_putter = memory_byte_putter;
+  grr.block_putter = memory_block_putter;
+  
+  if (!gfc.prefix || !gfc.suffix || !gfc.code || !grr.v)
+    goto done;
+  
+  if (gfi->local)
+    ncolor = gfi->local->ncol;
+  else if (gfs->global)
+    ncolor = gfs->global->ncol;
+  else
+    goto done;
+  
+  ok = image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
+		  ncolor, &gfc, &grr);
+  
+ done:
+  if (!ok) {
+    Gif_DeleteArray(grr.v);
+    grr.v = 0;
+  }
+  gfi->compressed = grr.v;
+  gfi->compressed_len = grr.pos;
+  gfi->free_compressed = Gif_DeleteArrayFunc;
+  Gif_DeleteArray(gfc.prefix);
+  Gif_DeleteArray(gfc.suffix);
+  Gif_DeleteArray(gfc.code);
+  return grr.v != 0;
 }
 
 
@@ -288,7 +394,7 @@ color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
 }
 
 
-static void
+static int
 gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte packed = 0;
@@ -315,19 +421,11 @@ gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   
   if (gfi->local)
     color_table(gfi->local->col, gfi->local->ncol, grr);
-
-  if (gfi->interlace) {
-    byte **img = Gif_NewArray(byte *, gfi->height + 1);
-    int y;
-    for (y = 0; y < gfi->height; y++)
-      img[y] = gfi->img[Gif_InterlaceLine(y, gfi->height)];
-    img[gfi->height] = 0;
-    
-    imagedata(img, gfi->width, gfi->height, ncolor, gfc, grr);
-    Gif_DeleteArray(img);
-    
-  } else
-    imagedata(gfi->img, gfi->width, gfi->height, ncolor, gfc, grr);
+  
+  image_data(gfi->img, gfi->width, gfi->height, gfi->interlace, ncolor,
+	     gfc, grr);
+  
+  return 1;
 }
 
 
@@ -438,15 +536,46 @@ netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
 
 
 static void
+generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
+{
+  u_int32_t pos = 0;
+  gifputbyte('!', grr);
+  gifputbyte(gfex->kind, grr);
+  if (gfex->kind == 255) {	/* an application extension */
+    int len = gfex->application ? strlen(gfex->application) : 0;
+    if (len) {
+      gifputbyte(len, grr);
+      gifputblock((byte *)gfex->application, len, grr);
+    }
+  }
+  while (pos + 255 < gfex->length) {
+    gifputbyte(255, grr);
+    gifputblock(gfex->data + pos, 255, grr);
+    pos += 255;
+  }
+  if (pos < gfex->length) {
+    u_int32_t len = gfex->length - pos;
+    gifputbyte(len, grr); 
+    gifputblock(gfex->data + pos, len, grr);
+  }
+  gifputbyte(0, grr);
+}
+
+
+static int
 gif_write(Gif_Stream *gfs, Gif_Writer *grr)
 {
+  int ok = 0;
   int i;
   Gif_Image *gfi;
+  Gif_Extension *gfex = gfs->extensions;
   Gif_Context gfc;
   
   gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
   gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
   gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
+  if (!gfc.prefix || !gfc.suffix || !gfc.code)
+    goto done;
   
   {
     byte isgif89a = 0;
@@ -471,23 +600,35 @@ gif_write(Gif_Stream *gfs, Gif_Writer *grr)
   
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
+    while (gfex && gfex->position == i) {
+      generic_extension(gfex, grr);
+      gfex = gfex->next;
+    }
     if (gfi->comment)
       comment_extensions(gfi->comment, grr);
     if (gfi->identifier)
       name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
       graphic_control_extension(gfi, grr);
-    gif_image(gfs, gfi, &gfc, grr);
+    if (!gif_image(gfs, gfi, &gfc, grr))
+      goto done;
   }
   
+  while (gfex) {
+    generic_extension(gfex, grr);
+    gfex = gfex->next;
+  }
   if (gfs->comment)
     comment_extensions(gfs->comment, grr);
   
   gifputbyte(';', grr);
+  ok = 1;
   
+ done:
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.code);
+  return ok;
 }
 
 
@@ -496,8 +637,9 @@ Gif_WriteFile(Gif_Stream *gfs, FILE *f)
 {
   Gif_Writer grr;
   grr.f = f;
-  gif_write(gfs, &grr);
-  return 0;
+  grr.byte_putter = file_byte_putter;
+  grr.block_putter = file_block_putter;
+  return gif_write(gfs, &grr);
 }
 
 

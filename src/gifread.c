@@ -44,49 +44,61 @@ typedef struct {
 typedef struct Gif_Reader {
   
   FILE *f;
-  unsigned char *v;
-  unsigned long w;
-  byte (*bytegetter)(struct Gif_Reader *);
-  void (*blockgetter)(byte *, int, struct Gif_Reader *);
+  byte *v;
+  u_int32_t w;
+  int is_record;
+  byte (*byte_getter)(struct Gif_Reader *);
+  void (*block_getter)(byte *, int, struct Gif_Reader *);
   int (*eofer)(struct Gif_Reader *);
   
 } Gif_Reader;
 
 
-#define gifgetc(grr) ((char)(*grr->bytegetter)(grr))
-#define gifgetbyte(grr) ((*grr->bytegetter)(grr))
-#define gifgetblock(ptr, size, grr) ((*grr->blockgetter)(ptr, size, grr))
-#define gifeof(grr) ((*grr->eofer)(grr))
+#define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
+#define gifgetbyte(grr) ((*grr->byte_getter)(grr))
+#define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
+#define gifeof(grr)	((*grr->eofer)(grr))
+
+#ifdef __GNUC__
+__inline__
+#endif
+static u_int16_t
+gifgetunsigned(Gif_Reader *grr)
+{
+  byte one = gifgetbyte(grr);
+  byte two = gifgetbyte(grr);
+  return one | (two << 8);
+}
 
 
 static byte
-Gif_Reader_file_bytegetter(Gif_Reader *grr)
+file_byte_getter(Gif_Reader *grr)
 {
   int i = getc(grr->f);
   return i == EOF ? 0 : (byte)i;
 }
 
 static void
-Gif_Reader_file_blockgetter(byte *p, int s, Gif_Reader *grr)
+file_block_getter(byte *p, int s, Gif_Reader *grr)
 {
   fread(p, s, 1, grr->f);
 }
 
 static int
-Gif_Reader_file_eofer(Gif_Reader *grr)
+file_eofer(Gif_Reader *grr)
 {
   return feof(grr->f);
 }
 
 
 static byte
-Gif_Reader_gifrec_bytegetter(Gif_Reader *grr)
+record_byte_getter(Gif_Reader *grr)
 {
   return grr->w ? (grr->w--, *grr->v++) : 0;
 }
 
 static void
-Gif_Reader_gifrec_blockgetter(byte *p, int s, Gif_Reader *grr)
+record_block_getter(byte *p, int s, Gif_Reader *grr)
 {
   if (s > grr->w) s = grr->w;
   memcpy(p, grr->v, s);
@@ -94,26 +106,21 @@ Gif_Reader_gifrec_blockgetter(byte *p, int s, Gif_Reader *grr)
 }
 
 static int
-Gif_Reader_gifrec_eofer(Gif_Reader *grr)
+record_eofer(Gif_Reader *grr)
 {
   return grr->w == 0;
 }
 
 
-void
-Gif_Error(char *message)
+static void
+make_data_reader(Gif_Reader *grr, byte *data, u_int32_t length)
 {
-  fprintf(stderr, "gifread: error: %s\n", message);
-  abort();
-}
-
-
-static u_int16_t
-gifgetunsigned(Gif_Reader *grr)
-{
-  byte one = gifgetbyte(grr);
-  byte two = gifgetbyte(grr);
-  return one | (two << 8);
+  grr->v = data;
+  grr->w = length;
+  grr->is_record = 1;
+  grr->byte_getter = record_byte_getter;
+  grr->block_getter = record_block_getter;
+  grr->eofer = record_eofer;
 }
 
 
@@ -149,7 +156,7 @@ one_code(Gif_Context *gfc, Gif_Code code)
 
 
 static void
-imagedata(Gif_Context *gfc, Gif_Reader *grr)
+image_data(Gif_Context *gfc, Gif_Reader *grr)
 {
   byte buffer[GIF_MAX_BLOCK];
   byte *buf;
@@ -353,10 +360,112 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
 
 
 static int
-gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi)
+read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
+{
+  byte buffer[GIF_MAX_BLOCK];
+  
+  if (grr->is_record) {
+    byte *first = grr->v;
+    byte *last;
+    
+    int i = gifgetbyte(grr);
+    while (i > 0) {
+      gifgetblock(buffer, i, grr);
+      i = gifgetbyte(grr);
+    }
+    last = grr->v;
+    
+    gfi->compressed_len = last - first;
+    if (read_flags & GIF_READ_CONST_RECORD) {
+      gfi->compressed = first;
+      gfi->free_compressed = 0;
+    } else {
+      gfi->compressed = Gif_NewArray(byte, gfi->compressed_len);
+      gfi->free_compressed = Gif_DeleteArrayFunc;
+      if (!gfi->compressed) return 0;
+      memcpy(gfi->compressed, first, gfi->compressed_len);
+    }
+    
+  } else {
+    /* non-record; have to read it block by block. */
+    u_int32_t comp_cap = 1024;
+    u_int32_t comp_len = 0;
+    byte *comp = Gif_NewArray(byte, comp_cap);
+    int i = gifgetbyte(grr);
+    if (!comp) return 0;
+    
+    while (i > 0) {
+      /* add 2 before check so we don't have to check after loop when appending
+	 0 block */
+      if (comp_len + i + 2 > comp_cap) {
+	comp_cap *= 2;
+	comp = Gif_ReArray(comp, byte, comp_cap);
+	if (!comp) return 0;
+      }
+      comp[comp_len] = i;
+      gifgetblock(comp + comp_len + 1, i, grr);
+      comp_len += i + 1;
+      i = gifgetbyte(grr);
+    }
+    comp[comp_len++] = 0;
+    
+    gfi->compressed = comp;
+    gfi->compressed_len = comp_len;
+    gfi->free_compressed = Gif_DeleteArrayFunc;
+  }
+  
+  return 1;
+}
+
+
+static int
+uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
+{
+  GIF_DEBUG(("%dx%d", gfi->width, gfi->height));
+  gfi->image_data = Gif_NewArray(byte, gfi->width * gfi->height);
+  gfi->free_image_data = Gif_DeleteArrayFunc;
+  if (!gfi->image_data) return 0;
+  if (!Gif_MakeImg(gfi, gfi->image_data, gfi->interlace)) return 0;
+  
+  gfc->width = gfi->width;
+  gfc->height = gfi->height;
+  gfc->image = gfi->image_data;
+  gfc->maximage = gfi->image_data + gfi->width * gfi->height;
+  image_data(gfc, grr);
+  return 1;
+}
+
+
+int
+Gif_UncompressImage(Gif_Image *gfi)
+{
+  Gif_Context gfc;
+  Gif_Stream fake_gfs;
+  Gif_Reader grr;
+  int ok = 0;
+  
+  fake_gfs.errors = 0;
+  gfc.stream = &fake_gfs;
+  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
+  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
+  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
+  
+  if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
+    make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
+    ok = uncompress_image(&gfc, gfi, &grr);
+  }
+  
+  Gif_DeleteArray(gfc.prefix);
+  Gif_DeleteArray(gfc.suffix);
+  Gif_DeleteArray(gfc.length);
+  return ok && !fake_gfs.errors;
+}
+
+
+static int
+gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
      /* returns 0 on memory error */
 {
-  byte interlace;
   byte packed;
   
   gfi->left = gifgetunsigned(grr);
@@ -373,19 +482,31 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi)
     if (!gfi->local->col) return 0;
   }
   
-  interlace = (packed & 0x40) != 0;
-  gfi->interlace = interlace;
+  gfi->interlace = (packed & 0x40) != 0;
   
-  GIF_DEBUG(("%dx%d", gfi->width, gfi->height));
-  gfi->imagedata = Gif_NewArray(byte, gfi->width * gfi->height);
-  if (!gfi->imagedata) return 0;
-  if (!Gif_MakeImg(gfi, gfi->imagedata, interlace)) return 0;
+  /* Keep the compressed data if asked */
+  if (read_flags & GIF_READ_COMPRESSED) {
+    if (!read_compressed_image(gfi, grr, read_flags))
+      return 0;
+    if (read_flags & GIF_READ_UNCOMPRESSED) {
+      Gif_Reader new_grr;
+      make_data_reader(&new_grr, gfi->compressed, gfi->compressed_len);
+      if (!uncompress_image(gfc, gfi, &new_grr))
+	return 0;
+    }
+  } else if (read_flags & GIF_READ_UNCOMPRESSED) {
+    if (!uncompress_image(gfc, gfi, grr))
+      return 0;
+  } else {
+    /* skip over the image */
+    byte buffer[GIF_MAX_BLOCK];
+    int i = gifgetbyte(grr);
+    while (i > 0) {
+      gifgetblock(buffer, i, grr);
+      i = gifgetbyte(grr);
+    }
+  }
   
-  gfc->width = gfi->width;
-  gfc->height = gfi->height;
-  gfc->image = gfi->imagedata;
-  gfc->maximage = gfi->imagedata + gfi->width * gfi->height;
-  imagedata(gfc, grr);
   return 1;
 }
 
@@ -447,28 +568,71 @@ suck_data(char *data, int *store_len, Gif_Reader *grr)
 }
 
 
-static void
-application_extension(Gif_Stream *gfs, Gif_Image *gfi, Gif_Reader *grr)
+static int
+unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
+		  Gif_Reader *grr)
 {
+  byte block_len = gifgetbyte(grr);
+  byte *data = 0;
+  byte data_len = 0;
+  Gif_Extension *gfex = 0;
+
+  while (block_len > 0) {
+    if (data) data = Gif_ReArray(data, byte, data_len + block_len);
+    else data = Gif_NewArray(byte, block_len);
+    if (!data) goto done;
+    gifgetblock(data + data_len, block_len, grr);
+    data_len += block_len;
+    block_len = gifgetbyte(grr);
+  }
+  
+  gfex = Gif_NewExtension(kind, app_name);
+  if (gfex) {
+    gfex->data = data;
+    gfex->length = data_len;
+    Gif_AddExtension(gfs, gfex, position);
+  }
+  
+ done:
+  if (!gfex) Gif_DeleteArray(data);
+  while (block_len > 0) {
+    byte buffer[GIF_MAX_BLOCK];
+    gifgetblock(buffer, block_len, grr);
+    block_len = gifgetbyte(grr);
+  }
+  return gfex != 0;
+}
+
+
+static int
+application_extension(Gif_Stream *gfs, Gif_Image *gfi, int position,
+		      Gif_Reader *grr)
+{
+  byte buffer[GIF_MAX_BLOCK + 1];
   byte len = gifgetbyte(grr);
-  byte crap[GIF_MAX_BLOCK];
+  gifgetblock(buffer, len, grr);
   
   /* Read the Netscape loop extension. */
-  if (len == 11) {
-    gifgetblock(crap, 11, grr);
+  if (len == 11 && memcmp(buffer, "NETSCAPE2.0", 11) == 0) {
+    
     len = gifgetbyte(grr);
-    if (memcmp(crap, "NETSCAPE2.0", 11) == 0 && len == 3) {
+    if (len == 3) {
       gifgetbyte(grr); /* throw away the 1 */
       gfs->loopcount = gifgetunsigned(grr);
       len = gifgetbyte(grr);
+      if (len) gfs->errors++;
     } else
-      gfs->odd_app_extensions++;
-  } else
-    gfs->odd_app_extensions++;
-  
-  while (len > 0) {
-    gifgetblock(crap, len, grr);
-    len = gifgetbyte(grr);
+      gfs->errors++;
+    
+    while (len > 0) {
+      gifgetblock(buffer, len, grr);
+      len = gifgetbyte(grr);
+    }
+    return 1;
+    
+  } else {
+    buffer[len] = 0;
+    return unknown_extension(gfs, 0xFF, buffer, position, grr);
   }
 }
 
@@ -490,12 +654,13 @@ comment_extension(Gif_Image *gfi, Gif_Reader *grr)
 
 
 static Gif_Stream *
-gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
+gif_read(Gif_Reader *grr, int read_flags)
 {
   Gif_Stream *gfs;
   Gif_Image *gfi;
-  Gif_Image *newgfi;
+  Gif_Image *new_gfi;
   Gif_Context gfc;
+  int extension_position = 0;
   int ok = 0;
   
   if (gifgetc(grr) != 'G' ||
@@ -513,7 +678,7 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
   gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
-
+  
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
   
@@ -534,20 +699,21 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
       
       gfi->identifier = last_name;
       last_name = 0;
-      if (!gif_image(grr, &gfc, gfi) || !Gif_AddImage(gfs, gfi)) {
+      if (!gif_image(grr, &gfc, gfi, read_flags) || !Gif_AddImage(gfs, gfi)) {
 	Gif_DeleteImage(gfi);
 	goto done;
       }
       
-      newgfi = Gif_NewImage();
-      if (!newgfi) goto done;
+      new_gfi = Gif_NewImage();
+      if (!new_gfi) goto done;
       
-      if (graphic_extension_long_scope) {
-	newgfi->transparent = gfi->transparent;
-	newgfi->delay = gfi->delay;
-	newgfi->disposal = gfi->disposal;
+      if (read_flags & GIF_READ_NETSCAPE_WORKAROUND) {
+	new_gfi->transparent = gfi->transparent;
+	new_gfi->delay = gfi->delay;
+	new_gfi->disposal = gfi->disposal;
       }
-      gfi = newgfi;
+      gfi = new_gfi;
+      extension_position++;
       break;
       
      case ';': /* terminator */
@@ -573,21 +739,13 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
 	break;
 	
        case 0xFF:
-	application_extension(gfs, gfi, grr);
+	application_extension(gfs, gfi, extension_position, grr);
 	break;
 	
        default:
-	 {
-	   byte crap[GIF_MAX_BLOCK];
-	   byte len = gifgetbyte(grr);
-	   while (len > 0) {
-	     gifgetblock(crap, len, grr);
-	     len = gifgetbyte(grr);
-	   }
-	   gfs->odd_extensions++;
-	   break;
-	 }
-	
+	unknown_extension(gfs, block, 0, extension_position, grr);
+	break;
+
       }
       break;
       
@@ -620,34 +778,26 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
 
 
 Gif_Stream *
-Gif_FullReadFile(FILE *f, int graphic_extension_long_scope)
+Gif_FullReadFile(FILE *f, int read_flags)
 {
   Gif_Reader grr;
   grr.f = f;
-  grr.bytegetter = Gif_Reader_file_bytegetter;
-  grr.blockgetter = Gif_Reader_file_blockgetter;
-  grr.eofer = Gif_Reader_file_eofer;
-  return gif_read(&grr, graphic_extension_long_scope);
+  grr.is_record = 0;
+  grr.byte_getter = file_byte_getter;
+  grr.block_getter = file_block_getter;
+  grr.eofer = file_eofer;
+  return gif_read(&grr, read_flags);
 }
 
 
 Gif_Stream *
-Gif_ReadFile(FILE *f)
-{
-  return Gif_FullReadFile(f, 0);
-}
-
-
-Gif_Stream *
-Gif_ReadRecord(Gif_Record *gifrec)
+Gif_FullReadRecord(Gif_Record *gifrec, int read_flags)
 {
   Gif_Reader grr;
-  grr.v = gifrec->data;
-  grr.w = gifrec->length;
-  grr.bytegetter = Gif_Reader_gifrec_bytegetter;
-  grr.blockgetter = Gif_Reader_gifrec_blockgetter;
-  grr.eofer = Gif_Reader_gifrec_eofer;
-  return gif_read(&grr, 0);
+  make_data_reader(&grr, gifrec->data, gifrec->length);
+  if (read_flags & GIF_READ_CONST_RECORD)
+    read_flags |= GIF_READ_COMPRESSED;
+  return gif_read(&grr, read_flags);
 }
 
 

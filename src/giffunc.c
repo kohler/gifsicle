@@ -31,7 +31,8 @@ Gif_NewStream(void)
   gfs->comment = 0;
   gfs->images = 0;
   gfs->nimages = gfs->imagescap = 0;
-  gfs->errors = gfs->odd_extensions = gfs->odd_app_extensions = 0;
+  gfs->extensions = 0;
+  gfs->errors = 0;
   gfs->userflags = 0;
   gfs->refcount = 0;
   return gfs;
@@ -47,12 +48,16 @@ Gif_NewImage(void)
   gfi->comment = 0;
   gfi->local = 0;
   gfi->transparent = -1;
-  gfi->disposal = 0;
+  gfi->disposal = GIF_DISPOSAL_NONE;
   gfi->delay = 0;
   gfi->left = gfi->top = gfi->width = gfi->height = 0;
   gfi->interlace = 0;
   gfi->img = 0;
-  gfi->imagedata = 0;
+  gfi->image_data = 0;
+  gfi->free_image_data = 0;
+  gfi->compressed_len = 0;
+  gfi->compressed = 0;
+  gfi->free_compressed = 0;
   gfi->userdata = 0;
   gfi->refcount = 0;
   return gfi;
@@ -94,6 +99,25 @@ Gif_NewComment(void)
   gfcom->len = 0;
   gfcom->count = gfcom->cap = 0;
   return gfcom;
+}
+
+
+Gif_Extension *
+Gif_NewExtension(int kind, char *app_name)
+{
+  Gif_Extension *gfex = Gif_New(Gif_Extension);
+  if (!gfex) return 0;
+  gfex->kind = kind;
+  gfex->application = Gif_CopyString(app_name);
+  gfex->data = 0;
+  gfex->position = 0;
+  gfex->stream = 0;
+  gfex->next = 0;
+  if (!gfex->application && app_name) {
+    Gif_DeleteExtension(gfex);
+    return 0;
+  }
+  return gfex;
 }
 
 
@@ -141,6 +165,22 @@ Gif_AddComment(Gif_Comment *gfcom, char *x, int xlen)
   gfcom->str[ gfcom->count ] = x;
   gfcom->len[ gfcom->count ] = xlen;
   gfcom->count++;
+  return 1;
+}
+
+
+int
+Gif_AddExtension(Gif_Stream *gfs, Gif_Extension *gfex, int pos)
+{
+  Gif_Extension *prev, *trav;
+  if (gfex->stream) return 0;
+  for (prev = 0, trav = gfs->extensions;
+       trav && trav->position <= pos;
+       prev = trav, trav = trav->next)
+    ;
+  if (prev) prev->next = gfex;
+  else gfs->extensions = gfex;
+  gfex->next = trav;
   return 1;
 }
 
@@ -225,9 +265,10 @@ Gif_CopyImage(Gif_Image *src)
   
   dest->interlace = src->interlace;
   dest->img = Gif_NewArray(byte *, dest->height + 1);
-  dest->imagedata = Gif_NewArray(byte, dest->width * dest->height);
-  if (!dest->img || !dest->imagedata) goto failure;
-  for (i = 0, data = dest->imagedata; i < dest->height; i++) {
+  dest->image_data = Gif_NewArray(byte, dest->width * dest->height);
+  dest->free_image_data = Gif_DeleteArrayFunc;
+  if (!dest->img || !dest->image_data) goto failure;
+  for (i = 0, data = dest->image_data; i < dest->height; i++) {
     memcpy(data, src->img[i], dest->width);
     dest->img[i] = data;
     data += dest->width;
@@ -246,6 +287,7 @@ Gif_CopyImage(Gif_Image *src)
 void
 Gif_DeleteStream(Gif_Stream *gfs)
 {
+  Gif_Extension *gfex;
   int i;
   if (!gfs) return;
   if (--gfs->refcount > 0) return;
@@ -256,6 +298,14 @@ Gif_DeleteStream(Gif_Stream *gfs)
   for (i = 0; i < gfs->nimages; i++)
     Gif_DeleteImage(gfs->images[i]);
   Gif_DeleteArray(gfs->images);
+
+  gfex = gfs->extensions;
+  while (gfex) {
+    Gif_Extension *next = gfex->next;
+    gfex->stream = 0;
+    Gif_DeleteExtension(gfex);
+    gfex = next;
+  }
   
   Gif_Delete(gfs);
 }
@@ -270,8 +320,11 @@ Gif_DeleteImage(Gif_Image *gfi)
   Gif_DeleteArray(gfi->identifier);
   Gif_DeleteComment(gfi->comment);
   Gif_DeleteColormap(gfi->local);
-  Gif_DeleteArray(gfi->imagedata);
+  if (gfi->image_data && gfi->free_image_data)
+    (*gfi->free_image_data)((void *)gfi->image_data);
   Gif_DeleteArray(gfi->img);
+  if (gfi->compressed && gfi->free_compressed)
+    (*gfi->free_compressed)((void *)gfi->compressed);
   Gif_Delete(gfi);
 }
 
@@ -295,6 +348,25 @@ Gif_DeleteComment(Gif_Comment *gfcom)
   Gif_DeleteArray(gfcom->str);
   Gif_DeleteArray(gfcom->len);
   Gif_Delete(gfcom);
+}
+
+
+void
+Gif_DeleteExtension(Gif_Extension *gfex)
+{
+  Gif_DeleteArray(gfex->data);
+  if (gfex->stream) {
+    Gif_Stream *gfs = gfex->stream;
+    Gif_Extension *prev, *trav;
+    for (prev = 0, trav = gfs->extensions;
+	 trav && trav != gfex;
+	 prev = trav, trav = trav->next)
+      ;
+    if (trav) {
+      if (prev) prev->next = trav->next;
+      else gfs->extensions = trav->next;
+    }
+  }
 }
 
 
@@ -322,6 +394,28 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
       return gfs->images[i];
   
   return 0;
+}
+
+
+void
+Gif_ReleaseCompressedImage(Gif_Image *gfi)
+{
+  if (gfi->compressed && gfi->free_compressed)
+    (*gfi->free_compressed)(gfi->compressed);
+  gfi->compressed = 0;
+  gfi->compressed_len = 0;
+  gfi->free_compressed = 0;
+}
+
+void
+Gif_ReleaseUncompressedImage(Gif_Image *gfi)
+{
+  Gif_DeleteArray(gfi->img);
+  if (gfi->image_data && gfi->free_image_data)
+    (*gfi->free_image_data)(gfi->image_data);
+  gfi->img = 0;
+  gfi->image_data = 0;
+  gfi->free_image_data = 0;
 }
 
 
@@ -353,7 +447,7 @@ Gif_InterlaceLine(int line, int height)
 
 
 int
-Gif_MakeImg(Gif_Image *gfi, byte *imagedata, int data_interlaced)
+Gif_MakeImg(Gif_Image *gfi, byte *image_data, int data_interlaced)
 {
   int i;
   int width = gfi->width;
@@ -364,10 +458,10 @@ Gif_MakeImg(Gif_Image *gfi, byte *imagedata, int data_interlaced)
   
   if (data_interlaced)
     for (i = 0; i < height; i++)
-      img[ Gif_InterlaceLine(i, height) ] = imagedata + width * i;
+      img[ Gif_InterlaceLine(i, height) ] = image_data + width * i;
   else
     for (i = 0; i < height; i++)
-      img[i] = imagedata + width * i;
+      img[i] = image_data + width * i;
   img[height] = 0;
   
   Gif_DeleteArray(gfi->img);

@@ -22,8 +22,8 @@ extern "C" {
 #include <stdlib.h>
 
 #define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	92
-#define GIF_VERSION		"0.92"
+#define GIF_MINOR_VERSION	93
+#define GIF_VERSION		"0.93"
 
 #ifndef BYTE
 #define BYTE
@@ -35,6 +35,7 @@ typedef struct Gif_Stream	Gif_Stream;
 typedef struct Gif_Image	Gif_Image;
 typedef struct Gif_Colormap	Gif_Colormap;
 typedef struct Gif_Comment	Gif_Comment;
+typedef struct Gif_Extension	Gif_Extension;
 typedef struct Gif_Record	Gif_Record;
 
 
@@ -55,9 +56,9 @@ struct Gif_Stream {
   int nimages;
   int imagescap;
   
+  Gif_Extension *extensions;
+  
   unsigned errors;
-  unsigned odd_extensions;
-  unsigned odd_app_extensions;
   
   int userflags;
   int refcount;
@@ -67,17 +68,13 @@ struct Gif_Stream {
 Gif_Stream *	Gif_NewStream(void);
 void		Gif_DeleteStream(Gif_Stream *);
 
-Gif_Stream *	Gif_ReadFile(FILE *);
-int 		Gif_WriteFile(Gif_Stream *, FILE *);
-Gif_Stream *	Gif_ReadRecord(Gif_Record *);
-
 Gif_Stream *	Gif_CopyStreamSkeleton(Gif_Stream *);
 
 #define		Gif_ScreenWidth(gfs)		((gfs)->screen_width)
 #define		Gif_ScreenHeight(gfs)		((gfs)->screen_height)
 #define		Gif_ImageCount(gfs)		((gfs)->nimages)
 
-void		Gif_Unoptimize(Gif_Stream *);
+int		Gif_Unoptimize(Gif_Stream *);
 
 
 /** GIF_IMAGE **/
@@ -100,13 +97,23 @@ struct Gif_Image {
   
   byte interlace;
   byte **img;			/* img[y][x] == image byte (x,y) */
-  byte *imagedata;
+  byte *image_data;
+  void (*free_image_data)(void *);
+  
+  u_int32_t compressed_len;
+  byte *compressed;
+  void (*free_compressed)(void *);
   
   void *userdata;
   int refcount;
   
 };
 
+#define		GIF_DISPOSAL_NONE		0
+#define		GIF_DISPOSAL_ASIS		1
+#define		GIF_DISPOSAL_BACKGROUND		2
+#define		GIF_DISPOSAL_PREVIOUS		3
+  
 Gif_Image *	Gif_NewImage(void);
 void		Gif_DeleteImage(Gif_Image *);
 
@@ -124,6 +131,11 @@ int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
 
 int		Gif_MakeImg(Gif_Image *, byte *, int data_interlaced);
+
+int		Gif_UncompressImage(Gif_Image *);
+int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
+void		Gif_ReleaseUncompressedImage(Gif_Image *);
+void		Gif_ReleaseCompressedImage(Gif_Image *);
 
 
 /** GIF_COLORMAP **/
@@ -167,23 +179,51 @@ struct Gif_Comment {
 
 Gif_Comment *	Gif_NewComment(void);
 void		Gif_DeleteComment(Gif_Comment *);
-
 int		Gif_AddComment(Gif_Comment *, char *, int);
 
 
-/** MISCELLANEOUS **/
+/** GIF_EXTENSION **/
 
+struct Gif_Extension {
+
+  int kind;
+  char *application;
+  byte *data;
+  u_int32_t length;
+  int position;
+  
+  Gif_Stream *stream;
+  Gif_Extension *next;
+  
+};
+
+
+Gif_Extension *	Gif_NewExtension(int, char *);
+void		Gif_DeleteExtension(Gif_Extension *);
+int		Gif_AddExtension(Gif_Stream *, Gif_Extension *, int);
+
+
+/** READING AND WRITING **/
 
 struct Gif_Record {
   unsigned char *data;
   u_int32_t length;
 };
 
-Gif_Stream *	Gif_FullReadFile(FILE *, int netscape_workaround);
+#define GIF_READ_NETSCAPE_WORKAROUND	(1)
+#define GIF_READ_COMPRESSED		(2)
+#define GIF_READ_UNCOMPRESSED		(4)
+#define GIF_READ_CONST_RECORD		(8)
+
+#define		Gif_ReadFile(f)   Gif_FullReadFile((f), GIF_READ_UNCOMPRESSED)
+#define		Gif_ReadRecord(r) Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED)
+
+Gif_Stream *	Gif_FullReadFile(FILE *, int read_flags);
+Gif_Stream *	Gif_FullReadRecord(Gif_Record *, int read_flags);
+int 		Gif_WriteFile(Gif_Stream *, FILE *);
 
 int		Gif_InterlaceLine(int y, int height);
 char *		Gif_CopyString(char *);
-void		Gif_Error(char *);
 
 #ifdef GIF_DEBUGGING
 #define		GIF_DEBUG(x)			Gif_Debug x
@@ -197,7 +237,9 @@ void 		Gif_Debug(char *x, ...);
 #define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
 #define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void*)(p),sizeof(t)*(n))))
 #define Gif_Delete(p)		(free((void *)(p)))
+#define Gif_DeleteFunc		(&free)
 #define Gif_DeleteArray(p)	(free((void *)(p)))
+#define Gif_DeleteArrayFunc	(&free)
 #endif
 
 typedef u_int16_t Gif_Code;
