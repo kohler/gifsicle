@@ -118,7 +118,7 @@ realclean: distclean
 $(PACKAGE)-$(VERSION).tar.gz:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
-	cp INSTALL Makefile.in NEWS README configure configure.in \
+	cp INSTALL Makefile.in NEWS README README.win configure configure.in \
 	install-sh mkinstalldirs \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h dmalloc.c dmalloc.h fmalloc.c \
