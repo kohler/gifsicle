@@ -130,12 +130,13 @@ int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
 #define		Gif_ImageUserData(gfi)		((gfi)->userdata)
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
 
-int		Gif_MakeImg(Gif_Image *, byte *, int data_interlaced);
-
 int		Gif_UncompressImage(Gif_Image *);
 int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
 void		Gif_ReleaseUncompressedImage(Gif_Image *);
 void		Gif_ReleaseCompressedImage(Gif_Image *);
+int		Gif_SetUncompressedImage(Gif_Image *, byte *data,
+			void (*free_data)(void *), int data_interlaced);
+int		Gif_CreateUncompressedImage(Gif_Image *);
 
 int		Gif_ClipImage(Gif_Image *, int l, int t, int w, int h);
 

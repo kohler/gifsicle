@@ -140,8 +140,8 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi,
   if (!new_data) return 0;
   
   /* Oops! May need to uncompress it */
-  if (!gfi->img)
-    Gif_UncompressImage(gfi);
+  Gif_UncompressImage(gfi);
+  Gif_ReleaseCompressedImage(gfi);
   
   /* Treat a full replacement frame (as big as the screen and no transparency)
      specially, since we can do it a lot faster. */
@@ -185,21 +185,13 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi,
     put_background_in_screen(gfs, gfi, old_data, transparent);
   }
   
-  if (gfi->free_image_data && gfi->image_data)
-    (*gfi->free_image_data)((void *)gfi->image_data);
-  if (gfi->free_compressed && gfi->compressed)
-    (*gfi->free_compressed)((void *)gfi->compressed);
   gfi->left = 0;
   gfi->top = 0;
   gfi->width = gfs->screen_width;
   gfi->height = gfs->screen_height;
   gfi->disposal = GIF_DISPOSAL_BACKGROUND;
   gfi->transparent = transparent;
-  gfi->image_data = new_data;
-  gfi->free_image_data = Gif_DeleteArrayFunc;
-  gfi->compressed = 0;
-  gfi->free_compressed = 0;
-  Gif_MakeImg(gfi, gfi->image_data, 0);
+  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
   
   *old_transparent_store = transparent;
   *old_data_store = old_data;

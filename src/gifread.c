@@ -444,11 +444,7 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 static int
 uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
 {
-  gfi->image_data = Gif_NewArray(byte, gfi->width * gfi->height);
-  gfi->free_image_data = Gif_DeleteArrayFunc;
-  if (!gfi->image_data) return 0;
-  if (!Gif_MakeImg(gfi, gfi->image_data, gfi->interlace)) return 0;
-  
+  if (!Gif_CreateUncompressedImage(gfi)) return 0;
   gfc->width = gfi->width;
   gfc->height = gfi->height;
   gfc->image = gfi->image_data;

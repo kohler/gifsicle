@@ -227,7 +227,7 @@ Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
     if (screen_width < gfi->width) screen_width = gfi->width;
     if (screen_height < gfi->height) screen_height = gfi->height;
   }
-
+  
   if (screen_width == 0) {
     screen_width = 640;
     screen_height = 480;
@@ -589,13 +589,18 @@ Gif_InterlaceLine(int line, int height)
 
 
 int
-Gif_MakeImg(Gif_Image *gfi, byte *image_data, int data_interlaced)
+Gif_SetUncompressedImage(Gif_Image *gfi, byte *image_data,
+			 void (*free_data)(void *), int data_interlaced)
 {
   int i;
   int width = gfi->width;
   int height = gfi->height;
+  byte **img;
   
-  byte **img = Gif_NewArray(byte *, height + 1);
+  Gif_ReleaseUncompressedImage(gfi);
+  if (!image_data) return 0;
+  
+  img = Gif_NewArray(byte *, height + 1);
   if (!img) return 0;
   
   if (data_interlaced)
@@ -606,9 +611,18 @@ Gif_MakeImg(Gif_Image *gfi, byte *image_data, int data_interlaced)
       img[i] = image_data + width * i;
   img[height] = 0;
   
-  Gif_DeleteArray(gfi->img);
   gfi->img = img;
+  gfi->image_data = image_data;
+  gfi->free_image_data = free_data;
   return 1;
+}
+
+int
+Gif_CreateUncompressedImage(Gif_Image *gfi)
+{
+  byte *data = Gif_NewArray(byte, gfi->width * gfi->height);
+  return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
+				  gfi->interlace);
 }
 
 
