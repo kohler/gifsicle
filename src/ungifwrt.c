@@ -235,7 +235,7 @@ real_write_image_data(byte **img, uint16_t width, uint16_t height,
   Gif_Code output_code;
   Gif_Code clear_code;
   Gif_Code eoi_code;
-  Gif_Code bump_code;
+#define CUR_BUMP_CODE (1 << cur_code_bits)
   byte suffix;
   
   Gif_Code *rle_next = gfc->rle_next;
@@ -285,21 +285,18 @@ real_write_image_data(byte **img, uint16_t width, uint16_t height,
       
       cur_code_bits = min_code_bits + 1;
       next_code = eoi_code + 1;
-      bump_code = clear_code << 1;
       
       for (c = 0; c < clear_code; c++)
 	rle_next[c] = clear_code;
       
-    } else if (next_code > bump_code) {
+    } else if (next_code > CUR_BUMP_CODE) {
       
       /* bump up compression size */
       if (cur_code_bits == GIF_MAX_CODE_BITS) {
 	output_code = clear_code;
 	continue;
-      } else {
+      } else
 	cur_code_bits++;
-	bump_code <<= 1;
-      }
       
     } else if (output_code == eoi_code)
       break;
