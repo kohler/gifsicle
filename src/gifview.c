@@ -18,6 +18,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
 #include <X11/keysym.h>
+#include <X11/cursorfont.h>
 #ifdef HAVE_SYS_SELECT_H
 # include <sys/select.h>
 #endif
@@ -35,24 +36,26 @@
 #define EXTERN extern
 #endif
 
+#define SAVE_FRAMES 10
+
 /*****
  * TIME STUFF (from xwrits)
  **/
 
-#define MicroPerSec 1000000
+#define MICRO_PER_SEC 1000000
 
 #define xwADDTIME(result, a, b) do { \
 	(result).tv_sec = (a).tv_sec + (b).tv_sec; \
-	if (((result).tv_usec = (a).tv_usec + (b).tv_usec) >= MicroPerSec) { \
+	if (((result).tv_usec = (a).tv_usec + (b).tv_usec) >= MICRO_PER_SEC) { \
 		(result).tv_sec++; \
-		(result).tv_usec -= MicroPerSec; \
+		(result).tv_usec -= MICRO_PER_SEC; \
 	} } while (0)
 
 #define xwSUBTIME(result, a, b) do { \
 	(result).tv_sec = (a).tv_sec - (b).tv_sec; \
 	if (((result).tv_usec = (a).tv_usec - (b).tv_usec) < 0) { \
 		(result).tv_sec--; \
-		(result).tv_usec += MicroPerSec; \
+		(result).tv_usec += MICRO_PER_SEC; \
 	} } while (0)
 
 #define xwSETMINTIME(a, b) do { \
@@ -96,6 +99,8 @@ typedef struct Gt_Viewer {
   int depth;
   Colormap colormap;
   Gif_XContext *gfx;
+  Cursor arrow_cursor;
+  Cursor wait_cursor;
   
   Window parent;
   int top_level;
@@ -111,13 +116,12 @@ typedef struct Gt_Viewer {
   char *name;
   
   Gif_Image **im;
-  int *im_number;
   int nim;
-  int im_cap;
   
   Pixmap pixmap;
   int im_pos;
   int was_unoptimized;
+  int free_pixmaps;
   
   Pixmap *unoptimized_pixmaps;
   
@@ -138,6 +142,8 @@ const char *program_name = "gifview";
 static char *cur_display_name = 0;
 static Display *cur_display = 0;
 static char *cur_geometry_spec = 0;
+static Cursor cur_arrow_cursor = 0;
+static Cursor cur_wait_cursor = 0;
 static const char *cur_resource_name;
 static Window cur_use_window = None;
 static const char *cur_background_color = "black";
@@ -416,19 +422,28 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
       viewer->gfx->transparent_pixel = pixel;
     }
   }
+
+  if (!cur_arrow_cursor) {
+    cur_arrow_cursor = XCreateFontCursor(display, XC_left_ptr);
+    cur_wait_cursor = XCreateFontCursor(display, XC_watch);
+  }
+  viewer->arrow_cursor = cur_arrow_cursor;
+  viewer->wait_cursor = cur_wait_cursor;
   
   viewer->being_deleted = 0;
   viewer->gfs = gfs;
+  gfs->refcount++;
   viewer->name = name;
-  viewer->im_cap = Gif_ImageCount(gfs);
-  viewer->im = Gif_NewArray(Gif_Image *, viewer->im_cap);
-  viewer->im_number = Gif_NewArray(int, viewer->im_cap);
-  viewer->nim = 0;
+  viewer->nim = Gif_ImageCount(gfs);
+  viewer->im = Gif_NewArray(Gif_Image *, viewer->nim);
+  for (i = 0; i < viewer->nim; i++)
+    viewer->im[i] = gfs->images[i];
   viewer->pixmap = None;
   viewer->im_pos = -1;
   viewer->was_unoptimized = 0;
-  viewer->unoptimized_pixmaps = Gif_NewArray(Pixmap, viewer->im_cap);
-  for (i = 0; i < viewer->im_cap; i++)
+  viewer->free_pixmaps = 1;
+  viewer->unoptimized_pixmaps = Gif_NewArray(Pixmap, viewer->nim);
+  for (i = 0; i < viewer->nim; i++)
     viewer->unoptimized_pixmaps[i] = None;
   viewer->next = viewers;
   viewers = viewer;
@@ -449,7 +464,7 @@ delete_viewer(Gt_Viewer *viewer)
   int i;
   if (viewer->pixmap && !viewer->was_unoptimized)
     XFreePixmap(viewer->display, viewer->pixmap);
-  for (i = 0; i < viewer->im_cap; i++)
+  for (i = 0; i < viewer->nim; i++)
     if (viewer->unoptimized_pixmaps[i])
       XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[i]);
   
@@ -460,18 +475,25 @@ delete_viewer(Gt_Viewer *viewer)
   
   Gif_DeleteStream(viewer->gfs);
   Gif_DeleteArray(viewer->im);
-  Gif_DeleteArray(viewer->im_number);
   Gif_DeleteXContext(viewer->gfx);
   Gif_Delete(viewer);
 }
 
 
 static Gt_Viewer *
+next_viewer(Gif_Stream *gfs, char *name)
+{
+  Gt_Viewer *viewer = new_viewer(cur_display, cur_use_window, gfs, name);
+  if (cur_use_window)
+    cur_use_window = None;
+  return viewer;
+}
+
+static Gt_Viewer *
 get_input_stream(char *name)
 {
   FILE *f;
   Gif_Stream *gfs = 0;
-  Gt_Viewer *viewer;
   
   if (name == 0 || strcmp(name, "-") == 0) {
     f = stdin;
@@ -499,11 +521,8 @@ get_input_stream(char *name)
       return 0;
     }
   }
-  
-  viewer = new_viewer(cur_display, cur_use_window, gfs, name);
-  if (cur_use_window)
-    cur_use_window = None;
-  return viewer;
+
+  return next_viewer(gfs, name);
 }
 
 
@@ -549,7 +568,7 @@ schedule_next_frame(Gt_Viewer *viewer)
   
   xwGETTIME(now);
   interval.tv_sec = delay / 100;
-  interval.tv_usec = (delay % 100) * (MicroPerSec / 100);
+  interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
   xwADDTIME(viewer->timer, now, interval);
 
   if (viewer->scheduled)
@@ -660,6 +679,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
        sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
        viewer->depth, InputOutput, viewer->visual,
        x_set_attr_mask, &x_set_attr);
+    XDefineCursor(display, viewer->window, viewer->arrow_cursor);
   }
 
   /* If user gave us geometry, don't change the size later */
@@ -730,27 +750,27 @@ set_viewer_name(Gt_Viewer *viewer)
   Gif_Image *gfi;
   char *strs[2];
   XTextProperty name_prop;
-  int len, image_number;
+  int len;
   
   if (!viewer->top_level || viewer->im_pos >= viewer->nim
       || viewer->being_deleted)
     return;
   
   gfi = viewer->im[ viewer->im_pos ];
-  image_number = viewer->im_number[ viewer->im_pos ];
-  len = strlen(viewer->name) + 9;
-  if (image_number == -1)
-    len += strlen(gfi->identifier) + 1;
-  else
-    len += 10;
+  len = strlen(viewer->name) + 19;
+  if (gfi->identifier)
+    len += 2 + strlen(gfi->identifier);
   
   strs[0] = Gif_NewArray(char, len);
-  if (Gif_ImageCount(viewer->gfs) == 1 || viewer->animating)
+  if (viewer->animating || (Gif_ImageCount(viewer->gfs) == 1 && !gfi->identifier))
     sprintf(strs[0], "gifview: %s", viewer->name);
-  else if (image_number == -1)
+  else if (Gif_ImageCount(viewer->gfs) == 1 && gfi->identifier)
     sprintf(strs[0], "gifview: %s #%s", viewer->name, gfi->identifier);
+  else if (!gfi->identifier)
+    sprintf(strs[0], "gifview: %s #%d", viewer->name, viewer->im_pos);
   else
-    sprintf(strs[0], "gifview: %s #%d", viewer->name, image_number);
+    sprintf(strs[0], "gifview: %s #%d #%s", viewer->name, viewer->im_pos,
+	    gfi->identifier);
   strs[1] = 0;
   
   XStringListToTextProperty(strs, 1, &name_prop);
@@ -761,26 +781,64 @@ set_viewer_name(Gt_Viewer *viewer)
   Gif_DeleteArray(strs[0]);
 }
 
-
 static Pixmap
-unoptimized_frame(Gt_Viewer *viewer, int frame)
+unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
 {
-  /* Never frees viewer->pixmap. */
-  int i;
-  
+  /* create a new unoptimized frame; maybe kill some of the old ones */
   if (!viewer->unoptimized_pixmaps[frame]) {
-    for (i = 0; i < frame; i++)
-      if (!viewer->unoptimized_pixmaps[i])
-	unoptimized_frame(viewer, i);
+    Gif_Stream *gfs = viewer->gfs;
+    Pixmap last = None, last_last = None;
+    if (frame >= 2 && gfs->images[frame-1]->disposal == GIF_DISPOSAL_PREVIOUS)
+      last_last = unoptimized_frame(viewer, frame - 2, slow);
+    if (frame >= 1)
+      last = unoptimized_frame(viewer, frame - 1, slow);
     
     viewer->unoptimized_pixmaps[frame] =
-      Gif_XNextImage(viewer->gfx,
-		     (frame < 2 ? None : viewer->unoptimized_pixmaps[frame-2]),
-		     (frame < 1 ? None : viewer->unoptimized_pixmaps[frame-1]),
-		     viewer->gfs, frame);
-  }
+      Gif_XNextImage(viewer->gfx, last_last, last, gfs, frame);
 
+    if (viewer->free_pixmaps && frame > 1 && frame % SAVE_FRAMES == 1) {
+      int kill = frame - 1 - SAVE_FRAMES;
+      assert(kill >= 0);
+      for (; kill < frame - 1; kill++)
+	if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0) {
+	  XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
+	  viewer->unoptimized_pixmaps[kill] = None;
+	}
+    }
+
+    if (slow) {
+      int real_pos = viewer->im_pos;
+      viewer->im_pos = frame;
+      set_viewer_name(viewer);
+      XFlush(viewer->display);
+      viewer->im_pos = real_pos;
+    }
+  }
+  
+  {int i,j;for(i=j=0;i<viewer->nim;i++)if(viewer->unoptimized_pixmaps[i])j++;fprintf(stderr,"-%d\n",j);}
   return viewer->unoptimized_pixmaps[frame];
+}
+
+static void
+kill_unoptimized_frames(Gt_Viewer *viewer, int new_frame)
+{
+  int nimages = viewer->nim;
+  int kill_frame = nimages;
+  if (!viewer->free_pixmaps)
+    return;
+  
+  if (new_frame == 0)
+    kill_frame = 3;
+  else if (new_frame < viewer->im_pos)
+    kill_frame = new_frame + 1;
+  
+  for (; kill_frame < nimages; kill_frame++)
+    if (viewer->unoptimized_pixmaps[kill_frame]) {
+      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill_frame]);
+      viewer->unoptimized_pixmaps[kill_frame] = None;
+    }
+
+  {int i,j;for(i=j=0;i<nimages;i++)if(viewer->unoptimized_pixmaps[i])j++;fprintf(stderr,"%d\n",j);}
 }
 
 void
@@ -811,12 +869,22 @@ view_frame(Gt_Viewer *viewer, int frame)
   
   if (frame != viewer->im_pos) {
     Gif_Image *gfi = viewer->im[frame];
-    int width, height;
+    int width, height, changed_cursor = 0;
+
+    /* Change cursor if we need to wait. */
+    if ((viewer->animating || viewer->unoptimizing)
+	&& !viewer->unoptimized_pixmaps[frame]) {
+      if (frame > viewer->im_pos + 10 || frame < viewer->im_pos) {
+	changed_cursor = 1;
+	XDefineCursor(display, window, viewer->wait_cursor);
+	XFlush(display);
+      }
+    }
     
     /* 5/26/98 Do some noodling around to try and use memory most effectively.
        If animating, keep the uncompressed frame; otherwise, throw it away. */
     if (viewer->animating || viewer->unoptimizing)
-      viewer->pixmap = unoptimized_frame(viewer, frame);
+      viewer->pixmap = unoptimized_frame(viewer, frame, changed_cursor);
     else
       viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
     
@@ -842,9 +910,15 @@ view_frame(Gt_Viewer *viewer, int frame)
 	(display, window, viewer->screen_number,
 	 CWWidth | CWHeight, &winch);
     }
+
+    /* Restore cursor */
+    if (changed_cursor)
+      XDefineCursor(display, window, viewer->arrow_cursor);
     
     /* Get rid of old pixmaps */
-    if (old_pixmap && !viewer->was_unoptimized)
+    if (viewer->was_unoptimized)
+      kill_unoptimized_frames(viewer, frame);
+    else if (old_pixmap)
       XFreePixmap(display, old_pixmap);
     viewer->was_unoptimized = viewer->animating || viewer->unoptimizing;
     
@@ -872,84 +946,43 @@ view_frame(Gt_Viewer *viewer, int frame)
  * Command line arguments: marking frames, being done with streams
  **/
 
-void
-mark_frame(Gt_Viewer *viewer, int f_num, char *f_name)
-{
-  Gif_Image *gfi;
-  
-  if (f_name) {
-    gfi = Gif_GetNamedImage(viewer->gfs, f_name);
-    if (!gfi) error("no frame named `%s'", f_name);
-  } else {
-    gfi = Gif_GetImage(viewer->gfs, f_num);
-    if (!gfi) error("no frame number %d", f_num);
-  }
-  
-  if (viewer->nim >= viewer->im_cap) {
-    viewer->im_cap *= 2;
-    Gif_ReArray(viewer->im, Gif_Image *, viewer->im_cap);
-    Gif_ReArray(viewer->im_number, int, viewer->im_cap);
-  }
-  if (gfi) {
-    viewer->im[ viewer->nim ] = gfi;
-    viewer->im_number[ viewer->nim ] = f_name ? -1 : f_num;
-    viewer->nim++;
-  }
-}
-
-
-void
+int
 frame_argument(Gt_Viewer *viewer, char *arg)
 {
   char *c = arg;
   int n1 = 0;
-  int n2 = -1;
   
   /* Get a number range (#x, #x-y, #x-, or #-y). First, read x. */
   if (isdigit(c[0]))
     n1 = strtol(arg, &c, 10);
   
-  /* Then, if the next character is a dash, read y. */
-  if (c[0] == '-') {
-    c++;
-    if (isdigit(c[0]))
-      n2 = strtol(c, &c, 10);
-    else
-      n2 = Gif_ImageCount(viewer->gfs) - 1;
-  }
-  
   /* It really was a number range only if c is now at the end of the
      argument. */
-  if (c[0] != 0)
-    mark_frame(viewer, 0, arg);
+  if (c[0] != 0) {
+    Gif_Image *gfi = Gif_GetNamedImage(viewer->gfs, c);
+    if (!gfi)
+      error("no frame named `%s'", c);
+    else
+      n1 = Gif_ImageNumber(viewer->gfs, gfi);
+  } else {
+    if (n1 < 0 || n1 >= viewer->nim) {
+      error("no frame number %d", n1);
+      n1 = 0;
+    }
+  }
   
-  else if (n2 == -1)
-    mark_frame(viewer, n1, 0);
-  
-  else
-    for (; n1 <= n2; n1++)
-      mark_frame(viewer, n1, 0);
+  return n1;
 }
 
 
 void
-input_stream_done(Gt_Viewer *viewer)
+input_stream_done(Gt_Viewer *viewer, int first_frame)
 {
-  int i;
   viewer->can_animate = Gif_ImageCount(viewer->gfs) > 1;
-  
-  if (!viewer->nim) {
-    for (i = 0; i < Gif_ImageCount(viewer->gfs); i++)
-      mark_frame(viewer, i, 0);
-  
-  } else {
-    for (i = 0; i < Gif_ImageCount(viewer->gfs); i++)
-      if (viewer->im_number[i] != i)
-	viewer->can_animate = 0;
-  }
-  
   switch_animating(viewer, animating && viewer->can_animate);
-  view_frame(viewer, 0);
+  if (first_frame < 0)
+    first_frame = 0;
+  view_frame(viewer, first_frame);
 }
 
 
@@ -1113,6 +1146,7 @@ main(int argc, char **argv)
   Gt_Viewer *viewer = 0;
   int viewer_given = 0;
   int any_errors = 0;
+  int first_frame = -1;
   
   Clp_Parser *clp =
     Clp_NewParser(argc, argv,
@@ -1135,6 +1169,7 @@ main(int argc, char **argv)
 	fatal_error("`--display' must come before all other options");
       cur_display_name = clp->arg;
       cur_display = 0;
+      cur_arrow_cursor = cur_wait_cursor = None;
       break;
       
      case GEOMETRY_OPT:
@@ -1189,9 +1224,16 @@ particular purpose.\n");
 	  viewer = get_input_stream(0);
 	  viewer_given = 1;
 	}
-	if (viewer) frame_argument(viewer, clp->arg + 1);
+	if (viewer && first_frame >= 0) {
+	  /* copy viewer if 2 frame specs given */
+	  input_stream_done(viewer, first_frame);
+	  viewer = next_viewer(viewer->gfs, viewer->name);
+	}
+	if (viewer)
+	  first_frame = frame_argument(viewer, clp->arg + 1);
       } else {
-        if (viewer) input_stream_done(viewer);
+        if (viewer) input_stream_done(viewer, first_frame);
+	first_frame = -1;
         viewer = get_input_stream(clp->arg);
 	viewer_given = 1;
       }
@@ -1219,7 +1261,7 @@ particular purpose.\n");
     }
     viewer = get_input_stream(0);
   }
-  if (viewer) input_stream_done(viewer);
+  if (viewer) input_stream_done(viewer, first_frame);
   
   if (viewers) loop();
   

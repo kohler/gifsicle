@@ -1,5 +1,20 @@
 Gifsicle NEWS
 
+Version 1.18   2.Apr.2000
+
+* Gifview now uses X server memory more parsimoniously. This should make it
+  more robust, and nicer to the X server, on large animations. Requested by
+  Vladimir Eltsov <ve@boojum.hut.fi>. Appears to solve bug reported by
+  Vince McIntyre <vjm@Physics.usyd.edu.au>.
+
+* Gifview treats frame selection more sensibly. A frame selection just
+  tells it which frame to start on.
+
+* Added a message to the manual page warning people to quote the `#'
+  character in frame selections. The interactive bash shell, for example,
+  interprets it as a comment.
+
+
 Version 1.17   15.Mar.2000
 
 * Added `--resize _xH' and `--resize Wx_'. Requested by Edwin Piekart
