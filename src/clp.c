@@ -239,8 +239,8 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
 
 void
 Clp_DeleteParser(Clp_Parser *clp)
-     /* Creates and returns a new Clp_Parser using the options in `opt',
-	or 0 on memory allocation failure */
+     /* Destroys the Clp_Parser `clp' and any associated memory allocated by
+        CLP */
 {
   int i;
   Clp_Internal *cli;
