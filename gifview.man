@@ -1,4 +1,5 @@
 .\" -*- mode: nroff -*-
+.ds V 1.3b1
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -24,7 +25,7 @@
 .RE
 .PP
 ..
-.TH GIFVIEW 1 "25 May 1998" "Version @VERSION@"
+.TH GIFVIEW 1 "25 May 1998" "Version \*V"
 .SH NAME
 gifview \- displays GIF images and animations on the X window system
 '
@@ -54,11 +55,13 @@ Go to the next frame.
 .B b
 Go to the previous frame.
 .TP
-.B r
+.BR r " or " <
 Go to the first frame.
 .TP
+.BR >
+Go to the last frame.
+.TP
 ESC
-'
 Stop the animation.
 .TP
 .B s

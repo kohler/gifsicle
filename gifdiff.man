@@ -1,0 +1,92 @@
+.\" -*- mode: nroff -*-
+.ds V 0.9
+.ds E " \-\- 
+.if t .ds E \(em
+.de OP
+.BR "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
+..
+.de OA
+.IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
+..
+.de QO
+.RB ` "\\$1" "'\\$2"
+..
+.de Sp
+.if n .sp
+.if t .sp 0.4
+..
+.de Es
+.Sp
+.RS 5
+.nf
+..
+.de Ee
+.fi
+.RE
+.PP
+..
+.TH GIFDIFF 1 "31 August 1998" "Version \*V"
+.SH NAME
+gifdiff \- compares GIF images
+'
+.SH SYNOPSIS
+.B gifdiff
+\%[options]
+GIF\-file\-1
+GIF\-file\-2
+'
+.SH DESCRIPTION
+.B gifdiff
+compares two GIF files and determines if they appear identical. Differences
+which don't affect appearance, like colormap reordering or how much an
+animation is optimized, are not reported.
+.PP
+.B gifdiff
+normally reports details of any important differences it finds, exiting
+without comment if the GIFs are the same. It exits with status 0 if there
+were no differences, 1 if there were some differences, and 2 if there was
+trouble.
+'
+.SH OPTIONS
+
+.PD 0
+.TP 5
+.OP \-\-brief ", " \-q
+'
+Report only whether the GIFs differ, not the details of the differences.
+'
+.Sp
+.TP 5
+.OP \-\-help
+'
+Prints usage information and exits.
+'
+.Sp
+.TP
+.OP \-\-version
+'
+Prints the version number and some quickie warranty information and exits.
+'
+.PD
+'
+.SH SEE ALSO
+
+.BR gifsicle (1)
+'
+.SH BUGS
+
+Please email suggestions, additions, patches and bugs to
+eddietwo@lcs.mit.edu.
+'
+.SH AUTHORS
+.na
+Eddie Kohler, eddietwo@lcs.mit.edu
+.br
+http://www.pdos.lcs.mit.edu/~eddietwo/
+.PP
+http://www.lcdf.org/~eddietwo/gifsicle/
+.br
+The 
+.B gifsicle
+home page.
+'

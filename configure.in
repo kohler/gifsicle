@@ -1,7 +1,9 @@
 AC_INIT(gifsicle.h)
 
-VERSION=1.2
+VERSION=1.3b1
 AC_SUBST(VERSION)
+GIFDIFFVERSION=0.9
+AC_SUBST(GIFDIFFVERSION)
 
 AC_PROG_CC
 if test -n "$GCC" ; then CC="$CC -Wall" ; CXX="$CXX -Wall" ; fi
@@ -16,6 +18,13 @@ AC_ARG_ENABLE(gifview,
 [  --enable-gifview        build gifview, a GIF viewer for X11],
 if test "$enableval" = yes ; then
   build_gifview=yes
+fi)
+
+build_gifdiff=
+AC_ARG_ENABLE(gifdiff,
+[  --enable-gifdiff        build gifdiff, a utility for comparing GIFs],
+if test "$enableval" = yes ; then
+  build_gifdiff=yes
 fi)
 
 use_dmalloc=
@@ -46,6 +55,9 @@ ac_cv_gettimeofday=1)])
 else
   PROGRAMS="gifsicle"
 fi
+if test "$build_gifdiff"; then
+  PROGRAMS="$PROGRAMS gifdiff"
+fi
 INSTALLERS=[`echo $PROGRAMS | sed 's/\([a-z][a-z]*\)/install-\1/g'`]
 AC_SUBST(PROGRAMS)dnl
 AC_SUBST(INSTALLERS)dnl
@@ -58,11 +70,11 @@ if test "$use_dmalloc"; then
   AC_DEFINE(DMALLOC)
   DMALLOC_O='dmalloc.o'
 else
-  MEMORY_PREPROCESSOR='#define malloc(s)		gt_malloc((s),__FILE__,__LINE__)\
-#define realloc(p,s)		gt_realloc((p),(s),__FILE__,__LINE__)\
-void *gt_malloc(int, const char *, int);\
-void *gt_realloc(void *, int, const char *, int);'
-  DMALLOC_O=''
+  MEMORY_PREPROCESSOR='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
+#define realloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)\
+void *fail_die_malloc(int, const char *, int);\
+void *fail_die_realloc(void *, int, const char *, int);'
+  DMALLOC_O='fmalloc.o'
 fi
 AC_SUBST(MEMORY_PREPROCESSOR)dnl
 AC_SUBST(DMALLOC_O)dnl
@@ -113,4 +125,4 @@ typedef unsigned $ac_cv_int32 u_int32_t;"
 fi
 AC_SUBST(INTEGER_TYPES)dnl
 
-AC_OUTPUT(Makefile gif.h gifsicle.man:gifsicle.min gifview.man:gifview.min)
+AC_OUTPUT(Makefile gif.h)

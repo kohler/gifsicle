@@ -1,5 +1,5 @@
-GIFSICLE 1.2
-============
+GIFSICLE 1.3b1
+==============
 
 ABOUT GIFSICLE
 --------------
@@ -10,19 +10,23 @@ thing, it has more options.
    It supports merging several GIFs into a GIF animation; exploding an
 animation into its component frames; changing individual frames in an
 animation; turning interlacing on and off; adding transparency; adding
-delays, disposals, and the Netscape loop extension to animations; adding
-and removing comments; optimizing animations for space; and changing
-images' colormaps, among other things. Extensive command-line options
-control which, if any, of these occur.
+delays, disposals, and looping to animations; adding or removing comments;
+optimizing animations for space; and changing images' colormaps, among
+other things. Extensive command-line options control which, if any, of
+these occur.
 
-   Please see the man page, `gifsicle.man', for more information. (Run
-`./configure' to create `gifsicle.man' from `gifsicle.min'.)
+   Please see the man page, `gifsicle.man', for more information.
 
    Gifview, a companion program requiring X11, displays GIF images and
 animations on an X display. It can display multi-frame GIFs either as
 slideshows, displaying one frame at a time, or as real-time animations.
 Note that you must give `./configure' the `--enable-gifview' option to
 build gifview. See its man page, `gifview.man', for more information.
+
+   Gifdiff, another companion program not built by default, checks two
+GIF files for identical visual appearance. (This is probably not useful
+unless you're testing GIF-manipulating software.) See its man page,
+`gifdiff.man', for more information.
 
    The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of merchantability
@@ -39,7 +43,12 @@ install gifsicle and its manual page (under /usr/local by default).
 details.
 
    To build gifview as well as gifsicle, give `./configure' the
-`--enable-gifview' option.
+`--enable-gifview' option. To build gifdiff too, give the `--enable-gifdiff'
+option.
+
+CHANGES SINCE 1.2
+-----------------
+   More great improvements in the optimizer. Also added gifdiff.
 
 CHANGES SINCE 1.1
 -----------------
@@ -54,8 +63,8 @@ See `NEWS' in this directory for a more detailed listing.
 BUGS, SUGGESTIONS, ETC.
 -----------------------
    Please write me if you have trouble building or running gifsicle, or if
-you have suggestions or (preferably) patches. Also write to this address to
-get on a (spam-free) Gifsicle mailing list.
+you have suggestions or patches. Also write to this address to get on a
+(spam-free) Gifsicle mailing list.
 
 	Eddie Kohler
 	eddietwo@lcs.mit.edu
@@ -99,6 +108,20 @@ in the context of GIF images without obtaining a license. If you plan to
 distribute GIF writing code in a shareware or commercial product, you will
 need to worry about obtaining a license.
 
-   2. Developers or distributors who plan to use Gifsicle code, whole or
-in part, in a product whose source code will not be made available to the
-end user, MUST contact the author and obtain permission before doing so.
+   2. Developers or distributors who plan to use Gifsicle code, whole or in
+part, in a product whose source code will not be made available to the end
+user -- in other words, in a context which would violate the GPL -- MUST
+contact the author and obtain permission before doing so.
+
+AUTHORS
+-------
+Eddie Kohler, <eddietwo@lcs.mit.edu>
+http://www.pdos.lcs.mit.edu/~eddietwo/
+He wrote it.
+
+Anne Dudfield, <anne@lvld.hp.com>
+http://web.mit.edu/annied/www/home.html
+She named it.
+
+David Hedbor, <david@hedbor.org>
+Many bug reports and constructive whining about the optimizer.

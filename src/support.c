@@ -2,10 +2,10 @@
    Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
-   Gifsicle is free software; you can copy, distribute, or alter it at will, as
-   long as this notice is kept intact and this source code is made available.
-   Hypo(pa)thetical commerical developers are asked to write the author a note,
-   which might make his day. There is no warranty, express or implied. */
+   Gifsicle is free software. It is distributed under the GNU Public License,
+   version 2 or later; you can copy, distribute, or alter it at will, as long
+   as this notice is kept intact and this source code is made available. There
+   is no warranty, express or implied. */
 
 #include "gifsicle.h"
 #include <stdio.h>
@@ -93,6 +93,7 @@ Frame change options:\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
   --done                        Done with frame changes.\n\
 Image options: Also --no-opt/+o and --same-opt.\n\
+  --background COL, -B COL      Makes COL the background color.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
@@ -187,13 +188,13 @@ safe_puts(const char *s, u_int32_t len, FILE *f)
 
 
 static void
-comment_info(Gif_Comment *gfcom, char *prefix)
+comment_info(FILE *where, Gif_Comment *gfcom, char *prefix)
 {
   int i;
   for (i = 0; i < gfcom->count; i++) {
-    fputs(prefix, stderr);
-    safe_puts(gfcom->str[i], gfcom->len[i], stderr);
-    fputc('\n', stderr);
+    fputs(prefix, where);
+    safe_puts(gfcom->str[i], gfcom->len[i], where);
+    fputc('\n', where);
   }
 }
 
@@ -201,67 +202,67 @@ comment_info(Gif_Comment *gfcom, char *prefix)
 #define COLORMAP_COLS	4
 
 static void
-colormap_info(Gif_Colormap *gfcm, char *prefix)
+colormap_info(FILE *where, Gif_Colormap *gfcm, char *prefix)
 {
   int i, j;
   int nrows = ((gfcm->ncol - 1) / COLORMAP_COLS) + 1;
   
   for (j = 0; j < nrows; j++) {
     int which = j;
-    fputs(prefix, stderr);
+    fputs(prefix, where);
     for (i = 0; i < COLORMAP_COLS && which < gfcm->ncol; i++, which += nrows) {
-      if (i) fputs("    ", stderr);
-      fprintf(stderr, " %3d: #%02X%02X%02X", which, gfcm->col[which].red,
+      if (i) fputs("    ", where);
+      fprintf(where, " %3d: #%02X%02X%02X", which, gfcm->col[which].red,
 	      gfcm->col[which].green, gfcm->col[which].blue);
     }
-    fputc('\n', stderr);
+    fputc('\n', where);
   }
 }
 
 
 static void
-extension_info(Gif_Stream *gfs, Gif_Extension *gfex, int count)
+extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 {
   byte *data = gfex->data;
   u_int32_t pos = 0;
   u_int32_t len = gfex->length;
   
-  fprintf(stderr, "  extension %d: ", count);
+  fprintf(where, "  extension %d: ", count);
   if (gfex->kind == 255) {
-    fprintf(stderr, "app `");
-    safe_puts(gfex->application, strlen(gfex->application), stderr);
-    fprintf(stderr, "'");
+    fprintf(where, "app `");
+    safe_puts(gfex->application, strlen(gfex->application), where);
+    fprintf(where, "'");
   } else {
     if (gfex->kind >= 32 && gfex->kind < 127)
-      fprintf(stderr, "`%c' (0x%02X)", gfex->kind, gfex->kind);
+      fprintf(where, "`%c' (0x%02X)", gfex->kind, gfex->kind);
     else
-      fprintf(stderr, "0x%02X", gfex->kind);
+      fprintf(where, "0x%02X", gfex->kind);
   }
   if (gfex->position >= gfs->nimages)
-    fprintf(stderr, " at end\n");
+    fprintf(where, " at end\n");
   else
-    fprintf(stderr, " before #%d\n", gfex->position);
+    fprintf(where, " before #%d\n", gfex->position);
   
   /* Now, hexl the data. */
   while (len > 0) {
     u_int32_t row = 16;
     u_int32_t i;
     if (row > len) row = len;
-    fprintf(stderr, "    %08x: ", pos);
+    fprintf(where, "    %08x: ", pos);
     
     for (i = 0; i < row; i += 2) {
       if (i + 1 >= row)
-	fprintf(stderr, "%02x   ", data[i]);
+	fprintf(where, "%02x   ", data[i]);
       else
-	fprintf(stderr, "%02x%02x ", data[i], data[i+1]);
+	fprintf(where, "%02x%02x ", data[i], data[i+1]);
     }
     for (; i < 16; i += 2)
-      fputs("     ", stderr);
+      fputs("     ", where);
     
-    putc(' ', stderr);
+    putc(' ', where);
     for (i = 0; i < row; i++, data++)
-      putc((*data >= ' ' && *data < 127 ? *data : '.'), stderr);
-    putc('\n', stderr);
+      putc((*data >= ' ' && *data < 127 ? *data : '.'), where);
+    putc('\n', where);
     
     pos += row;
     len -= row;
@@ -270,7 +271,8 @@ extension_info(Gif_Stream *gfs, Gif_Extension *gfex, int count)
 
 
 void
-stream_info(Gif_Stream *gfs, char *filename, int colormaps, int extensions)
+stream_info(FILE *where, Gif_Stream *gfs, char *filename,
+	    int colormaps, int extensions)
 {
   Gif_Extension *gfex;
   int n;
@@ -279,30 +281,30 @@ stream_info(Gif_Stream *gfs, char *filename, int colormaps, int extensions)
   gfs->userflags = 0; /* clear userflags to indicate stream info produced */
   
   verbose_endline();
-  fprintf(stderr, "* %s %d image%s\n", filename, gfs->nimages,
+  fprintf(where, "* %s %d image%s\n", filename, gfs->nimages,
 	  gfs->nimages == 1 ? "" : "s");
-  fprintf(stderr, "  logical screen %dx%d\n",
+  fprintf(where, "  logical screen %dx%d\n",
 	  gfs->screen_width, gfs->screen_height);
   
   if (gfs->global) {
-    fprintf(stderr, "  global color table [%d]\n", gfs->global->ncol);
-    if (colormaps) colormap_info(gfs->global, "  |");
-    fprintf(stderr, "  background %d\n", gfs->background);
+    fprintf(where, "  global color table [%d]\n", gfs->global->ncol);
+    if (colormaps) colormap_info(where, gfs->global, "  |");
+    fprintf(where, "  background %d\n", gfs->background);
   }
   
   if (gfs->comment)
-    comment_info(gfs->comment, "  end comment ");
+    comment_info(where, gfs->comment, "  end comment ");
   
   if (gfs->loopcount == 0)
-    fprintf(stderr, "  loop forever\n");
+    fprintf(where, "  loop forever\n");
   else if (gfs->loopcount > 0)
-    fprintf(stderr, "  loop count %u\n", (unsigned)gfs->loopcount);
+    fprintf(where, "  loop count %u\n", (unsigned)gfs->loopcount);
   
   for (n = 0, gfex = gfs->extensions; gfex; gfex = gfex->next, n++)
     if (extensions)
-      extension_info(gfs, gfex, n);
+      extension_info(where, gfs, gfex, n);
   if (n && !extensions)
-    fprintf(stderr, "  extensions %d\n", n);
+    fprintf(where, "  extensions %d\n", n);
 }
 
 
@@ -311,44 +313,51 @@ static char *disposal_names[] = {
 };
 
 void
-image_info(Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
+image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
 {
   int num;
   if (!gfs || !gfi) return;
   num = Gif_ImageNumber(gfs, gfi);
   
   verbose_endline();
-  fprintf(stderr, "  + image #%d ", num);
+  fprintf(where, "  + image #%d ", num);
   if (gfi->identifier)
-    fprintf(stderr, "#%s ", gfi->identifier);
+    fprintf(where, "#%s ", gfi->identifier);
   
-  fprintf(stderr, "%dx%d", gfi->width, gfi->height);
+  fprintf(where, "%dx%d", gfi->width, gfi->height);
   if (gfi->left || gfi->top)
-    fprintf(stderr, " at %d,%d", gfi->left, gfi->top);
+    fprintf(where, " at %d,%d", gfi->left, gfi->top);
   
   if (gfi->interlace)
-    fprintf(stderr, " interlaced");
+    fprintf(where, " interlaced");
   
   if (gfi->transparent >= 0)
-    fprintf(stderr, " transparent %d", gfi->transparent);
-  fprintf(stderr, "\n");
+    fprintf(where, " transparent %d", gfi->transparent);
+  
+#ifdef PRINT_SIZE
+  if (gfi->compressed)
+    fprintf(where, " compressed size %u min_bits %d", gfi->compressed_len,
+	    *gfi->compressed);
+#endif
+  
+  fprintf(where, "\n");
   
   if (gfi->comment)
-    comment_info(gfi->comment, "    comment ");
+    comment_info(where, gfi->comment, "    comment ");
   
   if (gfi->local) {
-    fprintf(stderr, "    local color table [%d]\n", gfi->local->ncol);
-    if (colormaps) colormap_info(gfi->local, "    |");
+    fprintf(where, "    local color table [%d]\n", gfi->local->ncol);
+    if (colormaps) colormap_info(where, gfi->local, "    |");
   }
   
   if (gfi->disposal || gfi->delay) {
-    fprintf(stderr, "   ");
+    fprintf(where, "   ");
     if (gfi->disposal)
-      fprintf(stderr, " disposal %s", disposal_names[gfi->disposal]);
+      fprintf(where, " disposal %s", disposal_names[gfi->disposal]);
     if (gfi->delay)
-      fprintf(stderr, " delay %d.%02ds",
+      fprintf(where, " delay %d.%02ds",
 	      gfi->delay / 100, gfi->delay % 100);
-    fprintf(stderr, "\n");
+    fprintf(where, "\n");
   }
 }
 
@@ -669,6 +678,34 @@ new_frameset(int initial_cap)
 }
 
 
+void
+clear_def_frame_once_options(void)
+{
+  /* Get rid of next-frame-only options.
+     
+     This causes problems with frame selection. In the command `gifsicle
+     -nblah f.gif', the name should be applied to frame 0 of f.gif. This will
+     happen automatically when f.gif is read, since all of its frames will be
+     added when it is input. After frame 0, the name in def_frame will be
+     cleared.
+     
+     Now, `gifsicle -nblah f.gif #1' should apply the name to frame 1 of
+     f.gif. But once f.gif is input, its frames are added, and the name
+     component of def_frame is cleared!! So when #1 comes around it's gone!
+     
+     We handle this in gifsicle.c using the _change fields. */
+  
+  def_frame.name = 0;
+  def_frame.name_change = 0;
+
+  def_frame.comment = 0;
+  def_frame.comment_change = 0;  
+
+  def_frame.background.haspixel = 0;
+  def_frame.background_change = 0;
+}
+
+
 Gt_Frame *
 add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
 {
@@ -690,22 +727,11 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
   fset->f[number].stream = gfs;
   fset->f[number].image = gfi;
   
-  /* Get rid of next-frame-only options.
-     
-     This causes problems with frame selection. In the command `gifsicle
-     -nblah f.gif', the name should be applied to frame 0 of f.gif. This will
-     happen automatically when f.gif is read, since all of its frames will be
-     added when it is input. After frame 0, the name in def_frame will be
-     cleared.
-     
-     Now, `gifsicle -nblah f.gif #1' should apply the name to frame 1 of
-     f.gif. But once f.gif is input, its frames are added, and the name
-     component of def_frame is cleared!! So when #1 comes around it's gone!
-     
-     We handle this in gifsicle.c by introducing a def_frame_before_input
-     variable. */
-  def_frame.name = 0;
-  def_frame.comment = 0;
+  /* Warn about background option not in first position */
+  if (number > 0 && def_frame.background.haspixel)
+    warning("`--background' is only effective on the first frame");
+  
+  clear_def_frame_once_options();
   
   return &fset->f[number];
 }
@@ -730,6 +756,8 @@ copy_extension(Gif_Extension *src)
 static Gt_Frame **merger = 0;
 static int nmerger = 0;
 static int mergercap = 0;
+
+static int warned_background_conflicts;
 
 static void
 merger_add(Gt_Frame *fp)
@@ -774,6 +802,101 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 
 
 static void
+find_background(Gif_Colormap *dest_global, Gif_Color *background)
+{
+  int i;
+  *background = merger[0]->background;
+  
+  /* This code is SUCH a PAIN in the PATOOTIE!! */
+  
+  /* 1. user set the background to a color index
+     -> find the associated color & fall through to case 2 */
+  if (background->haspixel == 2) {
+    Gif_Stream *gfs = merger[0]->stream;
+    if (background->pixel == 256
+	|| background->pixel == gfs->images[0]->transparent)
+      background->pixel = 256;
+    else if (gfs->global && background->pixel < gfs->global->ncol) {
+      *background = gfs->global->col[ background->pixel ];
+      background->haspixel = 1;
+    } else {
+      error("background color index `%d' out of range", background->pixel);
+      background->haspixel = 0;
+    }
+  }
+  
+  /* 2. search the existing streams and images for background colors
+        (prefer colors from images with disposal == BACKGROUND)
+     -> choose the color. warn if two such images have conflicting colors */
+  if (background->haspixel == 0) {
+    int report_conflict = 0;
+    for (i = 0; i < nmerger; i++) {
+      Gif_Color new_bg;
+      Gif_Stream *gfs = merger[i]->stream;
+      int relevant = merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND;
+      if (!relevant && report_conflict) continue;
+      
+      if (gfs->background == gfs->images[0]->transparent
+	  || gfs->background == merger[i]->image->transparent)
+	new_bg.pixel = 256;
+      else if (gfs->global && gfs->background < gfs->global->ncol) {
+	new_bg = gfs->global->col[ gfs->background ];
+	new_bg.pixel = 0;
+      } else
+	continue;
+      
+      if (report_conflict < 2) *background = new_bg;
+      report_conflict = relevant ? 2 : 1;
+      
+      /* check for conflicting background requirements */
+      if ((new_bg.pixel == 256) != (background->pixel == 256)
+	  || (new_bg.pixel == 0 && !GIF_COLOREQ(&new_bg, background)))
+	if (!warned_background_conflicts) {
+	  warning("some required background colors conflict; I picked one");
+	  warning("  (some animation frames will appear incorrect)");
+	  warned_background_conflicts = 1;
+	}
+    }
+    background->haspixel = (report_conflict > 1);
+  }
+  
+  /* 3. user set the background to a specific color, or we need the background
+        color to make the animation work (both cases flagged with
+	haspixel == 1)
+     -> put it in the colormap immediately */
+  if (background->haspixel == 1) {
+    dest_global->ncol = 1;
+    dest_global->col[0] = *background;
+    background->haspixel = 1;
+    background->pixel = 0;
+  }
+}
+
+
+static int
+find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
+		    char *color_context)
+{
+  Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+  int index;
+  
+  if (color->haspixel == 2) {	/* have pixel value, not color */
+    if (color->pixel < gfcm->ncol)
+      return color->pixel;
+    else {
+      if (color_context) error("%s color out of range", color_context);
+      return -1;
+    }
+  }
+  
+  index = Gif_FindColor(gfcm, color);
+  if (index < 0 && color_context)
+    error("%s color not in colormap", color_context);
+  return index;
+}
+
+
+static void
 fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 {
   /* Salvage any relevant information from a frame that's been completely
@@ -810,7 +933,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 		     int compress_immediately)
 {
   Gif_Stream *dest = Gif_NewStream();
-  Gif_Colormap *global = Gif_NewFullColormap(256);
+  Gif_Colormap *global = Gif_NewFullColormap(256, 256);
+  Gif_Color dest_background;
   int i;
   
   global->ncol = 0;
@@ -819,6 +943,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   if (f2 < 0) f2 = fset->count - 1;
   nmerger = 0;
   merger_flatten(fset, f1, f2);
+  if (nmerger == 0) {
+    error("empty output GIF not written");
+    return 0;
+  }
   
   /* merge stream-specific info and clear colormaps */
   for (i = 0; i < nmerger; i++)
@@ -834,19 +962,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       unmark_colors_2(merger[i]->image->local);
   }
   
-  /* choose the first relevant background color and dump it in the global
-     colormap. Relevant means an image with disposal == BACKGROUND. */
-  for (i = 0; i < nmerger; i++)
-    if (merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND) {
-      Gif_Stream *gfs = merger[i]->stream;
-      if (gfs->global && gfs->background < gfs->global->ncol
-	  && gfs->background != gfs->images[0]->transparent) {
-	global->ncol = 1;
-	global->col[0] = gfs->global->col[gfs->background];
-	global->col[0].haspixel = 1;
-	break;
-      }
-    }
+  /* decide on the background */
+  warned_background_conflicts = 0;
+  find_background(global, &dest_background);
   
   /* check for cropping the whole stream */
   for (i = 0; i < nmerger; i++)
@@ -865,6 +983,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     Gif_Image *srci;
     Gif_Image *desti;
     Gif_Extension *gfex;
+    int old_transparent;
     
     /* First, check for extensions */
     gfex = fr->stream->extensions;
@@ -890,7 +1009,18 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_UncompressImage(srci);
     }
     
+    /* It was pretty stupid to remove this code, which I did between 1.2b6 and
+       1.2 */
+    old_transparent = srci->transparent;
+    if (fr->transparent.haspixel == 255)
+      srci->transparent = -1;
+    else if (fr->transparent.haspixel)
+      srci->transparent =
+	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
+    
     desti = merge_image(dest, fr->stream, srci);
+    
+    srci->transparent = old_transparent; /* restore real transparent value */
     
     if (fr->name || fr->no_name) {
       Gif_DeleteArray(desti->identifier);
@@ -960,6 +1090,19 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       dest->screen_height = fr->screen_height;
   }
   
+  /* set the background */
+  if (dest_background.haspixel == 0)
+    dest_background.pixel =
+      find_color_or_error(&dest_background, dest, dest->images[0], 0);
+  else if (dest_background.pixel == 256) {
+    if (dest->images[0]->transparent < 0) {
+      warning("no transparency in first image:");
+      warning("transparent background won't work as expected");
+    } else
+      dest_background.pixel = dest->images[0]->transparent;
+  }
+  dest->background = dest_background.pixel;
+  
   return dest;
 }
 
@@ -993,37 +1136,3 @@ clear_frameset(Gt_Frameset *fset, int f1)
   blank_frameset(fset, f1, -1, 0);
   fset->count = f1;
 }
-
-
-#ifndef DMALLOC
-/* be careful about memory allocation */
-#undef malloc
-#undef realloc
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void *
-gt_malloc(int size, const char *file, int line)
-{
-  void *p = malloc(size);
-  if (!p && size)
-    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
-  return p;
-}
-
-void *
-gt_realloc(void *p, int size, const char *file, int line)
-{
-  if (!p)
-    return gt_malloc(size, file, line);
-  p = realloc(p, size);
-  if (!p && size)
-    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
-  return p;
-}
-
-#ifdef __cplusplus
-}
-#endif
-#endif

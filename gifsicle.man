@@ -1,4 +1,5 @@
 .\" -*- mode: nroff -*-
+.ds V 1.3b1
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -24,7 +25,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "10 May 1998" "Version @VERSION@"
+.TH GIFSICLE 1 "2 Aug 1998" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
@@ -37,10 +38,10 @@ gifsicle \- manipulates GIF images and animations
 manipulates GIF image files. It supports merging several GIFs into a GIF
 animation; exploding an animation into its component frames; changing
 individual frames in an animation; turning interlacing on and off; adding
-transparency; adding delays, disposals, and the Netscape loop extension to
-animations; adding and removing comments; optimizing animations for space;
-and changing images' colormaps, among other things. Extensive command-line
-options control which, if any, of these occur.
+transparency; adding delays, disposals, and looping to animations; adding
+or removing comments; optimizing animations for space; and changing images'
+colormaps, among other things. Extensive command-line options control
+which, if any, of these occur.
 .PP
 This man page assumes that you know what GIFs and GIF animations are. For a
 tutorial, you might try Royal Frazier's GIF Animation Page on the World
@@ -176,14 +177,15 @@ Prints usage information and exits.
 .TP 5
 .OP \-\-info ", " \-I
 '
-Prints a summary of the contents of each input GIF to standard error,
+Prints a summary of the contents of each input GIF to standard output,
 and suppresses normal output. (If you give two
 .OP \-\-info
 or
 .OP \-I
 options,
 .B gifsicle
-produces both information and normal output.)
+produces normal output and also writes the summary information to standard
+error.)
 '
 .Sp
 .TP
@@ -378,6 +380,18 @@ form is generally described.
 .Sp
 .PD 0
 .TP 5
+.OA \-B color
+.TP
+.OA \-\-background color
+'
+Sets the output GIF's background to
+.IR color .
+The argument can have the same forms as in the
+.OP \-\-transparent
+option, below.
+'
+.Sp
+.TP 5
 .OA \-c text
 .TP
 .OA \-\-comment text
@@ -553,10 +567,8 @@ Stores only the changed portion of each image. This is the default.
 .OP \-O2
 Same as
 .OP \-O1 ,
-but additionally uses transparency to shrink the file further.
-Warning: This option can actually
-.I expand
-some GIFs relative to
+but additionally uses transparency to shrink the file further. This will
+always do at least as well as
 .OP \-O1 .
 .Sp
 .PP

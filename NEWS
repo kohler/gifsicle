@@ -1,6 +1,56 @@
 Gifsicle NEWS
 
-Version 1.2
+Version 1.3b1   2.Aug.1998
+
+* Optimization has been completely overhauled. All optimization functions
+  are in a separate file, optimize.c. Some bugs have been caught.
+  Optimization is now quite powerful, and rarely expands any input file.
+  (An expansion of 1-30 bytes usually means that the input file cheated by
+  leaving off 'end-of-image' codes, which the standard says must be used.)
+  People interested in making optimization even better should contact me,
+  or just go ahead and hack the code. Thanks again to David Hedbor
+  <david@hedbor.org> for providing test cases.
+
+  Specific changes:
+
+  - The optimizer can handle any input file, even one with local colormaps or
+    more than 256 colors. If there are more than 256 colors, an optimal subset
+    is placed in the global colormap.
+
+  - The global colormap is reordered so that some images can use a small
+    initial portion of it, which lets them compress smaller.
+
+  - Bug fix: Images relying on background disposal are optimized correctly.
+
+  - `-O2' never does worse than `-O1'.
+
+  - Made the `-O2' heuristic better. Some other small changes and
+    improvements here and there.
+
+  - The optimizer has been pretty extensively tested using `gifdiff'.
+
+* New program: `gifdiff' compares two GIFs for identical appearance. It is
+  not built unless you give the `--enable-gifdiff' option to `./configure'.
+  It's probably not useful unless you're testing a GIF optimizer.
+
+* Robustness fixes in GIF library.
+
+
+Version 1.2.1   8.Jun.1998
+
+* `--info' now sends information to standard output. `--info --info' still
+  sends information to standard error.
+
+* `--transparent' didn't work. It does now.
+
+* Added `--background' option. Fixed background processing so that an input
+  background is reflected in the output GIF.
+
+* Re-fixed small bug with the interaction between per-frame options and
+  frame selections.
+
+
+Version 1.2   28.May.1998
 
 * Fixed small bug with the interaction between per-frame options (--name,
   --comment) and frame selections.
@@ -28,7 +78,7 @@ Version 1.2
 * Other performance improvements.
 
 
-Version 1.2b6
+Version 1.2b6   25.May.1998
 
 * License clarification in README.
 

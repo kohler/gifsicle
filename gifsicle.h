@@ -2,10 +2,10 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
-   Gifsicle is free software; you can copy, distribute, or alter it at will, as
-   long as this notice is kept intact and this source code is made available.
-   Hypo(pa)thetical commerical developers are asked to write the author a note,
-   which might make his day. There is no warranty, express or implied. */
+   Gifsicle is free software. It is distributed under the GNU Public License,
+   version 2 or later; you can copy, distribute, or alter it at will, as long
+   as this notice is kept intact and this source code is made available. There
+   is no warranty, express or implied. */
 
 #include "gif.h"
 #include "clp.h"
@@ -25,12 +25,17 @@ typedef struct Gt_Frame {
   Gif_Image *image;
   int use;
   
+  unsigned name_change: 1;
+  unsigned comment_change: 1;
+  unsigned background_change: 1;
+  
   char *name;
   int no_name;
   Gif_Comment *comment;
   int no_comments;
   
   Gif_Color transparent;
+  Gif_Color background;
   int interlacing;
   int left;
   int top;
@@ -108,8 +113,8 @@ void verbose_endline(void);
  * info &c
  **/
 
-void stream_info(Gif_Stream *, char *, int colormaps, int extensions);
-void image_info(Gif_Stream *, Gif_Image *, int colormaps);
+void stream_info(FILE *, Gif_Stream *, char *, int colormaps, int extensions);
+void image_info(FILE *, Gif_Stream *, Gif_Image *, int colormaps);
 
 char *explode_filename(char *filename, int number, char *name);
 
@@ -117,22 +122,21 @@ char *explode_filename(char *filename, int number, char *name);
  * merging images
  **/
 
-void unmark_colors(Gif_Colormap *);
-void unmark_colors_2(Gif_Colormap *);
-void mark_used_colors(Gif_Stream *, Gif_Image *);
-int merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
-
-int find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color);
+void	unmark_colors(Gif_Colormap *);
+void	unmark_colors_2(Gif_Colormap *);
+void	mark_used_colors(Gif_Stream *, Gif_Image *);
+int	find_color_index(Gif_Color *c, int nc, Gif_Color *);
+int	merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 
 extern int warn_local_colormaps;
-void merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
-void merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
+void	merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
+void	merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
 Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
 
-void optimize_fragments(Gif_Stream *, int opt_trans);
+void	optimize_fragments(Gif_Stream *, int optimizeness);
 
-int crop_image(Gif_Image *, Gt_Crop *);
-void apply_color_changes(Gif_Stream *, Gt_ColorChange *);
+int	crop_image(Gif_Image *, Gt_Crop *);
+void	apply_color_changes(Gif_Stream *, Gt_ColorChange *);
 
 /*****
  * quantization
@@ -151,48 +155,50 @@ typedef struct color_hash_item color_hash_item;
 typedef void (*colormap_image_func)
      (Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
 
-void colormap_image_posterize
+void	colormap_image_posterize
 	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
-void colormap_image_floyd_steinberg
+void	colormap_image_floyd_steinberg
 	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
-void colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
+void	colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
 
 /*****
  * parsing stuff
  **/
-extern int frame_spec_1;
-extern int frame_spec_2;
-extern char *frame_spec_name;
-extern int dimensions_x;
-extern int dimensions_y;
-extern int position_x;
-extern int position_y;
+extern int	frame_spec_1;
+extern int	frame_spec_2;
+extern char *	frame_spec_name;
+extern int	dimensions_x;
+extern int	dimensions_y;
+extern int	position_x;
+extern int	position_y;
 extern Gif_Color parsed_color;
 extern Gif_Color parsed_color2;
 
-int parse_frame_spec(Clp_Parser *, const char *, void *, int);
-int parse_dimensions(Clp_Parser *, const char *, void *, int);
-int parse_position(Clp_Parser *, const char *, void *, int);
-int parse_color(Clp_Parser *, const char *, void *, int);
-int parse_rectangle(Clp_Parser *, const char *, void *, int);
-int parse_two_colors(Clp_Parser *, const char *, void *, int);
+int		parse_frame_spec(Clp_Parser *, const char *, void *, int);
+int		parse_dimensions(Clp_Parser *, const char *, void *, int);
+int		parse_position(Clp_Parser *, const char *, void *, int);
+int		parse_color(Clp_Parser *, const char *, void *, int);
+int		parse_rectangle(Clp_Parser *, const char *, void *, int);
+int		parse_two_colors(Clp_Parser *, const char *, void *, int);
 
 extern Gif_Stream *input;
 extern char *input_name;
 
-void input_stream(char *);
-void input_done(void);
-void output_frames(void);
+void		input_stream(char *);
+void		input_done(void);
+void		output_frames(void);
 
 /*****
  * stuff with frames
  **/
 extern Gt_Frame def_frame;
+#define		FRAME(fs, i)	((fs)->f[i])
 
-Gt_Frameset *new_frameset(int initial_cap);
-Gt_Frame *add_frame(Gt_Frameset *, int number, Gif_Stream *, Gif_Image *);
-#define FRAME(fs, i) ((fs)->f[i])
-Gif_Stream *merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
-				 int compress_immediately);
-void clear_frameset(Gt_Frameset *, int from);
-void blank_frameset(Gt_Frameset *, int from, int to, int delete_object);
+Gt_Frameset *	new_frameset(int initial_cap);
+Gt_Frame *	add_frame(Gt_Frameset *, int num, Gif_Stream *, Gif_Image *);
+void		clear_def_frame_once_options(void);
+
+Gif_Stream *	merge_frame_interval(Gt_Frameset *, int f1, int f2,
+				     int compress_immediately);
+void		clear_frameset(Gt_Frameset *, int from);
+void		blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);

@@ -1,5 +1,6 @@
 PACKAGE		= gifsicle
 VERSION		= @VERSION@
+GIFDIFFVERSION	= @GIFDIFFVERSION@
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -34,14 +35,15 @@ PROGRAMS	= @PROGRAMS@
 GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o clp.o @DMALLOC_O@ \
 		gifview.o
 GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o clp.o \
-		merge.o support.o quantize.o @DMALLOC_O@ gifsicle.o
+		merge.o support.o quantize.o optimize.o @DMALLOC_O@ gifsicle.o
+GIFDIFFOBJS	= gifread.o giffunc.o clp.o @DMALLOC_O@ gifdiff.o
 
 all: $(PROGRAMS)
 
-gifsicle.o: gifsicle.c
-	$(CC) -DVERSION=\"$(VERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 gifsicle: $(GIFSICLEOBJS)
 	$(CCLINKER) $(CFLAGS) -o gifsicle $(GIFSICLEOBJS)
+gifsicle.o: gifsicle.c
+	$(CC) -DVERSION=\"$(VERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 gifview: $(GIFVIEWOBJS)
 	$(CCLINKER) $(CFLAGS) -o gifview $(GIFVIEWOBJS) $(X11LIB)
@@ -51,6 +53,11 @@ gifview.o: gifview.c
 	$(CC) -DVERSION=\"$(VERSION)\" $(X_CPPFLAGS) \
 	$(CPPFLAGS) @GETTIMEOFDAY@ $(CFLAGS) -c $<
 
+gifdiff: $(GIFDIFFOBJS)
+	$(CCLINKER) $(CFLAGS) -o gifdiff $(GIFDIFFOBJS)
+gifdiff.o: gifdiff.c
+	$(CC) -DVERSION=\"$(GIFDIFFVERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
+
 install: @INSTALLERS@
 install-gifsicle: gifsicle
 	$(INSTALL_PROGRAM) gifsicle $(bindir)/gifsicle
@@ -58,6 +65,9 @@ install-gifsicle: gifsicle
 install-gifview: gifview
 	$(INSTALL_PROGRAM) gifview $(bindir)/gifview
 	$(INSTALL_DATA) gifview.man $(mandir)/gifview.$(manext)
+install-gifdiff: gifdiff
+	$(INSTALL_PROGRAM) gifdiff $(bindir)/gifdiff
+	$(INSTALL_DATA) gifdiff.man $(mandir)/gifdiff.$(manext)
 
 clp.o: clp.c clp.h
 
@@ -71,6 +81,7 @@ gifsicle.o: gifsicle.c gifsicle.h
 merge.o: merge.c gifsicle.h
 support.o: support.c gifsicle.h
 quantize.o: quantize.c gifsicle.h
+optimize.o: optimize.c gifsicle.h
 
 srclinks:
 	for i in clp.c clp.h ; do \
@@ -79,6 +90,10 @@ srclinks:
 	gifx.h gifx.c giftoc.c ; do \
 	ln -s ../giflib/$$i $$i ; done
 
+versionize:
+	perl -pi~ -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.man gifview.man
+	perl -pi~ -e "s/^\\.ds V.*/.ds V $(GIFDIFFVERSION)/;" gifdiff.man
+
 #####
 # Cleaning and distribution
 
@@ -86,7 +101,7 @@ clean:
 	rm -f $(PROGRAMS) *.o core *.core
 mostlyclean: clean
 distclean: mostlyclean
-	rm -f Makefile config.status config.log config.cache
+	rm -f Makefile gif.h config.status config.log config.cache
 realclean: distclean
 
 dist:
@@ -94,9 +109,10 @@ dist:
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
-	clp.c clp.h dmalloc.c dmalloc.h \
-	gifsicle.h merge.c support.c quantize.c gifsicle.c gifsicle.min \
-	gifx.h gifx.c gifview.c gifview.min \
+	clp.c clp.h dmalloc.c dmalloc.h fmalloc.c \
+	gifsicle.h merge.c support.c quantize.c optimize.c gifsicle.c \
+	gifx.h gifx.c gifview.c gifsicle.man gifview.man \
+	gifdiff.c gifdiff.man \
 	$(PACKAGE)-$(VERSION)
 	gtar czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
 	rm -r $(PACKAGE)-$(VERSION)

@@ -14,41 +14,6 @@
 #include <assert.h>
 #include <string.h>
 
-/* colormap helpers */
-
-#ifdef __GNUC__
-__inline__
-#endif
-static int
-coloreq(Gif_Color *c1, Gif_Color *c2)
-{
-  return c1->red == c2->red && c1->green == c2->green && c1->blue == c2->blue;
-}
-
-
-int
-find_color(Gif_Colormap *cm, Gif_Color *color)
-{
-  int index;
-  for (index = 0; index < cm->ncol; index++)
-    if (coloreq(&cm->col[index], color))
-      return index;
-  return -1;
-}
-
-
-int
-find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color)
-{
-  if (gfi->local)
-    return find_color(gfi->local, color);
-  else if (gfs->global)
-    return find_color(gfs->global, color);
-  else
-    return -1;
-}
-
-
 /* First merging stage: Mark the used colors in all colormaps. */
 
 void
@@ -121,14 +86,12 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi)
 }
 
 
-/* colormap flags: 1 == trivial map, 2 == local needed */
-
-static int
+int
 find_color_index(Gif_Color *c, int nc, Gif_Color *color)
 {
   int index;
   for (index = 0; index < nc; index++)
-    if (coloreq(&c[index], color) && c[index].haspixel != 2)
+    if (GIF_COLOREQ(&c[index], color))
       return index;
   return -1;
 }
@@ -142,8 +105,6 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
   int ndestcol = dest->ncol;
   int i, x;
   int trivial_map = 1;
-  
-  src->userflags = 0;		/* no local required */
   
   for (i = 0; i < src->ncol; i++)
     if (srccol[i].haspixel == 1) {
@@ -178,12 +139,14 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 	trivial_map = 0;
       assert(mapto >= 0 && mapto < ndestcol);
       srccol[i].pixel = mapto;
+      destcol[mapto].haspixel = 1;
       
     } else if (srccol[i].haspixel == 2)
-      /* a dedicated transparent color; */
-      /* if trivial_map & at end of colormap insert it with a special mark. */
+      /* a dedicated transparent color; if trivial_map & at end of colormap
+         insert it with haspixel == 2. (strictly not necessary; we do it to
+	 try to keep the map trivial.) */
       if (trivial_map && i == ndestcol) {
-	destcol[ndestcol].haspixel = 2;
+	destcol[ndestcol] = srccol[i];
 	ndestcol++;
       }
   
@@ -254,7 +217,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   if (!merge_colormap_if_possible(dest->global, imagecm)) {
     /* Need a local colormap. */
     int ncol = 0;
-    destcm = localcm = Gif_NewFullColormap(256);
+    destcm = localcm = Gif_NewFullColormap(0, 256);
     for (i = 0; i < imagecm->ncol; i++)
       if (imagecol[i].haspixel == 1) {
 	map[i] = ncol;
@@ -350,6 +313,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
  **/
 
 
+#if 0
 /* shrink_difference_border: Make the difference border as small as possible
    in the case that the transparent values from the last frame and this frame
    are different. This requires slightly slower code. Called from
@@ -448,8 +412,9 @@ find_difference_border(byte *last_data, byte *this_data,
     flf = x;
     
     for (x = screen_width - 1; x > frt; x--)
-      if (ld[x] != td[x])
-	break;
+      if (ld[x] != td[x]) {
+	if (x == 466) fprintf(stderr, "  %d >> %d\n", ld[x], td[x]);
+	break;}
     frt = x;
   }
   
@@ -461,7 +426,8 @@ find_difference_border(byte *last_data, byte *this_data,
   *rt = frt + 1;
   *tp = ftp;
   *bt = fbt + 1;
-  
+
+  fprintf(stderr, "%d-%d\n", last_transparent, this_transparent);
   if (last_transparent != 0 && this_transparent != 0
       && last_transparent != this_transparent)
     shrink_difference_border(last_data, this_data, screen_width, screen_height,
@@ -472,18 +438,18 @@ find_difference_border(byte *last_data, byte *this_data,
 
 static int
 set_background_disposal(Gif_Stream *gfs, int imageno, byte *last_data,
-			int new_transparent)
+			int old_transparent)
 {
   Gif_Image *gfi = gfs->images[imageno - 1];
   int bottom = gfi->top + gfi->height;
   int y;
 
-  if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) return 0;
+  /*if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) return 0;*/
   
   gfi->disposal = GIF_DISPOSAL_BACKGROUND;
   for (y = gfi->top; y < bottom; y++) {
     byte *move = last_data + gfs->screen_width * y + gfi->left;
-    memset(move, new_transparent, gfi->width);
+    memset(move, old_transparent, gfi->width);
   }
   return 1;
 }
@@ -527,7 +493,11 @@ copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
 			 int screen_width, int transparent)
 {
   int x, y;
+  int color_used[256];
 
+  for (x = 0; x < 256; x++)
+    color_used[x] = 0;
+  
   /*
     Use transparency if possible to shrink the size of the written GIF.
     
@@ -574,7 +544,10 @@ copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
       
       /* If this pixel could be transparent... */
       if (*into == *from) {
-	if (*into == lastpixel)
+	if (color_used[*data] == 0)
+	  /* always transparentize infrequently used colors */
+	  goto combine_transparent_runs;
+	else if (*into == lastpixel)
 	  /* within a transparent run */
 	  pixelcount++;
 	else if (pixelcount > 0)
@@ -586,8 +559,10 @@ copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
 	  pixelcount++;
 	}
 	
-      } else
+      } else {
+	color_used[*data]++;
 	pixelcount = 0;
+      }
     }
     /* If we get here, we've finished up the row. */
     goto row_finished;
@@ -682,7 +657,7 @@ optimize_fragments(Gif_Stream *gfs, int optimize_trans)
 	byte *thisd = this_data + screen_width * y + left;
 	for (x = left; x < right; x++, thisd++, lastd++)
 	  if (*thisd == transparent && *lastd != last_transparent) {
-	    set_background_disposal(gfs, imageno, last_data, transparent);
+	    set_background_disposal(gfs, imageno, last_data, last_transparent);
 	    find_difference_border(last_data, this_data,
 				   screen_width, screen_height,
 				   &left, &right, &top, &bottom,
@@ -729,7 +704,7 @@ optimize_fragments(Gif_Stream *gfs, int optimize_trans)
   
   Gif_DeleteArray(last_data);
 }
-
+#endif
 
 
 /********************************************************/
@@ -833,130 +808,3 @@ apply_color_changes(Gif_Stream *gfs, Gt_ColorChange *cc)
       apply_color_change_to_cmap(gfs->images[i]->local, cc);
   apply_color_changes(gfs, cc->next);
 }
-
-
-/* SOURCE colormap.
-   haspixel & 1 <==> that pixel exists nontransparent (mark_colors)
-   haspixel & 2 <==> pixel field is valid on global dest CM (try_merge_cms)
-   pixel         ==  new pixel in dest colormap (try_merge_cms)
-   
-   DESTINATION colormap.
-   haspixel     <==> it is transparent but otherwise unused heretofore.
-   */
-
-#if 0
-static int
-find_color_from(Gif_Colormap *cm, Gif_Color *color, int index)
-{
-  for (; index < cm->ncol; index++)
-    if (coloreq(&cm->col[index], color))
-      return index;
-  return -1;
-}
-
-
-static int
-add_color(Gif_Colormap *cm, Gif_Color *color)
-{
-  if (cm->ncol >= 256)
-    return -1;
-  cm->col[cm->ncol] = *color;
-  return cm->ncol++;
-}
-
-
-static int
-fetch_color_from(Gif_Stream *dest, Gif_Colormap *destcm, int destindex,
-		 Gif_Stream *src, int srcindex, Gif_Color *color)
-{
-  destindex = find_color_from(destcm, color, destindex);
-  if (destindex < 0)
-    destindex = add_color(destcm, color);
-  if (destindex < 0)
-    return -1;
-  return destindex;
-}
-
-
-int
-try_merge_colormaps(Gif_Stream *dest, Gif_Colormap *destcm,
-		    Gif_Stream *src, Gif_Colormap *srccm,
-		    int transparent, int islocal)
-{
-  int last_ncol = destcm->ncol;
-  int force_local = 0;
-  int i;
-  int result;
-  int back_map[256];
-  int trivial_map = 1;
-  int new_transparent = -1;
-  
-  Gif_Color *map = srccm->col;
-  int nmap = srccm->ncol;
-  
-  for (i = 0; i < 256; i++)
-    back_map[i] = 0;
-  
-  for (i = 0; i < nmap; i++)
-    if (map[i].haspixel == 1) {
-    } else if (i == transparent && trivial_map)
-  /* for (i = 0; i < nmap; i++)
-     if (map[i].haspixel == 1) {
-     result = fetch_color_from(...);
-     if (result < 0) goto local;
-     map[i].haspixel |= 2;
-     map[i].pixel = result;
-     } else if (i == transparent) {
-     }
-     If To < dest->ncol && map[To].haspixel == 0, Tn == To.
-     for each.
-     if pixel, try to add it.
-     if transparent, */
-  for (i = 0; i < nmap && !force_local; i++)
-    if (map[i].haspixel == 1) {
-      result =
-	fetch_color_from(dest, destcm, 0, src, i, &map[i]);
-      if (result < 0)
-	force_local = 1;
-      else {
-	map[i].haspixel |= 2;
-	map[i].pixel = result;
-      }
-    }
-  
-  /* Unfortunately, the transparent color will cause us to noodle around
-     in desperation. */
-  
-  if (!force_local && transparent >= 0) {
-    u_int32_t transmap;
-    int other_search;
-    
-    /* Now check for the problem situation: transparent color T has the same
-       RGB values as nontransparent color Q. We might have combined them down
-       to the same pixel value; this would be bad. So we reallocate Q below. */
-    transmap = map[transparent].pixel;
-    other_search = find_color(destcm, &destcm->col[transmap]);
-    if (other_search == (int)transmap) other_search++;
-    
-    for (i = 0; i < nmap && !force_local; i++)
-      if (map[i].pixel == transmap && i != transparent
-	  && (map[i].haspixel & 1) != 0) {
-	result =
-	  fetch_color_from(dest, destcm, other_search, src, i, &map[i]);
-	if (result < 0)
-	  force_local = 1;
-	else
-	  map[i].pixel = result;
-      }
-  }
-  
-  if (force_local) {
-    destcm->ncol = last_ncol;
-    for (i = 0; i < nmap; i++)
-      if (map[i].haspixel & 1)
-	map[i].haspixel = 1;
-    return 0;
-  } else
-    return 1;
-}
-#endif

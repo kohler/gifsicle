@@ -2,10 +2,10 @@
    Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
-   Gifsicle is free software; you can copy, distribute, or alter it at will, as
-   long as this notice is kept intact and this source code is made available.
-   Hypo(pa)thetical commerical developers are asked to write the author a note,
-   which might make his day. There is no warranty, express or implied. */
+   Gifsicle is free software. It is distributed under the GNU Public License,
+   version 2 or later; you can copy, distribute, or alter it at will, as long
+   as this notice is kept intact and this source code is made available. There
+   is no warranty, express or implied. */
 
 #include <sys/time.h>
 #include "gifsicle.h"
@@ -52,7 +52,7 @@ int warn_local_colormaps = 1;
 static int mode = BLANK_MODE;
 static int nested_mode = 0;
 
-static int infoing = 0;
+static FILE *infoing = 0;
 static int colormap_infoing = 0;
 static int extension_infoing = 0;
 static int outputing = 1;
@@ -99,6 +99,8 @@ static int verbosing = 0;
 #define NO_EXTENSIONS_OPT	339
 #define SAME_EXTENSIONS_OPT	340
 #define EXTENSION_INFO_OPT	341
+#define BACKGROUND_OPT		342
+#define SAME_BACKGROUND_OPT	343
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -112,6 +114,7 @@ static int verbosing = 0;
 
 Clp_Option options[] = {
   { "append", 0, APPEND_OPT, 0, 0 },
+  { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
   { "cc", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
@@ -148,6 +151,7 @@ Clp_Option options[] = {
   { "output", 'o', OUTPUT_OPT, Clp_ArgString, 0 },
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
   { "replace", 0, REPLACE_OPT, FRAME_SPEC_TYPE, 0 },
+  { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-clip", 0, SAME_CROP_OPT, 0, 0 },
   { "same-comments", 0, SAME_COMMENTS_OPT, 0, 0 },
   { "same-crop", 0, SAME_CROP_OPT, 0, 0 },
@@ -177,6 +181,10 @@ initialize_def_frame(void)
   def_frame.stream = 0;
   def_frame.image = 0;
   def_frame.use = 1;
+
+  def_frame.name_change = 0;
+  def_frame.comment_change = 0;
+  def_frame.background_change = 0;
   
   def_frame.name = 0;
   def_frame.no_name = 0;
@@ -185,6 +193,7 @@ initialize_def_frame(void)
   
   def_frame.interlacing = -1;
   def_frame.transparent.haspixel = 0;
+  def_frame.background.haspixel = 0;
   def_frame.left = -1;
   def_frame.top = -1;
 
@@ -263,7 +272,6 @@ set_frame_change(int kind)
     break;
     
   }
-
 }
 
 
@@ -278,8 +286,6 @@ frame_change_done(void)
   nested_frames = 0;
 }
 
-
-static Gt_Frame def_frame_before_input;
 
 void
 show_frame(int imagenumber, int usename)
@@ -296,12 +302,7 @@ show_frame(int imagenumber, int usename)
    case MERGING:
    case EXPLODING:
    case INSERTING:
-    if (!frames_done) {
-      clear_frameset(frames, first_input_frame);
-      /* Restore per-frame options. See add_frame() in support.c for a
-	 description of the problem */
-      def_frame = def_frame_before_input;
-    }
+    if (!frames_done) clear_frameset(frames, first_input_frame);
     frame = add_frame(frames, -1, input, gfi);
     if (usename) frame->explode_by_name = 1;
     break;
@@ -385,10 +386,47 @@ input_stream(char *name)
     }
   }
 
-  def_frame_before_input = def_frame;
-  first_input_frame = frames->count;
-  for (i = 0; i < gfs->nimages; i++)
-    add_frame(frames, -1, gfs, gfs->images[i]);
+  {
+    Gt_Frame old_def_frame;
+    
+    /* This code rather sucks. Here's the problem: Since we consider options
+       strictly sequentially, one at a time, we can't tell the difference
+       between these:
+       
+       --name=X g.gif          #2 h.gif   // name on g.gif #2
+                g.gif --name=X #2 h.gif   // name on g.gif #2
+       --name=X g.gif             h.gif   // name on g.gif #0
+                g.gif --name=X    h.gif   // name on h.gif #0 !!!
+       
+       Here's the solution. Mark when we CHANGE an option. After processing
+       an input GIF, mark all the options as `unchanged' -- but leave the
+       VALUES as is. Then when we read the next frame, CLEAR the unchanged
+       options. So it's like so: (* means changed, . means not.)
+
+       [-.] --name=X [X*] g.gif [X.] #2 [-.] h.gif   == name on g.gif #2
+       [-.] g.gif [-.] --name=X [X*] #2 [-.] h.gif  == name on g.gif #2
+       [-.] --name=X [X*] g.gif [X.|-.] h.gif  == name on g.gif #0
+       [-.] g.gif [-.] --name=X [X*] h.gif  == name on h.gif #0 */
+ 
+    /* Clear old options from the last input stream */
+    if (!def_frame.name_change)
+      def_frame.name = 0;
+    if (!def_frame.comment_change)
+      def_frame.comment = 0;
+    if (!def_frame.background_change)
+      def_frame.background.haspixel = 0;
+    
+    old_def_frame = def_frame;
+    first_input_frame = frames->count;
+    for (i = 0; i < gfs->nimages; i++)
+      add_frame(frames, -1, gfs, gfs->images[i]);
+    def_frame = old_def_frame;
+    
+    /* Mark the options as not having changed */
+    def_frame.name_change = 0;
+    def_frame.comment_change = 0;
+    def_frame.background_change = 0;
+  }
   
   if (unoptimizing)
     if (!Gif_Unoptimize(gfs)) {
@@ -403,7 +441,7 @@ input_stream(char *name)
   if (color_changes)
     apply_color_changes(gfs, color_changes);
   if (infoing)
-    stream_info(gfs, name, colormap_infoing, extension_infoing);
+    stream_info(infoing, gfs, name, colormap_infoing, extension_infoing);
   gfs->refcount++;
 }
 
@@ -417,10 +455,11 @@ input_done(void)
   if (infoing) {
     int i;
     if (input->userflags == 97)	/* no stream info produced yet */
-      stream_info(input, input_name, colormap_infoing, extension_infoing);
+      stream_info(infoing, input, input_name,
+		  colormap_infoing, extension_infoing);
     for (i = first_input_frame; i < frames->count; i++)
       if (FRAME(frames, i).stream == input && FRAME(frames, i).use)
-	image_info(input, FRAME(frames, i).image, colormap_infoing);
+	image_info(infoing, input, FRAME(frames, i).image, colormap_infoing);
   }
   
   Gif_DeleteStream(input);
@@ -471,9 +510,22 @@ do_colormap_change(Gif_Stream *gfs)
   
   if (new_colormap_size > 0) {
     int nhist;
-    Gif_Color *hist = histogram(gfs, &nhist);
+    Gif_Color *hist;
     Gif_Colormap *(*adapt_func)(Gif_Color *, int, int);
     Gif_Colormap *new_cm;
+    
+    /* set up the histogram */
+    {
+      int i, any_locals = 0;
+      for (i = 0; i < gfs->nimages; i++)
+	if (gfs->images[i]->local)
+	  any_locals = 1;
+      hist = histogram(gfs, &nhist);
+      if (nhist <= new_colormap_size && !any_locals) {
+	warning("trivial adaptive palette (only %d colors in source)", nhist);
+	return;
+      }
+    }
     
     switch (new_colormap_algorithm) {
       
@@ -518,7 +570,7 @@ do_frames_output(char *outfile, int f1, int f2)
     if (new_colormap_size > 0 || new_colormap_fixed)
       do_colormap_change(out);
     if (optimizing > 0)
-      optimize_fragments(out, optimizing > 1);
+      optimize_fragments(out, optimizing);
     output_stream(outfile, out);
     Gif_DeleteStream(out);
   }
@@ -597,7 +649,7 @@ static void
 set_new_fixed_colormap(char *name)
 {
   if (name && strcmp(name, "web") == 0) {
-    Gif_Colormap *cm = Gif_NewFullColormap(216);
+    Gif_Colormap *cm = Gif_NewFullColormap(216, 216);
     Gif_Color *col = cm->col;
     int i;
     for (i = 0; i < 216; i++) {
@@ -725,11 +777,11 @@ main(int argc, char **argv)
       
      case INFO_OPT:
       if (clp->negated) {
-	infoing = 0;
 	outputing = 1;
+	infoing = 0;
       } else {
-	infoing = 1;
 	outputing = !outputing;
+	infoing = outputing ? stderr : stdout;
       }
       break;
       
@@ -739,8 +791,8 @@ main(int argc, char **argv)
       else {
 	colormap_infoing = 1;
 	if (!infoing) {
-	  infoing = 1;
 	  outputing = 0;
+	  infoing = stdout;
 	}
       }
       break;
@@ -751,8 +803,8 @@ main(int argc, char **argv)
       else {
 	extension_infoing = 1;
 	if (!infoing) {
-	  infoing = 1;
 	  outputing = 0;
+	  infoing = stdout;
 	}
       }
       break;
@@ -781,6 +833,7 @@ main(int argc, char **argv)
       if (clp->negated) goto no_names;
       next_frame = 1;
       def_frame.name = clp->arg;
+      def_frame.name_change = 1;
       break;
       
      no_names:
@@ -788,12 +841,14 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.no_name = 1;
       def_frame.name = 0;
+      def_frame.name_change = 1;
       break;
       
      case SAME_NAME_OPT:
       next_frame = 1;
       def_frame.no_name = 0;
       def_frame.name = 0;
+      def_frame.name_change = 1;
       break;
       
      case COMMENT_OPT:
@@ -801,6 +856,7 @@ main(int argc, char **argv)
       next_frame = 1;
       if (!def_frame.comment) def_frame.comment = Gif_NewComment();
       Gif_AddComment(def_frame.comment, clp->arg, -1);
+      def_frame.comment_change = 1;
       break;
       
      no_comments:
@@ -809,10 +865,12 @@ main(int argc, char **argv)
       Gif_DeleteComment(def_frame.comment);
       def_frame.comment = 0;
       def_frame.no_comments = 1;
+      def_frame.comment_change = 1;
       break;
       
      case SAME_COMMENTS_OPT:
       def_frame.no_comments = 0;
+      def_frame.comment_change = 1;
       break;
       
      case 'i':
@@ -843,14 +901,30 @@ main(int argc, char **argv)
 	def_frame.transparent.haspixel = 255;
       else {
 	def_frame.transparent = parsed_color;
-	def_frame.transparent.haspixel =
-	  parsed_color.haspixel ? 2 : 1;
+	def_frame.transparent.haspixel = parsed_color.haspixel ? 2 : 1;
       }
       break;
       
      case SAME_TRANSPARENT_OPT:
       next_frame = 1;
       def_frame.transparent.haspixel = 0;
+      break;
+      
+     case BACKGROUND_OPT:
+      next_frame = 1;
+      if (clp->negated)
+	def_frame.background.haspixel = 0;
+      else {
+	def_frame.background = parsed_color;
+	def_frame.background.haspixel = parsed_color.haspixel ? 2 : 1;
+      }
+      def_frame.background_change = 1;
+      break;
+      
+     case SAME_BACKGROUND_OPT:
+      next_frame = 1;
+      def_frame.background.haspixel = 0;
+      def_frame.background_change = 1;
       break;
       
      case LOGICAL_SCREEN_OPT:

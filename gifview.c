@@ -1,11 +1,11 @@
 /* gifview.c - gifview's main loop.
    Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of gifview.
+   This file is part of gifview, in the gifsicle package.
 
-   Gifview is free software; you can copy, distribute, or alter it at will, as
-   long as this notice is kept intact and this source code is made available.
-   Hypo(pa)thetical commerical developers are asked to write the author a note,
-   which might make his day. There is no warranty, express or implied. */
+   Gifview is free software. It is distributed under the GNU Public License,
+   version 2 or later; you can copy, distribute, or alter it at will, as long
+   as this notice is kept intact and this source code is made available. There
+   is no warranty, express or implied. */
 
 #include "gifx.h"
 #include "clp.h"
@@ -214,9 +214,9 @@ Options are:\n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
 Keystrokes:\n\
   [Space] Go to next frame.             [B] Go to previous frame.\n\
-  [R] Go to first frame.                [Backspace]/[W] Delete window.\n\
-  [ESC] Stop animation.                 [S] Toggle animation.\n\
-  [Q] Quit.\n\
+  [R]/[<] Go to first frame.            [>] Go to last frame.\n\
+  [ESC] Stop animation.                 [S]/[A] Toggle animation.\n\
+  [Backspace]/[W] Delete window.        [Q] Quit.\n\
 Left mouse button goes to next frame, right mouse button deletes window.\n\
 ",
 	  program_name);
@@ -820,8 +820,13 @@ input_stream_done(Gt_Viewer *viewer)
 
 
 void
-key_press(Gt_Viewer *viewer, KeySym key, unsigned state)
+key_press(Gt_Viewer *viewer, XKeyEvent *e)
 {
+  char buf[32];
+  KeySym key;
+  int nbuf = XLookupString(e, buf, 32, &key, 0);
+  if (nbuf > 1) buf[0] = 0;	/* ignore multikey sequences */
+  
   if (key == XK_space || key == XK_F || key == XK_f)
     /* space or F: one frame ahead */
     view_frame(viewer, viewer->im_pos + 1);
@@ -854,11 +859,18 @@ key_press(Gt_Viewer *viewer, KeySym key, unsigned state)
     
     set_viewer_name(viewer);
     
-  } else if (key == XK_R || key == XK_r) {
-    /* R: reset to first frame */
+  } else if (key == XK_R || key == XK_r
+	     || (nbuf == 1 && buf[0] == '<')) {
+    /* R or <: reset to first frame */
     unschedule(viewer);
     viewer->anim_loop = 0;
     view_frame(viewer, 0);
+    
+  } else if (nbuf == 1 && buf[0] == '>') {
+    /* >: reset to last frame */
+    unschedule(viewer);
+    viewer->anim_loop = 0;
+    view_frame(viewer, viewer->nim - 1);
     
   } else if (key == XK_Escape && viewer->animating) {
     /* Escape: stop animation */
@@ -920,8 +932,7 @@ loop(void)
 	
 	else if (v && e.type == KeyPress)
 	  /* Key press: call function */
-	  key_press(v, XKeycodeToKeysym(e.xany.display, e.xkey.keycode, 0),
-		    e.xkey.state);
+	  key_press(v, &e.xkey);
 	
 	else if (v && e.type == ClientMessage
 		 && e.xclient.message_type == wm_protocols_atom
@@ -1044,37 +1055,3 @@ particular purpose. That's right: you're on your own!\n");
 #endif
   return 0;
 }
-
-
-#ifndef DMALLOC
-/* be careful about memory allocation */
-#undef malloc
-#undef realloc
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void *
-gt_malloc(int size, const char *file, int line)
-{
-  void *p = malloc(size);
-  if (!p && size)
-    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
-  return p;
-}
-
-void *
-gt_realloc(void *p, int size, const char *file, int line)
-{
-  if (!p)
-    return gt_malloc(size, file, line);
-  p = realloc(p, size);
-  if (!p && size)
-    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
-  return p;
-}
-
-#ifdef __cplusplus
-}
-#endif
-#endif

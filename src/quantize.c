@@ -2,10 +2,10 @@
    Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
-   Gifsicle is free software; you can copy, distribute, or alter it at will, as
-   long as this notice is kept intact and this source code is made available.
-   Hypo(pa)thetical commerical developers are asked to write the author a note,
-   which might make his day. There is no warranty, express or implied. */
+   Gifsicle is free software. It is distributed under the GNU Public License,
+   version 2 or later; you can copy, distribute, or alter it at will, as long
+   as this notice is kept intact and this source code is made available. There
+   is no warranty, express or implied. */
 
 #include "gifsicle.h"
 
@@ -63,6 +63,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   Gif_Color *hist = Gif_NewArray(Gif_Color, 256);
   int hist_cap = 256;
   int nhist = 0;
+  int background_hist = 0;
   int x, y, i;
 
   unmark_colors(gfs->global);
@@ -74,6 +75,17 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   hist[0].haspixel = 255;
   hist[0].pixel = 0;
   nhist++;
+
+  /* Make sure the background color is in the histogram if it's not
+     transparent. (We may remove it later.) */
+  if (gfs->background != gfs->images[0]->transparent && gfs->global
+      && gfs->background < gfs->global->ncol) {
+    hist[1] = gfs->global->col[ gfs->background ];
+    hist[1].haspixel = 1;
+    hist[1].pixel = 0;
+    background_hist = 1;
+    nhist++;
+  }
 
   /* Count pixels. Be careful about values which are outside the range of the
      colormap. */
@@ -112,12 +124,26 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     /* unmark the transparent color */
     if (transparent >= 0 && transparent < ncol)
       col[transparent].haspixel = 0;
+
+    /* if this image has background disposal, count its size towards the
+       background's pixel count. Note the care taken to count it towards
+       transparency if that's trttd */
+    if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+      int v = transparent >= 0 ? 0 : background_hist;
+      hist[v].pixel += gfi->width * gfi->height;
+    }
   }
   
   /* get rid of the transparent slot if there was no transparency in the
      image */
   if (hist[0].pixel == 0) {
     hist[0] = hist[nhist - 1];
+    nhist--;
+  }
+
+  /* get rid of the background slot if it was unnecessary */
+  if (hist[background_hist].pixel == 0) {
+    hist[background_hist] = hist[nhist - 1];
     nhist--;
   }
   
@@ -194,7 +220,7 @@ Gif_Colormap *
 colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
 {
   adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
-  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size);
+  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, -1);
   Gif_Color *adapt = gfcm->col;
   int nadapt;
   int i, j, transparent;
@@ -308,7 +334,7 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     adapt[nadapt].haspixel = 255;
     nadapt++;
   }
-    
+
   Gif_DeleteArray(slots);
   gfcm->ncol = nadapt;
   return gfcm;
@@ -321,7 +347,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 {
   u_int32_t *min_dist = Gif_NewArray(u_int32_t, nhist);
   int *closest = Gif_NewArray(int, nhist);
-  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size);
+  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, -1);
   Gif_Color *adapt = gfcm->col;
   int nadapt = 0;
   int i, j, transparent;
@@ -732,6 +758,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 { 
   color_hash_item **hash = new_color_hash();
   int new_transparent = new_cm->ncol - 1;
+  int background_transparent = gfs->background == gfs->images[0]->transparent;
   int i;
   
   unmark_colors(gfs->global);
@@ -747,6 +774,16 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       Gif_DeleteColormap(gfi->local);
       gfi->local = 0;
     }
+  }
+  
+  /* change the background. I hate the background by now */
+  if (background_transparent)
+    gfs->background = new_transparent;
+  else if (gfs->global && gfs->background < gfs->global->ncol) {
+    Gif_Color *col = &gfs->global->col[ gfs->background ];
+    if (!col->haspixel)
+      col->pixel = hash_color(col->red, col->green, col->blue, hash, new_cm);
+    gfs->background = col->pixel;
   }
   
   Gif_DeleteColormap(gfs->global);
