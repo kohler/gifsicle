@@ -51,6 +51,7 @@ typedef struct Gt_Frame {
   unsigned colormap_info: 1;
   unsigned extensions_info: 1;
   unsigned position_is_offset: 1;
+  unsigned total_crop: 1;
   unsigned rotation;
   
   const char *input_filename;

@@ -1027,6 +1027,7 @@ initialize_def_frame(void)
   
   def_frame.flip_horizontal = 0;
   def_frame.flip_vertical = 0;
+  def_frame.total_crop = 0;
   
   /* output defaults */
   def_output_data.output_name = 0;

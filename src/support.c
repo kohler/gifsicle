@@ -1057,7 +1057,8 @@ static void
 set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 {
     Gif_Color background;
-    int i, conflict, want_transparent;
+    int i, j, conflict, want_transparent;
+    Gif_Image *gfi;
 
     /* Check for user-specified background. */
     /* If they specified the number, silently cooperate. */
@@ -1084,10 +1085,12 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* If we get here, user doesn't care about background. */
     /* Search for required background colors. */
     conflict = want_transparent = background.haspixel = 0;
-    for (i = 0; i < nmerger; i++) {
-	Gif_Image *gfi = gfs->images[i];
+    for (i = j = 0; i < nmerger; i++) {
+	if (merger[i]->total_crop) /* frame does not correspond to an image */
+	    continue;
+	gfi = gfs->images[j];
 	if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
-	    || (i == 0 && (gfi->left != 0 || gfi->top != 0
+	    || (j == 0 && (gfi->left != 0 || gfi->top != 0
 			   || gfi->width != gfs->screen_width
 			   || gfi->height != gfs->screen_height))) {
 	    /* transparent.haspixel set below, at merge_frame_done */
@@ -1106,6 +1109,7 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 		}
 	    }
 	}
+	j++;
     }
 
     /* Report conflicts. */
@@ -1139,8 +1143,10 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
   Gt_Frame *fr = merger[merger_index];
   Gt_Frame *next_fr = 0;
   Gif_Image *prev_image = 0;
-  if (dest->nimages > 0) prev_image = dest->images[dest->nimages - 1];
-  if (merger_index < nmerger - 1) next_fr = merger[merger_index + 1];
+  if (dest->nimages > 0)
+      prev_image = dest->images[dest->nimages - 1];
+  if (merger_index < nmerger - 1)
+      next_fr = merger[merger_index + 1];
   
   /* Don't save identifiers since the frame that was to be identified, is
      gone. Save comments though. */
@@ -1159,6 +1165,9 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
   if (fr->delay < 0)
     fr->delay = srci->delay;
   prev_image->delay += fr->delay;
+
+  /* Mark this image as totally cropped. */
+  fr->total_crop = 1;
 }
 
 

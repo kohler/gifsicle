@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.35   14.Aug.2002
+
+* Fixed bug where `--crop' could cause a segmentation fault, present since
+  1.32 or 1.33. Reported by Tom Schumm <phong@phong.org>.
+
+
 Version 1.34   13.Aug.2002
 
 * Fixed bug where combining `--crop' and `-O' options could corrupt output.
