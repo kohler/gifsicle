@@ -201,8 +201,12 @@ Type %s --help for more information.\n",
 void
 usage(void)
 {
-  fprintf(stderr, "\
+  printf("\
+`Gifview' is a lightweight GIF viewer for X. It can display animaged GIFs as\n\
+slideshows, one frame at a time, or as animations.\n\
+\n\
 Usage: %s [--display DISPLAY] [options] [filenames and frames] ...\n\
+\n\
 Options are:\n\
   --animate, -a                 Animate multiframe GIFs.\n\
   --unoptimize, -U              Unoptimize displayed GIFs.\n\
@@ -211,15 +215,18 @@ Options are:\n\
   --geometry GEOMETRY           Set window geometry.\n\
   --help                        Print this message and exit.\n\
   --version                     Print version number and exit.\n\
+\n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
+\n\
 Keystrokes:\n\
   [Space] Go to next frame.             [B] Go to previous frame.\n\
   [R]/[<] Go to first frame.            [>] Go to last frame.\n\
   [ESC] Stop animation.                 [S]/[A] Toggle animation.\n\
   [Backspace]/[W] Delete window.        [Q] Quit.\n\
+\n\
 Left mouse button goes to next frame, right mouse button deletes window.\n\
-",
-	  program_name);
+\n\
+Report bugs to <eddietwo@lcs.mit.edu>.\n", program_name);
 }
 
 

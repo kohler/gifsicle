@@ -289,13 +289,20 @@ Type %s --help for more information.\n",
 void
 usage(void)
 {
-  fprintf(stderr, "Usage: %s [options] GIF-file-1 GIF-file-2\n\
+  printf("\
+`Gifdiff' compares two GIF files (either images or animations) for identical\n\
+visual appearance. An animation and an optimized version of the same animation\n\
+should compare as the same. Gifdiff exits with status 0 if the images are\n\
+the same, 1 if they're different, and 2 if there was some error.\n\
+\n\
+Usage: %s [options] GIF-file-1 GIF-file-2\n\
+\n\
 Options:\n\
   --brief, -q                   Don't report detailed differences.\n\
   --help, -h                    Print this message and exit.\n\
   --version, -v                 Print version number and exit.\n\
-",
-	  program_name);
+\n\
+Report bugs to <eddietwo@lcs.mit.edu>.\n", program_name);
 }
 
 
@@ -351,6 +358,8 @@ main(int argc, char **argv)
     switch (opt) {
       
      case HELP_OPT:
+      usage();
+      exit(0);
       break;
       
      case VERSION_OPT:
