@@ -650,7 +650,8 @@ Clp_AddStringListType(Clp_Parser *clp, int type_id, int flags, ...)
     items[nitems].flags = 0;
     nitems++;
   }
-  
+
+  va_end(val);
   if (finish_string_list(clp, type_id, flags, items, nitems, itemscap))
     return 1;
   
