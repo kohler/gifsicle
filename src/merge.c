@@ -252,7 +252,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   } else {
     imagecm = src->global;
     if (!imagecm)
-      fatalerror("need global colormap in source");
+      fatal_error("no global or local colormap in source image");
   }
   
   mark_colors(imagecm, srci);
@@ -269,7 +269,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     warning("had to use a local colormap");
     if (!try_merge_colormaps(dest, localcm, src, imagecm,
 			     srci->transparent, 1))
-      fatalerror("can't happen: colormap mixing");
+      fatal_error("can't happen: colormap mixing");
   }
   
   map = imagecm->col;

@@ -425,11 +425,11 @@ do_frames_output(char *outfile, int f1, int f2)
     if (optimizing > 0)
       optimize_fragments(out, optimizing > 1);
     output_stream(outfile, out);
+    histogram(out);
     Gif_DeleteStream(out);
   }
   
   if (verbosing) verbose_close(']');
-  histogram(out);
 }
 
 

@@ -20,7 +20,7 @@ static int verbose_pos = 0;
 
 
 void
-fatalerror(char *message, ...)
+fatal_error(char *message, ...)
 {
   va_list val;
   verbose_endline();
