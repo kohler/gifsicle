@@ -100,6 +100,9 @@ typedef struct Gt_Viewer {
   Gif_Stream *gfs;
   char *name;
   
+  Gif_Stream *anim_gfs;
+  int can_animate;
+  
   Gif_Image **im;
   int *im_number;
   int nim;
@@ -202,11 +205,11 @@ usage(void)
   fprintf(stderr, "\
 Usage: %s [--display DISPLAY] [options] [filenames and frames] ...\n\
 Options are:\n\
+  --animate, -a                 Animate multiframe GIFs.\n\
+  --unoptimize, -U              Unoptimize displayed GIFs.\n\
   --display DISPLAY             Set display to DISPLAY.\n\
   --name NAME                   Set application resource name to NAME.\n\
   --geometry GEOMETRY           Set window geometry.\n\
-  --animate, -a                 Animate multiframe GIFs.\n\
-  --unoptimize, -U              Unoptimize displayed GIFs.\n\
   --help                        Print this message and exit.\n\
   --version                     Print version number and exit.\n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
@@ -312,6 +315,7 @@ new_viewer(Display *display, Gif_Stream *gfs, char *name)
   viewer->pixmap = None;
   viewer->gfs = gfs;
   viewer->name = name;
+  viewer->anim_gfs = 0;
   viewer->im_cap = Gif_ImageCount(gfs);
   viewer->im = Gif_NewArray(Gif_Image *, viewer->im_cap);
   viewer->im_number = Gif_NewArray(int, viewer->im_cap);
@@ -333,6 +337,7 @@ get_input_stream(char *name)
 {
   FILE *f;
   Gif_Stream *gfs = 0;
+  Gt_Viewer *viewer;
   
   if (name == 0 || strcmp(name, "-") == 0) {
     f = stdin;
@@ -361,16 +366,40 @@ get_input_stream(char *name)
     }
   }
   
-  if (animating || unoptimizing)
+  if (unoptimizing)
     Gif_Unoptimize(gfs);
   
-  return new_viewer(cur_display, gfs, name);
+  viewer = new_viewer(cur_display, gfs, name);
+  if (unoptimizing)
+    viewer->anim_gfs = gfs;
+  return viewer;
 }
 
 
 /*****
  * Schedule stuff
  **/
+
+void
+switch_animating(Gt_Viewer *viewer, int animating)
+{
+  int i;
+  Gif_Stream *gfs;
+  
+  if (animating == viewer->animating || !viewer->can_animate)
+    return;
+  
+  if (animating && !viewer->anim_gfs) {
+    viewer->anim_gfs = Gif_CopyStreamImages(viewer->gfs);
+    Gif_Unoptimize(viewer->anim_gfs);
+  }
+  gfs = animating ? viewer->anim_gfs : viewer->gfs;
+  for (i = 0; i < gfs->nimages; i++)
+    viewer->im[i] = gfs->images[i];
+  
+  viewer->animating = animating;
+}
+
 
 void
 unschedule(Gt_Viewer *viewer)
@@ -493,10 +522,23 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   }
   
   /* Open the display and create the window */
-  viewer->window = window = XCreateWindow
-    (display, RootWindow(display, viewer->screen_number),
-     sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
-     viewer->depth, InputOutput, viewer->visual, 0, (XSetWindowAttributes *)0);
+  {
+    XSetWindowAttributes x_set_attr;
+    unsigned long x_set_attr_mask;
+    x_set_attr.colormap = viewer->colormap;
+    x_set_attr.backing_store = NotUseful;
+    x_set_attr.save_under = False;
+    x_set_attr.border_pixel = 0;
+    x_set_attr.background_pixel = 0;
+    x_set_attr_mask = CWColormap | CWBorderPixel | CWBackPixel
+      | CWBackingStore | CWSaveUnder;
+  
+    viewer->window = window = XCreateWindow
+      (display, RootWindow(display, viewer->screen_number),
+       sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
+       viewer->depth, InputOutput, viewer->visual,
+       x_set_attr_mask, &x_set_attr);
+  }
   
   if (sizeh->flags & USSize)
     /* Setting sizes to -1 says user gave us geometry, don't change the size
@@ -542,6 +584,8 @@ delete_viewer(Gt_Viewer *viewer)
   else viewers = viewer->next;
   
   Gif_DeleteStream(viewer->gfs);
+  if (viewer->anim_gfs != viewer->gfs)
+    Gif_DeleteStream(viewer->anim_gfs);
   Gif_DeleteArray(viewer->im);
   Gif_Delete(viewer);
 }
@@ -593,7 +637,7 @@ set_viewer_name(Gt_Viewer *viewer)
     len += 10;
   
   strs[0] = Gif_NewArray(char, len);
-  if (Gif_ImageCount(viewer->gfs) == 1 || viewer->animating == 1)
+  if (Gif_ImageCount(viewer->gfs) == 1 || viewer->animating)
     sprintf(strs[0], "gifview: %s", viewer->name);
   else if (image_number == -1)
     sprintf(strs[0], "gifview: %s #%s", viewer->name, gfi->identifier);
@@ -623,13 +667,13 @@ view_frame(Gt_Viewer *viewer, int frame)
   
   if (frame < 0)
     frame = 0;
-  if (frame > viewer->nim - 1 && viewer->animating == 1) {
+  if (frame > viewer->nim - 1 && viewer->animating) {
     int loopcount = viewer->gfs->loopcount;
     if (loopcount == 0 || loopcount > viewer->anim_loop) {
       viewer->anim_loop++;
       frame = 0;
     } else {
-      viewer->animating = -1;
+      switch_animating(viewer, 0);
       need_set_name = 1;
     }
   }
@@ -657,7 +701,7 @@ view_frame(Gt_Viewer *viewer, int frame)
 	 CWWidth | CWHeight, &winch);
     }
     
-    if ((viewer->animating <= 0 && Gif_ImageCount(viewer->gfs) > 1)
+    if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
 	|| old_pixmap == None)
       need_set_name = 1;
     
@@ -675,7 +719,7 @@ view_frame(Gt_Viewer *viewer, int frame)
   if (!old_pixmap)
     /* first image; map the window */
     XMapRaised(display, window);
-  else if (viewer->animating == 1)
+  else if (viewer->animating)
     /* only schedule next frame if image is already mapped */
     schedule_next_frame(viewer);
 }
@@ -748,12 +792,20 @@ frame_argument(Gt_Viewer *viewer, char *arg)
 void
 input_stream_done(Gt_Viewer *viewer)
 {
+  int i;
+  viewer->can_animate = Gif_ImageCount(viewer->gfs) > 1;
+  
   if (!viewer->nim) {
-    int i;
     for (i = 0; i < Gif_ImageCount(viewer->gfs); i++)
       mark_frame(viewer, i, 0);
-    viewer->animating = animating && Gif_ImageCount(viewer->gfs) > 1;
+  
+  } else {
+    for (i = 0; i < Gif_ImageCount(viewer->gfs); i++)
+      if (viewer->im_number[i] != i)
+	viewer->can_animate = 0;
   }
+  
+  switch_animating(viewer, animating && viewer->can_animate);
   view_frame(viewer, 0);
 }
 
@@ -777,20 +829,20 @@ key_press(Gt_Viewer *viewer, KeySym key, unsigned state)
     /* Q: quit applicaton */
     exit(0);
   
-  else if ((key == XK_S || key == XK_s) && viewer->animating == -1) {
-    /* S: restart stopped animation */
-    viewer->animating = 1;
-    if (viewer->im_pos >= viewer->nim - 1) {
-      viewer->im_pos = 0;
-      viewer->anim_loop = 0;
-    }
-    view_frame(viewer, viewer->im_pos);
-    set_viewer_name(viewer);
+  else if (key == XK_S || key == XK_s || key == XK_a || key == XK_A) {
+    /* S or A: toggle animation */
+    switch_animating(viewer, !viewer->animating);
     
-  } else if ((key == XK_S || key == XK_s) && viewer->animating == 1) {
-    /* S: stop animation */
-    unschedule(viewer);
-    viewer->animating = -1;
+    if (viewer->animating) {
+      if (viewer->im_pos >= viewer->nim - 1) {
+	viewer->im_pos = 0;
+	viewer->anim_loop = 0;
+      }
+      view_frame(viewer, viewer->im_pos);
+      
+    } else
+      unschedule(viewer);
+    
     set_viewer_name(viewer);
     
   } else if (key == XK_R || key == XK_r) {
@@ -799,10 +851,10 @@ key_press(Gt_Viewer *viewer, KeySym key, unsigned state)
     viewer->anim_loop = 0;
     view_frame(viewer, 0);
     
-  } else if (key == XK_Escape && viewer->animating == 1) {
+  } else if (key == XK_Escape && viewer->animating) {
     /* Escape: stop animation */
+    switch_animating(viewer, 0);
     unschedule(viewer);
-    viewer->animating = -1;
     set_viewer_name(viewer);
   }
 }
@@ -868,7 +920,7 @@ loop(void)
 	  /* WM_DELETE_WINDOW message: delete window */
 	  pre_delete_viewer(v);
 
-	else if (v && e.type == MapNotify && v->animating == 1
+	else if (v && e.type == MapNotify && v->animating
 		 && v->scheduled == 0)
 	  /* Window was just mapped; now, start animating it */
 	  schedule_next_frame(v);
@@ -894,6 +946,7 @@ main(int argc, char **argv)
   Clp_Parser *clp =
     Clp_NewParser(argc, argv,
                   sizeof(options) / sizeof(options[0]), options);
+  Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   program_name = cur_resource_name = Clp_ProgramName(clp);
   
   xwGETTIMEOFDAY(&genesis_time);

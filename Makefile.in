@@ -56,6 +56,7 @@ install-gifsicle: gifsicle
 	$(INSTALL_DATA) gifsicle.man $(mandir)/gifsicle.$(manext)
 install-gifview: gifview
 	$(INSTALL_PROGRAM) gifview $(bindir)/gifview
+	$(INSTALL_DATA) gifview.man $(mandir)/gifview.$(manext)
 
 clp.o: clp.c clp.h
 
@@ -94,7 +95,7 @@ dist: mostlyclean
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h \
 	gifsicle.h merge.c support.c quantize.c gifsicle.c gifsicle.min \
-	gifx.h gifx.c gifview.c \
+	gifx.h gifx.c gifview.c gifview.min \
 	$(PACKAGE)-$(VERSION)
 	gtar czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
 	rm -r $(PACKAGE)-$(VERSION)

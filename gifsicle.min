@@ -766,8 +766,6 @@ To change `anim.gif's colors to a 64-color subset of the Web-safe palette:
 '
 .SH BUGS
 
-Insufficient testing and poor code doumentation.
-.PP
 Please email suggestions, additions, patches and bugs to
 eddietwo@lcs.mit.edu. Also email that address to be added to a Gifsicle
 mailing list (non-spammy).
