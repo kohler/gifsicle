@@ -14,12 +14,10 @@
 
 #ifndef LCDF_GIF_H /* -*- mode: c -*- */
 #define LCDF_GIF_H
-#ifndef __cplusplus
-# include <stdio.h>
-# include <stdlib.h>
-#else
-# include <cstdio>
-# include <cstdlib>
+#include <stdio.h>
+#include <stdlib.h>
+#include <lcdf/inttypes.h>
+#ifdef __cplusplus
 extern "C" {
 #endif
 
