@@ -17,9 +17,11 @@ typedef struct {
   u_int16_t width;
   u_int16_t height;
   byte disposal;
+  int transparent;
   byte *needed_colors;
   u_int16_t required_color_count;
   u_int16_t global_penalty;
+  Gif_Image *new_gfi;
 } Gif_OptData;
 
 /* Screen width and height */
@@ -107,7 +109,10 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
    `[ values[perm[i]] | i <- 0..size-1 ]' will be monotonic, either up or
    (if is_down != 0) down. */
 
-static u_int32_t *permuting_sort_values;
+/* 9.Dec.1998 - Dumb idiot, it's time you stopped using C. The optimizer was
+   broken because I switched to u_int32_t's for the sorting values without
+   considering the consequences; and the consequences were bad. */
+static int32_t *permuting_sort_values;
 
 static int
 permuting_sorter_up(const void *v1, const void *v2)
@@ -126,7 +131,7 @@ permuting_sorter_down(const void *v1, const void *v2)
 }
 
 static u_int16_t *
-sort_permutation(u_int16_t *perm, u_int16_t size, u_int32_t *values,
+sort_permutation(u_int16_t *perm, u_int16_t size, int32_t *values,
 		 int is_down)
 {
   permuting_sort_values = values;
@@ -160,6 +165,17 @@ copy_data_area(u_int16_t *dst, u_int16_t *src, Gif_Image *area)
 }
 
 static void
+copy_data_area_subimage(u_int16_t *dst, u_int16_t *src, Gif_OptData *area)
+{
+  Gif_Image img;
+  img.left = area->left;
+  img.top = area->top;
+  img.width = area->width;
+  img.height = area->height;
+  copy_data_area(dst, src, &img);
+}
+
+static void
 fill_data_area(u_int16_t *dst, u_int16_t value, Gif_Image *area)
 {
   int x, y;
@@ -171,6 +187,17 @@ fill_data_area(u_int16_t *dst, u_int16_t value, Gif_Image *area)
       dst[x] = value;
     dst += screen_width;
   }
+}
+
+static void
+fill_data_area_subimage(u_int16_t *dst, u_int16_t value, Gif_OptData *area)
+{
+  Gif_Image img;
+  img.left = area->left;
+  img.top = area->top;
+  img.width = area->width;
+  img.height = area->height;
+  fill_data_area(dst, value, &img);
 }
 
 static void
@@ -463,6 +490,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
   int screen_size;
   Gif_Image *last_gfi;
   int next_data_valid;
+  u_int16_t *previous_data = 0;
   
   screen_size = screen_width * screen_height;
   
@@ -484,28 +512,20 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
     if (!gfi->img) Gif_UncompressImage(gfi);
     Gif_ReleaseCompressedImage(gfi);
     
-    /* set up last_data to be equal to the last image */
-    if (!last_gfi) {
-      /* no last image; do nothing */
-    } else if (last_gfi->disposal == GIF_DISPOSAL_ASIS
-	       || last_gfi->disposal == GIF_DISPOSAL_NONE) {
-      u_int16_t *temp = last_data;
-      last_data = this_data;
-      this_data = temp;
-    } else if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
-      fill_data_area(last_data, background, last_gfi);
+    /* save previous data if necessary */
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+      previous_data = Gif_NewArray(u_int16_t, screen_size);
+      copy_data_area(previous_data, this_data, gfi);
     }
     
-    /* set up this_data to be equal to the current image */
+    /* set this_data equal to the current image */
     if (next_data_valid) {
       u_int16_t *temp = this_data;
       this_data = next_data;
       next_data = temp;
       next_data_valid = 0;
-    } else {
-      copy_data_area(this_data, last_data, last_gfi);
+    } else
       apply_frame(this_data, gfi, 0);
-    }
     
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
@@ -528,6 +548,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
       memcpy(next_data, this_data, screen_size * sizeof(u_int16_t));
       apply_frame_disposal(next_data, this_data, gfi);
       apply_frame(next_data, next_gfi, 0);
+      next_data_valid = 1;
       /* expand border as necessary */
       expand_difference_bounds(subimage, gfi);
       subimage->disposal = GIF_DISPOSAL_BACKGROUND;
@@ -545,6 +566,24 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
     
     gfi->userdata = subimage;
     last_gfi = gfi;
+    
+    /* Apply optimized disposal to last_data and unoptimized disposal to
+       this_data. Before 9.Dec.1998 I applied unoptimized disposal uniformly
+       to both. This led to subtle bugs. After all, to determine bounds, we
+       want to compare the current image (only obtainable through unoptimized
+       disposal) with what WILL be left after the previous OPTIMIZED image's
+       disposal. This fix is repeated in create_new_image_data */
+    if (subimage->disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_data_area_subimage(last_data, background, subimage);
+    else
+      copy_data_area_subimage(last_data, this_data, subimage);
+    
+    if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_data_area(this_data, background, last_gfi);
+    else if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+      copy_data_area(this_data, previous_data, last_gfi);
+      Gif_DeleteArray(previous_data);
+    }
   }
   
   Gif_DeleteArray(next_data);
@@ -567,7 +606,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
 {
   int i, imagei;
   int all_ncol = all_colormap->ncol;
-  u_int32_t *penalty = Gif_NewArray(u_int32_t, all_ncol);
+  int32_t *penalty = Gif_NewArray(int32_t, all_ncol);
   u_int16_t *ordering = Gif_NewArray(u_int16_t, all_ncol);
   int nordering = all_ncol - 1;
   int penalties_changed;
@@ -595,9 +634,10 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
 	penalty[i] += this_penalty;
   }
   
-  /* force the background to occur in the global colormap */
+  /* force the background to occur in the global colormap by giving it a very
+     high penalty */
   if (background != TRANSP)
-    penalty[background] = 0xFFFFFFFFU;
+    penalty[background] = 0x7FFFFFFF;
   
   /* loop, removing the most useless color each time, until we have exactly
      256 colors */
@@ -670,7 +710,7 @@ create_out_global_map(Gif_Stream *gfs)
       global_all[i] = i + 1;
     /* Depend on each image's global_penalty being != 0 by default */
   }
-  
+
   /* Colormap Canonicalization
      
      Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at> would like
@@ -680,7 +720,7 @@ create_out_global_map(Gif_Stream *gfs)
      on RGB order first (so that colors with equal rank have a predictable
      order), then sort on rank. (For rank sorting information see below.) */
   {
-    u_int32_t *rgb_rank = Gif_NewArray(u_int32_t, all_ncol);
+    int32_t *rgb_rank = Gif_NewArray(int32_t, all_ncol);
     Gif_Color *all_col = all_colormap->col;
     for (i = 0; i < all_ncol; i++)
       rgb_rank[i] = (all_col[i].red << 16) | (all_col[i].green << 8)
@@ -698,7 +738,7 @@ create_out_global_map(Gif_Stream *gfs)
      and sort on that -- isn't strictly optimal, but it does well for most
      images. */
   {
-    u_int32_t *rank = Gif_NewArray(u_int32_t, all_ncol);
+    int32_t *rank = Gif_NewArray(int32_t, all_ncol);
     for (i = 0; i < all_ncol; i++)
       rank[i] = 0;
     
@@ -715,13 +755,11 @@ create_out_global_map(Gif_Stream *gfs)
     
     sort_permutation(global_all, nglobal_all, rank, 1);
     
-    /* get rid of unused colors, but include the background even if no image
-       used it directly */
+    /* get rid of unused colors; warning: we may need to include the
+       background explicitly below */
     for (i = 0; i < nglobal_all; i++)
       if (!rank[global_all[i]])
 	nglobal_all = i;
-    if (!rank[background] && background != TRANSP)
-      global_all[nglobal_all++] = background;
     
     Gif_DeleteArray(rank);
   }
@@ -739,11 +777,22 @@ create_out_global_map(Gif_Stream *gfs)
   
   /* set the stream's background color */
   if (background != TRANSP) {
-    assert(all_colormap->col[background].pixel < nglobal_all);
-    gfs->background = all_colormap->col[background].pixel;
+    int val = all_colormap->col[background].pixel;
+    if (val == NOT_IN_OUT_GLOBAL) {
+      /* this is the case where there were less than 256 colors total, but the
+	 background wasn't used, so it was removed above. there must be room
+	 for it in the output colormap. */
+      assert(out_global_map->ncol < 256);
+      val = out_global_map->ncol;
+      out_global_map->col[val] = all_colormap->col[background];
+      all_colormap->col[background].pixel = val;
+      out_global_map->ncol++;
+    }
+    gfs->background = val;
   }
   
-  Gif_DeleteArray(global_all);  
+  Gif_DeleteArray(global_all);
+  assert(out_global_map->ncol <= 256);
 }
 
 
@@ -753,9 +802,9 @@ create_out_global_map(Gif_Stream *gfs)
 
 /* prepare_colormap_map: Create and return an array of bytes mapping from
    global pixel values to pixel values for this image. It may add colormap
-   cells to `into'; if there isn't enough room in `into', it will return 0.
-   It sets the `transparent' field of `gfi', but otherwise doesn't change or
-   read it at all. */
+   cells to `into'; if there isn't enough room in `into', it will return 0. It
+   sets the `transparent' field of `gfi->optdata', but otherwise doesn't
+   change or read it at all. */
 
 static byte *
 prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
@@ -776,7 +825,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
      all unused */
   for (i = 0; i < 256; i++)
     into_used[i] = 0;
-
+  
   /* go over all non-transparent global pixels which MUST appear
      (need[P]==REQUIRED) and place them in `into' */
   for (i = 1; i < all_ncol; i++) {
@@ -792,8 +841,8 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
       /* always place colors in a local colormap */    
       if (ncol == 256) goto error;
       val = ncol;
-      ncol++;
       col[val] = all_col[i];
+      ncol++;
     }
     
     map[i] = val;
@@ -900,7 +949,7 @@ prepare_colormap(Gif_Image *gfi, byte *need)
     for (i = 0; i < all_colormap->ncol; i++)
       map[i] = permutation[map[i]];
     if (gfi->transparent >= 0)
-      gfi->transparent = permutation[gfi->transparent];
+      gfi->transparent = map[TRANSP] = permutation[gfi->transparent];
   }
   
   return map;
@@ -1067,69 +1116,90 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
  * CREATE NEW IMAGE DATA
  **/
 
+/* last == what last image ended up looking like
+   this == what new image should look like
+   
+   last = apply O1 + dispose O1 + ... + apply On-1 + dispose On-1
+   this = apply U1 + dispose U1 + ... + apply Un-1 + dispose Un-1 + apply Un
+   
+   invariant: apply O1 + dispose O1 + ... + apply Ok
+   === apply U1 + dispose U1 + ... + apply Uk */
+
 static void
 create_new_image_data(Gif_Stream *gfs, int optimize_level)
 {
-  Gif_Image *last_gfi;
+  Gif_Image cur_unopt_gfi;	/* placehoder; maintains pre-optimization
+				   image size so we can apply background
+				   disposal */
+  int screen_size = screen_width * screen_height;
+  u_int16_t *previous_data = 0;
   
   gfs->global = out_global_map;
   
   /* do first image. Remember to uncompress it if necessary */
   erase_screen(last_data);
   erase_screen(this_data);
-  last_gfi = 0;
   
-  /* PRECONDITION: last_data -- garbage
-     this_data -- equal to image data for previous image
-     next_data -- equal to image data for next image if next_image_valid */
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
-    Gif_Image *new_gfi = gfs->images[image_index];
-    Gif_OptData *optdata = (Gif_OptData *)new_gfi->userdata;
+    Gif_Image *cur_gfi = gfs->images[image_index];
+    Gif_OptData *optdata = (Gif_OptData *)cur_gfi->userdata;
     
-    /* set up last_data to be equal to the last image */
-    if (!last_gfi) {
-      /* do nothing */
-    } else if (last_gfi->disposal == GIF_DISPOSAL_ASIS
-	       || last_gfi->disposal == GIF_DISPOSAL_NONE) {
-      u_int16_t *temp = last_data;
-      last_data = this_data;
-      this_data = temp;
-    } else if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
-      fill_data_area(last_data, background, last_gfi);
+    /* save previous data if necessary */
+    if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+      previous_data = Gif_NewArray(u_int16_t, screen_size);
+      copy_data_area(previous_data, this_data, cur_gfi);
     }
     
     /* set up this_data to be equal to the current image */
-    copy_data_area(this_data, last_data, last_gfi);
-    apply_frame(this_data, new_gfi, 0);
+    apply_frame(this_data, cur_gfi, 0);
+    
+    /* save actual bounds and disposal from unoptimized version so we can
+       apply the disposal correctly next time through */
+    cur_unopt_gfi = *cur_gfi;
     
     /* set bounds and disposal from optdata */
-    Gif_ReleaseUncompressedImage(new_gfi);
-    new_gfi->left = optdata->left;
-    new_gfi->top = optdata->top;
-    new_gfi->width = optdata->width;
-    new_gfi->height = optdata->height;
-    new_gfi->disposal = optdata->disposal;
-    if (image_index > 0) new_gfi->interlace = 0;
+    Gif_ReleaseUncompressedImage(cur_gfi);
+    cur_gfi->left = optdata->left;
+    cur_gfi->top = optdata->top;
+    cur_gfi->width = optdata->width;
+    cur_gfi->height = optdata->height;
+    cur_gfi->disposal = optdata->disposal;
+    if (image_index > 0) cur_gfi->interlace = 0;
     
     /* find the new image's colormap and then make new data */
     {
-      byte *map = prepare_colormap(new_gfi, optdata->needed_colors);
-      byte *data = Gif_NewArray(byte, new_gfi->width * new_gfi->height);
-      Gif_SetUncompressedImage(new_gfi, data, Gif_DeleteArrayFunc, 0);
+      byte *map = prepare_colormap(cur_gfi, optdata->needed_colors);
+      byte *data = Gif_NewArray(byte, cur_gfi->width * cur_gfi->height);
+      Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
       
       /* don't use transparency on first frame */
       if (optimize_level > 1 && image_index > 0)
-	transp_frame_data(gfs, new_gfi, map);
+	transp_frame_data(gfs, cur_gfi, map);
       else
-	simple_frame_data(new_gfi, map);
+	simple_frame_data(cur_gfi, map);
       
       Gif_DeleteArray(map);
     }
     
     delete_opt_data(optdata);
-    new_gfi->userdata = 0;
+    cur_gfi->userdata = 0;
     
-    last_gfi = new_gfi;
+    /* Set up last_data and this_data. last_data must contain this_data + new
+       disposal. this_data must contain this_data + old disposal. */
+    if (cur_gfi->disposal == GIF_DISPOSAL_NONE
+	|| cur_gfi->disposal == GIF_DISPOSAL_ASIS)
+      copy_data_area(last_data, this_data, cur_gfi);
+    else if (cur_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_data_area(last_data, background, cur_gfi);
+    else
+      assert(0 && "optimized frame has strange disposal");
+    
+    if (cur_unopt_gfi.disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_data_area(this_data, background, &cur_unopt_gfi);
+    else if (cur_unopt_gfi.disposal == GIF_DISPOSAL_PREVIOUS) {
+      copy_data_area(this_data, previous_data, &cur_unopt_gfi);
+      Gif_DeleteArray(previous_data);
+    }
   }
 }
 
@@ -1214,8 +1284,20 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
 static void
 finalize_optimizer(Gif_Stream *gfs)
 {
+  int i;
+  
   if (background == TRANSP)
     gfs->background = gfs->images[0]->transparent;
+
+  /* 10.Dec.1998 - prefer GIF_DISPOSAL_NONE to GIF_DISPOSAL_ASIS. This is
+     semantically "wrong" -- it's better to set the disposal explicitly than
+     rely on default behavior -- but will result in smaller GIF files, since
+     the graphic control extension can be left off in many cases. */
+  for (i = 0; i < gfs->nimages; i++)
+    if (gfs->images[i]->disposal == GIF_DISPOSAL_ASIS
+	&& gfs->images[i]->delay == 0
+	&& gfs->images[i]->transparent < 0)
+      gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
   
   Gif_DeleteColormap(in_global_map);
   Gif_DeleteColormap(all_colormap);
@@ -1232,7 +1314,7 @@ optimize_fragments(Gif_Stream *gfs, int optimize_level)
 {
   if (!initialize_optimizer(gfs, optimize_level))
     return;
-  
+
   create_subimages(gfs, optimize_level);
   create_out_global_map(gfs);
   create_new_image_data(gfs, optimize_level);

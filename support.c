@@ -1226,7 +1226,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     else if (fr->transparent.haspixel)
       srci->transparent =
 	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
-
+    
     desti = merge_image(dest, fr->stream, srci);
     
     srci->transparent = old_transparent; /* restore real transparent value */

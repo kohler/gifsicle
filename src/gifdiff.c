@@ -222,7 +222,7 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     background1 = TRANSP;
   else
     background1 = s1->global->col[ s1->background ].pixel;
-
+  
   if (s2->images[0]->transparent >= 0 || !s2->global)
     background2 = TRANSP;
   else

@@ -1,5 +1,24 @@
 Gifsicle NEWS
 
+Version 1.9b3   10.Dec.1998
+
+* Fixed a serious bug in merge.c introduced in 1.8: Merging several images
+  with global colormaps could corrupt the output colors.
+
+* Fixed a serious bug in optimize.c introduced in 1.9b1: Optimizing GIFs
+  which required local color tables could crash the program due to a buffer
+  overrun. (I was adding the background to the output colormap without
+  making sure there was room for it.)
+
+* Fixed an optimizer bug which could result in incorrect animations:
+  background disposal was not handled correctly.
+
+* The optimizer now generates `--disposal=none' instead of
+  `--disposal=asis' in certain situations, which can result in smaller
+  animations. Suggestion by Markus F.X.J. Oberhumer
+  <k3040e4@c210.edvz.uni-linz.ac.at>.
+
+
 Version 1.9b2   9.Dec.1998
 
 * Fixed `--logical-screen' and `--no-logical-screen', which had no effect
