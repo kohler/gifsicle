@@ -7,6 +7,12 @@
    long as this notice is kept intact and this source code is made available.
    There is no warranty, express or implied. */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#else
+/* Assume we have strtoul by default. */
+# define HAVE_STRTOUL 1
+#endif
 #include "clp.h"
 #include <stdlib.h>
 #include <string.h>
@@ -436,9 +442,13 @@ static int
 parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
-  if (thunk != 0)		/* unsigned */
+  if (thunk != 0) {		/* unsigned */
+#ifdef HAVE_STRTOUL
     clp->val.u = strtoul(arg, &val, 10);
-  else
+#else
+    clp->val.u = strtol(arg, &val, 10);
+#endif
+  } else
     clp->val.i = strtol(arg, &val, 10);
   if (*arg != 0 && *val == 0)
     return 1;
