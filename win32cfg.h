@@ -5,7 +5,7 @@
 
 /* Package and version. */
 #define PACKAGE "gifsicle"
-#define VERSION "1.31 (Windows)"
+#define VERSION "1.32 (Windows)"
 
 /* Define when using the debugging malloc library. */
 /* #undef DMALLOC */

@@ -131,12 +131,13 @@ General options: Also --no-OPTION for info and verbose.\n\
                                 normal output is not suppressed.\n\
       --color-info, --cinfo     --info plus colormap details.\n\
       --extension-info, --xinfo --info plus extension details.\n\
-  -v, --verbose                 Prints progress information.\n\
+  -V, --verbose                 Prints progress information.\n\
   -h, --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
   -o, --output FILE             Write output to FILE.\n\
   -w, --no-warnings             Don't report warnings.\n\
       --conserve-memory         Conserve memory at the expense of speed.\n\
+      --multifile               Support concatenated GIF files.\n\
 \n", program_name);
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
@@ -1086,9 +1087,10 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     for (i = 0; i < nmerger; i++) {
 	Gif_Image *gfi = gfs->images[i];
 	if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
-	    || (i > 0 && (gfi->left != 0 || gfi->top != 0
-			  || gfi->width != gfs->screen_width
-			  || gfi->height != gfs->screen_height))) {
+	    || (i == 0 && (gfi->left != 0 || gfi->top != 0
+			   || gfi->width != gfs->screen_width
+			   || gfi->height != gfs->screen_height))) {
+	    /* transparent.haspixel set below, at merge_frame_done */
 	    int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
 	    if (original_bg_transparent != background.haspixel)
 		conflict = 1;

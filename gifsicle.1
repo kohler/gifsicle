@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.31
+.ds V 1.32
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -281,7 +281,7 @@ The special filename `-' means the standard output.
 '
 .Sp
 .TP
-.OP \-\-verbose ", " \-v
+.OP \-\-verbose ", " \-V
 '
 Print progress information (files read and written) to standard
 error.
@@ -304,6 +304,18 @@ Print the version number and some short non-warranty information and exit.
 '
 Conserve memory usage at the expense of processing time. This may be useful
 if you are processing large GIFs on a computer without very much memory.
+'
+.Sp
+.TP
+.OP \-\-multifile
+'
+Accept concatenated GIF files (multiple GIF image files concatenated into
+one big file; each image file may, of course, contain multiple frames).
+This option is intended for scripts. For example, to merge an unknown
+number of GIF images into a single animation, run
+"\fBgifsicle\fR \-\-multifile \- > out.gif"
+and write the GIF images, in sequence, to \fBgifsicle\fR's standard input.
+Any frame selections apply only to the last file in the concatenation.
 '
 .PD
 '

@@ -1,5 +1,14 @@
 Gifsicle NEWS
 
+Version 1.32   5.Jul.2002
+
+* Add `--multifile' option handling concatenated GIF files. This is useful
+  for scripts. For example, `gifsicle --multifile -' will merge all GIF
+  files written to its standard input into a single animation.
+
+* More fixes for spurious background warnings.
+
+
 Version 1.31   17.Jun.2002
 
 * Changed behavior of `--crop X,Y+WIDTHxHEIGHT' option when WIDTH or HEIGHT

@@ -1,5 +1,6 @@
+/* -*- c-basic-offset: 2 -*- */
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2002 Eddie Kohler, kohler@icir.org
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -178,6 +179,7 @@ static const char *output_option_types[] = {
 #define RESIZE_HEIGHT_OPT	359
 #define CROP_TRANSPARENCY_OPT	360
 #define CONSERVE_MEMORY_OPT	361
+#define MULTIFILE_OPT		362
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -239,6 +241,7 @@ Clp_Option options[] = {
   
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
+  { "multifile", 0, MULTIFILE_OPT, 0, Clp_Negate },
   
   { "name", 'n', NAME_OPT, Clp_ArgString, 0 },
   { "no-names", 'n', NO_NAME_OPT, 0, Clp_OnlyNegated },
@@ -285,7 +288,8 @@ Clp_Option options[] = {
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   
-  { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
+  { "verbose", 'V', VERBOSE_OPT, 0, Clp_Negate },
+  { 0, 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
   
   { 0, 'w', NO_WARNINGS_OPT, 0, Clp_Negate },
@@ -465,10 +469,13 @@ gifread_error(const char *message, int which_image, void *thunk)
 void
 input_stream(const char *name)
 {
+  static char *component_namebuf = 0;
   FILE *f;
   Gif_Stream *gfs;
   int i;
   int saved_next_frame = next_frame;
+  int componentno = 0;
+  const char *main_name = 0;
   Gt_Frame old_def_frame;
   
   input = 0;
@@ -476,7 +483,8 @@ input_stream(const char *name)
   frames_done = 0;
   next_frame = 0;
   next_input = 0;
-  if (next_output) combine_output_options();
+  if (next_output)
+    combine_output_options();
   files_given++;
   
   if (name == 0 || strcmp(name, "-") == 0) {
@@ -487,33 +495,62 @@ input_stream(const char *name)
 #endif
     f = stdin;
     name = "<stdin>";
+    input_name = 0;
   } else
     f = fopen(name, "rb");
   if (!f) {
     error("%s: %s", name, strerror(errno));
     return;
   }
+  main_name = name;
+
+ retry_file:
+  /* change filename for component files */
+  componentno++;
+  if (componentno > 1) {
+    free(component_namebuf);
+    component_namebuf = malloc(strlen(main_name) + 10);
+    sprintf(component_namebuf, "%s~%d", main_name, componentno);
+    name = component_namebuf;
+  }
   
-  /* special error message for empty files */
+  /* check for empty file */
   i = getc(f);
   if (i == EOF) {
-    error("%s: empty file", name);
+    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
+      error("%s: empty file", name);
+    if (f != stdin)
+      fclose(f);
     return;
   }
   ungetc(i, f);
   
-  if (verbosing) verbose_open('<', name);
+  if (verbosing)
+    verbose_open('<', name);
+
+  /* read file */
   gifread_error_count = 0;
   gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
 			 gifread_error, (void *)name);
-  fclose(f);
   gifread_error(0, -1, (void *)name); /* print out last error message */
   
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
-    error("%s: not a GIF", name);
+    if (componentno == 1)
+      error("%s: not a GIF image", name);
+    else
+      error("%s: trailing garbage ignored", main_name);
     Gif_DeleteStream(gfs);
     if (verbosing) verbose_close('>');
+    if (f != stdin)
+      fclose(f);
     return;
+  }
+
+  /* special processing for components after the first */
+  if (componentno > 1) {
+    if (mode == BATCHING || mode == INSERTING)
+      fatal_error("%s: --multifile is useful only in merge mode");
+    input_done();
   }
   
   input = gfs;
@@ -587,6 +624,12 @@ input_stream(const char *name)
   
   apply_color_transforms(input_transforms, gfs);
   gfs->refcount++;
+
+  /* Read more files. */
+  if (gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK)
+    goto retry_file;
+  else if (f != stdin)
+    fclose(f);
 }
 
 void
@@ -1608,13 +1651,20 @@ main(int argc, char **argv)
       def_output_data.conserve_memory = !clp->negated;
       break;
 
+     case MULTIFILE_OPT:
+      if (clp->negated)
+	gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
+      else
+	gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+      break;
+
      case VERSION_OPT:
 #ifdef GIF_UNGIF
       printf("LCDF Gifsicle %s (ungif)\n", VERSION);
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2001 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2002 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
