@@ -52,7 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %doc NEWS README
-%attr(0755,root,root) /usr/bin/gifsicle /usr/bin/gifdiff
+%attr(0755,root,root) /usr/bin/gifsicle
+%attr(0755,root,root) /usr/bin/gifdiff
 %attr(0755,root,root) /usr/X11R6/bin/gifview
-%attr(0644,root,root) /usr/man/man1/gifsicle.1 /usr/man/man1/gifdiff.1
+%attr(0644,root,root) /usr/man/man1/gifsicle.1
+%attr(0644,root,root) /usr/man/man1/gifdiff.1
 %attr(0644,root,root) /usr/X11R6/man/man1/gifview.1
