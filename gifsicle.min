@@ -24,7 +24,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "27 Apr 1998" "Version @VERSION@"
+.TH GIFSICLE 1 "10 May 1998" "Version @VERSION@"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
@@ -42,10 +42,9 @@ animations; adding and removing comments; optimizing animations for space;
 and changing images' colormaps, among other things. Extensive command-line
 options control which, if any, of these occur.
 .PP
-This man page assumes that you already know what a GIF is and the
-possibilities of GIF animations. For a tutorial, you might try Royal
-Frazier's GIF Animation Page on the World Wide Web at
-http://member.aol.com/royalef/gif\%anim.htm.
+This man page assumes that you know what GIFs and GIF animations are. For a
+tutorial, you might try Royal Frazier's GIF Animation Page on the World
+Wide Web at http://member.aol.com/royalef/gifanim\%.htm.
 .PP
 The next sections tell you how to run
 .BR gifsicle
@@ -95,75 +94,34 @@ which turns off the option. You can turn off a short option
 by saying
 .QO \+X
 instead.
-.PP
-There are seven option categories. First,
-.IR "mode options"
-control what
-.BR gifsicle
-does with its output. The default is
-.IR "merge mode" ,
-which combines all GIF inputs into one output animation. You can also
-specify
-.IR "batch mode" ,
-which writes one GIF output for each GIF input (to the same filename),
-or
-.IR "explode mode" ,
-which separates animations into one GIF output per frame.
-.PP
-.I General options
-control what information
-.B gifsicle
-prints and where it writes its output.
-'
-.PP
-.I Frame selections
-tell
-.B gifsicle
-which animation frames to extract or modify.
-'
-.PP
-.I Frame change options
-insert new frames into an animation or replace or delete frames that
-already exist. Some things\*Efor
-example, changing one frame in an animation\*Eare difficult to express with
-frame selection, but easy with frame changes.
-.PP
-.I Image options
-modify input images. Interlacing, transparency changes, and cropping are
-examples of image options.
-.PP
-.I Animation options
-are image options which apply only to GIF animations.
-.PP
-Finally,
-.I whole-GIF options
-affect entire GIF files rather than particular images. Colormap
-modifications are examples of whole-GIF options.
 '
 .\" -----------------------------------------------------------------
 .SS Mode Options
 
-There can be at most one mode option, which must precede any GIF
-inputs.
+Mode options tell
+.B gifsicle
+what kind of output to generate. There can be at most one mode option,
+which must precede any GIF inputs.
 .TP 5
 .OP \-\-merge ", " \-m
 '
-Combines all GIF inputs into one file with multiple images and writes
-that file to the standard output. This is the default mode.
+Combines all GIF inputs into one file with multiple frames and writes that
+file to the standard output. This is the default mode.
 '
 .TP
 .OP \-\-batch ", " \-b
 '
-Modifies each GIF input, writing it out to the same filename. (GIFs
-read from the standard input are written to the standard output.)
+Modifies each GIF input in place by reading and writing to the same
+filename. (GIFs read from the standard input are written to the standard
+output.)
 '
 .TP
 .OP \-\-explode ", " \-e
 '
-Separates each GIF input into its individual frames, and writes the
-frames as separate GIFs to the files `input.0', `input.1', etc. Here,
-`input' is the name of the input file (or `#stdin#' for the standard
-input).
+Separates each GIF input into its individual frames, and writes the frames
+as separate GIFs to the files `input.0', `input.1', and so on, where
+`input' represents the name of the input file (or `#stdin#' for the
+standard input).
 '
 .TP
 .OP \-\-explode\-by\-name ", " \-E
@@ -176,7 +134,9 @@ but writes named frames to files `input.\fIname\fR' instead of
 .\" -----------------------------------------------------------------
 .SS General Options
 
-The info options and
+General options control what information
+.B gifsicle
+prints and where it writes its output. The info options and
 .OP \-\-verbose
 can be turned off with
 .QO \-\-no\-option .
@@ -184,17 +144,6 @@ can be turned off with
 .Sp
 .PD 0
 .TP 5
-.OP \-\-info ", " \-I
-'
-Prints a summary of the contents of each input GIF to standard error,
-and suppresses normal output. (If you give two
-.OP \-\-info
-or
-.OP \-I
-options, normal output is not suppressed.)
-'
-.Sp
-.TP
 .OP \-\-color\-info
 '
 Same as
@@ -205,25 +154,23 @@ is a synonym for
 .OP \%\-\-color\-info .
 '
 .Sp
-.TP
-.OP \-\-verbose ", " \-v
-'
-Prints progress information (files read and written) to standard
-error.
-'
-.Sp
-.TP
+.TP 5
 .OP \-\-help ", " \-h
 '
 Prints usage information and exits.
 '
 .Sp
-.TP
-.OP \-\-version
+.TP 5
+.OP \-\-info ", " \-I
 '
-Prints the
+Prints a summary of the contents of each input GIF to standard error,
+and suppresses normal output. (If you give two
+.OP \-\-info
+or
+.OP \-I
+options,
 .B gifsicle
-version number, some quickie warranty information, and exits.
+produces both information and normal output.)
 '
 .Sp
 .TP
@@ -234,16 +181,32 @@ version number, some quickie warranty information, and exits.
 Sends output to
 .IR file .
 The special filename `-' means the standard output.
+'
+.Sp
+.TP
+.OP \-\-verbose ", " \-v
+'
+Prints progress information (files read and written) to standard
+error.
+'
+.Sp
+.TP
+.OP \-\-version
+'
+Prints the
+.B gifsicle
+version number, some quickie warranty information, and exits.
+'
 .PD
 '
 .\" -----------------------------------------------------------------
 .SS Frame Selections
 
-A
-.I frame selection
-chooses one or more frames from the current GIF input file. They are useful
-only for animations, as non-animated GIFs only have one frame. Here are the
-legal forms for frame specifications.
+A frame selection tells
+.B gifsicle
+which frames to use from the current input file. They are useful only for
+animations, as non-animated GIFs only have one frame. Here are the legal
+forms for frame specifications.
 .Sp
 .PD 0
 .TP 13
@@ -295,6 +258,11 @@ output GIFs.
 .\" -----------------------------------------------------------------
 .SS Frame Change Options
 
+Frame change options insert new frames into an animation or replace or
+delete frames that already exist. Some things\*Efor example, changing one
+frame in an animation\*Eare difficult to express with frame selection, but
+easy with frame changes.
+'
 .TP 5
 .OA \-\-delete frames " [" frames ".\|.\|.]"
 '
@@ -337,7 +305,7 @@ The
 arguments are frame selections (see above). These arguments always refer to
 frames from the
 .I original
-input GIF. So, if `in.gif' has 11 frames an `other.gif' has one, this
+input GIF. So, if `in.gif' has 11 frames and `other.gif' has one, this
 command
 .Sp
 .RS 5
@@ -345,7 +313,7 @@ command
 .OP \-\-delete " #0\-5 " \-\-replace " #10 other.gif"
 .RE
 .Sp
-will work as you expected, producing an output animation with 5 frames:
+will work as expected, producing an output animation with 5 frames:
 `in.gif' frames 6 through 9, then `other.gif'.
 .PP
 The
@@ -376,8 +344,9 @@ the same input GIF.
 .\" -----------------------------------------------------------------
 .SS Image Options
 
-Each image option stays in effect until the next image option in the same
-category. Image options have three forms:
+Image options modify input images (by changing their interlacing,
+transparency, and cropping, for example). Each image option stays in effect
+until the next image option in the same category. They have three forms:
 .QO \-\-X ,
 .QO \-\-no\-X ,
 and
@@ -505,8 +474,8 @@ and blue values (each between 0 and 255).
 .\" -----------------------------------------------------------------
 .SS Animation Options
 
-Most animation options act like image options, and have the same three
-forms (see above).
+Animation options are image options applying only to GIF animations. Most
+of them act like image options, and have the same three forms (see above).
 '
 .Sp
 .PD 0
@@ -688,8 +657,12 @@ is either the name of a GIF file, whose global colormap will be used, or
 the word
 .BR web ,
 which represents the 216-color ``Web-safe palette''. If
-.OP \-\-colors
-is also given, a subset of the colormap will be used.
+.OP \-\-colors\fR=\fIN
+is also given, an
+.IR N \-sized
+subset of
+.I colormap
+will be used.
 '
 .PD
 '
