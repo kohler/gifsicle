@@ -5,6 +5,11 @@ Version 1.7.1   2.Dec.1998
 * Added configuration check for `strerror'. Problem reported by Mario
   Gallotta <Mario_Gallotta@optilink.dsccc.com>.
 
+* Added colormap canonicalization: If you pipe a GIF through `gifsicle -O'
+  or `-O2', the output colormaps will be arranged in a predictable order.
+  Feature suggested by Markus F.X.J. Oberhumer
+  <k3040e4@c210.edvz.uni-linz.ac.at>.
+
 
 Version 1.7   28.Nov.1998
 

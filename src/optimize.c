@@ -109,7 +109,7 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
    `[ values[perm[i]] | i <- 0..size-1 ]' will be monotonic, either up or
    (if is_down != 0) down. */
 
-static u_int16_t *permuting_sort_values;
+static u_int32_t *permuting_sort_values;
 
 static int
 permuting_sorter_up(const void *v1, const void *v2)
@@ -128,7 +128,7 @@ permuting_sorter_down(const void *v1, const void *v2)
 }
 
 static u_int16_t *
-sort_permutation(u_int16_t *perm, u_int16_t size, u_int16_t *values,
+sort_permutation(u_int16_t *perm, u_int16_t size, u_int32_t *values,
 		 int is_down)
 {
   permuting_sort_values = values;
@@ -564,7 +564,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
 {
   int i, imagei;
   int all_ncol = all_colormap->ncol;
-  u_int16_t *penalty = Gif_NewArray(u_int16_t, all_ncol);
+  u_int32_t *penalty = Gif_NewArray(u_int32_t, all_ncol);
   u_int16_t *ordering = Gif_NewArray(u_int16_t, all_ncol);
   int nordering = all_ncol - 1;
   int penalties_changed;
@@ -591,11 +591,11 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
       if (need[i] == REQUIRED)
 	penalty[i] += this_penalty;
   }
-
+  
   /* be careful about the background!! which MUST be in the global colormap */
   if (background != TRANSP)
-    penalty[background] = 0xFFFFU;
-
+    penalty[background] = 0xFFFFFFFFU;
+  
   /* loop, removing the most useless color each time, until we have exactly
      256 colors */
   penalties_changed = 1;
@@ -608,7 +608,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
     /* remove the color which is least expensive to remove */
     removed_color = ordering[nordering - 1];
     nordering--;
-
+    
     /* adjust penalties. if an image now must have a local colormap, then any
        penalty values for its other colors shouldn't be considered */
     penalties_changed = 0;
@@ -627,7 +627,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
       penalties_changed = 1;
     }
   }
-
+  
   for (i = 0; i < 256; i++)
     global_all[i] = ordering[i];
   
@@ -667,7 +667,27 @@ create_out_global_map(Gif_Stream *gfs)
       global_all[i] = i + 1;
     /* Depend on each image's global_penalty being != 0 by default */
   }
-
+  
+  /* Colormap Canonicalization
+     
+     Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at> would like
+     gifsicle to `canonicalize' colormaps, meaning that you should be able the
+     colormap to have a predictable arrangement after piping it through
+     gifsicle. This is a nice place to do that. Basically, sort the colormap
+     on RGB order first (so that colors with equal rank have a predictable
+     order), then sort on rank. (For rank sorting information see below.) */
+  {
+    u_int32_t *rgb_rank = Gif_NewArray(u_int32_t, all_ncol);
+    Gif_Color *all_col = all_colormap->col;
+    for (i = 0; i < all_ncol; i++)
+      rgb_rank[i] = (all_col[i].red << 16) | (all_col[i].green << 8)
+	| (all_col[i].blue);
+    
+    sort_permutation(global_all, nglobal_all, rgb_rank, 0);
+    
+    Gif_DeleteArray(rgb_rank);
+  }
+  
   /* Now, reorder global colors. Colors used in a lot of images should appear
      first in the global colormap; then those images might be able to use a
      smaller min_code_size, since the colors they need are clustered at the
@@ -675,7 +695,7 @@ create_out_global_map(Gif_Stream *gfs)
      many images a pixel is used and sort on that -- isn't strictly optimal,
      but it does well for most images. */
   {
-    u_int16_t *rank = Gif_NewArray(u_int16_t, all_ncol);
+    u_int32_t *rank = Gif_NewArray(u_int32_t, all_ncol);
     for (i = 0; i < all_ncol; i++)
       rank[i] = 0;
     
@@ -740,8 +760,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
   
   byte *map = Gif_NewArray(byte, all_ncol);
   byte into_used[256];
-
-  for (i =0;i<all_ncol;i++)map[i]=15;
+  
   /* keep track of which pixel indices in `into' have been used; initially,
      all unused */
   for (i = 0; i < 256; i++)
@@ -765,7 +784,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
       ncol++;
       col[val] = all_col[i];
     }
-
+    
     map[i] = val;
     into_used[val] = 1;
   }
@@ -818,6 +837,20 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
 }
 
 
+/* sort_colormap_permutation_rgb: for canonicalizing local colormaps by
+   arranging them in RGB order */
+
+static int
+colormap_rgb_permutation_sorter(const void *v1, const void *v2)
+{
+  const Gif_Color *col1 = (const Gif_Color *)v1;
+  const Gif_Color *col2 = (const Gif_Color *)v2;
+  int value1 = (col1->red << 16) | (col1->green << 8) | col1->blue;
+  int value2 = (col2->red << 16) | (col2->green << 8) | col2->blue;
+  return value1 - value2;
+}
+
+
 /* prepare_colormap: make a colormap up from the image data by fitting any
    used colors into a colormap. Returns a map from global color index to index
    in this image's colormap. May set a local colormap on `gfi'. */
@@ -827,16 +860,37 @@ prepare_colormap(Gif_Image *gfi, byte *need)
 {
   byte *map;
   
-  /* map pixel values into the global colormap; if that doesn't work, add a
-     local colormap */
+  /* try to map pixel values into the global colormap */
   Gif_DeleteColormap(gfi->local);
   gfi->local = 0;
   map = prepare_colormap_map(gfi, out_global_map, need);
+  
   if (!map) {
+    /* that didn't work; add a local colormap. */
+    byte permutation[256];
+    Gif_Color *local_col;
+    int i;
+    
     gfi->local = Gif_NewFullColormap(0, 256);
     map = prepare_colormap_map(gfi, gfi->local, need);
+    
+    /* The global colormap has already been canonicalized; we should
+       canonicalize the local colormaps as well. */
+    local_col = gfi->local->col;
+    for (i = 0; i < gfi->local->ncol; i++)
+      local_col[i].pixel = i;
+    
+    qsort(local_col, gfi->local->ncol, sizeof(Gif_Color),
+	  colormap_rgb_permutation_sorter);
+    
+    for (i = 0; i < gfi->local->ncol; i++)
+      permutation[local_col[i].pixel] = i;
+    for (i = 0; i < all_colormap->ncol; i++)
+      map[i] = permutation[map[i]];
+    if (gfi->transparent >= 0)
+      gfi->transparent = permutation[gfi->transparent];
   }
-
+  
   return map;
 }
 
@@ -1077,7 +1131,7 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
 {
   int i, screen_size;
   
-  if (gfs->nimages <= 1)
+  if (gfs->nimages < 1)
     return 0;
   
   /* combine colormaps */
