@@ -132,7 +132,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     for (x = 0; x < 256; x++)
       count[x] = 0;
     for (y = 0; y < gfi->height; y++) {
-      byte *data = gfi->img[y];
+      uint8_t *data = gfi->img[y];
       for (x = 0; x < gfi->width; x++, data++)
 	count[*data]++;
     }
@@ -364,9 +364,9 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
       green_total += slice[j].green * slice[j].pixel;
       blue_total += slice[j].blue * slice[j].pixel;
     }
-    adapt[i].red = (byte)(red_total / slots[i].pixel);
-    adapt[i].green = (byte)(green_total / slots[i].pixel);
-    adapt[i].blue = (byte)(blue_total / slots[i].pixel);
+    adapt[i].red = (uint8_t)(red_total / slots[i].pixel);
+    adapt[i].green = (uint8_t)(green_total / slots[i].pixel);
+    adapt[i].blue = (uint8_t)(blue_total / slots[i].pixel);
     adapt[i].haspixel = 0;
   }
   
@@ -507,9 +507,9 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 	green_total += hist[match].green * pixel;
 	blue_total += hist[match].blue * pixel;
 	pixel_total += pixel;
-	adapt[i].red = (byte)(red_total / pixel_total);
-	adapt[i].green = (byte)(green_total / pixel_total);
-	adapt[i].blue = (byte)(blue_total / pixel_total);
+	adapt[i].red = (uint8_t)(red_total / pixel_total);
+	adapt[i].green = (uint8_t)(green_total / pixel_total);
+	adapt[i].blue = (uint8_t)(blue_total / pixel_total);
       }
       adapt[i].haspixel = 0;
     }
@@ -536,9 +536,9 @@ colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size)
 
 
 struct color_hash_item {
-  byte red;
-  byte green;
-  byte blue;
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
   uint32_t pixel;
   color_hash_item *next;
 };
@@ -566,7 +566,7 @@ new_color_hash(void)
 
 
 static color_hash_item *
-new_color_hash_item(byte red, byte green, byte blue)
+new_color_hash_item(uint8_t red, uint8_t green, uint8_t blue)
 {
   color_hash_item *chi;
   if (hash_item_alloc_left <= 0) {
@@ -681,7 +681,7 @@ hash_color(int red, int green, int blue,
 
 
 void
-colormap_image_posterize(Gif_Image *gfi, byte *new_data,
+colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
 			 Gif_Colormap *old_cm, Gif_Colormap *new_cm,
 			 color_hash_item **hash, uint32_t *histogram)
 {
@@ -703,7 +703,7 @@ colormap_image_posterize(Gif_Image *gfi, byte *new_data,
   
   /* map image */
   for (j = 0; j < gfi->height; j++) {
-    byte *data = gfi->img[j];
+    uint8_t *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++, new_data++)
       if (*data != transparent) {
 	*new_data = map[*data];
@@ -718,7 +718,7 @@ colormap_image_posterize(Gif_Image *gfi, byte *new_data,
 #define N_RANDOM_VALUES	512
 
 void
-colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
+colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 			       Gif_Colormap *old_cm, Gif_Colormap *new_cm,
 			       color_hash_item **hash, uint32_t *histogram)
 {
@@ -761,7 +761,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
   /* Do the image! */
   for (j = 0; j < gfi->height; j++) {
     int d0, d1, d2, d3;		/* used for error diffusion */
-    byte *data, *new_data;
+    uint8_t *data, *new_data;
     int x;
     
     if (dither_direction) {
@@ -854,7 +854,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 
 /* return value 1 means run the image_changer again */
 static int
-try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
+try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
 			Gif_Colormap *new_cm, int *new_ncol,
 			uint32_t *histogram)
 {
@@ -906,7 +906,7 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
   
  found:
   for (j = 0; j < gfi->height; j++) {
-    byte *data = gfi->img[j];
+    uint8_t *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++, new_data++)
       if (*data == transparent)
 	*new_data = new_transparent;
@@ -948,7 +948,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 
     if (gfcm) {
       /* If there was an old colormap, change the image data */
-      byte *new_data = Gif_NewArray(byte, gfi->width * gfi->height);
+      uint8_t *new_data = Gif_NewArray(uint8_t, gfi->width * gfi->height);
       uint32_t histogram[256];
       unmark_colors(new_cm);
       unmark_colors(gfcm);
@@ -1049,7 +1049,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       Gif_Image *gfi = gfs->images[imagei];
       int only_compressed = (gfi->img == 0);
       uint32_t size;
-      byte *data;
+      uint8_t *data;
       if (only_compressed)
 	Gif_UncompressImage(gfi);
       

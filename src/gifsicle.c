@@ -982,7 +982,7 @@ handle_extension(Clp_Parser *clp, int is_app)
     gfex = Gif_NewExtension(l, 0);
   }
   
-  gfex->data = (byte *)extension_body;
+  gfex->data = (uint8_t *)extension_body;
   gfex->length = strlen(extension_body);
   gfex->next = def_frame.extensions;
   def_frame.extensions = gfex;

@@ -41,7 +41,7 @@ mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
 {
   Gif_Color *col = gfcm->col;
   int ncol = gfcm->ncol;
-  byte have[256];
+  uint8_t have[256];
   int i, j, total;
   
   /* Only mark colors until we've seen all of them. The total variable keeps
@@ -54,7 +54,7 @@ mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
   
   /* Loop over every pixel (until we've seen all colors) */
   for (j = 0; j < gfi->height && total < 256; j++) {
-    byte *data = gfi->img[j];
+    uint8_t *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++)
       if (!have[*data]) {
 	have[*data] = 1;
@@ -218,10 +218,10 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   Gif_Colormap *localcm = 0;
   Gif_Colormap *destcm = dest->global;
   
-  byte map[256];		/* map[input pixel value] == output pixval */
+  uint8_t map[256];		/* map[input pixel value] == output pixval */
   int trivial_map = 1;		/* does the map take input pixval --> the same
 				   pixel value for all colors in the image? */
-  byte used[256];		/* used[output pixval K] == 1 iff K was used
+  uint8_t used[256];		/* used[output pixval K] == 1 iff K was used
 				   in the image */
   
   Gif_Image *desti;
@@ -320,7 +320,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
 
   if (trivial_map && same_compressed_ok && srci->compressed) {
     desti->compressed_len = srci->compressed_len;
-    desti->compressed = Gif_NewArray(byte, srci->compressed_len);
+    desti->compressed = Gif_NewArray(uint8_t, srci->compressed_len);
     desti->free_compressed = Gif_DeleteArrayFunc;
     memcpy(desti->compressed, srci->compressed, srci->compressed_len);
   } else {
@@ -333,8 +333,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
     
     else
       for (j = 0; j < desti->height; j++) {
-	byte *srcdata = srci->img[j];
-	byte *destdata = desti->img[j];
+	uint8_t *srcdata = srci->img[j];
+	uint8_t *destdata = desti->img[j];
 	for (i = 0; i < desti->width; i++, srcdata++, destdata++)
 	  *destdata = map[*srcdata];
       }

@@ -208,7 +208,7 @@ int
 crop_image(Gif_Image *gfi, Gt_Crop *crop)
 {
   int x, y, w, h, j;
-  byte **img;
+  uint8_t **img;
   
   x = crop->x - gfi->left;
   y = crop->y - gfi->top;
@@ -263,7 +263,7 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
   }
   
   if (w > 0 && h > 0) {
-    img = Gif_NewArray(byte *, h + 1);
+    img = Gif_NewArray(uint8_t *, h + 1);
     for (j = 0; j < h; j++)
       img[j] = gfi->img[y + j] + x;
     img[h] = 0;
@@ -295,12 +295,12 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
   int x, y;
   int width = gfi->width;
   int height = gfi->height;
-  byte **img = gfi->img;
+  uint8_t **img = gfi->img;
   
   /* horizontal flips */
   if (!is_vert) {
-    byte *buffer = Gif_NewArray(byte, width);
-    byte *trav;
+    uint8_t *buffer = Gif_NewArray(uint8_t, width);
+    uint8_t *trav;
     for (y = 0; y < height; y++) {
       memcpy(buffer, img[y], width);
       trav = img[y] + width - 1;
@@ -313,8 +313,8 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
   
   /* vertical flips */
   if (is_vert) {
-    byte **buffer = Gif_NewArray(byte *, height);
-    memcpy(buffer, img, height * sizeof(byte *));
+    uint8_t **buffer = Gif_NewArray(uint8_t *, height);
+    memcpy(buffer, img, height * sizeof(uint8_t *));
     for (y = 0; y < height; y++)
       img[y] = buffer[height - y - 1];
     gfi->top = screen_height - (gfi->top + height);
@@ -328,9 +328,9 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
   int x, y;
   int width = gfi->width;
   int height = gfi->height;
-  byte **img = gfi->img;
-  byte *new_data = Gif_NewArray(byte, width * height);
-  byte *trav = new_data;
+  uint8_t **img = gfi->img;
+  uint8_t *new_data = Gif_NewArray(uint8_t, width * height);
+  uint8_t *trav = new_data;
   
   /* this function can only rotate by 90 or 270 degrees */
   assert(rotation == 1 || rotation == 3);
@@ -370,7 +370,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
 void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 {
-  byte *new_data;
+  uint8_t *new_data;
   int new_left, new_top, new_right, new_bottom, new_width, new_height;
   int was_compressed = (gfi->img == 0);
   
@@ -406,14 +406,14 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   
   if (was_compressed)
     Gif_UncompressImage(gfi);
-  new_data = Gif_NewArray(byte, new_width * new_height);
+  new_data = Gif_NewArray(uint8_t, new_width * new_height);
   
   new_y = new_top;
   scaled_new_y = scaled_ystep * gfi->top;
   
   for (j = 0; j < gfi->height; j++) {
-    byte *in_line = gfi->img[j];
-    byte *out_data;
+    uint8_t *in_line = gfi->img[j];
+    uint8_t *out_data;
     int x_delta, y_delta, yinc;
     
     scaled_new_y += scaled_ystep;

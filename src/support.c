@@ -308,7 +308,7 @@ colormap_info(FILE *where, Gif_Colormap *gfcm, char *prefix)
 static void
 extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 {
-  byte *data = gfex->data;
+  uint8_t *data = gfex->data;
   uint32_t pos = 0;
   uint32_t len = gfex->length;
   
@@ -969,7 +969,7 @@ copy_extension(Gif_Extension *src)
 {
   Gif_Extension *dest = Gif_NewExtension(src->kind, src->application);
   if (!dest) return 0;
-  dest->data = Gif_NewArray(byte, src->length);
+  dest->data = Gif_NewArray(uint8_t, src->length);
   dest->length = src->length;
   dest->free_data = Gif_DeleteArrayFunc;
   if (!dest->data) {

@@ -18,9 +18,9 @@ typedef struct {
   uint16_t width;
   uint16_t height;
   uint32_t size;
-  byte disposal;
+  uint8_t disposal;
   int transparent;
-  byte *needed_colors;
+  uint8_t *needed_colors;
   uint16_t required_color_count;
   int32_t active_penalty;
   int32_t global_penalty;
@@ -242,7 +242,7 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
   /* map the image */
   dst += gfi->left + gfi->top * screen_width;
   for (y = 0; y < gfi->height; y++) {
-    byte *gfi_pointer = gfi->img[y];
+    uint8_t *gfi_pointer = gfi->img[y];
     int x;
     
     if (replace)
@@ -448,7 +448,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
   int top = bounds->top, width = bounds->width, height = bounds->height;
   int i, x, y;
   int all_ncol = all_colormap->ncol;
-  byte *need = Gif_NewArray(byte, all_ncol);
+  uint8_t *need = Gif_NewArray(uint8_t, all_ncol);
   
   for (i = 0; i < all_ncol; i++)
     need[i] = 0;
@@ -644,7 +644,7 @@ increment_penalties(Gif_OptData *opt, int32_t *penalty, int32_t delta)
 {
   int i;
   int all_ncol = all_colormap->ncol;
-  byte *need = opt->needed_colors;
+  uint8_t *need = opt->needed_colors;
   for (i = 1; i < all_ncol; i++)
     if (need[i] == REQUIRED)
       penalty[i] += delta;
@@ -700,7 +700,7 @@ create_out_global_map(Gif_Stream *gfs)
     /* decrement penalties for colors that are out of the running */
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
-      byte *need = opt->needed_colors;
+      uint8_t *need = opt->needed_colors;
       if (opt->global_penalty > 0 && need[removed] == REQUIRED) {
 	increment_penalties(opt, penalty, -opt->active_penalty);
 	opt->global_penalty = 0;
@@ -760,8 +760,8 @@ create_out_global_map(Gif_Stream *gfs)
    sets the `transparent' field of `gfi->optdata', but otherwise doesn't
    change or read it at all. */
 
-static byte *
-prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
+static uint8_t *
+prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 {
   int i;
   int is_global = (into == out_global_map);
@@ -772,8 +772,8 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
   int ncol = into->ncol;
   Gif_Color *col = into->col;
   
-  byte *map = Gif_NewArray(byte, all_ncol);
-  byte into_used[256];
+  uint8_t *map = Gif_NewArray(uint8_t, all_ncol);
+  uint8_t into_used[256];
   
   /* keep track of which pixel indices in `into' have been used; initially,
      all unused */
@@ -871,10 +871,10 @@ colormap_rgb_permutation_sorter(const void *v1, const void *v2)
    used colors into a colormap. Returns a map from global color index to index
    in this image's colormap. May set a local colormap on `gfi'. */
 
-static byte *
-prepare_colormap(Gif_Image *gfi, byte *need)
+static uint8_t *
+prepare_colormap(Gif_Image *gfi, uint8_t *need)
 {
-  byte *map;
+  uint8_t *map;
   
   /* try to map pixel values into the global colormap */
   Gif_DeleteColormap(gfi->local);
@@ -883,7 +883,7 @@ prepare_colormap(Gif_Image *gfi, byte *need)
   
   if (!map) {
     /* that didn't work; add a local colormap. */
-    byte permutation[256];
+    uint8_t permutation[256];
     Gif_Color *local_col;
     int i;
     
@@ -924,14 +924,14 @@ prepare_colormap(Gif_Image *gfi, byte *need)
    No funkiness, no transparency, nothing */
 
 static void
-simple_frame_data(Gif_Image *gfi, byte *map)
+simple_frame_data(Gif_Image *gfi, uint8_t *map)
 {
   int top = gfi->top, width = gfi->width, height = gfi->height;
   int x, y;
   
   for (y = 0; y < height; y++) {
     uint16_t *from = this_data + screen_width * (y+top) + gfi->left;
-    byte *into = gfi->image_data + y * width;
+    uint8_t *into = gfi->image_data + y * width;
     for (x = 0; x < width; x++)
       *into++ = map[*from++];
   }
@@ -942,14 +942,14 @@ simple_frame_data(Gif_Image *gfi, byte *map)
    transparency occasionally according to a heuristic described below */
 
 static void
-transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
+transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 {
   int top = gfi->top, width = gfi->width, height = gfi->height;
   int x, y;
   int transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;
-  byte *data, *swit;
+  uint8_t *data, *swit;
   int transparentizing;
   
   /* First, try w/o transparency. Compare this to the result using
@@ -1037,7 +1037,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   
   /* Now, try compressed transparent version and pick the better of the two. */
   {
-    byte *old_compressed = gfi->compressed;
+    uint8_t *old_compressed = gfi->compressed;
     void (*old_free_compressed)(void *) = gfi->free_compressed;
     uint32_t old_compressed_len = gfi->compressed_len;
     gfi->compressed = 0;	/* prevent freeing old_compressed */
@@ -1111,8 +1111,8 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     
     /* find the new image's colormap and then make new data */
     {
-      byte *map = prepare_colormap(cur_gfi, opt->needed_colors);
-      byte *data = Gif_NewArray(byte, cur_gfi->width * cur_gfi->height);
+      uint8_t *map = prepare_colormap(cur_gfi, opt->needed_colors);
+      uint8_t *data = Gif_NewArray(uint8_t, cur_gfi->width * cur_gfi->height);
       Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
       
       /* don't use transparency on first frame */
@@ -1238,7 +1238,7 @@ finalize_optimizer(Gif_Stream *gfs)
   int i;
   
   if (background == TRANSP)
-    gfs->background = (byte)gfs->images[0]->transparent;
+    gfs->background = (uint8_t)gfs->images[0]->transparent;
 
   /* 10.Dec.1998 - prefer GIF_DISPOSAL_NONE to GIF_DISPOSAL_ASIS. This is
      semantically "wrong" -- it's better to set the disposal explicitly than

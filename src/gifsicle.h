@@ -7,8 +7,8 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
-#include "gif.h"
-#include "clp.h"
+#include <lcdfgif/gif.h>
+#include <lcdf/clp.h>
 #ifdef __GNUC__
 #define NORETURN __attribute__ ((noreturn))
 #else
@@ -211,14 +211,14 @@ Gif_Colormap *colormap_median_cut(Gif_Color *, int, int);
 
 typedef struct color_hash_item color_hash_item;
 typedef void (*colormap_image_func)
-     (Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+     (Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
       color_hash_item **, uint32_t *);
 
 void	colormap_image_posterize
-	(Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+	(Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
 	 color_hash_item **, uint32_t *);
 void	colormap_image_floyd_steinberg
-	(Gif_Image *, byte *, Gif_Colormap *, Gif_Colormap *,
+	(Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
 	 color_hash_item **, uint32_t *);
 void	colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
 

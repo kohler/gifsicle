@@ -8,8 +8,8 @@
    is no warranty, express or implied. */
 
 #include <config.h>
-#include "gif.h"
-#include "clp.h"
+#include <lcdfgif/gif.h>
+#include <lcdf/clp.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -88,7 +88,7 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
   Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
   for (y = 0; y < gfi->height; y++) {
     uint16_t *outd = data + screen_width * (y + gfi->top) + gfi->left;
-    byte *ind = gfi->img[y];
+    uint8_t *ind = gfi->img[y];
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
       memcpy(last + screen_width * y + gfi->left, outd,
 	     sizeof(uint16_t) * width);

@@ -20,6 +20,7 @@
 #ifdef HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
+#undef uint8_t
 #undef uint16_t
 #undef uint32_t
 #undef int32_t

@@ -1,71 +1,35 @@
 ## Process this file with automake to produce Makefile.in
-AUTOMAKE_OPTIONS = no-dependencies foreign check-news
+AUTOMAKE_OPTIONS = foreign check-news
 
-bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
-EXTRA_PROGRAMS = gifview gifdiff
+SUBDIRS = src
+
 man_MANS = gifsicle.1 @OTHERMANS@
 
-LDADD = @MALLOC_O@ @LIBOBJS@
-gifsicle_LDADD = $(LDADD) @GIFWRITE_O@
-gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
+EXTRA_DIST = mminstance.spec \
+	include/lcdf/clp.h \
+	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
+	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
 
-gifsicle_DEPENDENCIES = @GIFWRITE_O@ @MALLOC_O@ @LIBOBJS@
-gifview_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
-gifdiff_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
-
-gifsicle_SOURCES = clp.h clp.c \
-		gif.h giffunc.c gifread.c gifunopt.c \
-		gifsicle.h merge.c optimize.c quantize.c support.c xform.c \
-		gifsicle.c
-
-gifview_SOURCES = clp.h clp.c \
-		gif.h giffunc.c gifread.c gifx.h gifx.c \
-		gifview.c
-
-gifdiff_SOURCES = clp.h clp.c \
-		gif.h giffunc.c gifread.c \
-		gifdiff.c
-
-INCLUDES = $(X_CFLAGS)
-
-EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c \
-		gifwrite.c ungifwrt.c \
-		gifsicle.1 gifview.1 gifdiff.1 \
-		logo.gif logo1.gif rpm.spec \
-		Makefile.w32 win32cfg.h
-
-clp.o: clp.h clp.c config.h
-
-fmalloc.o: fmalloc.c config.h
-dmalloc.o: dmalloc.h dmalloc.c config.h
-
-giffunc.o: gif.h giffunc.c config.h
-gifread.o: gif.h gifread.c config.h
-gifwrite.o: gif.h gifwrite.c config.h
-ungifwrt.o: gif.h ungifwrt.c config.h
-gifunopt.o: gif.h gifunopt.c config.h
-gifx.o: gif.h gifx.h gifx.c config.h
-
-merge.o: gifsicle.h gif.h merge.c config.h
-optimize.o: gifsicle.h gif.h optimize.c config.h
-quantize.o: gifsicle.h gif.h quantize.c config.h
-support.o: gifsicle.h gif.h support.c config.h
-xform.o: gifsicle.h gif.h xform.c config.h
-gifsicle.o: gifsicle.h gif.h gifsicle.c config.h
-
-gifview.o: gifview.c gif.h gifx.h config.h
-gifdiff.o: gifdiff.c gif.h config.h
+gifsicle:
+	@cd src && $(MAKE)
 
 srclinks:
-	for i in clp.c clp.h fmalloc.c strerror.c ; do \
-	ln -sf $(HOME)/src/edlib/$$i $$i ; done
-	for i in gif.h giffunc.c gifread.c gifwrite.c ungifwrt.c gifunopt.c \
-	gifx.h gifx.c giftoc.c ; do \
-	ln -sf $(HOME)/src/giflib/$$i $$i ; done
+	test $(srcdir) = . || exit 1
+	test -d $(srcdir)/include || mkdir $(srcdir)/include
+	test -d $(srcdir)/include/lcdf || mkdir $(srcdir)/include/lcdf
+	test -d $(srcdir)/include/lcdfgif || mkdir $(srcdir)/include/lcdfgif
+	for i in clp ; do \
+	ln -sf ../../../liblcdf/include/lcdf/$$i.h include/lcdf/$$i.h ; done
+	for i in gif gifx ; do \
+	ln -sf ../../../liblcdf/include/lcdfgif/$$i.h include/lcdfgif/$$i.h ; done
+	for i in clp fmalloc strerror ; do \
+	ln -sf ../../liblcdf/liblcdf/$$i.c src/$$i.c ; done
+	for i in giffunc gifread gifwrite ungifwrt gifunopt giftoc gifx ; do \
+	ln -sf ../../liblcdf/liblcdfgif/$$i.c src/$$i.c ; done
 
 versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
-	perl -pi -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" rpm.spec
+	perl -pi -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" gifsicle.spec
 	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" win32cfg.h
 
 rpm: dist
@@ -76,7 +40,7 @@ rpm: dist
 	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-gfs/macros' >> /tmp/rpm-gfs/rc ; \
 	echo '%_topdir /tmp/rpm-gfs' > /tmp/rpm-gfs/macros ; \
 	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-gfs/SOURCES ; \
-	rpm --rcfile /tmp/rpm-gfs/rc -bb rpm.spec ; \
+	rpm --rcfile /tmp/rpm-gfs/rc -bb gifsicle.spec ; \
 	cp /tmp/rpm-gfs/RPMS/$$buildarch/*.rpm .
 	rm -rf /tmp/rpm-gfs
 
@@ -88,7 +52,7 @@ rpm-ungif: dist
 	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-ugfs/macros' >> /tmp/rpm-ugfs/rc ; \
 	echo '%_topdir /tmp/rpm-ugfs' > /tmp/rpm-ugfs/macros ; \
 	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-ugfs/SOURCES ; \
-	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpm-ugfs/rc -bb rpm.spec ; \
+	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpm-ugfs/rc -bb gifsicle.spec ; \
 	cp /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm `echo /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
 	rm -rf /tmp/rpm-ugfs
 
