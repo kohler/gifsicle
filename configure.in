@@ -1,6 +1,6 @@
 AC_INIT(gifsicle.h)
 
-VERSION=1.2b6
+VERSION=1.2
 AC_SUBST(VERSION)
 
 AC_PROG_CC
@@ -16,6 +16,13 @@ AC_ARG_ENABLE(gifview,
 [  --enable-gifview        build gifview, a GIF viewer for X11],
 if test "$enableval" = yes ; then
   build_gifview=yes
+fi)
+
+use_dmalloc=
+AC_ARG_ENABLE(dmalloc,
+[  --enable-dmalloc        build with debugging malloc library],
+if test "$enableval" = yes ; then
+  use_dmalloc=yes
 fi)
 
 if test "$build_gifview"; then
@@ -43,6 +50,22 @@ INSTALLERS=[`echo $PROGRAMS | sed 's/\([a-z][a-z]*\)/install-\1/g'`]
 AC_SUBST(PROGRAMS)dnl
 AC_SUBST(INSTALLERS)dnl
 AC_SUBST(GETTIMEOFDAY)dnl
+
+if test "$use_dmalloc"; then
+  MEMORY_PREPROCESSOR='#include "dmalloc.h"\
+#define Gif_DeleteFunc		(&debug_free)\
+#define Gif_DeleteArrayFunc	(&debug_free)'
+  AC_DEFINE(DMALLOC)
+  DMALLOC_O='dmalloc.o'
+else
+  MEMORY_PREPROCESSOR='#define malloc(s)		gt_malloc((s),__FILE__,__LINE__)\
+#define realloc(p,s)		gt_realloc((p),(s),__FILE__,__LINE__)\
+void *gt_malloc(int, const char *, int);\
+void *gt_realloc(void *, int, const char *, int);'
+  DMALLOC_O=''
+fi
+AC_SUBST(MEMORY_PREPROCESSOR)dnl
+AC_SUBST(DMALLOC_O)dnl
 
 AC_CACHE_CHECK(for integer typedefs in sys/types.h, ac_cv_sys_types_int,
 [AC_EGREP_HEADER(u_int32_t, sys/types.h,

@@ -28,7 +28,8 @@ add_histogram_color(Gif_Color *color, Gif_Color **hist_store,
   
   if (nhist >= *hist_cap_store) {
     *hist_cap_store *= 2;
-    *hist_store = hist = Gif_ReArray(hist, Gif_Color, *hist_cap_store);
+    Gif_ReArray(hist, Gif_Color, *hist_cap_store);
+    *hist_store = hist;
   }
   hist[nhist] = *color;
   hist[nhist].pixel = 0;
@@ -184,8 +185,8 @@ check_hist_transparency(Gif_Color *hist, int nhist)
    transparency, and its haspixel field equals 255. */
 
 typedef struct {
-  u_int32_t first;
-  u_int32_t count;
+  int first;
+  int count;
   u_int32_t pixel;
 } adaptive_slot;
 
@@ -351,13 +352,13 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   
   /* 2. choose colors one at a time */
   for (nadapt = 0; nadapt < adapt_size; nadapt++) {
-    int chosen;
+    int chosen = 0;
     
     /* 2.1. choose the color to be added */
     if (nadapt == 0 || (nadapt >= 10 && nadapt % 2 == 0)) {
       /* 2.1a. choose based on popularity from unchosen colors; we've sorted
 	 them on popularity, so just choose the first in the list */
-      for (chosen = 0; chosen < nhist; chosen++)
+      for (; chosen < nhist; chosen++)
 	if (min_dist[chosen])
 	  break;
       
@@ -534,7 +535,7 @@ hash_color(byte red, byte green, byte blue,
   {
     Gif_Color *col = new_cm->col;
     int ncol = new_cm->ncol, i, found;
-    u_int32_t min_dist = 0x7FFFFFFF;
+    u_int32_t min_dist = 0xFFFFFFFFU;
     
     for (i = 0; i < ncol; i++)
       if (col[i].haspixel != 255) {

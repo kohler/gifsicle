@@ -6,7 +6,20 @@ Version 1.2
   --comment) and frame selections.
 
 * Fixed bad bug in merge: If a global colormap from the source needed to be
-  dumped into a local colormap in the destination, the pixel map was wrong.
+  dumped into a local colormap in the destination, the pixel map was wrong,
+  resulting in bad colors in the destination.
+
+* Fixed memory leaks. Changed memory usage pattern in gifsicle to
+  release source image memory as soon as possible, resulting in a better
+  memory profile. Memory fix in gifview, which now keeps images in
+  compressed form.
+
+* Fixed bugs in gifread.c that corrupted memory when uncompressing some bad
+  images.
+
+* Added debugging malloc library (`./configure --enable-dmalloc' to use it).
+
+* Other performance improvements.
 
 
 Version 1.2b6

@@ -244,8 +244,8 @@ extension_info(Gif_Stream *gfs, Gif_Extension *gfex, int count)
   
   /* Now, hexl the data. */
   while (len > 0) {
-    int row = 16;
-    int i;
+    u_int32_t row = 16;
+    u_int32_t i;
     if (row > len) row = len;
     fprintf(stderr, "    %08x: ", pos);
     
@@ -656,17 +656,15 @@ parse_two_colors(Clp_Parser *clp, const char *arg, void *v, int complain)
  * Frame stuff
  **/
 
-void blank_frameset(Gt_Frameset *fset, int f1, int f2);
-
 
 Gt_Frameset *
 new_frameset(int initial_cap)
 {
-  Gt_Frameset *fs = (Gt_Frameset *)malloc(sizeof(Gt_Frameset));
+  Gt_Frameset *fs = Gif_New(Gt_Frameset);
   if (initial_cap < 0) initial_cap = 0;
   fs->cap = initial_cap;
   fs->count = 0;
-  fs->f = (Gt_Frame *)malloc(sizeof(Gt_Frame) * initial_cap);
+  fs->f = Gif_NewArray(Gt_Frame, initial_cap);
   return fs;
 }
 
@@ -677,31 +675,33 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
   if (number < 0) {
     while (fset->count >= fset->cap) {
       fset->cap *= 2;
-      fset->f = (Gt_Frame *)realloc(fset->f, sizeof(Gt_Frame) * fset->cap);
+      Gif_ReArray(fset->f, Gt_Frame, fset->cap);
     }
     number = fset->count++;
   } else {
     assert(number < fset->count);
-    blank_frameset(fset, number, number);
+    blank_frameset(fset, number, number, 0);
   }
-  
+
+  /* Mark the stream and the image both */
   gfs->refcount++;
+  gfi->refcount++;
   fset->f[number] = def_frame;
   fset->f[number].stream = gfs;
   fset->f[number].image = gfi;
   
   /* Get rid of next-frame-only options.
-
+     
      This causes problems with frame selection. In the command `gifsicle
      -nblah f.gif', the name should be applied to frame 0 of f.gif. This will
      happen automatically when f.gif is read, since all of its frames will be
      added when it is input. After frame 0, the name in def_frame will be
      cleared.
-
+     
      Now, `gifsicle -nblah f.gif #1' should apply the name to frame 1 of
      f.gif. But once f.gif is input, its frames are added, and the name
      component of def_frame is cleared!! So when #1 comes around it's gone!
-
+     
      We handle this in gifsicle.c by introducing a def_frame_before_input
      variable. */
   def_frame.name = 0;
@@ -737,10 +737,10 @@ merger_add(Gt_Frame *fp)
   while (nmerger >= mergercap)
     if (mergercap) {
       mergercap *= 2;
-      merger = (Gt_Frame **)realloc(merger, sizeof(Gt_Frame *) * mergercap);
+      Gif_ReArray(merger, Gt_Frame *, mergercap);
     } else {
       mergercap = 16;
-      merger = (Gt_Frame **)malloc(sizeof(Gt_Frame *) * mergercap);
+      merger = Gif_NewArray(Gt_Frame *, mergercap);
     }
   merger[ nmerger++ ] = fp;
 }
@@ -774,7 +774,8 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 
 
 Gif_Stream *
-merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
+merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
+		     int compress_immediately)
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256);
@@ -787,14 +788,32 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
   nmerger = 0;
   merger_flatten(fset, f1, f2);
   
+  /* merge stream-specific info and clear colormaps */
   for (i = 0; i < nmerger; i++)
     merger[i]->stream->userflags = 1;
-  
-  for (i = 0; i < nmerger; i++)
+  for (i = 0; i < nmerger; i++) {
     if (merger[i]->stream->userflags) {
       Gif_Stream *src = merger[i]->stream;
+      /* merge_stream() unmarks the global colormap */
       merge_stream(dest, src, merger[i]->no_comments);
       src->userflags = 0;
+    }
+    if (merger[i]->image->local)
+      unmark_colors_2(merger[i]->image->local);
+  }
+  
+  /* choose the first relevant background color and dump it in the global
+     colormap. Relevant means an image with disposal == BACKGROUND. */
+  for (i = 0; i < nmerger; i++)
+    if (merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND) {
+      Gif_Stream *gfs = merger[i]->stream;
+      if (gfs->global && gfs->background < gfs->global->ncol
+	  && gfs->background != gfs->images[0]->transparent) {
+	global->ncol = 1;
+	global->col[0] = gfs->global->col[gfs->background];
+	global->col[0].haspixel = 1;
+	break;
+      }
     }
   
   /* check for cropping the whole stream */
@@ -808,12 +827,12 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
 	merger[0]->crop->whole_stream = 0;
   }
   
+  /* Actually merge images together */
   for (i = 0; i < nmerger; i++) {
     Gt_Frame *fr = merger[i];
+    Gif_Image *srci;
     Gif_Image *desti;
     Gif_Extension *gfex;
-    int old_transparent = fr->image->transparent;
-    int new_transparent = -2;
     
     /* First, check for extensions */
     gfex = fr->stream->extensions;
@@ -826,29 +845,14 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
     
     /* Make a copy of the image and crop it if we're cropping */
     if (fr->crop) {
-      fr->image = Gif_CopyImage(fr->image);
-      crop_image(fr->image, fr->crop);
-    }
+      srci = Gif_CopyImage(fr->image);
+      crop_image(srci, fr->crop);
+    } else
+      srci = fr->image;
     
-    /* Get new transparent index (in old colormap) and temporarily
-       alter the image's transparency value */
-    if (fr->transparent.haspixel == 255)
-      new_transparent = -1;
-    else if (fr->transparent.haspixel == 2)
-      new_transparent = fr->transparent.pixel;
-    else if (fr->transparent.haspixel) {
-      new_transparent =
-	find_image_color(fr->stream, fr->image, &fr->transparent);
-      if (new_transparent < 0)
-	warning("can't make transparent color");
-    }
-    if (new_transparent > -2)
-      fr->image->transparent = new_transparent;
-    
-    desti = merge_image(dest, fr->stream, fr->image);
+    desti = merge_image(dest, fr->stream, srci);
     
     if (fr->name || fr->no_name) {
-      /* Use the fact that Gif_CopyString(0) == 0 */
       Gif_DeleteArray(desti->identifier);
       desti->identifier = Gif_CopyString(fr->name);
     }
@@ -859,6 +863,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
     if (fr->comment) {
       if (!desti->comment) desti->comment = Gif_NewComment();
       merge_comments(desti->comment, fr->comment);
+      /* delete the comment early to help with memory; set field to 0 so we
+	 don't re-free it later */
+      Gif_DeleteComment(fr->comment);
+      fr->comment = 0;
     }
     
     if (fr->interlacing >= 0)
@@ -873,10 +881,36 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
     if (fr->disposal >= 0)
       desti->disposal = fr->disposal;
     
-    fr->image->transparent = old_transparent;
     /* Destroy the copied, cropped image if necessary */
     if (fr->crop)
-      Gif_DeleteImage(fr->image);
+      Gif_DeleteImage(srci);
+    
+    /* if we can, delete the image's data right now to save memory */
+    srci = fr->image;
+    assert(srci->refcount > 1);
+    if (--srci->refcount == 1) {
+      /* only 1 reference ==> the reference is from the stream itself */
+      assert(srci->image_data && srci->img);
+      Gif_DeleteArray(srci->img);
+      if (srci->free_image_data)
+	(*srci->free_image_data)(srci->image_data);
+      srci->img = 0;
+      srci->image_data = 0;
+      srci->free_image_data = 0;
+      fr->image = 0;
+    }
+    
+    /* compress immediately if possible to save on memory */
+    if (compress_immediately) {
+      Gif_CompressImage(dest, desti);
+      Gif_ReleaseUncompressedImage(desti);
+    }
+    
+    /* 5/26/98 Destroy the stream now to help with memory. Assumes that
+       all frames are added with add_frame() which properly increments the
+       stream's refcount. Set field to 0 so we don't redelete */
+    Gif_DeleteStream(fr->stream);
+    fr->stream = 0;
   }
   
   /* Copy stream-wide information from the last frame in the set */
@@ -895,18 +929,24 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
 
 
 void
-blank_frameset(Gt_Frameset *fset, int f1, int f2)
+blank_frameset(Gt_Frameset *fset, int f1, int f2, int delete_object)
 {
   int i;
+  if (delete_object) f1 = 0, f2 = -1;
   if (f2 < 0) f2 = fset->count - 1;
   for (i = f1; i <= f2; i++) {
+    /* We may have deleted stream and image earlier to save on memory; see
+       above in merge_frame_interval(); but if we didn't, do it now. */
+    if (FRAME(fset, i).image && FRAME(fset, i).image->refcount > 1)
+      FRAME(fset, i).image->refcount--;
     Gif_DeleteStream(FRAME(fset, i).stream);
-    if (FRAME(fset, i).comment)
-      Gif_DeleteComment( FRAME(fset, i).comment );
-    if (FRAME(fset, i).nest) {
-      blank_frameset(FRAME(fset, i).nest, 0, -1);
-      free(FRAME(fset, i).nest);
-    }
+    Gif_DeleteComment(FRAME(fset, i).comment);
+    if (FRAME(fset, i).nest)
+      blank_frameset(FRAME(fset, i).nest, 0, 0, 1);
+  }
+  if (delete_object) {
+    Gif_DeleteArray(fset->f);
+    Gif_Delete(fset);
   }
 }
 
@@ -914,6 +954,40 @@ blank_frameset(Gt_Frameset *fset, int f1, int f2)
 void
 clear_frameset(Gt_Frameset *fset, int f1)
 {
-  blank_frameset(fset, f1, -1);
+  blank_frameset(fset, f1, -1, 0);
   fset->count = f1;
 }
+
+
+#ifndef DMALLOC
+/* be careful about memory allocation */
+#undef malloc
+#undef realloc
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void *
+gt_malloc(int size, const char *file, int line)
+{
+  void *p = malloc(size);
+  if (!p && size)
+    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
+  return p;
+}
+
+void *
+gt_realloc(void *p, int size, const char *file, int line)
+{
+  if (!p)
+    return gt_malloc(size, file, line);
+  p = realloc(p, size);
+  if (!p && size)
+    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
+  return p;
+}
+
+#ifdef __cplusplus
+}
+#endif
+#endif

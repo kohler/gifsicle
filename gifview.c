@@ -15,8 +15,8 @@
 #include <X11/keysym.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 #ifndef FD_SET
 #include <sys/select.h>
@@ -27,7 +27,6 @@
 #else
 #define EXTERN extern
 #endif
-
 
 /*****
  * TIME STUFF (from xwrits)
@@ -239,7 +238,7 @@ choose_visual(Gt_Viewer *viewer)
 {
   Display *display = viewer->display;
   int screen_number = viewer->screen_number;
-  int default_visualid = DefaultVisual(display, screen_number)->visualid;
+  VisualID default_visualid = DefaultVisual(display, screen_number)->visualid;
   
   XVisualInfo visi_template;
   int nv, i;
@@ -332,6 +331,26 @@ new_viewer(Display *display, Gif_Stream *gfs, char *name)
 }
 
 
+void
+delete_viewer(Gt_Viewer *viewer)
+{
+  Gt_Viewer *prev = 0, *trav;
+  if (viewer->pixmap) XFreePixmap(viewer->display, viewer->pixmap);
+  
+  for (trav = viewers; trav != viewer; prev = trav, trav = trav->next)
+    ;
+  if (prev) prev->next = viewer->next;
+  else viewers = viewer->next;
+  
+  Gif_DeleteStream(viewer->gfs);
+  if (viewer->anim_gfs != viewer->gfs)
+    Gif_DeleteStream(viewer->anim_gfs);
+  Gif_DeleteArray(viewer->im);
+  Gif_DeleteArray(viewer->im_number);
+  Gif_Delete(viewer);
+}
+
+
 static Gt_Viewer *
 get_input_stream(char *name)
 {
@@ -349,7 +368,7 @@ get_input_stream(char *name)
     return 0;
   }
   
-  gfs = Gif_ReadFile(f);
+  gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED);
   fclose(f);
   
   if (!gfs || Gif_ImageCount(gfs) == 0) {
@@ -573,25 +592,6 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
 
 
 void
-delete_viewer(Gt_Viewer *viewer)
-{
-  Gt_Viewer *prev = 0, *trav;
-  if (viewer->pixmap) XFreePixmap(viewer->display, viewer->pixmap);
-  
-  for (trav = viewers; trav != viewer; prev = trav, trav = trav->next)
-    ;
-  if (prev) prev->next = viewer->next;
-  else viewers = viewer->next;
-  
-  Gif_DeleteStream(viewer->gfs);
-  if (viewer->anim_gfs != viewer->gfs)
-    Gif_DeleteStream(viewer->anim_gfs);
-  Gif_DeleteArray(viewer->im);
-  Gif_Delete(viewer);
-}
-
-
-void
 pre_delete_viewer(Gt_Viewer *viewer)
 {
   if (viewer->being_deleted) return;
@@ -705,7 +705,13 @@ view_frame(Gt_Viewer *viewer, int frame)
 	|| old_pixmap == None)
       need_set_name = 1;
     
+    /* 5/26/98 Do some noodling around to try and use memory most effectively.
+       If animating, keep the uncompressed frame; otherwise, throw it away. */
+    Gif_UncompressImage(gfi);
     viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
+    if (!viewer->animating && gfi->compressed)
+      Gif_ReleaseUncompressedImage(gfi);
+    
     XSetWindowBackgroundPixmap(display, window, viewer->pixmap);
     if (old_pixmap) {
       XClearWindow(display, window);
@@ -744,8 +750,8 @@ mark_frame(Gt_Viewer *viewer, int f_num, char *f_name)
   
   if (viewer->nim >= viewer->im_cap) {
     viewer->im_cap *= 2;
-    viewer->im = Gif_ReArray(viewer->im, Gif_Image *, viewer->im_cap);
-    viewer->im_number = Gif_ReArray(viewer->im_number, int, viewer->im_cap);
+    Gif_ReArray(viewer->im, Gif_Image *, viewer->im_cap);
+    Gif_ReArray(viewer->im_number, int, viewer->im_cap);
   }
   if (gfi) {
     viewer->im[ viewer->nim ] = gfi;
@@ -916,7 +922,7 @@ loop(void)
 	
 	else if (v && e.type == ClientMessage
 		 && e.xclient.message_type == wm_protocols_atom
-		 && e.xclient.data.l[0] == wm_delete_window_atom)
+		 && (Atom)(e.xclient.data.l[0]) == wm_delete_window_atom)
 	  /* WM_DELETE_WINDOW message: delete window */
 	  pre_delete_viewer(v);
 
@@ -1030,5 +1036,42 @@ particular purpose. That's right: you're on your own!\n");
   
   if (viewers) loop();
   
+#ifdef DMALLOC
+  dmalloc_report();
+#endif
   return 0;
 }
+
+
+#ifndef DMALLOC
+/* be careful about memory allocation */
+#undef malloc
+#undef realloc
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void *
+gt_malloc(int size, const char *file, int line)
+{
+  void *p = malloc(size);
+  if (!p && size)
+    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
+  return p;
+}
+
+void *
+gt_realloc(void *p, int size, const char *file, int line)
+{
+  if (!p)
+    return gt_malloc(size, file, line);
+  p = realloc(p, size);
+  if (!p && size)
+    fatal_error("out of memory (wanted %d at %s:%d)", size, file, line);
+  return p;
+}
+
+#ifdef __cplusplus
+}
+#endif
+#endif

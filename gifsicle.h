@@ -15,7 +15,6 @@
 #define NORETURN
 #endif
 
-
 typedef struct Gt_Frameset Gt_Frameset;
 typedef struct Gt_Crop Gt_Crop;
 typedef struct Gt_ColorChange Gt_ColorChange;
@@ -119,6 +118,9 @@ char *explode_filename(char *filename, int number, char *name);
  **/
 
 void unmark_colors(Gif_Colormap *);
+void unmark_colors_2(Gif_Colormap *);
+void mark_used_colors(Gif_Stream *, Gif_Image *);
+int merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 
 int find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color);
 
@@ -190,5 +192,7 @@ extern Gt_Frame def_frame;
 Gt_Frameset *new_frameset(int initial_cap);
 Gt_Frame *add_frame(Gt_Frameset *, int number, Gif_Stream *, Gif_Image *);
 #define FRAME(fs, i) ((fs)->f[i])
-Gif_Stream *merge_frame_interval(Gt_Frameset *fset, int f1, int f2);
+Gif_Stream *merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
+				 int compress_immediately);
 void clear_frameset(Gt_Frameset *, int from);
+void blank_frameset(Gt_Frameset *, int from, int to, int delete_object);

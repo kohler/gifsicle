@@ -31,9 +31,10 @@ INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 
 PROGRAMS	= @PROGRAMS@
-GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o gifview.o clp.o
+GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o clp.o @DMALLOC_O@ \
+		gifview.o
 GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o clp.o \
-		merge.o support.o quantize.o gifsicle.o
+		merge.o support.o quantize.o @DMALLOC_O@ gifsicle.o
 
 all: $(PROGRAMS)
 
@@ -93,7 +94,7 @@ dist: mostlyclean
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
-	clp.c clp.h \
+	clp.c clp.h dmalloc.c dmalloc.h \
 	gifsicle.h merge.c support.c quantize.c gifsicle.c gifsicle.min \
 	gifx.h gifx.c gifview.c gifview.min \
 	$(PACKAGE)-$(VERSION)

@@ -174,8 +174,6 @@ Clp_Option options[] = {
 static void
 initialize_def_frame(void)
 {
-  frames = new_frameset(16);
-  
   def_frame.stream = 0;
   def_frame.image = 0;
   def_frame.use = 1;
@@ -425,7 +423,7 @@ input_done(void)
 	image_info(input, FRAME(frames, i).image, colormap_infoing);
   }
   
-  input->refcount--;
+  Gif_DeleteStream(input);
   input = 0;
   
   if (mode == DELETING)
@@ -490,7 +488,7 @@ do_colormap_change(Gif_Stream *gfs)
      case COLORMAP_MEDIAN_CUT:
       adapt_func = &colormap_median_cut;
       break;
-
+      
      default:
       fatal_error("can't happen");
       
@@ -509,10 +507,13 @@ static void
 do_frames_output(char *outfile, int f1, int f2)
 {
   Gif_Stream *out;
+  int compress_immediately;
   assert(!nested_mode);
   if (verbosing) verbose_open('[', outfile ? outfile : "#stdout#");
-  
-  out = merge_frame_interval(frames, f1, f2);
+
+  compress_immediately = new_colormap_size <= 0 && !new_colormap_fixed
+    && optimizing <= 0;
+  out = merge_frame_interval(frames, f1, f2, compress_immediately);
   if (out) {
     if (new_colormap_size > 0 || new_colormap_fixed)
       do_colormap_change(out);
@@ -521,7 +522,7 @@ do_frames_output(char *outfile, int f1, int f2)
     output_stream(outfile, out);
     Gif_DeleteStream(out);
   }
-
+  
   if (verbosing) verbose_close(']');
 }
 
@@ -675,7 +676,13 @@ main(int argc, char **argv)
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   
   program_name = Clp_ProgramName(clp);
+  
+  frames = new_frameset(16);
   initialize_def_frame();
+
+#ifdef DMALLOC
+  dmalloc_verbose(fopen("fudge", "w"));
+#endif
   
   /* Yep, I'm an idiot.
      GIF dimensions are unsigned 16-bit integers. I assume that these
@@ -793,7 +800,7 @@ main(int argc, char **argv)
       if (clp->negated) goto no_comments;
       next_frame = 1;
       if (!def_frame.comment) def_frame.comment = Gif_NewComment();
-      Gif_AddComment(def_frame.comment, Gif_CopyString(clp->arg), -1);
+      Gif_AddComment(def_frame.comment, clp->arg, -1);
       break;
       
      no_comments:
@@ -863,7 +870,7 @@ main(int argc, char **argv)
       if (clp->negated) goto no_crop;
       next_frame = 1;
       {
-	Gt_Crop *crop = malloc(sizeof(Gt_Crop));
+	Gt_Crop *crop = Gif_New(Gt_Crop);
 	/* Memory leak on crops, but this just is NOT a problem. */
 	crop->ready = 0;
 	crop->whole_stream = 0;
@@ -951,7 +958,7 @@ main(int argc, char **argv)
       if (clp->negated)
 	color_changes = 0;
       else {
-	Gt_ColorChange *cc = malloc(sizeof(Gt_ColorChange));
+	Gt_ColorChange *cc = Gif_New(Gt_ColorChange);
 	/* Memory leak on color changes; again, this ain't a problem. */
 	cc->old_color = parsed_color;
 	cc->new_color = parsed_color2;
@@ -1051,5 +1058,9 @@ particular purpose. That's right: you're on your own!\n");
   verbose_endline();
   if (next_frame || next_input)
     warning("some options didn't affect anything");
+  blank_frameset(frames, 0, 0, 1);
+#ifdef DMALLOC
+  dmalloc_report();
+#endif
   return 0;
 }
