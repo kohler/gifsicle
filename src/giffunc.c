@@ -72,6 +72,7 @@ Gif_NewColormap(void)
   gfcm->capacity = 0;
   gfcm->col = 0;
   gfcm->refcount = 0;
+  gfcm->userflags = 0;
   return gfcm;
 }
 
@@ -86,6 +87,7 @@ Gif_NewFullColormap(int count, int capacity)
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
   gfcm->refcount = 0;
+  gfcm->userflags = 0;
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;
