@@ -24,7 +24,6 @@ extern "C" {
 static void
 put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
 {
-  int old_transparent_opaque = 0;
   int transparent = gfi->transparent;
   int x, y;
   int w = gfi->width;
@@ -75,7 +74,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen,
   int transparent = -1;
   int size = gfs->screen_width * gfs->screen_height;
   u_int16_t *move;
-  int i, x, y;
+  int i;
 
   /* mark colors used opaquely in the image */
   assert(TRANSPARENT == 256);
@@ -157,7 +156,7 @@ int
 Gif_Unoptimize(Gif_Stream *gfs)
 {
   int ok = 1;
-  int i, size, was_transparent;
+  int i, size;
   u_int16_t *screen;
   u_int16_t background;
   Gif_Image *gfi;

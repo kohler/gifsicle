@@ -166,7 +166,7 @@ Clp_Option options[] = {
   
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
-  
+
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   
@@ -377,7 +377,7 @@ input_stream(char *name)
   Gt_Frame old_def_frame;
   int read_flags = GIF_READ_COMPRESSED;
   if (netscape_workaround) read_flags |= GIF_READ_NETSCAPE_WORKAROUND;
-  
+
   input = 0;
   input_name = name;
   frames_done = 0;
@@ -399,7 +399,7 @@ input_stream(char *name)
   gfs = Gif_FullReadFile(f, read_flags);
   fclose(f);
   
-  if (!gfs || Gif_ImageCount(gfs) == 0) {
+  if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     error("`%s' doesn't seem to contain a GIF", name);
     Gif_DeleteStream(gfs);
     if (verbosing) verbose_close('>');
@@ -770,7 +770,7 @@ handle_extension(Clp_Parser *clp, int is_app)
   
   if (!def_frame.extensions_change)
     def_frame.extensions = 0;
-  gfex->data = extension_body;
+  gfex->data = (byte *)extension_body;
   gfex->length = strlen(extension_body);
   gfex->next = def_frame.extensions;
   def_frame.extensions = gfex;
@@ -857,7 +857,7 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.explode_by_name = 1;
       break;
-      
+
       /* INFORMATION OPTIONS */
       
      case INFO_OPT:
