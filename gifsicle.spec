@@ -2,7 +2,7 @@ Summary: Powerful program for manipulating GIF images and animations
 
 Name: gifsicle
 Version: 1.33
-Release: 1
+Release: 2
 Source: http://www.lcdf.org/gifsicle/gifsicle-1.33.tar.gz
 
 Icon: logo1.gif
@@ -60,6 +60,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0755,root,root) /usr/bin/gifsicle
 %attr(0755,root,root) /usr/bin/gifdiff
 %attr(0755,root,root) /usr/X11R6/bin/gifview
-%attr(0644,root,root) /usr/man/man1/gifsicle.1
-%attr(0644,root,root) /usr/man/man1/gifdiff.1
-%attr(0644,root,root) /usr/X11R6/man/man1/gifview.1
+%attr(0644,root,root) /usr/man/man1/gifsicle.1*
+%attr(0644,root,root) /usr/man/man1/gifdiff.1*
+%attr(0644,root,root) /usr/X11R6/man/man1/gifview.1*
