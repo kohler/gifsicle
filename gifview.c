@@ -18,6 +18,9 @@
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
 #include <X11/keysym.h>
+#ifdef HAVE_SYS_SELECT_H
+# include <sys/select.h>
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

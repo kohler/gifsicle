@@ -89,18 +89,16 @@ fi
 AC_SUBST(MALLOC_O)dnl
 
 dnl
-dnl random() or rand()?
+dnl random() or rand()? strerror()? strtoul()? sys/select.h?
 dnl
 
 AC_CHECK_FUNC(random, random_func=random, random_func=rand)
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func})
 
-dnl
-dnl strerror()? strtoul()?
-dnl
-
 AC_REPLACE_FUNCS(strerror)
 AC_CHECK_FUNCS(strtoul)
+
+AC_CHECK_HEADERS(sys/select.h)
 
 dnl
 dnl Integer typedefs
