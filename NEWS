@@ -1,12 +1,18 @@
 Gifsicle NEWS
 
-Version 1.9.1
+Version 1.9.1   16.Dec.1998
 
 * If a reduced-colormap image needs a special transparent color, gifsicle
   will now try to keep the same transparent color value as the input GIF.
 
 * Cropping an image now automatically recalculates the output logical
   screen, rather than retaining the logical screen of the uncropped image.
+
+* Improvement to colormap modification behavior: If it looks like a color
+  reserved for transparency will be necessary, gifsicle will reserve a slot
+  for it. This will reduce the likelihood that you ask for a colormap of
+  size 64, say, and get one of size 128 (because gifsicle added a slot for
+  transparency).
 
 
 Version 1.9   14.Dec.1998
