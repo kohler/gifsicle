@@ -41,7 +41,7 @@ typedef struct {
   void *thunk;
   
 } Clp_ArgType;
-  
+
 
 struct Clp_Internal {
   
@@ -109,6 +109,7 @@ static int parse_string(Clp_Parser *, const char *, int, void *);
 static int parse_int(Clp_Parser *, const char *, int, void *);
 static int parse_bool(Clp_Parser *, const char *, int, void *);
 static int parse_double(Clp_Parser *, const char *, int, void *);
+static int parse_string_list(Clp_Parser *, const char *, int, void *);
 
 static int ambiguity_error(Clp_Parser *, int, int *, Clp_Option *,
 			   const char *, const char *, ...);
@@ -234,6 +235,30 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
   if (cli) free(cli);
   if (clp) free(clp);
   return 0;
+}
+
+void
+Clp_DeleteParser(Clp_Parser *clp)
+     /* Creates and returns a new Clp_Parser using the options in `opt',
+	or 0 on memory allocation failure */
+{
+  int i;
+  Clp_Internal *cli;
+  if (!clp) return;
+  
+  cli = clp->internal;
+  
+  /* get rid of any string list types */
+  for (i = 0; i < cli->nargtype; i++)
+    if (cli->argtype[i].func == parse_string_list) {
+      Clp_StringList *clsl = (Clp_StringList *)cli->argtype[i].thunk;
+      free(clsl->items);
+      free(clsl);
+    }
+  
+  free(cli->argtype);
+  free(cli);
+  free(clp);
 }
 
 

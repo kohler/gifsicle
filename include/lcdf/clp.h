@@ -101,6 +101,7 @@ struct Clp_Parser {
 
 Clp_Parser *	Clp_NewParser(int argc, char * const argv[],
 			      int nopt, Clp_Option *opt);
+void		Clp_DeleteParser(Clp_Parser *);
 
 Clp_ErrorHandler Clp_SetErrorHandler(Clp_Parser *, Clp_ErrorHandler);
 int		Clp_SetOptionChar(Clp_Parser *, int c, int option_type);
