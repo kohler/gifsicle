@@ -1175,10 +1175,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   /* copy stream-wide information from output_data */
   if (output_data->loopcount > -2)
     dest->loopcount = output_data->loopcount;
-  if (output_data->screen_width >= 0)
-    dest->screen_width = output_data->screen_width;
-  if (output_data->screen_height >= 0)
-    dest->screen_height = output_data->screen_height;
+  dest->screen_width = dest->screen_height = 0;
   
   /** ACTUALLY MERGE FRAMES INTO THE NEW STREAM **/
   for (i = 0; i < nmerger; i++) {
@@ -1299,6 +1296,12 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
   
+  /* Set the logical screen from the user's preferences */
+  if (output_data->screen_width >= 0)
+    dest->screen_width = output_data->screen_width;
+  if (output_data->screen_height >= 0)
+    dest->screen_height = output_data->screen_height;
+  
   /* Find the background color in the colormap, or add it if we can */
   {
     int bg = find_color_or_error(&dest_background, dest, 0, 0);
@@ -1311,7 +1314,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     } else
       dest->background = bg;
   }
-  
+
   return dest;
 }
 

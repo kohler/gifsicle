@@ -54,10 +54,10 @@ INTEGER_TYPES =
 
 srclinks:
 	for i in clp.c clp.h ; do \
-	ln ../edlib/$$i $$i ; done
+	ln -sf ~/src/edlib/$$i $$i ; done
 	for i in gif.h.in giffunc.c gifread.c gifwrite.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \
-	ln ../giflib/$$i $$i ; done
+	ln -sf ~/src/giflib/$$i $$i ; done
 
 versionize:
 	perl -pi~ -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
