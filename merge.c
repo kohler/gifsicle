@@ -238,6 +238,7 @@ Gif_Image *
 merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
 {
   Gif_Colormap *imagecm;
+  int delete_imagecm = 0;
   int islocal;
   Gif_Colormap *localcm = 0;
   
@@ -272,6 +273,12 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
       warning("too many colors, had to use a local colormap");
       warning("  (you may want to try `--colors 256')");
       warn_local_colormaps = 2;
+    }
+    if (imagecm == src->global) {
+      imagecm = Gif_CopyColormap(src->global);
+      delete_imagecm = 0;
+      unmark_colors(imagecm);
+      mark_colors(imagecm, srci);
     }
     if (!try_merge_colormaps(dest, localcm, src, imagecm,
 			     srci->transparent, 1))
@@ -329,6 +336,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   }
   
   Gif_AddImage(dest, desti);
+  if (delete_imagecm)
+    Gif_DeleteColormap(imagecm);
   return desti;  
 }
 

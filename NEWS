@@ -5,6 +5,9 @@ Version 1.2
 * Fixed small bug with the interaction between per-frame options (--name,
   --comment) and frame selections.
 
+* Fixed bad bug in merge: If a global colormap from the source needed to be
+  dumped into a local colormap in the destination, the pixel map was wrong.
+
 
 Version 1.2b6
 
