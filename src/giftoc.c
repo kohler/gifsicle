@@ -126,7 +126,7 @@ print_unreckless(FILE *f, char *gifrecname)
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
   int reckless = 0;
   int make_name = 0;

@@ -115,7 +115,7 @@ struct Clp_Parser {
 };
 
 
-Clp_Parser *	Clp_NewParser(int argc, char * const argv[],
+Clp_Parser *	Clp_NewParser(int argc, const char * const *argv,
 			      int nopt, Clp_Option *opt);
 void		Clp_DeleteParser(Clp_Parser *);
 

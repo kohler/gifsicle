@@ -156,7 +156,7 @@ check_duplicated_short_options(Clp_Parser *clp, int nopt, Clp_Option *opt, int n
 }
 
 Clp_Parser *
-Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
+Clp_NewParser(int argc, const char * const *argv, int nopt, Clp_Option *opt)
      /* Creates and returns a new Clp_Parser using the options in 'opt',
 	or 0 on memory allocation failure */
 {
@@ -172,7 +172,7 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
 
     /* Assign arguments (need to do this now so we can call Clp_OptionError) */
     cli->argc = argc;
-    cli->argv = (const char * const *)argv;
+    cli->argv = argv;
     {
 	const char *slash = strrchr(argv[0], '/');
 	cli->program_name = slash ? slash + 1 : argv[0];
