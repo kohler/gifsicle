@@ -118,7 +118,7 @@ Frame change options:\n\
 \n\
 Image options: Also --no-OPTION and --same-OPTION.\n\
   --background COL, -B COL      Makes COL the background color.\n\
-  --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
+  --crop X,Y+WxH or X,Y-X2,Y2   Crops the image.\n\
   --flip-horizontal, --flip-vertical\n\
                                 Flips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
@@ -127,31 +127,32 @@ Image options: Also --no-OPTION and --same-OPTION.\n\
   --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
                                 Rotates the image.\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
-\n\
+\n");
+  printf("\
 Extension options: Also --no-OPTION and --same-OPTION.\n\
   --app-extension N D, -x N D   Adds an app extension named N with data D.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
   --extension N D               Adds an extension number N with data D.\n\
   --name TEXT, -n TEXT          Sets next frame's name.\n\
-\n");
-  printf("\
+\n\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
   --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
   --loopcount[=N], -l[N]        Sets loop extension to N (default forever).\n\
   --optimize[=LEV], -O[LEV]     Optimize output GIFs.\n\
   --unoptimize, -U              Unoptimize input GIFs.\n\
-\n\
+\n");
+  printf("\
 Whole-GIF options: Also --no-OPTION.\n\
   --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
   --colors N, -k N              Reduces the number of colors to N.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
   --dither, -f                  Dither image after changing colormap.\n\
-  --transform-colormap CMD      Transform each colormap by the shell CMD.\n\
-  --use-colormap CMAP           Set the GIF's colormap to CMAP, which can be\n\
-                                `web', `gray', `bw', or a GIF file.\n\
-\n");
-  printf("\
+  --resize WxH                  Resizes the output GIF to WxH.\n\
+  --transform-colormap CMD      Transform each output colormap by shell CMD.\n\
+  --use-colormap CMAP           Set output GIF's colormap to CMAP, which can\n\
+                                be `web', `gray', `bw', or a GIF file.\n\
+\n\
 Report bugs to <eddietwo@lcs.mit.edu>.\n\
 Too much information? Try `%s --help | more'.\n", program_name);
 }
@@ -433,9 +434,8 @@ int position_y;
 Gif_Color parsed_color;
 Gif_Color parsed_color2;
 
-
 int
-parse_frame_spec(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *c;
   
@@ -511,9 +511,8 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, void *v, int complain)
   }
 }
 
-
 int
-parse_dimensions(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   
@@ -530,9 +529,8 @@ parse_dimensions(Clp_Parser *clp, const char *arg, void *v, int complain)
     return 0;
 }
 
-
 int
-parse_position(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   
@@ -549,9 +547,8 @@ parse_position(Clp_Parser *clp, const char *arg, void *v, int complain)
     return 0;
 }
 
-
 int
-parse_rectangle(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   
@@ -583,7 +580,6 @@ parse_rectangle(Clp_Parser *clp, const char *arg, void *v, int complain)
     return 0;
 }
 
-
 static int
 xvalue(char c)
 {
@@ -600,7 +596,6 @@ xvalue(char c)
   }
 }
 
-
 static int
 parse_hex_color_channel(const char *s, int ndigits)
 {
@@ -615,16 +610,20 @@ parse_hex_color_channel(const char *s, int ndigits)
   }
 }
 
-
 int
-parse_color(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *str;
   int red, green, blue;
   
   if (*arg == '#') {
     int len = strlen(++arg);
-    if (!len || len % 3 != 0) goto error;
+    if (!len || len % 3 != 0 || strspn(arg, "0123456789ABCDEFabcdef") != len) {
+      if (complain)
+	Clp_OptionError(clp, "invalid color in `%O': want #RGB or #RRGGBB");
+      return 0;
+    }
+    
     len /= 3;
     red	  = parse_hex_color_channel(&arg[ 0 * len ], len);
     green = parse_hex_color_channel(&arg[ 1 * len ], len);
@@ -670,33 +669,26 @@ parse_color(Clp_Parser *clp, const char *arg, void *v, int complain)
     return 0;
 }
 
-
 int
-parse_two_colors(Clp_Parser *clp, const char *arg, void *v, int complain)
+parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   Gif_Color old_color;
-  Clp_ParserState *save;
-  if (!parse_color(clp, arg, v, complain))
+  if (parse_color(clp, arg, complain, thunk) <= 0)
     return 0;
   old_color = parsed_color;
   
-  save = Clp_NewParserState();
-  Clp_SaveParser(clp, save);
-  if (Clp_Next(clp) != Clp_NotOption) {
-    Clp_RestoreParser(clp, save);
-    Clp_DeleteParserState(save);
-    if (complain)
-      return Clp_OptionError(clp, "`%O' takes two color arguments");
-    else
-      return 0;
-  } else {
-    Clp_DeleteParserState(save);
-    if (!parse_color(clp, clp->arg, v, complain))
-      return 0;
-    parsed_color2 = parsed_color;
-    parsed_color = old_color;
-    return 1;
-  }
+  arg = Clp_Shift(clp, 0);
+  if (!arg && complain)
+    return Clp_OptionError(clp, "`%O' takes two color arguments");
+  else if (!arg)
+    return 0;
+  
+  if (parse_color(clp, arg, complain, thunk) <= 0)
+    return 0;
+  
+  parsed_color2 = parsed_color;
+  parsed_color = old_color;
+  return 1;
 }
 
 
@@ -896,7 +888,7 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
 	  || (new_bg.pixel == 0 && !GIF_COLOREQ(&new_bg, background)))
 	if (!warned_background_conflicts) {
 	  warning("some required background colors conflict; I picked one");
-	  warning("  (some animation frames will appear incorrect)");
+	  warning("  (some animation frames may appear incorrect)");
 	  warned_background_conflicts = 1;
 	}
     }
@@ -971,83 +963,6 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 
 
 static void
-do_flip(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
-{
-  int x, y;
-  int width = gfi->width;
-  int height = gfi->height;
-  byte **img = gfi->img;
-  
-  /* horizontal flips */
-  if (!is_vert) {
-    byte *buffer = Gif_NewArray(byte, width);
-    byte *trav;
-    for (y = 0; y < height; y++) {
-      memcpy(buffer, img[y], width);
-      trav = img[y] + width - 1;
-      for (x = 0; x < width; x++)
-	*trav-- = buffer[x];
-    }
-    gfi->left = screen_width - (gfi->left + width);
-    Gif_DeleteArray(buffer);
-  }
-  
-  /* vertical flips */
-  if (is_vert) {
-    byte **buffer = Gif_NewArray(byte *, height);
-    memcpy(buffer, img, height * sizeof(byte *));
-    for (y = 0; y < height; y++)
-      img[y] = buffer[height - y - 1];
-    gfi->top = screen_height - (gfi->top + height);
-    Gif_DeleteArray(buffer);
-  }
-}
-
-
-static void
-do_rotate(Gif_Image *gfi, int screen_width, int screen_height, Gt_Frame *fr,
-	  int first_image)
-{
-  int x, y;
-  int width = gfi->width;
-  int height = gfi->height;
-  byte **img = gfi->img;
-  byte *new_data = Gif_NewArray(byte, width * height);
-  byte *trav = new_data;
-  
-  if (fr->rotation == 1) {
-    for (x = 0; x < width; x++)
-      for (y = height - 1; y >= 0; y--)
-	*trav++ = img[y][x];
-    x = gfi->left;
-    gfi->left = screen_height - (gfi->top + height);
-    gfi->top = x;
-    
-  } else {
-    for (x = width - 1; x >= 0; x--)
-      for (y = 0; y < height; y++)
-	*trav++ = img[y][x];
-    y = gfi->top;
-    gfi->top = screen_width - (gfi->left + width);
-    gfi->left = y;
-  }
-  
-  /* If this is the first frame, set the frame's screen width & height as the
-     flipped screen height & width. This ensures that if a single rotated
-     frame is output, its logical screen will be rotated too. */
-  if (fr->screen_width <= 0 && first_image) {
-    fr->screen_width = screen_height;
-    fr->screen_height = screen_width;
-  }
-  
-  Gif_ReleaseUncompressedImage(gfi);
-  gfi->width = height;
-  gfi->height = width;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
-}
-
-
-static void
 handle_screen(Gif_Stream *dest, u_int16_t width, u_int16_t height)
 {
   /* Set the screen width & height, if the current input width and height are
@@ -1068,22 +983,29 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
   u_int16_t screen_height = gfs->screen_height;
   
   if (fr->flip_horizontal)
-    do_flip(desti, screen_width, screen_height, 0);
+    flip_image(desti, screen_width, screen_height, 0);
   if (fr->flip_vertical)
-    do_flip(desti, screen_width, screen_height, 1);
+    flip_image(desti, screen_width, screen_height, 1);
   
   if (fr->rotation == 1)
-    do_rotate(desti, screen_width, screen_height, fr, first_image);
+    rotate_image(desti, screen_width, screen_height, 1);
   else if (fr->rotation == 2) {
-    do_flip(desti, screen_width, screen_height, 0);
-    do_flip(desti, screen_width, screen_height, 1);
+    flip_image(desti, screen_width, screen_height, 0);
+    flip_image(desti, screen_width, screen_height, 1);
   } else if (fr->rotation == 3)
-    do_rotate(desti, screen_width, screen_height, fr, first_image);
+    rotate_image(desti, screen_width, screen_height, 3);
   
   /* handle screen size, which might have height & width exchanged */
-  if (fr->rotation == 1 || fr->rotation == 3)
+  if (fr->rotation == 1 || fr->rotation == 3) {
+    /* If this is the first frame, set the frame's screen width & height as
+       the exchanged screen height & width. This ensures that if a single
+       rotated frame is output, its logical screen will be rotated too. */
+    if (fr->screen_width <= 0 && first_image) {
+      fr->screen_width = screen_height;
+      fr->screen_height = screen_width;
+    }
     handle_screen(dest, screen_height, screen_width);
-  else
+  } else
     handle_screen(dest, screen_width, screen_height);
 }
 

@@ -24,6 +24,7 @@ Gt_Frameset *nested_frames = 0;
 
 static int next_frame = 0;
 static int next_input = 0;
+static int next_output = 0;
 
 
 Gif_Stream *input = 0;
@@ -44,6 +45,8 @@ int warn_local_colormaps = 1;
 
 static Gt_ColorTransform *input_transforms;
 static Gt_ColorTransform *output_transforms;
+
+static int resize_output_w, resize_output_h;
 
 #define BLANK_MODE	0
 #define MERGING		1
@@ -113,6 +116,7 @@ static int verbosing = 0;
 #define APP_EXTENSION_OPT	351
 #define EXTENSION_OPT		352
 #define COLOR_TRANSFORM_OPT	353
+#define RESIZE_OPT		354
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -127,12 +131,11 @@ static int verbosing = 0;
 Clp_Option options[] = {
   
   { "append", 0, APPEND_OPT, 0, 0 },
-  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, Clp_AllowDash },
+  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, 0 },
   
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
   
-  { "cc", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
@@ -140,7 +143,7 @@ Clp_Option options[] = {
     Clp_Negate | Clp_LongMinMatch, 3 }, /****/
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
-  { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate | Clp_AllowDash },
+  { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
   { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
   
@@ -152,8 +155,7 @@ Clp_Option options[] = {
   
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
-  { "extension", 0, EXTENSION_OPT, Clp_ArgString,
-    Clp_LongMinMatch | Clp_AllowDash, 3 }, /***/
+  { "extension", 0, EXTENSION_OPT, Clp_ArgString, Clp_LongMinMatch, 3 }, /***/
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
@@ -178,11 +180,12 @@ Clp_Option options[] = {
   { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
-  { "output", 'o', OUTPUT_OPT, Clp_ArgString, 0 },
+  { "output", 'o', OUTPUT_OPT, Clp_ArgStringNotOption, 0 },
   
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
   
   { "replace", 0, REPLACE_OPT, FRAME_SPEC_TYPE, 0 },
+  { "resize", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
@@ -204,7 +207,8 @@ Clp_Option options[] = {
   { "same-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
   
-  { "transform-colormap", 0, COLOR_TRANSFORM_OPT, Clp_ArgString, Clp_Negate },
+  { "transform-colormap", 0, COLOR_TRANSFORM_OPT, Clp_ArgStringNotOption,
+    Clp_Negate },
   { "transparent", 't', 't', COLOR_TYPE, Clp_Negate },
   
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
@@ -398,12 +402,14 @@ input_stream(char *name)
     error("%s: %s", name, strerror(errno));
     return;
   }
-
+  
   /* special error message for empty files */
-  if (feof(f)) {
+  i = getc(f);
+  if (i == EOF) {
     error("%s: empty file", name);
     return;
   }
+  ungetc(i, f);
   
   if (verbosing) verbose_open('<', name);
   gfs = Gif_FullReadFile(f, read_flags);
@@ -757,9 +763,11 @@ do_frames_output(char *outfile, int f1, int f2)
   if (verbosing) verbose_open('[', outfile ? outfile : "#stdout#");
   
   compress_immediately = new_colormap_size <= 0 && !new_colormap_fixed
-    && optimizing <= 0;
+    && resize_output_w <= 0 && optimizing <= 0;
   out = merge_frame_interval(frames, f1, f2, compress_immediately);
   if (out) {
+    if (resize_output_w > 0 && resize_output_h > 0)
+      resize_stream(out, resize_output_w, resize_output_h);
     if (new_colormap_size > 0 || new_colormap_fixed)
       do_colormap_change(out);
     if (output_transforms)
@@ -824,11 +832,12 @@ output_frames(void)
       
     }
   
+  next_output = 0;
   clear_frameset(frames, 0);
   def_frame.output_name = 0;
   
-  /* cropping: make sure that each input image is cropped according to its own
-     dimensions. */
+  /* cropping: clear the `crop->ready' information, which depended on the last
+     input image. */
   if (def_frame.crop)
     def_frame.crop->ready = 0;
 }
@@ -836,7 +845,7 @@ output_frames(void)
 void
 frame_argument(Clp_Parser *clp, char *arg)
 {
-  if (parse_frame_spec(clp, arg, 0, 1) > 0) {
+  if (parse_frame_spec(clp, arg, 1, 0) > 0) {
     int i;
     for (i = frame_spec_1; i <= frame_spec_2; i++)
       show_frame(i, frame_spec_name != 0);
@@ -848,7 +857,7 @@ handle_extension(Clp_Parser *clp, int is_app)
 {
   Gif_Extension *gfex;
   char *extension_type = clp->arg;
-  char *extension_body = Clp_GetNextArgument(clp);
+  char *extension_body = Clp_Shift(clp, 1);
   if (!extension_body) {
     Clp_OptionError(clp, "%O requires two arguments");
     return 0;
@@ -906,12 +915,12 @@ main(int argc, char **argv)
      "blend-diversity", COLORMAP_BLEND_DIVERSITY,
      "median-cut", COLORMAP_MEDIAN_CUT,
      0);
-  Clp_AddType(clp, DIMENSIONS_TYPE, parse_dimensions, 0);
-  Clp_AddType(clp, POSITION_TYPE, parse_position, 0);
-  Clp_AddType(clp, FRAME_SPEC_TYPE, parse_frame_spec, 0);
-  Clp_AddType(clp, COLOR_TYPE, parse_color, 0);
-  Clp_AddType(clp, RECTANGLE_TYPE, parse_rectangle, 0);
-  Clp_AddType(clp, TWO_COLORS_TYPE, parse_two_colors, 0);
+  Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
+  Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
+  Clp_AddType(clp, FRAME_SPEC_TYPE, 0, parse_frame_spec, 0);
+  Clp_AddType(clp, COLOR_TYPE, Clp_DisallowOptions, parse_color, 0);
+  Clp_AddType(clp, RECTANGLE_TYPE, 0, parse_rectangle, 0);
+  Clp_AddType(clp, TWO_COLORS_TYPE, Clp_DisallowOptions, parse_two_colors, 0);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   
   program_name = Clp_ProgramName(clp);
@@ -937,7 +946,7 @@ main(int argc, char **argv)
   while (1) {
     int opt = Clp_Next(clp);
     switch (opt) {
-
+      
       /* MODE OPTIONS */
       
      case 'b':
@@ -959,7 +968,7 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.explode_by_name = 1;
       break;
-
+      
       /* INFORMATION OPTIONS */
       
      case INFO_OPT:
@@ -1148,7 +1157,7 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.crop = 0;
       break;
-
+      
       /* extensions options */
       
      case NO_EXTENSIONS_OPT:
@@ -1187,7 +1196,7 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.flip_horizontal = def_frame.flip_vertical = 0;
       break;
-       
+      
      case NO_ROTATE_OPT:
       next_frame = 1;
       def_frame.rotation = 0;
@@ -1271,30 +1280,32 @@ main(int argc, char **argv)
        if (clp->negated)
 	 input_transforms = delete_color_transforms
 	   (input_transforms, &color_change_transformer);
+       else if (parsed_color2.haspixel)
+	 error("COLOR2 must be in RGB format in `--change-color COLOR1 COLOR2'");
        else
 	 input_transforms = append_color_change
 	   (input_transforms, parsed_color, parsed_color2);
        break;
      }
      
-     case COLOR_TRANSFORM_OPT: {
-       next_input = 1;
-       if (clp->negated)
-	 output_transforms = delete_color_transforms
-	   (output_transforms, &pipe_color_transformer);
-       else
-	 output_transforms = append_color_transform
-	   (output_transforms, &pipe_color_transformer, clp->arg);
-       break;
-     }
-     
+     case COLOR_TRANSFORM_OPT:
+      next_output = 1;
+      if (clp->negated)
+	output_transforms = delete_color_transforms
+	  (output_transforms, &pipe_color_transformer);
+      else
+	output_transforms = append_color_transform
+	  (output_transforms, &pipe_color_transformer, clp->arg);
+      break;
+      
      case COLORMAP_OPT:
+      next_output = 1;
       if (clp->negated)
 	new_colormap_size = 0;
       else {
 	new_colormap_size = clp->val.i;
 	if (new_colormap_size < 2 || new_colormap_size > 256) {
-	  warning("bad adaptive palette size: must be between 2 and 256");
+	  error("bad adaptive palette size (must be between 2 and 256)");
 	  new_colormap_size = 0;
 	}
       }
@@ -1302,6 +1313,7 @@ main(int argc, char **argv)
       break;
       
      case USE_COLORMAP_OPT:
+      next_output = 1;
       Gif_DeleteColormap(new_colormap_fixed);
       if (clp->negated)
 	new_colormap_fixed = 0;
@@ -1311,11 +1323,26 @@ main(int argc, char **argv)
       break;
       
      case COLORMAP_ALGORITHM_OPT:
+      next_output = 1;
       new_colormap_algorithm = clp->val.i;
       break;
       
      case DITHER_OPT:
+      next_output = 1;
       new_colormap_dither = !clp->negated;
+      break;
+      
+     case RESIZE_OPT:
+      next_output = 1;
+      if (clp->negated)
+	resize_output_w = resize_output_h = 0;
+      else if (resize_output_w <= 0 || resize_output_h <= 0) {
+	error("`--resize' width and height must be positive");
+	resize_output_w = resize_output_h = 0;
+      } else {
+	resize_output_w = dimensions_x;
+	resize_output_h = dimensions_y;
+      }
       break;
       
       /* RANDOM OPTIONS */
@@ -1376,9 +1403,9 @@ particular purpose.\n");
   input_done();
   if (mode == MERGING)
     output_frames();
-  
+
   verbose_endline();
-  if (next_frame || next_input)
+  if (next_frame || next_input || next_output)
     warning("some options didn't affect anything");
   blank_frameset(frames, 0, 0, 1);
 #ifdef DMALLOC

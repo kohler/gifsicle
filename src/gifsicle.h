@@ -141,10 +141,8 @@ Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
 
 void	optimize_fragments(Gif_Stream *, int optimizeness);
 
-int	crop_image(Gif_Image *, Gt_Crop *);
-
 /*****
- * colormap transformations
+ * image/colormap transformations
  **/
 Gif_Colormap *read_colormap_file(char *, FILE *);
 void	apply_color_transforms(Gt_ColorTransform *, Gif_Stream *);
@@ -160,6 +158,13 @@ Gt_ColorTransform *append_color_change
 	(Gt_ColorTransform *list, Gif_Color, Gif_Color);
 
 void	pipe_color_transformer(Gif_Colormap *, void *);
+
+int	crop_image(Gif_Image *, Gt_Crop *);
+
+void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
+void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);
+void	scale_image(Gif_Stream *, Gif_Image *, double xfactor, double yfactor);
+void	resize_stream(Gif_Stream *, int new_width, int new_height);
 
 /*****
  * quantization
@@ -199,12 +204,12 @@ extern int	position_y;
 extern Gif_Color parsed_color;
 extern Gif_Color parsed_color2;
 
-int		parse_frame_spec(Clp_Parser *, const char *, void *, int);
-int		parse_dimensions(Clp_Parser *, const char *, void *, int);
-int		parse_position(Clp_Parser *, const char *, void *, int);
-int		parse_color(Clp_Parser *, const char *, void *, int);
-int		parse_rectangle(Clp_Parser *, const char *, void *, int);
-int		parse_two_colors(Clp_Parser *, const char *, void *, int);
+int		parse_frame_spec(Clp_Parser *, const char *, int, void *);
+int		parse_dimensions(Clp_Parser *, const char *, int, void *);
+int		parse_position(Clp_Parser *, const char *, int, void *);
+int		parse_color(Clp_Parser *, const char *, int, void *);
+int		parse_rectangle(Clp_Parser *, const char *, int, void *);
+int		parse_two_colors(Clp_Parser *, const char *, int, void *);
 
 extern Gif_Stream *input;
 extern char *input_name;

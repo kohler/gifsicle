@@ -142,8 +142,8 @@ static int unoptimizing = 0;
 
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
-  { "display", 'd', DISPLAY_OPT, Clp_ArgString, 0 },
-  { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, Clp_AllowDash },
+  { "display", 'd', DISPLAY_OPT, Clp_ArgStringNotOption, 0 },
+  { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, 0 },
   { "help", 0, HELP_OPT, 0, 0 },
   { "name", 0, NAME_OPT, Clp_ArgString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },

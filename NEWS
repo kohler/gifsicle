@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.9
+
+* Made `--change-color PIXELINDEX color' work, and `--change-color color
+  PIXELINDEX' illegal.
+
+
 Version 1.8   3.Dec.1998
 
 * Fixed strange behavior when changing transparency: a new black entry was

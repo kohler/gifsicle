@@ -112,27 +112,27 @@ options are on the right.
 .Sp
 .PD 0
 .Ix "Animations, changing" "frame selections, frame changes, etc."
-.Ix "Animations, delay" "\fB\-\-delay\fP"
-.Ix "Animations, disposal" "\fB\-\-disposal\fP"
-.Ix "Animations, file size" "see File size"
-.Ix "Animations, looping" "\fB\-\-loopcount\fP"
-.Ix "Animations, portions of" "frame selections"
+.Ix "\ \ \ disposal" "\fB\-\-disposal\fP"
+.Ix "\ \ \ file size" "see File size"
+.Ix "\ \ \ looping" "\fB\-\-loopcount\fP"
+.Ix "\ \ \ portions of" "frame selections"
+.Ix "\ \ \ speed" "\fB\-\-delay\fP"
 .Ix "Background color" "\fB\-\-background\fP"
 .Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
-.Ix "Colors, reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP"
+.Ix "\ \ \ reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP"
 .Ix "Comments" "\fB\-\-comment\fP"
-.Ix "Cropping" "\fB\-\-crop\fP"
 .Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
 .Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
-.Ix "Flipping the image" "\fB\-\-flip\-*\fP"
+.Ix "Image transformations"
+.Ix "\ \ \ cropping" "\fB\-\-crop\fP"
+.Ix "\ \ \ flipping" "\fB\-\-flip\-*\fP"
+.Ix "\ \ \ resizing" "\fB\-\-resize\fP"
+.Ix "\ \ \ rotating" "\fB\-\-rotate\-*\fP"
 .Ix "Grayscale" "\fB\-\-use\-colormap\fP"
 .Ix "Interlacing" "\fB\-\-interlace\fP"
 .Ix "Positioning frames" "\fB\-\-position\fP"
-.Ix "Reflecting the image" "see Flipping the image"
-.Ix "Rotating the image" "\fB\-\-rotate\-*\fP"
 .Ix "Screen, logical" "\fB\-\-logical\-screen\fP"
 .Ix "Selecting frames" "frame selections (like \fB#0\fP)"
-.Ix "Shifting frames" "see Positioning frames"
 .Ix "Transparency" "\fB\-\-transparent\fP"
 .Ix "Web-safe palette" "\fB\-\-use\-colormap\fP"
 .PD
@@ -813,6 +813,15 @@ This option only matters if the colormap was changed. With
 on, Floyd-Steinberg error diffusion is used to approximate any colors that
 were removed. This looks better, but makes bigger files and can cause
 animation artifacts, so it is off by default.
+'
+.Sp
+.TP
+.OA \-\-resize width x height
+'
+Resizes the output GIF to
+.IR width x height .
+Resizing happens after all input frames have been combined and before
+optimization.
 '
 .Sp
 .TP

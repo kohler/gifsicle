@@ -14,7 +14,7 @@ gifdiff_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
 
 gifsicle_SOURCES = clp.c clp.h \
 		giffunc.c gifread.c gifunopt.c gifwrite.c \
-		merge.c optimize.c quantize.c support.c \
+		merge.c optimize.c quantize.c support.c xform.c \
 		gifsicle.c gifsicle.h
 
 gifview_SOURCES = clp.c clp.h \
