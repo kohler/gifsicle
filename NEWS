@@ -1,8 +1,16 @@
 Gifsicle NEWS
 
+Version 1.3.2   5.Sep.1998
+
+* Fixed configuration bugs reported by Alexander Mai
+  <st002279@hrzpub.tu-darmstadt.de> (OS/2 build didn't work).
+
+
 Version 1.3.1   4.Sep.1998
 
-* Fixed configuration bug on Ultrasparc.
+* Fixed configuration bug: int32_t could be improperly redefined. Reported by
+  Anne "Idiot" Dudfield <anne@lvld.hp.com> and Dax Kelson
+  <dkelson@inconnect.com>.
 
 
 Version 1.3   3.Sep.1998

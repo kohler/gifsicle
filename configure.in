@@ -1,6 +1,6 @@
 AC_INIT(gifsicle.h)
 
-VERSION=1.3.1
+VERSION=1.3.2
 AC_SUBST(VERSION)
 GIFDIFFVERSION=1.0
 AC_SUBST(GIFDIFFVERSION)
@@ -34,7 +34,10 @@ if test "$enableval" = yes ; then
   use_dmalloc=yes
 fi)
 
+#
 # Choose programs to build. Always build gifsicle
+#
+
 PROGRAMS="gifsicle"
 
 if test "$build_gifview"; then
@@ -66,7 +69,10 @@ AC_SUBST(PROGRAMS)dnl
 AC_SUBST(INSTALLERS)dnl
 AC_SUBST(GETTIMEOFDAY)dnl
 
+#
 # Set up malloc library
+#
+
 if test "$use_dmalloc"; then
   MEMORY_PREPROCESSOR='#include "dmalloc.h"\
 #define Gif_DeleteFunc		(&debug_free)\
@@ -83,13 +89,23 @@ fi
 AC_SUBST(MEMORY_PREPROCESSOR)dnl
 AC_SUBST(MALLOC_O)dnl
 
-AC_CACHE_CHECK(for integer typedefs, ac_cv_int_types,
-[AC_EGREP_HEADER(u_int32_t, sys/types.h, ac_cv_int_types=sys/types.h,
-  AC_EGREP_HEADER(u_int32_t, sys/int_types.h, ac_cv_int_types=sys/int_types.h,
-   AC_EGREP_HEADER(u_int32_t, sys/_inttypes.h, ac_cv_int_types=sys/_inttypes.h,
-    ac_cv_int_types=no)))])
+#
+# random() or rand()?
+#
 
-if test "$ac_cv_int_types" = no ;
+AC_CHECK_FUNC(random, RANDOM_FUNC=random, RANDOM_FUNC=rand)
+AC_SUBST(RANDOM_FUNC)dnl
+
+#
+# Integer typedefs
+#
+
+AC_CACHE_CHECK(for integer typedefs, ac_cv_int_types,
+[AC_EGREP_HEADER(u_int32_t, sys/types.h, ac_cv_int_types=yes,
+  AC_EGREP_HEADER(int32_t, sys/types.h, ac_cv_int_types="signed only",
+   ac_cv_int_types=no))])
+
+if test "$ac_cv_int_types" != yes ;
 then
   # Define our own versions
   AC_CACHE_CHECK(for a 16-bit value, ac_cv_int16,
@@ -120,15 +136,27 @@ int main(int argc, char **argv) {
 }], ac_cv_int32=`cat conftestval`, 
   AC_MSG_ERROR(no 32-bit value found),
   ac_cv_int32=int)])
-  
+fi
+
+if test "$ac_cv_int_types" = no ;
+then
   INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
-typedef $ac_cv_int32 int32_t;\\
+typedef unsigned $ac_cv_int32 u_int32_t;\\
+typedef $ac_cv_int32 int32_t;"
+
+elif test "$ac_cv_int_types" = "signed only" ;
+then
+  INTEGER_TYPES="#include <sys/types.h>\\
+typedef unsigned $ac_cv_int16 u_int16_t;\\
 typedef unsigned $ac_cv_int32 u_int32_t;"
 
 else
-  # Found int typedefs in a system header file
-  INTEGER_TYPES="#include <$ac_cv_int_types>"
+  INTEGER_TYPES="#include <sys/types.h>"
 fi
 AC_SUBST(INTEGER_TYPES)dnl
+
+#
+# Output
+#
 
 AC_OUTPUT(Makefile gif.h)

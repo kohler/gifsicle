@@ -9,6 +9,7 @@
 
 #include "gifsicle.h"
 #include <assert.h>
+#include <string.h>
 
 #define OPTIMIZED_TRANSPARENCY 0
 

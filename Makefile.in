@@ -41,12 +41,12 @@ GIFDIFFOBJS	= gifread.o giffunc.o clp.o @MALLOC_O@ gifdiff.o
 all: $(PROGRAMS)
 
 gifsicle: $(GIFSICLEOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifsicle $(GIFSICLEOBJS)
+	$(CCLINKER) $(CFLAGS) -o gifsicle $(GIFSICLEOBJS) $(LDFLAGS)
 gifsicle.o: gifsicle.c
 	$(CC) -DVERSION=\"$(VERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 gifview: $(GIFVIEWOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifview $(GIFVIEWOBJS) $(X11LIB)
+	$(CCLINKER) $(CFLAGS) -o gifview $(GIFVIEWOBJS) $(LDFLAGS) $(X11LIB)
 gifx.o: gifx.c
 	$(CC) $(X_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -c $<
 gifview.o: gifview.c
@@ -54,7 +54,7 @@ gifview.o: gifview.c
 	$(CPPFLAGS) @GETTIMEOFDAY@ $(CFLAGS) -c $<
 
 gifdiff: $(GIFDIFFOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifdiff $(GIFDIFFOBJS)
+	$(CCLINKER) $(CFLAGS) -o gifdiff $(LDFLAGS) $(GIFDIFFOBJS)
 gifdiff.o: gifdiff.c
 	$(CC) -DVERSION=\"$(GIFDIFFVERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
@@ -81,6 +81,7 @@ gifsicle.o: gifsicle.c gifsicle.h
 merge.o: merge.c gifsicle.h
 support.o: support.c gifsicle.h
 quantize.o: quantize.c gifsicle.h
+	$(CC) -DRANDOM=@RANDOM_FUNC@ $(CPPFLAGS) $(CFLAGS) -c $<
 optimize.o: optimize.c gifsicle.h
 
 srclinks:

@@ -649,9 +649,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
   g_err1 = Gif_NewArray(int32_t, width + 2);
   b_err1 = Gif_NewArray(int32_t, width + 2);
   for (i = 0; i < width + 2; i++) {
-    r_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
-    g_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
-    b_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+    r_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+    g_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+    b_err[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
   }
   
   /* Do the image! */
