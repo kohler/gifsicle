@@ -745,32 +745,35 @@ find_viewer(Display *display, Window window)
 
 
 void
-set_viewer_name(Gt_Viewer *viewer)
+set_viewer_name(Gt_Viewer *viewer, int slow_number)
 {
   Gif_Image *gfi;
   char *strs[2];
+  char *identifier;
   XTextProperty name_prop;
+  int im_pos = (slow_number >= 0 ? slow_number : viewer->im_pos);
   int len;
   
-  if (!viewer->top_level || viewer->im_pos >= viewer->nim
-      || viewer->being_deleted)
+  if (!viewer->top_level || im_pos >= viewer->nim || viewer->being_deleted)
     return;
-  
-  gfi = viewer->im[ viewer->im_pos ];
-  len = strlen(viewer->name) + 19;
-  if (gfi->identifier)
-    len += 2 + strlen(gfi->identifier);
+
+  gfi = viewer->im[im_pos];
+  len = strlen(viewer->name) + 21;
+  identifier = (slow_number >= 0 ? (char *)0 : gfi->identifier);
+  if (identifier)
+    len += 2 + strlen(identifier);
   
   strs[0] = Gif_NewArray(char, len);
-  if (viewer->animating || (Gif_ImageCount(viewer->gfs) == 1 && !gfi->identifier))
+  if (slow_number >= 0)
+    sprintf(strs[0], "gifview: %s [#%d]", viewer->name, im_pos);
+  else if (viewer->nim == 1 && identifier)
+    sprintf(strs[0], "gifview: %s #%s", viewer->name, identifier);
+  else if (viewer->animating || viewer->nim == 1)
     sprintf(strs[0], "gifview: %s", viewer->name);
-  else if (Gif_ImageCount(viewer->gfs) == 1 && gfi->identifier)
-    sprintf(strs[0], "gifview: %s #%s", viewer->name, gfi->identifier);
-  else if (!gfi->identifier)
-    sprintf(strs[0], "gifview: %s #%d", viewer->name, viewer->im_pos);
+  else if (!identifier)
+    sprintf(strs[0], "gifview: %s #%d", viewer->name, im_pos);
   else
-    sprintf(strs[0], "gifview: %s #%d #%s", viewer->name, viewer->im_pos,
-	    gfi->identifier);
+    sprintf(strs[0], "gifview: %s #%d #%s", viewer->name, im_pos, identifier);
   strs[1] = 0;
   
   XStringListToTextProperty(strs, 1, &name_prop);
@@ -807,15 +810,11 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
     }
 
     if (slow) {
-      int real_pos = viewer->im_pos;
-      viewer->im_pos = frame;
-      set_viewer_name(viewer);
+      set_viewer_name(viewer, frame);
       XFlush(viewer->display);
-      viewer->im_pos = real_pos;
     }
   }
   
-  {int i,j;for(i=j=0;i<viewer->nim;i++)if(viewer->unoptimized_pixmaps[i])j++;fprintf(stderr,"-%d\n",j);}
   return viewer->unoptimized_pixmaps[frame];
 }
 
@@ -823,22 +822,20 @@ static void
 kill_unoptimized_frames(Gt_Viewer *viewer, int new_frame)
 {
   int nimages = viewer->nim;
-  int kill_frame = nimages;
+  int kill = nimages;
   if (!viewer->free_pixmaps)
     return;
   
   if (new_frame == 0)
-    kill_frame = 3;
+    kill = 3;
   else if (new_frame < viewer->im_pos)
-    kill_frame = new_frame + 1;
+    kill = new_frame + 1;
   
-  for (; kill_frame < nimages; kill_frame++)
-    if (viewer->unoptimized_pixmaps[kill_frame]) {
-      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill_frame]);
-      viewer->unoptimized_pixmaps[kill_frame] = None;
+  for (; kill < nimages; kill++)
+    if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0) {
+      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
+      viewer->unoptimized_pixmaps[kill] = None;
     }
-
-  {int i,j;for(i=j=0;i<nimages;i++)if(viewer->unoptimized_pixmaps[i])j++;fprintf(stderr,"%d\n",j);}
 }
 
 void
@@ -931,7 +928,7 @@ view_frame(Gt_Viewer *viewer, int frame)
   }
   
   if (need_set_name)
-    set_viewer_name(viewer);
+    set_viewer_name(viewer, -1);
   
   if (!old_pixmap && !viewer->use_window)
     /* first image; map the window */
@@ -1024,7 +1021,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     } else
       unschedule(viewer);
     
-    set_viewer_name(viewer);
+    set_viewer_name(viewer, -1);
     
   } else if (key == XK_U || key == XK_u) {
     /* U: toggle unoptimizing */
@@ -1033,7 +1030,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     if (!viewer->animating) {
       viewer->im_pos = -1;
       view_frame(viewer, pos);
-      set_viewer_name(viewer);
+      set_viewer_name(viewer, -1);
     }
     
   } else if (key == XK_R || key == XK_r
@@ -1053,7 +1050,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     /* Escape: stop animation */
     switch_animating(viewer, 0);
     unschedule(viewer);
-    set_viewer_name(viewer);
+    set_viewer_name(viewer, -1);
     
   } else if (key == XK_Z || key == XK_z) {
     /* Z: trigger resizability */

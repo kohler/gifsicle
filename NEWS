@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.18   2.Apr.2000
+Version 1.18   3.Apr.2000
 
 * Gifview now uses X server memory more parsimoniously. This should make it
   more robust, and nicer to the X server, on large animations. Requested by
