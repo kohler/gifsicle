@@ -11,6 +11,7 @@
 #include <errno.h>
 
 int is_static = 1;
+int is_const = 1;
 
 static void *
 fmalloc(int size)
@@ -108,7 +109,8 @@ print_unreckless(FILE *f, char *gifrecname)
   unsigned long size = 0;
   int c;
   
-  printf("\nstatic unsigned char %s_data[] = {", gifrecname);
+  printf("\nstatic %sunsigned char %s_data[] = {",
+	 (is_const ? "const " : ""), gifrecname);
   size = 0;
   c = getc(f);
   while (c != EOF) {
@@ -117,8 +119,10 @@ print_unreckless(FILE *f, char *gifrecname)
     size++;
     c = getc(f);
   }
-  printf("};\n%sGif_Record %s = { %s_data, %lu };\n",
-	 is_static ? "static " : "", gifrecname, gifrecname, size);
+  printf("};\n%s%sGif_Record %s = { %s_data, %lu };\n",
+	 (is_static ? "static " : ""),
+	 (is_const ? "const " : ""),
+	 gifrecname, gifrecname, size);
 }
 
 int
@@ -139,6 +143,10 @@ main(int argc, char **argv)
       is_static = 0, argc--, argv++;
     else if (!strcmp(argv[0], "-makename"))
       make_name = 1, argc--, argv++;
+    else if (!strcmp(argv[0], "-nonconst"))
+      is_const = 0, argc--, argv++;
+    else if (!strcmp(argv[0], "-const"))
+      is_const = 1, argc--, argv++;
     else if (!strcmp(argv[0], "-dir") && argc > 1) {
       directory = argv[1], argc -= 2, argv += 2;
       /* make sure directory is slash-terminated */
@@ -156,8 +164,9 @@ main(int argc, char **argv)
       || argc < 1
       || (argv[0] && argv[0][0] == '-')) {
     fprintf(stderr, "\
-usage: giftoc [-reckless] [-extern] [-dir DIR] FILE NAME [FILE NAME...]\n\
-or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
+usage: giftoc [OPTIONS] FILE NAME [FILE NAME...]\n\
+or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
+       OPTIONS are -reckless, -extern, -nonconst, -dir DIR\n");
     exit(1);
   }
   

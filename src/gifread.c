@@ -50,7 +50,7 @@ typedef struct {
 typedef struct Gif_Reader {
   
   FILE *f;
-  byte *v;
+  const byte *v;
   u_int32_t w;
   int is_record;
   int is_eoi;
@@ -117,7 +117,7 @@ record_eofer(Gif_Reader *grr)
 
 
 static void
-make_data_reader(Gif_Reader *grr, byte *data, u_int32_t length)
+make_data_reader(Gif_Reader *grr, const byte *data, u_int32_t length)
 {
   grr->v = data;
   grr->w = length;
@@ -403,7 +403,7 @@ static int
 read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
   if (grr->is_record) {
-    byte *first = grr->v;
+    const byte *first = grr->v;
     u_int32_t pos;
     
     /* scan over image */
@@ -417,7 +417,7 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
     
     gfi->compressed_len = pos;
     if (read_flags & GIF_READ_CONST_RECORD) {
-      gfi->compressed = first;
+      gfi->compressed = (byte *)first;
       gfi->free_compressed = 0;
     } else {
       gfi->compressed = Gif_NewArray(byte, gfi->compressed_len);
@@ -857,7 +857,7 @@ Gif_FullReadFile(FILE *f, int read_flags,
 }
 
 Gif_Stream *
-Gif_FullReadRecord(Gif_Record *gifrec, int read_flags,
+Gif_FullReadRecord(const Gif_Record *gifrec, int read_flags,
 		   Gif_ReadErrorHandler h, void *hthunk)
 {
   Gif_Reader grr;

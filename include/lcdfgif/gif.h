@@ -227,7 +227,7 @@ Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
 /** READING AND WRITING **/
 
 struct Gif_Record {
-  unsigned char *data;
+  const unsigned char *data;
   u_int32_t length;
 };
 
@@ -241,7 +241,7 @@ struct Gif_Record {
 
 Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
 				 void *);
-Gif_Stream *	Gif_FullReadRecord(Gif_Record *, int flags,
+Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
 				   Gif_ReadErrorHandler, void *);
 int 		Gif_WriteFile(Gif_Stream *, FILE *);
 
