@@ -122,15 +122,15 @@ AC_DEFINE_UNQUOTED(RANDOM, ${random_func})
 AC_REPLACE_FUNCS(strerror)
 AC_CHECK_FUNCS(strtoul)
 
-AC_CHECK_HEADERS(sys/select.h)
+AC_CHECK_HEADERS(sys/select.h inttypes.h)
 
 dnl
 dnl Integer typedefs
 dnl
 
 AC_CACHE_CHECK(for integer typedefs, ac_cv_int_types,
-[AC_EGREP_HEADER(u_int32_t, sys/types.h, ac_cv_int_types=yes,
-  AC_EGREP_HEADER(uint32_t, sys/types.h, ac_cv_int_types=close,
+[AC_EGREP_HEADER(uint32_t, sys/types.h, ac_cv_int_types=yes,
+  AC_EGREP_HEADER(u_int32_t, sys/types.h, ac_cv_int_types=close,
    ac_cv_int_types=no))])
 
 if test "$ac_cv_int_types" = no ;
@@ -166,16 +166,16 @@ int main(int argc, char **argv) {
   ac_cv_int32=int)])
 fi
 
-if test "$ac_cv_int_types" = no ;
-then
-  AC_DEFINE_UNQUOTED(u_int16_t, unsigned $ac_cv_int16)
-  AC_DEFINE_UNQUOTED(u_int32_t, unsigned $ac_cv_int32)
+if test "$ac_cv_header_inttypes_h" = yes; then
+  :
+elif test "$ac_cv_int_types" = no; then
+  AC_DEFINE_UNQUOTED(uint16_t, unsigned $ac_cv_int16)
+  AC_DEFINE_UNQUOTED(uint32_t, unsigned $ac_cv_int32)
   AC_DEFINE_UNQUOTED(int32_t, $ac_cv_int32)
-elif test "$ac_cv_int_types" = close ;
-then
+elif test "$ac_cv_int_types" = close; then
   AC_DEFINE(NEED_SYS_TYPES_H)
-  AC_DEFINE(u_int16_t, uint16_t)
-  AC_DEFINE(u_int32_t, uint32_t)
+  AC_DEFINE(uint16_t, u_int16_t)
+  AC_DEFINE(uint32_t, u_int32_t)
 else
   AC_DEFINE(NEED_SYS_TYPES_H)
 fi

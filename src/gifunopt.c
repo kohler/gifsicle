@@ -24,7 +24,7 @@ extern "C" {
 #define TRANSPARENT 256
 
 static void
-put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
+put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int transparent = gfi->transparent;
   int x, y;
@@ -34,7 +34,7 @@ put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
   if (gfi->top + h > gfs->screen_height) h = gfs->screen_height - gfi->top;
   
   for (y = 0; y < h; y++) {
-    u_int16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
+    uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
     byte *line = gfi->img[y];
     for (x = 0; x < w; x++, move++, line++)
       if (*line != transparent)
@@ -44,9 +44,9 @@ put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
 
 
 static void
-put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
+put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
-  u_int16_t solid;
+  uint16_t solid;
   int x, y;
   int w = gfi->width;
   int h = gfi->height;
@@ -61,7 +61,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
     solid = gfs->background;
   
   for (y = 0; y < h; y++) {
-    u_int16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
+    uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
     for (x = 0; x < w; x++, move++)
       *move = solid;
   }
@@ -69,13 +69,13 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
 
 
 static int
-create_image_data(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen,
+create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 		  byte *new_data)
 {
   int have[257];
   int transparent = -1;
   int size = gfs->screen_width * gfs->screen_height;
-  u_int16_t *move;
+  uint16_t *move;
   int i;
 
   /* mark colors used opaquely in the image */
@@ -115,11 +115,11 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen,
 
 
 static int
-unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
+unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int size = gfs->screen_width * gfs->screen_height;
   byte *new_data = Gif_NewArray(byte, size);
-  u_int16_t *new_screen = screen;
+  uint16_t *new_screen = screen;
   if (!new_data) return 0;
   
   /* Oops! May need to uncompress it */
@@ -127,9 +127,9 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, u_int16_t *screen)
   Gif_ReleaseCompressedImage(gfi);
   
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-    new_screen = Gif_NewArray(u_int16_t, size);
+    new_screen = Gif_NewArray(uint16_t, size);
     if (!new_screen) return 0;
-    memcpy(new_screen, screen, size * sizeof(u_int16_t));
+    memcpy(new_screen, screen, size * sizeof(uint16_t));
   }
   
   put_image_in_screen(gfs, gfi, new_screen);
@@ -159,8 +159,8 @@ Gif_Unoptimize(Gif_Stream *gfs)
 {
   int ok = 1;
   int i, size;
-  u_int16_t *screen;
-  u_int16_t background;
+  uint16_t *screen;
+  uint16_t background;
   Gif_Image *gfi;
   
   if (gfs->nimages < 1) return 1;
@@ -173,7 +173,7 @@ Gif_Unoptimize(Gif_Stream *gfs)
   Gif_CalculateScreenSize(gfs, 0);
   size = gfs->screen_width * gfs->screen_height;
   
-  screen = Gif_NewArray(u_int16_t, size);
+  screen = Gif_NewArray(uint16_t, size);
   gfi = gfs->images[0];
   background = gfi->transparent >= 0 ? TRANSPARENT : gfs->background;
   for (i = 0; i < size; i++)

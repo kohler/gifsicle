@@ -33,10 +33,10 @@ static const char *filename2;
 static int screen_width, screen_height;
 #define TRANSP (0)
 
-static u_int16_t *data1;
-static u_int16_t *data2;
-static u_int16_t *last1;
-static u_int16_t *last2;
+static uint16_t *data1;
+static uint16_t *data2;
+static uint16_t *last1;
+static uint16_t *last2;
 
 static int brief;
 
@@ -53,11 +53,11 @@ combine_colormaps(Gif_Colormap *gfcm, Gif_Colormap *newcm)
 }
 
 static void
-fill_area(u_int16_t *data, int l, int t, int w, int h, u_int16_t val)
+fill_area(uint16_t *data, int l, int t, int w, int h, uint16_t val)
 {
   int x, y;
   for (y = t; y < t+h; y++) {
-    u_int16_t *d = data + screen_width * y + l;
+    uint16_t *d = data + screen_width * y + l;
     for (x = 0; x < w; x++)
       *d++ = val;
   }
@@ -69,9 +69,9 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
 {
   int i, x, y;
   int width = gfi->width;
-  u_int16_t map[256];
-  u_int16_t *data = (is_second ? data2 : data1);
-  u_int16_t *last = (is_second ? last2 : last1);
+  uint16_t map[256];
+  uint16_t *data = (is_second ? data2 : data1);
+  uint16_t *last = (is_second ? last2 : last1);
   Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
   
   /* set up colormap */
@@ -87,11 +87,11 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
   Gif_UncompressImage(gfi);
   Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
   for (y = 0; y < gfi->height; y++) {
-    u_int16_t *outd = data + screen_width * (y + gfi->top) + gfi->left;
+    uint16_t *outd = data + screen_width * (y + gfi->top) + gfi->left;
     byte *ind = gfi->img[y];
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
       memcpy(last + screen_width * y + gfi->left, outd,
-	     sizeof(u_int16_t) * width);
+	     sizeof(uint16_t) * width);
     for (x = 0; x < width; x++, outd++, ind++)
       if (map[*ind] != TRANSP)
 	*outd = map[*ind];
@@ -102,20 +102,20 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
 
 static void
 apply_image_disposal(int is_second, Gif_Stream *gfs, Gif_Image *gfi,
-		     u_int16_t background)
+		     uint16_t background)
 {
   int x, y, width = gfi->width;
-  u_int16_t *data = (is_second ? data2 : data1);
-  u_int16_t *last = (is_second ? last2 : last1);
+  uint16_t *data = (is_second ? data2 : data1);
+  uint16_t *last = (is_second ? last2 : last1);
   
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
     for (y = gfi->top; y < gfi->top + gfi->height; y++)
       memcpy(data + screen_width * y + gfi->left,
 	     last + screen_width * y + gfi->left,
-	     sizeof(u_int16_t) * width);
+	     sizeof(uint16_t) * width);
   else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
     for (y = gfi->top; y < gfi->top + gfi->height; y++) {
-      u_int16_t *d = data + screen_width * y + gfi->left;
+      uint16_t *d = data + screen_width * y + gfi->left;
       for (x = 0; x < gfi->width; x++)
 	*d++ = background;
     }
@@ -202,10 +202,10 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   screen_width = s1->screen_width;
   screen_height = s1->screen_height;
   
-  data1 = Gif_NewArray(u_int16_t, screen_width * screen_height);
-  data2 = Gif_NewArray(u_int16_t, screen_width * screen_height);
-  last1 = Gif_NewArray(u_int16_t, screen_width * screen_height);
-  last2 = Gif_NewArray(u_int16_t, screen_width * screen_height);
+  data1 = Gif_NewArray(uint16_t, screen_width * screen_height);
+  data2 = Gif_NewArray(uint16_t, screen_width * screen_height);
+  last1 = Gif_NewArray(uint16_t, screen_width * screen_height);
+  last2 = Gif_NewArray(uint16_t, screen_width * screen_height);
 
   /* Merge all distinct colors from the two images into one colormap, setting
      the `pixel' slots in the images' colormaps to the corresponding values
@@ -245,10 +245,10 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     apply_image(0, s1, gfi1);
     apply_image(1, s2, gfi2);
     
-    if (memcmp(data1, data2, screen_width * screen_height * sizeof(u_int16_t))
+    if (memcmp(data1, data2, screen_width * screen_height * sizeof(uint16_t))
 	!= 0) {
       int d, c = screen_width * screen_height;
-      u_int16_t *d1 = data1, *d2 = data2;
+      uint16_t *d1 = data1, *d2 = data2;
       for (d = 0; d < c; d++, d1++, d2++)
 	if (*d1 != *d2) {
 	  name_color(*d1, newcm, buf1);

@@ -31,10 +31,10 @@ typedef struct {
   
   Gif_Code *prefix;
   byte *suffix;
-  u_int16_t *length;
+  uint16_t *length;
   
-  u_int16_t width;
-  u_int16_t height;
+  uint16_t width;
+  uint16_t height;
   
   byte *image;
   byte *maximage;
@@ -51,13 +51,13 @@ typedef struct Gif_Reader {
   
   FILE *f;
   const byte *v;
-  u_int32_t w;
-  u_int32_t length;
+  uint32_t w;
+  uint32_t length;
   int is_record;
   int is_eoi;
   byte (*byte_getter)(struct Gif_Reader *);
-  void (*block_getter)(byte *, u_int32_t, struct Gif_Reader *);
-  u_int32_t (*offseter)(struct Gif_Reader *);
+  void (*block_getter)(byte *, uint32_t, struct Gif_Reader *);
+  uint32_t (*offseter)(struct Gif_Reader *);
   int (*eofer)(struct Gif_Reader *);
   
 } Gif_Reader;
@@ -69,7 +69,7 @@ typedef struct Gif_Reader {
 #define gifgetoffset(grr) ((*grr->offseter)(grr))
 #define gifeof(grr)	((*grr->eofer)(grr))
 
-static inline u_int16_t
+static inline uint16_t
 gifgetunsigned(Gif_Reader *grr)
 {
   byte one = gifgetbyte(grr);
@@ -86,12 +86,12 @@ file_byte_getter(Gif_Reader *grr)
 }
 
 static void
-file_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
+file_block_getter(byte *p, uint32_t s, Gif_Reader *grr)
 {
   fread(p, 1, s, grr->f);
 }
 
-static u_int32_t
+static uint32_t
 file_offseter(Gif_Reader *grr)
 {
   return ftell(grr->f);
@@ -111,14 +111,14 @@ record_byte_getter(Gif_Reader *grr)
 }
 
 static void
-record_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
+record_block_getter(byte *p, uint32_t s, Gif_Reader *grr)
 {
   if (s > grr->w) s = grr->w;
   memcpy(p, grr->v, s);
   grr->w -= s, grr->v += s;
 }
 
-static u_int32_t
+static uint32_t
 record_offseter(Gif_Reader *grr)
 {
   return grr->length - grr->w;
@@ -132,7 +132,7 @@ record_eofer(Gif_Reader *grr)
 
 
 static void
-make_data_reader(Gif_Reader *grr, const byte *data, u_int32_t length)
+make_data_reader(Gif_Reader *grr, const byte *data, uint32_t length)
 {
   grr->v = data;
   grr->length = length;
@@ -161,7 +161,7 @@ one_code(Gif_Context *gfc, Gif_Code code)
   Gif_Code *prefixes = gfc->prefix;
   byte *ptr;
   int lastsuffix;
-  u_int16_t codelength = gfc->length[code];
+  uint16_t codelength = gfc->length[code];
 
   gfc->decodepos += codelength;
   ptr = gfc->image + gfc->decodepos;
@@ -225,7 +225,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
      across blocks */
   byte buffer[GIF_MAX_BLOCK + 5];
   int i;
-  u_int32_t accum;
+  uint32_t accum;
   
   int bit_position;
   int bit_length;
@@ -421,7 +421,7 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
   if (grr->is_record) {
     const byte *first = grr->v;
-    u_int32_t pos;
+    uint32_t pos;
     
     /* scan over image */
     pos = 1;			/* skip min code size */
@@ -449,8 +449,8 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
     
   } else {
     /* non-record; have to read it block by block. */
-    u_int32_t comp_cap = 1024;
-    u_int32_t comp_len;
+    uint32_t comp_cap = 1024;
+    uint32_t comp_len;
     byte *comp = Gif_NewArray(byte, comp_cap);
     int i;
     if (!comp) return 0;
@@ -519,7 +519,7 @@ Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
   gfc.stream = &fake_gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
-  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
+  gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = h;
   gfc.handler_thunk = hthunk;
   
@@ -757,7 +757,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   gfc.stream = gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
-  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
+  gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = handler;
   gfc.handler_thunk = handler_thunk;
   

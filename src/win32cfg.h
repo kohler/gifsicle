@@ -17,8 +17,8 @@
 /* #undef GETTIMEOFDAY_PROTO */
 
 /* Get the [u_]int*_t typedefs. */
-typedef unsigned __int16 u_int16_t;
-typedef unsigned __int32 u_int32_t;
+typedef unsigned __int16 uint16_t;
+typedef unsigned __int32 uint32_t;
 typedef signed __int16 int16_t;
 typedef signed __int32 int32_t;
 

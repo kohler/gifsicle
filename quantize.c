@@ -117,7 +117,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    u_int32_t count[256];
+    uint32_t count[256];
     Gif_Color *col;
     int ncol;
     int transparent = gfi->transparent;
@@ -238,7 +238,7 @@ assert_hist_transparency(Gif_Color *hist, int nhist)
 typedef struct {
   int first;
   int count;
-  u_int32_t pixel;
+  uint32_t pixel;
 } adaptive_slot;
 
 Gif_Colormap *
@@ -274,7 +274,7 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
   
   /* 1. set up the first slot, containing all pixels. */
   {
-    u_int32_t total = 0;
+    uint32_t total = 0;
     for (i = 0; i < nhist; i++)
       total += hist[i].pixel;
     slots[0].first = 0;
@@ -290,7 +290,7 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     
     /* 2.1. pick the slot to split. */
     {
-      u_int32_t split_pixel = 0;
+      uint32_t split_pixel = 0;
       for (i = 0; i < nadapt; i++)
 	if (slots[i].count >= 2 && slots[i].pixel > split_pixel) {
 	  split = &slots[i];
@@ -331,9 +331,9 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     
     /* 2.4. decide where to split the slot and split it there. */
     {
-      u_int32_t half_pixels = split->pixel / 2;
-      u_int32_t pixel_accum = slice[0].pixel;
-      u_int32_t diff1, diff2;
+      uint32_t half_pixels = split->pixel / 2;
+      uint32_t pixel_accum = slice[0].pixel;
+      uint32_t diff1, diff2;
       for (i = 1; i < split->count - 1 && pixel_accum < half_pixels; i++)
 	pixel_accum += slice[i].pixel;
 
@@ -380,7 +380,7 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
 static Gif_Colormap *
 colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 {
-  u_int32_t *min_dist = Gif_NewArray(u_int32_t, nhist);
+  uint32_t *min_dist = Gif_NewArray(uint32_t, nhist);
   int *closest = Gif_NewArray(int, nhist);
   Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
   Gif_Color *adapt = gfcm->col;
@@ -439,7 +439,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
       
     } else {
       /* 2.1b. choose based on diversity from unchosen colors */
-      u_int32_t chosen_dist = 0;
+      uint32_t chosen_dist = 0;
       for (i = 0; i < nhist; i++)
 	if (min_dist[i] > chosen_dist) {
 	  chosen = i;
@@ -458,7 +458,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
       Gif_Color *h = hist;
       for (i = 0; i < nhist; i++, h++)
 	if (min_dist[i]) {
-	  u_int32_t dist = (h->red - red) * (h->red - red)
+	  uint32_t dist = (h->red - red) * (h->red - red)
 	    + (h->green - green) * (h->green - green)
 	    + (h->blue - blue) * (h->blue - blue);
 	  if (dist < min_dist[i]) {
@@ -482,10 +482,10 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   } else {
     for (i = 0; i < nadapt; i++) {
       double red_total = 0, green_total = 0, blue_total = 0;
-      u_int32_t pixel_total = 0, mismatch_pixel_total = 0;
+      uint32_t pixel_total = 0, mismatch_pixel_total = 0;
       for (j = 0; j < nhist; j++)
 	if (closest[j] == i) {
-	  u_int32_t pixel = hist[j].pixel;
+	  uint32_t pixel = hist[j].pixel;
 	  red_total += hist[j].red * pixel;
 	  green_total += hist[j].green * pixel;
 	  blue_total += hist[j].blue * pixel;
@@ -502,7 +502,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
       else {
 	/* Favor, by a smallish amount, the color the plain diversity
            algorithm would pick. */
-	u_int32_t pixel = hist[match].pixel * 2;
+	uint32_t pixel = hist[match].pixel * 2;
 	red_total += hist[match].red * pixel;
 	green_total += hist[match].green * pixel;
 	blue_total += hist[match].blue * pixel;
@@ -539,11 +539,11 @@ struct color_hash_item {
   byte red;
   byte green;
   byte blue;
-  u_int32_t pixel;
+  uint32_t pixel;
   color_hash_item *next;
 };
 #define COLOR_HASH_SIZE 20023
-#define COLOR_HASH_CODE(r, g, b)	((u_int32_t)(r * 33023 + g * 30013 + b * 27011) % COLOR_HASH_SIZE)
+#define COLOR_HASH_CODE(r, g, b)	((uint32_t)(r * 33023 + g * 30013 + b * 27011) % COLOR_HASH_SIZE)
 
 
 /*****
@@ -603,7 +603,7 @@ static int
 hash_color(int red, int green, int blue,
 	   color_hash_item **hash, Gif_Colormap *new_cm)
 {
-  u_int32_t hash_code = COLOR_HASH_CODE(red, green, blue);
+  uint32_t hash_code = COLOR_HASH_CODE(red, green, blue);
   color_hash_item *prev = 0, *trav;
   
   /* Is new_cm grayscale? We cache the answer here. */
@@ -636,7 +636,7 @@ hash_color(int red, int green, int blue,
   {
     Gif_Color *col = new_cm->col;
     int ncol = new_cm->ncol, i, found;
-    u_int32_t min_dist = 0xFFFFFFFFU;
+    uint32_t min_dist = 0xFFFFFFFFU;
     
     if (new_cm_grayscale) {
       /* If the new colormap is 100% grayscale, then use distance in luminance
@@ -653,7 +653,7 @@ hash_color(int red, int green, int blue,
       for (i = 0; i < ncol; i++)
 	if (col[i].haspixel != 255) {
 	  int in_gray = 1024 * col[i].red;
-	  u_int32_t dist = abs(gray - in_gray);
+	  uint32_t dist = abs(gray - in_gray);
 	  if (dist < min_dist) {
 	    min_dist = dist;
 	    found = i;
@@ -664,7 +664,7 @@ hash_color(int red, int green, int blue,
       /* Use straight-line Euclidean distance in RGB space */
       for (i = 0; i < ncol; i++)
 	if (col[i].haspixel != 255) {
-	  u_int32_t dist = (red - col[i].red) * (red - col[i].red)
+	  uint32_t dist = (red - col[i].red) * (red - col[i].red)
 	    + (green - col[i].green) * (green - col[i].green)
 	    + (blue - col[i].blue) * (blue - col[i].blue);
 	  if (dist < min_dist) {
@@ -683,7 +683,7 @@ hash_color(int red, int green, int blue,
 void
 colormap_image_posterize(Gif_Image *gfi, byte *new_data,
 			 Gif_Colormap *old_cm, Gif_Colormap *new_cm,
-			 color_hash_item **hash, u_int32_t *histogram)
+			 color_hash_item **hash, uint32_t *histogram)
 {
   int ncol = old_cm->ncol;
   Gif_Color *col = old_cm->col;
@@ -720,7 +720,7 @@ colormap_image_posterize(Gif_Image *gfi, byte *new_data,
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 			       Gif_Colormap *old_cm, Gif_Colormap *new_cm,
-			       color_hash_item **hash, u_int32_t *histogram)
+			       color_hash_item **hash, uint32_t *histogram)
 {
   static int32_t *random_values = 0;
   
@@ -856,9 +856,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 static int
 try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
 			Gif_Colormap *new_cm, int *new_ncol,
-			u_int32_t *histogram)
+			uint32_t *histogram)
 {
-  u_int32_t min_used;
+  uint32_t min_used;
   int i, j;
   int transparent = gfi->transparent;
   int new_transparent = -1;
@@ -949,7 +949,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
     if (gfcm) {
       /* If there was an old colormap, change the image data */
       byte *new_data = Gif_NewArray(byte, gfi->width * gfi->height);
-      u_int32_t histogram[256];
+      uint32_t histogram[256];
       unmark_colors(new_cm);
       unmark_colors(gfcm);
 
@@ -1048,7 +1048,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_Image *gfi = gfs->images[imagei];
       int only_compressed = (gfi->img == 0);
-      u_int32_t size;
+      uint32_t size;
       byte *data;
       if (only_compressed)
 	Gif_UncompressImage(gfi);

@@ -20,8 +20,12 @@
 #ifdef NEED_SYS_TYPES_H
 # include <sys/types.h>
 #endif
-#undef u_int16_t
-#undef u_int32_t
+#undef HAVE_INTTYPES_H
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+#undef uint16_t
+#undef uint32_t
 #undef int32_t
 
 /* Pathname separator character ('/' on Unix). */

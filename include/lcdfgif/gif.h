@@ -19,9 +19,9 @@
 extern "C" {
 #endif
 
-/* NOTE: You should define the types u_int16_t and u_int32_t before #including
-   this file, probably by #including <sys/types.h>. */
-  
+/* NOTE: You should define the types uint16_t and uint32_t before #including
+   this file, probably by #including <inttypes.h>. */
+
 #define GIF_MAJOR_VERSION	1
 #define GIF_MINOR_VERSION	3
 #define GIF_VERSION		"1.3"
@@ -46,8 +46,8 @@ struct Gif_Stream {
   Gif_Colormap *global;
   byte background;
   
-  u_int16_t screen_width;
-  u_int16_t screen_height;
+  uint16_t screen_width;
+  uint16_t screen_height;
   long loopcount;		/* -1 means no loop count */
   
   Gif_Comment *comment;
@@ -89,20 +89,20 @@ struct Gif_Image {
   Gif_Colormap *local;
   short transparent;		/* -1 means no transparent index */
   
-  u_int16_t delay;
+  uint16_t delay;
   byte disposal;
-  u_int16_t left;
-  u_int16_t top;
+  uint16_t left;
+  uint16_t top;
   
-  u_int16_t width;
-  u_int16_t height;
+  uint16_t width;
+  uint16_t height;
   
   byte interlace;
   byte **img;			/* img[y][x] == image byte (x,y) */
   byte *image_data;
   void (*free_image_data)(void *);
   
-  u_int32_t compressed_len;
+  uint32_t compressed_len;
   byte *compressed;
   void (*free_compressed)(void *);
   
@@ -158,7 +158,7 @@ typedef struct {
   byte green;
   byte blue;
   
-  u_int32_t pixel;
+  uint32_t pixel;
   
 } Gif_Color;
 
@@ -167,7 +167,7 @@ struct Gif_Colormap {
   
   int ncol;
   int capacity;
-  u_int32_t userflags;
+  uint32_t userflags;
   int refcount;
   Gif_Color *col;
   
@@ -209,7 +209,7 @@ struct Gif_Extension {
   int kind;			/* negative kinds are reserved */
   char *application;
   byte *data;
-  u_int32_t length;
+  uint32_t length;
   int position;
   
   Gif_Stream *stream;
@@ -229,7 +229,7 @@ Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
 
 struct Gif_Record {
   const unsigned char *data;
-  u_int32_t length;
+  uint32_t length;
 };
 
 #define GIF_READ_COMPRESSED		1
@@ -271,7 +271,7 @@ void 		Gif_Debug(char *x, ...);
 #define		GIF_DEBUG(x)
 #endif
 
-typedef u_int16_t Gif_Code;
+typedef uint16_t Gif_Code;
 #define GIF_MAX_CODE_BITS	12
 #define GIF_MAX_CODE		0x1000
 #define GIF_MAX_BLOCK		255

@@ -1152,7 +1152,7 @@ main(int argc, char **argv)
      Really I should go through & change everything over, but it doesn't
      seem worth my time. */
   {
-    u_int16_t m = 0xFFFFU;
+    uint16_t m = 0xFFFFU;
     int i = m;
     assert(i > 0 && "configuration/lameness failure! bug the author!");
   }
@@ -1480,7 +1480,7 @@ main(int argc, char **argv)
        }
        break;
      }
-      
+     
      case CHANGE_COLOR_OPT: {
        next_input |= CH_CHANGE_COLOR;
        if (clp->negated)

@@ -13,15 +13,15 @@
 #include <string.h>
 
 typedef struct {
-  u_int16_t left;
-  u_int16_t top;
-  u_int16_t width;
-  u_int16_t height;
-  u_int32_t size;
+  uint16_t left;
+  uint16_t top;
+  uint16_t width;
+  uint16_t height;
+  uint32_t size;
   byte disposal;
   int transparent;
   byte *needed_colors;
-  u_int16_t required_color_count;
+  uint16_t required_color_count;
   int32_t active_penalty;
   int32_t global_penalty;
   int32_t colormap_penalty;
@@ -42,11 +42,11 @@ static Gif_Colormap *in_global_map;
 static Gif_Colormap *out_global_map;
 
 #define TRANSP (0)
-static u_int16_t background;
+static uint16_t background;
 #define NOT_IN_OUT_GLOBAL (256)
-static u_int16_t *last_data;
-static u_int16_t *this_data;
-static u_int16_t *next_data;
+static uint16_t *last_data;
+static uint16_t *this_data;
+static uint16_t *next_data;
 static int image_index;
 
 static int gif_color_count;
@@ -114,34 +114,34 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
    (if is_down != 0) down. */
 
 /* 9.Dec.1998 - Dumb idiot, it's time you stopped using C. The optimizer was
-   broken because I switched to u_int32_t's for the sorting values without
+   broken because I switched to uint32_t's for the sorting values without
    considering the consequences; and the consequences were bad. */
 static int32_t *permuting_sort_values;
 
 static int
 permuting_sorter_up(const void *v1, const void *v2)
 {
-  const u_int16_t *n1 = (const u_int16_t *)v1;
-  const u_int16_t *n2 = (const u_int16_t *)v2;
+  const uint16_t *n1 = (const uint16_t *)v1;
+  const uint16_t *n2 = (const uint16_t *)v2;
   return (permuting_sort_values[*n1] - permuting_sort_values[*n2]);
 }
 
 static int
 permuting_sorter_down(const void *v1, const void *v2)
 {
-  const u_int16_t *n1 = (const u_int16_t *)v1;
-  const u_int16_t *n2 = (const u_int16_t *)v2;
+  const uint16_t *n1 = (const uint16_t *)v1;
+  const uint16_t *n2 = (const uint16_t *)v2;
   return (permuting_sort_values[*n2] - permuting_sort_values[*n1]);
 }
 
-static u_int16_t *
-sort_permutation(u_int16_t *perm, int size, int32_t *values, int is_down)
+static uint16_t *
+sort_permutation(uint16_t *perm, int size, int32_t *values, int is_down)
 {
   permuting_sort_values = values;
   if (is_down)
-    qsort(perm, size, sizeof(u_int16_t), permuting_sorter_down);
+    qsort(perm, size, sizeof(uint16_t), permuting_sorter_down);
   else
-    qsort(perm, size, sizeof(u_int16_t), permuting_sorter_up);
+    qsort(perm, size, sizeof(uint16_t), permuting_sorter_up);
   permuting_sort_values = 0;
   return perm;
 }
@@ -152,7 +152,7 @@ sort_permutation(u_int16_t *perm, int size, int32_t *values, int is_down)
  **/
 
 static void
-copy_data_area(u_int16_t *dst, u_int16_t *src, Gif_Image *area)
+copy_data_area(uint16_t *dst, uint16_t *src, Gif_Image *area)
 {
   int y, width, height;
   if (!area) return;
@@ -161,14 +161,14 @@ copy_data_area(u_int16_t *dst, u_int16_t *src, Gif_Image *area)
   dst += area->top * screen_width + area->left;
   src += area->top * screen_width + area->left;
   for (y = 0; y < height; y++) {
-    memcpy(dst, src, sizeof(u_int16_t) * width);
+    memcpy(dst, src, sizeof(uint16_t) * width);
     dst += screen_width;
     src += screen_width;
   }
 }
 
 static void
-copy_data_area_subimage(u_int16_t *dst, u_int16_t *src, Gif_OptData *area)
+copy_data_area_subimage(uint16_t *dst, uint16_t *src, Gif_OptData *area)
 {
   Gif_Image img;
   img.left = area->left;
@@ -179,7 +179,7 @@ copy_data_area_subimage(u_int16_t *dst, u_int16_t *src, Gif_OptData *area)
 }
 
 static void
-fill_data_area(u_int16_t *dst, u_int16_t value, Gif_Image *area)
+fill_data_area(uint16_t *dst, uint16_t value, Gif_Image *area)
 {
   int x, y;
   int width = area->width;
@@ -193,7 +193,7 @@ fill_data_area(u_int16_t *dst, u_int16_t value, Gif_Image *area)
 }
 
 static void
-fill_data_area_subimage(u_int16_t *dst, u_int16_t value, Gif_OptData *area)
+fill_data_area_subimage(uint16_t *dst, uint16_t value, Gif_OptData *area)
 {
   Gif_Image img;
   img.left = area->left;
@@ -204,10 +204,10 @@ fill_data_area_subimage(u_int16_t *dst, u_int16_t value, Gif_OptData *area)
 }
 
 static void
-erase_screen(u_int16_t *dst)
+erase_screen(uint16_t *dst)
 {
-  u_int32_t i;
-  u_int32_t screen_size = screen_width * screen_height;
+  uint32_t i;
+  uint32_t screen_size = screen_width * screen_height;
   for (i = 0; i < screen_size; i++)
     *dst++ = background;
 }
@@ -217,10 +217,10 @@ erase_screen(u_int16_t *dst)
  **/
 
 static void
-apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
+apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 {
   int i, y, was_compressed = 0;
-  u_int16_t map[256];
+  uint16_t map[256];
   Gif_Colormap *colormap = gfi->local ? gfi->local : in_global_map;
 
   if (!gfi->img) {
@@ -250,7 +250,7 @@ apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 	dst[x] = map[gfi_pointer[x]];
     else
       for (x = 0; x < gfi->width; x++) {
-	u_int16_t new_pixel = map[gfi_pointer[x]];
+	uint16_t new_pixel = map[gfi_pointer[x]];
 	if (new_pixel != TRANSP) dst[x] = new_pixel;
       }
     
@@ -262,7 +262,7 @@ apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 }
 
 static void
-apply_frame_disposal(u_int16_t *into_data, u_int16_t *from_data,
+apply_frame_disposal(uint16_t *into_data, uint16_t *from_data,
 		     Gif_Image *gfi)
 {
   if (gfi->disposal == GIF_DISPOSAL_NONE
@@ -303,18 +303,18 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
   
   for (; tp < screen_height; tp++)
     if (memcmp(last_data + screen_width * tp, this_data + screen_width * tp,
-	       screen_width * sizeof(u_int16_t)) != 0)
+	       screen_width * sizeof(uint16_t)) != 0)
       break;
   for (; bt >= tp; bt--)
     if (memcmp(last_data + screen_width * bt, this_data + screen_width * bt,
-	       screen_width * sizeof(u_int16_t)) != 0)
+	       screen_width * sizeof(uint16_t)) != 0)
       break;
   
   lf = screen_width;
   rt = 0;
   for (y = tp; y <= bt; y++) {
-    u_int16_t *ld = last_data + screen_width * y;
-    u_int16_t *td = this_data + screen_width * y;
+    uint16_t *ld = last_data + screen_width * y;
+    uint16_t *td = this_data + screen_width * y;
     for (x = lf_min; x < lf; x++)
       if (ld[x] != td[x])
 	break;
@@ -360,8 +360,8 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     lf = 0, tp = 0, rt = screen_width - 1, bt = screen_height - 1;
   
   for (y = ttp; y < tp; y++) {
-    u_int16_t *now = this_data + screen_width * y;
-    u_int16_t *next = next_data + screen_width * y;
+    uint16_t *now = this_data + screen_width * y;
+    uint16_t *next = next_data + screen_width * y;
     for (x = tlf; x <= trt; x++)
       if (now[x] != TRANSP && next[x] == TRANSP)
 	goto found_top;
@@ -370,8 +370,8 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   tp = y;
   
   for (y = tbt; y > bt; y--) {
-    u_int16_t *now = this_data + screen_width * y;
-    u_int16_t *next = next_data + screen_width * y;
+    uint16_t *now = this_data + screen_width * y;
+    uint16_t *next = next_data + screen_width * y;
     for (x = tlf; x <= trt; x++)
       if (now[x] != TRANSP && next[x] == TRANSP)
 	goto found_bottom;
@@ -380,8 +380,8 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   bt = y;
   
   for (x = tlf; x < lf; x++) {
-    u_int16_t *now = this_data + x;
-    u_int16_t *next = next_data + x;
+    uint16_t *now = this_data + x;
+    uint16_t *next = next_data + x;
     for (y = tp; y <= bt; y++)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP)
 	goto found_left;
@@ -390,8 +390,8 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   lf = x;
   
   for (x = trt; x > rt; x--) {
-    u_int16_t *now = this_data + x;
-    u_int16_t *next = next_data + x;
+    uint16_t *now = this_data + x;
+    uint16_t *next = next_data + x;
     for (y = tp; y <= bt; y++)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP)
 	goto found_right;
@@ -456,8 +456,8 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
      must be in the map; need == 1 means the color may be replaced by
      transparency. */
   for (y = top; y < top + height; y++) {
-    u_int16_t *data = this_data + screen_width * y + bounds->left;
-    u_int16_t *last = last_data + screen_width * y + bounds->left;
+    uint16_t *data = this_data + screen_width * y + bounds->left;
+    uint16_t *last = last_data + screen_width * y + bounds->left;
     for (x = 0; x < width; x++) {
       if (data[x] != last[x])
 	need[data[x]] = REQUIRED;
@@ -521,11 +521,11 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
   int screen_size;
   Gif_Image *last_gfi;
   int next_data_valid;
-  u_int16_t *previous_data = 0;
+  uint16_t *previous_data = 0;
   
   screen_size = screen_width * screen_height;
   
-  next_data = Gif_NewArray(u_int16_t, screen_size);
+  next_data = Gif_NewArray(uint16_t, screen_size);
   next_data_valid = 0;
   
   /* do first image. Remember to uncompress it if necessary */
@@ -542,13 +542,13 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
     
     /* save previous data if necessary */
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      previous_data = Gif_NewArray(u_int16_t, screen_size);
+      previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, gfi);
     }
     
     /* set this_data equal to the current image */
     if (next_data_valid) {
-      u_int16_t *temp = this_data;
+      uint16_t *temp = this_data;
       this_data = next_data;
       next_data = temp;
       next_data_valid = 0;
@@ -573,7 +573,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 	&& image_index < gfs->nimages - 1) {
       /* set up next_data */
       Gif_Image *next_gfi = gfs->images[image_index + 1];
-      memcpy(next_data, this_data, screen_size * sizeof(u_int16_t));
+      memcpy(next_data, this_data, screen_size * sizeof(uint16_t));
       apply_frame_disposal(next_data, this_data, gfi);
       apply_frame(next_data, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
@@ -653,8 +653,8 @@ create_out_global_map(Gif_Stream *gfs)
 {
   int all_ncol = all_colormap->ncol;
   int32_t *penalty = Gif_NewArray(int32_t, all_ncol);
-  u_int16_t *permute = Gif_NewArray(u_int16_t, all_ncol);
-  u_int16_t *ordering = Gif_NewArray(u_int16_t, all_ncol);
+  uint16_t *permute = Gif_NewArray(uint16_t, all_ncol);
+  uint16_t *ordering = Gif_NewArray(uint16_t, all_ncol);
   int cur_ncol, i, imagei;
   int nglobal_all = (all_ncol <= 257 ? all_ncol - 1 : 256);
   int permutation_changed;
@@ -684,7 +684,7 @@ create_out_global_map(Gif_Stream *gfs)
   
   /* Loop, removing one color at a time. */
   for (cur_ncol = all_ncol - 1; cur_ncol; cur_ncol--) {
-    u_int16_t removed;
+    uint16_t removed;
     
     /* sort permutation based on penalty */
     if (permutation_changed)
@@ -722,7 +722,7 @@ create_out_global_map(Gif_Stream *gfs)
   
   /* make sure background is in the global colormap */
   if (background != TRANSP && ordering[background] >= 256) {
-    u_int16_t other = permute[255];
+    uint16_t other = permute[255];
     ordering[other] = ordering[background];
     ordering[background] = 255;
   }
@@ -926,7 +926,7 @@ simple_frame_data(Gif_Image *gfi, byte *map)
   int x, y;
   
   for (y = 0; y < height; y++) {
-    u_int16_t *from = this_data + screen_width * (y+top) + gfi->left;
+    uint16_t *from = this_data + screen_width * (y+top) + gfi->left;
     byte *into = gfi->image_data + y * width;
     for (x = 0; x < width; x++)
       *into++ = map[*from++];
@@ -943,8 +943,8 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   int top = gfi->top, width = gfi->width, height = gfi->height;
   int x, y;
   int transparent = gfi->transparent;
-  u_int16_t *last = 0;
-  u_int16_t *cur = 0;
+  uint16_t *last = 0;
+  uint16_t *cur = 0;
   byte *data;
   int transparentizing;
   int run_length;
@@ -1053,7 +1053,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   {
     byte *old_compressed = gfi->compressed;
     void (*old_free_compressed)(void *) = gfi->free_compressed;
-    u_int32_t old_compressed_len = gfi->compressed_len;
+    uint32_t old_compressed_len = gfi->compressed_len;
     gfi->compressed = 0;	/* prevent freeing old_compressed */
     Gif_FullCompressImage(gfs, gfi, gif_write_flags);
     if (gfi->compressed_len > old_compressed_len) {
@@ -1088,7 +1088,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
 				   image size so we can apply background
 				   disposal */
   int screen_size = screen_width * screen_height;
-  u_int16_t *previous_data = 0;
+  uint16_t *previous_data = 0;
   
   gfs->global = out_global_map;
   
@@ -1103,7 +1103,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      previous_data = Gif_NewArray(u_int16_t, screen_size);
+      previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, cur_gfi);
     }
     
@@ -1228,8 +1228,8 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
   
   /* create data arrays */
   screen_size = screen_width * screen_height;
-  last_data = Gif_NewArray(u_int16_t, screen_size);
-  this_data = Gif_NewArray(u_int16_t, screen_size);
+  last_data = Gif_NewArray(uint16_t, screen_size);
+  this_data = Gif_NewArray(uint16_t, screen_size);
   
   /* set up colormaps */
   gif_color_count = 2;

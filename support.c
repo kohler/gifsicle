@@ -245,7 +245,7 @@ verbose_endline(void)
 
 
 static void
-safe_puts(const char *s, u_int32_t len, FILE *f)
+safe_puts(const char *s, uint32_t len, FILE *f)
 {
   const char *last_safe = s;
   for (; len > 0; len--, s++)
@@ -308,8 +308,8 @@ static void
 extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 {
   byte *data = gfex->data;
-  u_int32_t pos = 0;
-  u_int32_t len = gfex->length;
+  uint32_t pos = 0;
+  uint32_t len = gfex->length;
   
   fprintf(where, "  extension %d: ", count);
   if (gfex->kind == 255) {
@@ -329,8 +329,8 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
   
   /* Now, hexl the data. */
   while (len > 0) {
-    u_int32_t row = 16;
-    u_int32_t i;
+    uint32_t row = 16;
+    uint32_t i;
     if (row > len) row = len;
     fprintf(where, "    %08x: ", pos);
     
@@ -1163,7 +1163,7 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 
 
 static void
-handle_screen(Gif_Stream *dest, u_int16_t width, u_int16_t height)
+handle_screen(Gif_Stream *dest, uint16_t width, uint16_t height)
 {
   /* Set the screen width & height, if the current input width and height are
      larger */
@@ -1179,8 +1179,8 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
 {
   Gif_Stream *gfs = fr->stream;
   
-  u_int16_t screen_width = gfs->screen_width;
-  u_int16_t screen_height = gfs->screen_height;
+  uint16_t screen_width = gfs->screen_width;
+  uint16_t screen_height = gfs->screen_height;
   
   if (fr->flip_horizontal)
     flip_image(desti, screen_width, screen_height, 0);

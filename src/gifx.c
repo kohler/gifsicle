@@ -31,7 +31,7 @@ struct Gif_XColormap {
   
   int allocated;
   int claimed;
-  u_int16_t npixels;
+  uint16_t npixels;
   unsigned long *pixels;
   
   Gif_XColormap *next;
@@ -45,8 +45,8 @@ static void
 load_closest(Gif_XContext *gfx)
 {
   XColor *color;
-  u_int16_t ncolor;
-  u_int16_t ncolormap;
+  uint16_t ncolor;
+  uint16_t ncolormap;
   int i;
   
   if (gfx->closest) return;
@@ -83,7 +83,7 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
 {
   Gif_Color *closer;
   Gif_Color *got = 0;
-  u_int32_t distance = 0x4000000;
+  uint32_t distance = 0x4000000;
   int i;
   
   load_closest(gfx);
@@ -92,7 +92,7 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
     int redd = c->red - closer->red;
     int greend = c->green - closer->green;
     int blued = c->blue - closer->blue;
-    u_int32_t d = redd * redd + greend * greend + blued * blued;
+    uint32_t d = redd * redd + greend * greend + blued * blued;
     if (d < distance) {
       distance = d;
       got = closer;
@@ -123,7 +123,7 @@ static void
 allocate_colors(Gif_XColormap *gfxc)
 {
   Gif_XContext *gfx = gfxc->x_context;
-  u_int16_t size = gfxc->colormap->ncol;
+  uint16_t size = gfxc->colormap->ncol;
   Gif_Color *c = gfxc->colormap->col;
   unsigned long *pixels = gfxc->pixels;
   XColor xcol;
@@ -276,7 +276,7 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
   
   unsigned long saved_transparent = 0;
   int release_uncompressed = 0;
-  u_int16_t nct;
+  uint16_t nct;
   unsigned long *pixels;
   
   /* Find the correct image and colormap */
@@ -354,11 +354,11 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
   } else {
     /* Other bits-per-pixel */
     int bits_per_pixel = ximage->bits_per_pixel;
-    u_int32_t bits_per_pixel_mask = (1UL << bits_per_pixel) - 1;
+    uint32_t bits_per_pixel_mask = (1UL << bits_per_pixel) - 1;
     
     for (j = 0; j < height; j++) {
       int imshift = 0;
-      u_int32_t impixel = 0;
+      uint32_t impixel = 0;
       byte *line = gfi->img[top + j] + left;
       byte *writer = xdata + bytes_per_line * j;
       
@@ -499,7 +499,7 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
   /* The main loop */
   for (j = 0; j < height; j++) {
     int imshift = 0;
-    u_int32_t impixel = 0;
+    uint32_t impixel = 0;
     byte *line = gfi->img[top + j] + left;
     byte *writer = xdata + bytes_per_line * j;
     

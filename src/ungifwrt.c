@@ -36,13 +36,13 @@ typedef struct Gif_Writer {
   
   FILE *f;
   byte *v;
-  u_int32_t pos;
-  u_int32_t cap;
+  uint32_t pos;
+  uint32_t cap;
   int flags;
   int global_size;
   int local_size;
   void (*byte_putter)(byte, struct Gif_Writer *);
-  void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
+  void (*block_putter)(byte *, uint16_t, struct Gif_Writer *);
   
 } Gif_Writer;
 
@@ -51,7 +51,7 @@ typedef struct Gif_Writer {
 #define gifputblock(b, l, grr)	((*grr->block_putter)(b, l, grr))
 
 static inline void
-gifputunsigned(u_int16_t uns, Gif_Writer *grr)
+gifputunsigned(uint16_t uns, Gif_Writer *grr)
 {
   gifputbyte(uns & 0xFF, grr);
   gifputbyte(uns >> 8, grr);
@@ -65,7 +65,7 @@ file_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-file_block_putter(byte *block, u_int16_t size, Gif_Writer *grr)
+file_block_putter(byte *block, uint16_t size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
 }
@@ -85,7 +85,7 @@ memory_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
+memory_block_putter(byte *data, uint16_t len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
@@ -101,16 +101,16 @@ memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 #ifdef GIF_NO_COMPRESSION
 
 static void
-real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
+real_write_image_data(byte **img, uint16_t width, uint16_t height,
 		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
   
-  u_int16_t xleft;
+  uint16_t xleft;
   byte *imageline;
   
-  u_int32_t leftover;
+  uint32_t leftover;
   byte bits_left_over;
   
   Gif_Code next_code;
@@ -219,16 +219,16 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
    Thomas Boutell's gd library <http://www.boutell.com>. */
 
 static void
-real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
+real_write_image_data(byte **img, uint16_t width, uint16_t height,
 		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
   
-  u_int16_t xleft;
+  uint16_t xleft;
   byte *imageline;
   
-  u_int32_t leftover;
+  uint32_t leftover;
   byte bits_left_over;
   
   Gif_Code next_code;
@@ -408,10 +408,10 @@ write_image_data(Gif_Image *gfi, byte min_code_bits,
 		 Gif_Context *gfc, Gif_Writer *grr)
 {
   byte **img = gfi->img;
-  u_int16_t width = gfi->width, height = gfi->height;
+  uint16_t width = gfi->width, height = gfi->height;
     
   if (gfi->interlace) {
-    u_int16_t y;
+    uint16_t y;
     byte **nimg = Gif_NewArray(byte *, height + 1);
     if (!nimg) return 0;
     
@@ -562,9 +562,9 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
      but modify the uncompressed data anyway. That sucks. */
   if (gfi->compressed) {
     byte *compressed = gfi->compressed;
-    u_int32_t compressed_len = gfi->compressed_len;
+    uint32_t compressed_len = gfi->compressed_len;
     while (compressed_len > 0) {
-      u_int16_t amt = (compressed_len > 0x7000 ? 0x7000 : compressed_len);
+      uint16_t amt = (compressed_len > 0x7000 ? 0x7000 : compressed_len);
       gifputblock(compressed, amt, grr);
       compressed += amt;
       compressed_len -= amt;
@@ -588,7 +588,7 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   gifputunsigned(gfs->screen_height, grr);
   
   if (grr->global_size > 0) {
-    u_int16_t size = 2;
+    uint16_t size = 2;
     packed |= 0x80;
     while (size < grr->global_size)
       size *= 2, packed++;
@@ -663,7 +663,7 @@ write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 
 
 static void
-write_netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
+write_netscape_loop_extension(uint16_t value, Gif_Writer *grr)
 {
   gifputblock((byte *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
   gifputunsigned(value, grr);
@@ -674,7 +674,7 @@ write_netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
 static void
 write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 {
-  u_int32_t pos = 0;
+  uint32_t pos = 0;
   if (gfex->kind < 0) return;	/* ignore our private extensions */
   
   gifputbyte('!', grr);
@@ -692,7 +692,7 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
     pos += 255;
   }
   if (pos < gfex->length) {
-    u_int32_t len = gfex->length - pos;
+    uint32_t len = gfex->length - pos;
     gifputbyte(len, grr); 
     gifputblock(gfex->data + pos, len, grr);
   }

@@ -32,11 +32,11 @@ struct Gif_XContext {
   int screen_number;
   Drawable drawable;
   Visual *visual;
-  u_int16_t depth;
-  u_int16_t ncolormap;
+  uint16_t depth;
+  uint16_t ncolormap;
   Colormap colormap;
   
-  u_int16_t nclosest;
+  uint16_t nclosest;
   Gif_Color *closest;
   
   int free_deleted_colormap_pixels;
