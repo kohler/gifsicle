@@ -50,7 +50,7 @@ gifview.o: gifview.c
 gifdiff.o: gifdiff.c
 
 srclinks:
-	for i in clp.c clp.h strerror.c ; do \
+	for i in clp.c clp.h fmalloc.c strerror.c ; do \
 	ln -sf ~/src/edlib/$$i $$i ; done
 	for i in gif.h giffunc.c gifread.c gifwrite.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \

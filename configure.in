@@ -143,9 +143,9 @@ fi
 
 if test "$ac_cv_int_types" = no ;
 then
-  AC_DEFINE(u_int16_t, unsigned $ac_cv_int16)
-  AC_DEFINE(u_int32_t, unsigned $ac_cv_int32)
-  AC_DEFINE(int32_t, $ac_cv_int32)
+  AC_DEFINE_UNQUOTED(u_int16_t, unsigned $ac_cv_int16)
+  AC_DEFINE_UNQUOTED(u_int32_t, unsigned $ac_cv_int32)
+  AC_DEFINE_UNQUOTED(int32_t, $ac_cv_int32)
 elif test "$ac_cv_int_types" = close ;
 then
   AC_DEFINE(NEED_SYS_TYPES_H)

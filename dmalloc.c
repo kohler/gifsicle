@@ -1,8 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#undef malloc
-#undef realloc
-#undef free
 
 typedef struct bucket {
   size_t size;

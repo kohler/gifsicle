@@ -12,9 +12,9 @@ void dmalloc_report(void);
 void dmalloc_verbose(FILE *);
 extern size_t dmalloc_live_memory;
 
-#define malloc(s)		debug_malloc_id((s),__FILE__,__LINE__)
-#define realloc(p,s)		debug_realloc_id((p),(s),__FILE__,__LINE__)
-#define free(p)			debug_free_id((p),__FILE__,__LINE__)
+#define xmalloc(s)		debug_malloc_id((s),__FILE__,__LINE__)
+#define xrealloc(p,s)		debug_realloc_id((p),(s),__FILE__,__LINE__)
+#define xfree(p)		debug_free_id((p),__FILE__,__LINE__)
 #define debug_malloc(s)		debug_malloc_id((s),__FILE__,__LINE__)
 #define debug_realloc(p,s)	debug_realloc_id((p),(s),__FILE__,__LINE__)
 #define debug_free(p)		debug_free_id((p),__FILE__,__LINE__)
