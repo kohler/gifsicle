@@ -98,10 +98,148 @@ memory_block_putter(byte *data, uint16_t len, Gif_Writer *grr)
 }
 
 
-#ifdef GIF_NO_COMPRESSION
+#ifndef GIF_NO_COMPRESSION
+
+/* Write GIFs compressed with run-length encoding, an idea from code by
+   Hutchinson Avenue Software Corporation <http://www.hasc.com> found in
+   Thomas Boutell's gd library <http://www.boutell.com>. */
 
 static void
-real_write_image_data(byte **img, uint16_t width, uint16_t height,
+write_compressed_data(byte **img, uint16_t width, uint16_t height,
+		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+{
+  byte buffer[WRITE_BUFFER_SIZE];
+  byte *buf;
+  
+  uint16_t xleft;
+  byte *imageline;
+  
+  uint32_t leftover;
+  byte bits_left_over;
+  
+  Gif_Code next_code;
+  Gif_Code output_code;
+  Gif_Code clear_code;
+  Gif_Code eoi_code;
+#define CUR_BUMP_CODE (1 << cur_code_bits)
+  byte suffix;
+  
+  Gif_Code *rle_next = gfc->rle_next;
+  
+  byte cur_code_bits;
+  
+  /* Here we go! */
+  gifputbyte(min_code_bits, grr);
+  clear_code = 1 << min_code_bits;
+  eoi_code = clear_code + 1;
+  
+  cur_code_bits = min_code_bits + 1;
+  /* next_code set by first runthrough of output clear_code */
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
+  
+  output_code = clear_code;
+  /* Because output_code is clear_code, we'll initialize next_code, et al.
+     below. */
+  
+  bits_left_over = 0;
+  leftover = 0;
+  buf = buffer;
+  xleft = width;
+  imageline = img[0];
+  
+  while (1) {
+    
+    /*****
+     * Output `output_code' to the data stream. */
+
+    leftover |= output_code << bits_left_over;
+    bits_left_over += cur_code_bits;
+    while (bits_left_over >= 8) {
+      *buf++ = leftover & 0xFF;
+      leftover = (leftover >> 8) & 0x00FFFFFF;
+      bits_left_over -= 8;
+      if (buf == buffer + WRITE_BUFFER_SIZE) {
+	gifputbyte(WRITE_BUFFER_SIZE, grr);
+	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
+	buf = buffer;
+      }
+    }
+    
+    if (output_code == clear_code) {
+      /* Clear data and prepare gfc */
+      Gif_Code c;
+      
+      cur_code_bits = min_code_bits + 1;
+      next_code = eoi_code + 1;
+      
+      for (c = 0; c < clear_code; c++)
+	rle_next[c] = clear_code;
+      for (c = clear_code; c < GIF_MAX_CODE; c++)
+	rle_next[c] = clear_code;
+      
+    } else if (next_code > CUR_BUMP_CODE) {
+      /* bump up compression size */
+      if (cur_code_bits == GIF_MAX_CODE_BITS) {
+	output_code = clear_code;
+	continue;
+      } else
+	cur_code_bits++;
+      
+    } else if (output_code == eoi_code)
+      break;
+    
+    
+    /*****
+     * Find the next code to output. */
+    
+    /* If height is 0 -- no more pixels to write -- output eoi_code. */
+    if (height == 0)
+      output_code = eoi_code;
+    else {
+      output_code = suffix = *imageline;
+      if (output_code >= clear_code)
+	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+	output_code = 0;
+      goto next_pixel;
+      
+      while (height != 0 && *imageline == suffix
+	     && rle_next[output_code] != clear_code) {
+	output_code = rle_next[output_code];
+       next_pixel:
+	imageline++;
+	xleft--;
+	if (xleft == 0) {
+	  xleft = width;
+	  height--;
+	  img++;
+	  imageline = img[0];
+	}
+      }
+      
+      if (height != 0 && *imageline == suffix) {
+	rle_next[output_code] = next_code;
+	rle_next[next_code] = clear_code;
+      }
+      next_code++;
+    }
+  }
+  
+  if (bits_left_over > 0)
+    *buf++ = leftover;
+  
+  if (buf != buffer) {
+    GIF_DEBUG(("imageblock(%d)", buf - buffer));
+    gifputbyte(buf - buffer, grr);
+    gifputblock(buffer, buf - buffer, grr);
+  }
+  
+  gifputbyte(0, grr);
+}
+
+#else /* GIF_NO_COMPRESSION */
+
+static void
+write_compressed_data(byte **img, uint16_t width, uint16_t height,
 		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
@@ -212,141 +350,6 @@ real_write_image_data(byte **img, uint16_t width, uint16_t height,
   gifputbyte(0, grr);
 }
 
-#else /* GIF_NO_COMPRESSION */
-
-/* Write GIFs compressed with run-length encoding, an idea from code by
-   Hutchinson Avenue Software Corporation <http://www.hasc.com> found in
-   Thomas Boutell's gd library <http://www.boutell.com>. */
-
-static void
-real_write_image_data(byte **img, uint16_t width, uint16_t height,
-		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
-{
-  byte buffer[WRITE_BUFFER_SIZE];
-  byte *buf;
-  
-  uint16_t xleft;
-  byte *imageline;
-  
-  uint32_t leftover;
-  byte bits_left_over;
-  
-  Gif_Code next_code;
-  Gif_Code output_code;
-  Gif_Code clear_code;
-  Gif_Code eoi_code;
-#define CUR_BUMP_CODE (1 << cur_code_bits)
-  byte suffix;
-  
-  Gif_Code *rle_next = gfc->rle_next;
-  
-  byte cur_code_bits;
-  
-  /* Here we go! */
-  gifputbyte(min_code_bits, grr);
-  clear_code = 1 << min_code_bits;
-  eoi_code = clear_code + 1;
-  
-  cur_code_bits = min_code_bits + 1;
-  /* next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
-  
-  output_code = clear_code;
-  /* Because output_code is clear_code, we'll initialize next_code, et al.
-     below. */
-  
-  bits_left_over = 0;
-  leftover = 0;
-  buf = buffer;
-  xleft = width;
-  imageline = img[0];
-  
-  while (1) {
-    
-    /*****
-     * Output `output_code' to the data stream. */
-
-    leftover |= output_code << bits_left_over;
-    bits_left_over += cur_code_bits;
-    while (bits_left_over >= 8) {
-      *buf++ = leftover & 0xFF;
-      leftover = (leftover >> 8) & 0x00FFFFFF;
-      bits_left_over -= 8;
-      if (buf == buffer + WRITE_BUFFER_SIZE) {
-	gifputbyte(WRITE_BUFFER_SIZE, grr);
-	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
-	buf = buffer;
-      }
-    }
-    
-    if (output_code == clear_code) {
-      /* Clear data and prepare gfc */
-      Gif_Code c;
-      
-      cur_code_bits = min_code_bits + 1;
-      next_code = eoi_code + 1;
-      
-      for (c = 0; c < clear_code; c++)
-	rle_next[c] = clear_code;
-      
-    } else if (next_code > CUR_BUMP_CODE) {
-      
-      /* bump up compression size */
-      if (cur_code_bits == GIF_MAX_CODE_BITS) {
-	output_code = clear_code;
-	continue;
-      } else
-	cur_code_bits++;
-      
-    } else if (output_code == eoi_code)
-      break;
-    
-    
-    /*****
-     * Find the next code to output. */
-    
-    /* If height is 0 -- no more pixels to write -- output eoi_code. */
-    if (height == 0)
-      output_code = eoi_code;
-    else {
-      output_code = suffix = *imageline;
-      if (output_code >= clear_code) output_code = 0;
-      goto next_pixel;
-      
-      while (height != 0 && *imageline == suffix
-	     && rle_next[output_code] != clear_code) {
-	output_code = rle_next[output_code];
-       next_pixel:
-	imageline++;
-	xleft--;
-	if (xleft == 0) {
-	  xleft = width;
-	  height--;
-	  img++;
-	  imageline = img[0];
-	}
-      }
-      
-      if (height != 0 && *imageline == suffix) {
-	rle_next[output_code] = next_code;
-	rle_next[next_code] = clear_code;
-      }
-      next_code++;
-    }
-  }
-  
-  if (bits_left_over > 0)
-    *buf++ = leftover;
-  
-  if (buf != buffer) {
-    GIF_DEBUG(("imageblock(%d)", buf - buffer));
-    gifputbyte(buf - buffer, grr);
-    gifputblock(buffer, buf - buffer, grr);
-  }
-  
-  gifputbyte(0, grr);
-}
-
 #endif /* GIF_NO_COMPRESSION */
 
 
@@ -416,11 +419,11 @@ write_image_data(Gif_Image *gfi, byte min_code_bits,
       nimg[y] = img[Gif_InterlaceLine(y, height)];
     nimg[height] = 0;
     
-    real_write_image_data(nimg, width, height, min_code_bits, gfc, grr);
+    write_compressed_data(nimg, width, height, min_code_bits, gfc, grr);
     
     Gif_DeleteArray(nimg);
   } else
-    real_write_image_data(img, width, height, min_code_bits, gfc, grr);
+    write_compressed_data(img, width, height, min_code_bits, gfc, grr);
   
   return 1;
 }
