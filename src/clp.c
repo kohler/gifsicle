@@ -161,10 +161,6 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
       nopt--;
       i--;
     }
-
-  /* Check for duplicated short options */
-  check_duplicated_short_options(nopt, opt, 0);
-  check_duplicated_short_options(nopt, opt, 1);
   
   /* Massage the options to make them usable */
   for (i = 0; i < nopt; i++) {
@@ -185,6 +181,10 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
       opt[i].flags |= Clp_Negate | Clp_OnlyNegated;
     }
   }
+  
+  /* Check for duplicated short options */
+  check_duplicated_short_options(nopt, opt, 0);
+  check_duplicated_short_options(nopt, opt, 1);
   
   /* Calculate long options' minimum unambiguous length */
   for (i = 0; i < nopt; i++)
