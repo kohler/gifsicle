@@ -175,6 +175,7 @@ static const char *output_option_types[] = {
 #define WARNINGS_OPT		357
 #define RESIZE_WIDTH_OPT	358
 #define RESIZE_HEIGHT_OPT	359
+#define CROP_TRANSPARENCY_OPT	360
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -206,6 +207,7 @@ Clp_Option options[] = {
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, 0 },
   { "no-comments", 'c', NO_COMMENTS_OPT, 0, Clp_OnlyNegated },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
+  { "crop-transparency", 0, CROP_TRANSPARENCY_OPT, 0, Clp_Negate },
   
   { "delay", 'd', 'd', Clp_ArgInt, Clp_Negate },
   { "delete", 0, DELETE_OPT, 0, 0 },
@@ -752,18 +754,24 @@ merge_and_write_frames(char *outfile, int f1, int f2)
   Gif_Stream *out;
   int compress_immediately;
   int colormap_change;
+  int huge_stream;
   assert(!nested_mode);
   if (verbosing) verbose_open('[', outfile ? outfile : "#stdout#");
-  
+
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
-  compress_immediately = !colormap_change
-    && active_output_data.scaling == 0
-    && active_output_data.optimizing <= 0;
+
+  if (colormap_change)
+    compress_immediately = -1;
+  else if (active_output_data.scaling || active_output_data.optimizing > 0)
+    compress_immediately = 0;
+  else
+    compress_immediately = 1;
+
   warn_local_colormaps = !colormap_change;
-  
+
   out = merge_frame_interval(frames, f1, f2, &active_output_data,
-			     compress_immediately);
+			     compress_immediately, &huge_stream);
   
   if (out) {
     if (active_output_data.scaling == 1)
@@ -777,7 +785,7 @@ merge_and_write_frames(char *outfile, int f1, int f2)
     if (output_transforms)
       apply_color_transforms(output_transforms, out);
     if (active_output_data.optimizing > 0)
-      optimize_fragments(out, active_output_data.optimizing);
+      optimize_fragments(out, active_output_data.optimizing, huge_stream);
     write_stream(outfile, out);
     Gif_DeleteStream(out);
   }
@@ -1081,6 +1089,19 @@ print_useless_options(const char *type_name, int value, const char *names[])
     }
 }
 
+static Gt_Crop *
+copy_crop(Gt_Crop *oc)
+{
+  Gt_Crop *nc = Gif_New(Gt_Crop);
+  /* Memory leak on crops, but this just is NOT a problem. */
+  if (oc)
+    *nc = *oc;
+  else
+    memset(nc, 0, sizeof(Gt_Crop));
+  nc->ready = 0;
+  return nc;
+}
+
 
 /*****
  * main
@@ -1318,10 +1339,8 @@ main(int argc, char **argv)
       if (clp->negated) goto no_crop;
       MARK_CH(frame, CH_CROP);
       {
-	Gt_Crop *crop = Gif_New(Gt_Crop);
+	Gt_Crop *crop = copy_crop(def_frame.crop);
 	/* Memory leak on crops, but this just is NOT a problem. */
-	crop->ready = 0;
-	crop->whole_stream = 0;
 	crop->spec_x = position_x;
 	crop->spec_y = position_y;
 	crop->spec_w = dimensions_x;
@@ -1333,6 +1352,19 @@ main(int argc, char **argv)
      no_crop:
      case SAME_CROP_OPT:
       def_frame.crop = 0;
+      break;
+
+     case CROP_TRANSPARENCY_OPT:
+      if (clp->negated) goto no_crop_transparency;
+      def_frame.crop = copy_crop(def_frame.crop);
+      def_frame.crop->transparent_edges = 1;
+      break;
+
+     no_crop_transparency:
+      if (def_frame.crop && def_frame.crop->transparent_edges) {
+	def_frame.crop = copy_crop(def_frame.crop);
+	def_frame.crop->transparent_edges = 0;
+      }
       break;
       
       /* extensions options */

@@ -194,22 +194,6 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
   int x, y, w, h, j;
   byte **img;
   
-  if (!crop->ready) {
-    crop->x = crop->spec_x + gfi->left;
-    crop->y = crop->spec_y + gfi->top;
-    crop->w = crop->spec_w <= 0 ? gfi->width + crop->spec_w : crop->spec_w;
-    crop->h = crop->spec_h <= 0 ? gfi->height + crop->spec_h : crop->spec_h;
-    if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
-	|| crop->x + crop->w > gfi->width
-	|| crop->y + crop->h > gfi->height) {
-      error("cropping dimensions don't fit image");
-      crop->ready = 2;
-    } else
-      crop->ready = 1;
-  }
-  if (crop->ready == 2)
-    return 1;
-  
   x = crop->x - gfi->left;
   y = crop->y - gfi->top;
   w = crop->w;
@@ -220,26 +204,52 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
   if (y < 0) h += y, y = 0;
   if (x + w > gfi->width) w = gfi->width - x;
   if (y + h > gfi->height) h = gfi->height - y;
+
+  /* Remove transparent edges if required. */
+  if (w > 0 && h > 0 && crop->transparent_edges && gfi->transparent >= 0) {
+    img = gfi->img;
+    /* left edge */
+    while (w > 0) {
+      for (j = y; j < y + h; j++)
+	if (img[j][x] != gfi->transparent)
+	  goto found_left_edge;
+      x++, w--;
+    }
+   found_left_edge:
+    /* top edge */
+    while (h > 0) {
+      for (j = x; j < x + w; j++)
+	if (img[y][j] != gfi->transparent)
+	  goto found_top_edge;
+      y++, h--;
+    }
+   found_top_edge:
+    /* right edge */
+    while (w > 0) {
+      for (j = y; j < y + h; j++)
+	if (img[j][x + w - 1] != gfi->transparent)
+	  goto found_right_edge;
+      w--;
+    }
+   found_right_edge:
+    /* bottom edge */
+    while (h > 0) {
+      for (j = x; j < x + w; j++)
+	if (img[y + h - 1][j] != gfi->transparent)
+	  goto found_bottom_edge;
+      h--;
+    }
+   found_bottom_edge: ;
+  }
   
   if (w > 0 && h > 0) {
     img = Gif_NewArray(byte *, h + 1);
     for (j = 0; j < h; j++)
       img[j] = gfi->img[y + j] + x;
     img[h] = 0;
-    
-    /* Change position of image appropriately */
-    if (crop->whole_stream) {
-      /* If cropping the whole stream, then this is the first frame. Position
-	 it at (0,0). */
-      crop->left_off = x + gfi->left;
-      crop->right_off = y + gfi->top;
-      gfi->left = 0;
-      gfi->top = 0;
-      crop->whole_stream = 0;
-    } else {
-      gfi->left += x - crop->left_off;
-      gfi->top += y - crop->right_off;
-    }
+
+    gfi->left += x - crop->left_offset;
+    gfi->top += y - crop->top_offset;
     
   } else {
     /* Empty image */
@@ -342,6 +352,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 {
   byte *new_data;
   int new_left, new_top, new_right, new_bottom, new_width, new_height;
+  int was_compressed = (gfi->img == 0);
   
   int i, j, new_x, new_y;
   int scaled_xstep, scaled_ystep, scaled_new_x, scaled_new_y;
@@ -373,7 +384,8 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   if (new_width > UNSCALE(INT_MAX) || new_height > UNSCALE(INT_MAX))
     fatal_error("new image size is too big for me to handle");
   
-  assert(gfi->img);
+  if (was_compressed)
+    Gif_UncompressImage(gfi);
   new_data = Gif_NewArray(byte, new_width * new_height);
   
   new_y = new_top;
@@ -417,6 +429,10 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   gfi->left = UNSCALE(scaled_xstep * gfi->left);
   gfi->top = UNSCALE(scaled_ystep * gfi->top);
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+  if (was_compressed) {
+    Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+    Gif_ReleaseCompressedImage(gfi);
+  }
 }
 
 void

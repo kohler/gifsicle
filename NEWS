@@ -1,5 +1,15 @@
 Gifsicle NEWS
 
+Version 1.26   22.Apr.2001
+
+* Added `--crop-transparency' option, which crops any transparent edges off
+  the image. Requested by Gre7g Luterman <gre7glut@earthlink.com>.
+
+* Try to conserve memory in gifsicle when working with huge images (> 20
+  megabytes of uncompressed data). May make gifsicle slower if you actually
+  had enough memory to deal with the uncompressed data.
+
+
 Version 1.25   13.Feb.2001
 
 * Fixed gifview bug: If every frame in an animation had a small or

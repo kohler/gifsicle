@@ -151,6 +151,7 @@ Image options: Also --no-OPTION and --same-OPTION.\n\
   -B, --background COL          Makes COL the background color.\n\
       --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
                                 Crops the image.\n\
+      --crop-transparency       Crops transparent borders off the image.\n\
       --flip-horizontal, --flip-vertical\n\
                                 Flips the image.\n\
   -i, --interlace               Turns on interlacing.\n\
@@ -640,9 +641,11 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (*val == ',') {
     int y = position_y = strtol(val + 1, &val, 10);
     if (*val == '-' && parse_position(clp, val + 1, 0, 0)) {
-      if (x >= 0 && y >= 0 && x < position_x && y < position_y) {
-	dimensions_x = position_x - x;
-	dimensions_y = position_y - y;
+      if (x >= 0 && y >= 0
+	  && (position_x <= 0 || x < position_x)
+	  && (position_y <= 0 || y < position_y)) {
+	dimensions_x = (position_x <= 0 ? -x + position_x : position_x - x);
+	dimensions_y = (position_y <= 0 ? -y + position_y : position_y - y);
 	position_x = x;
 	position_y = y;
 	return 1;
@@ -1198,15 +1201,60 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
     handle_screen(dest, screen_width, screen_height);
 }
 
+static void
+analyze_crop(int nmerger, Gt_Crop *crop)
+{
+  int i;
+  int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
+  int nframes = 0;
+
+  /* count frames to which this crop applies */
+  for (i = 0; i < nmerger; i++)
+    if (merger[i]->crop == crop)
+      nframes++;
+
+  /* find border of frames */
+  for (i = 0; i < nmerger; i++)
+    if (merger[i]->crop == crop) {
+      Gt_Frame *fr = merger[i];
+      int ll = (nframes > 1 ? 0 : fr->image->left);
+      int tt = (nframes > 1 ? 0 : fr->image->top);
+      int ww = (nframes > 1 ? fr->stream->screen_width : fr->image->width);
+      int hh = (nframes > 1 ? fr->stream->screen_height : fr->image->height);
+      if (ll < l)
+	l = ll;
+      if (tt < t)
+	t = tt;
+      if (ll + ww > r)
+	r = ll + ww;
+      if (tt + hh > b)
+	b = tt + hh;
+    }
+  
+  crop->x = crop->spec_x + l;
+  crop->y = crop->spec_y + t;
+  crop->w = crop->spec_w <= 0 ? (r - l) + crop->spec_w : crop->spec_w;
+  crop->h = crop->spec_h <= 0 ? (b - t) + crop->spec_h : crop->spec_h;
+  crop->left_offset = crop->x;
+  crop->top_offset = crop->y;
+  if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
+      || crop->x + crop->w > r || crop->y + crop->h > b) {
+    error("cropping dimensions don't fit image");
+    crop->ready = 2;
+  } else
+    crop->ready = 1;
+}
+
 
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
-		     Gt_OutputData *output_data, int compress_immediately)
+		     Gt_OutputData *output_data, int compress_immediately,
+		     int *huge_stream)
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
   Gif_Color dest_background;
-  int i;
+  int i, same_compressed_ok, all_same_compressed_ok;
   
   global->ncol = 0;
   dest->global = global;
@@ -1219,6 +1267,18 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   if (nmerger == 0) {
     error("empty output GIF not written");
     return 0;
+  }
+
+  /* decide whether stream is huge */
+  {
+    int s;
+    for (i = s = 0; i < nmerger; i++)
+      s += ((merger[i]->image->width * merger[i]->image->height) / 1024) + 1;
+    *huge_stream = (s > 20 * 1024); /* 20 MB */
+    if (*huge_stream && compress_immediately < 0)
+      warning("working on a huge stream -- this may take a while, or fail");
+    else if (*huge_stream)
+      compress_immediately = 1;
   }
   
   /* merge stream-specific info and clear colormaps */
@@ -1240,21 +1300,28 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   dest_background = output_data->background;
   find_background(global, &dest_background);
   
-  /* check for cropping the whole stream */
+  /* analyze crops */
   for (i = 0; i < nmerger; i++)
     if (merger[i]->crop)
-      merger[i]->crop->whole_stream = 0;
-  if (merger[0]->crop) {
-    merger[0]->crop->whole_stream = 1;
-    for (i = 1; i < nmerger; i++)
-      if (merger[i]->crop != merger[0]->crop)
-	merger[0]->crop->whole_stream = 0;
-  }
+      merger[i]->crop->ready = 0;
+  for (i = 0; i < nmerger; i++)
+    if (merger[i]->crop && !merger[i]->crop->ready)
+      analyze_crop(nmerger, merger[i]->crop);
   
   /* copy stream-wide information from output_data */
   if (output_data->loopcount > -2)
     dest->loopcount = output_data->loopcount;
   dest->screen_width = dest->screen_height = 0;
+
+  /* is it ok to save the same compressed image? This is true only if we
+     will recompress later from scratch. */
+  if (output_data->colormap_size > 0
+      || output_data->colormap_fixed
+      || output_data->optimizing > 0
+      || output_data->scaling > 0)
+    all_same_compressed_ok = 1;
+  else
+    all_same_compressed_ok = 0;
   
   /** ACTUALLY MERGE FRAMES INTO THE NEW STREAM **/
   for (i = 0; i < nmerger; i++) {
@@ -1288,7 +1355,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_UncompressImage(srci);
       if (!crop_image(srci, fr->crop)) {
 	/* We cropped the image out of existence! Be careful not to make 0x0
-           frames. */
+	   frames. */
 	fix_total_crop(dest, srci, i);
 	goto merge_frame_done;
       }
@@ -1305,8 +1372,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     else if (fr->transparent.haspixel)
       srci->transparent =
 	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
+
+    /* Is it ok to use the old image's compressed version? */
+    same_compressed_ok = all_same_compressed_ok;
+    if (fr->interlacing >= 0 && fr->interlacing != srci->interlace)
+      same_compressed_ok = 0;
     
-    desti = merge_image(dest, fr->stream, srci);
+    desti = merge_image(dest, fr->stream, srci, same_compressed_ok);
     
     srci->transparent = old_transparent; /* restore real transparent value */
     
@@ -1345,9 +1417,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->delay = fr->delay;
     if (fr->disposal >= 0)
       desti->disposal = fr->disposal;
-    
+
     /* compress immediately if possible to save on memory */
-    if (compress_immediately) {
+    if (compress_immediately && desti->img) {
       Gif_FullCompressImage(dest, desti, gif_write_flags);
       Gif_ReleaseUncompressedImage(desti);
     }
@@ -1375,9 +1447,24 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
 
-  /* Cropping the whole output? Clear the logical screen */
-  if (merger[0]->crop && merger[0]->crop == merger[nmerger-1]->crop)
+  /* Cropping the whole output? */
+  if (merger[0]->crop && merger[0]->crop == merger[nmerger - 1]->crop) {
+    /* Adjust positions */
+    int l = 0x7FFFFFFF, t = 0x7FFFFFFF;
+    for (i = 0; i < dest->nimages && l && t; i++) {
+      Gif_Image *gfi = dest->images[i];
+      if (gfi->left < l) l = gfi->left;
+      if (gfi->top < t) t = gfi->top;
+    }
+    for (i = 0; i < dest->nimages; i++) {
+      Gif_Image *gfi = dest->images[i];
+      gfi->left -= l;
+      gfi->top -= t;
+    }
+    /* Clear the logical screen */
     dest->screen_width = dest->screen_height = 0;
+  }
+  
   /* Set the logical screen from the user's preferences */
   if (output_data->screen_width >= 0)
     dest->screen_width = output_data->screen_width;

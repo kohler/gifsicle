@@ -228,7 +228,8 @@ merge_comments(Gif_Comment *destc, Gif_Comment *srcc)
 
 
 Gif_Image *
-merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
+merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
+	    int same_compressed_ok)
 {
   Gif_Colormap *imagecm;
   Gif_Color *imagecol;
@@ -336,11 +337,15 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     desti->comment = Gif_NewComment();
     merge_comments(desti->comment, srci->comment);
   }
-  
-  Gif_CreateUncompressedImage(desti);
-  
-  {
+
+  if (trivial_map && same_compressed_ok && srci->compressed) {
+    desti->compressed_len = srci->compressed_len;
+    desti->compressed = Gif_NewArray(byte, srci->compressed_len);
+    desti->free_compressed = Gif_DeleteArrayFunc;
+    memcpy(desti->compressed, srci->compressed, srci->compressed_len);
+  } else {
     int i, j;
+    Gif_CreateUncompressedImage(desti);
     
     if (trivial_map)
       for (j = 0; j < desti->height; j++)

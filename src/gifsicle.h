@@ -67,7 +67,7 @@ struct Gt_Frameset {
 
 struct Gt_Crop {
   int ready;
-  int whole_stream;
+  int transparent_edges;
   int spec_x;
   int spec_y;
   int spec_w;
@@ -76,8 +76,8 @@ struct Gt_Crop {
   int y;
   int w;
   int h;
-  int left_off;
-  int right_off;
+  int left_offset;
+  int top_offset;
 };
 
 
@@ -113,7 +113,7 @@ typedef struct {
   int resize_height;
   double scale_x;
   double scale_y;
-  
+
 } Gt_OutputData;
 
 
@@ -164,9 +164,10 @@ int	merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 extern int warn_local_colormaps;
 void	merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void	merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
-Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
+Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
+		       int same_compressed_ok);
 
-void	optimize_fragments(Gif_Stream *, int optimizeness);
+void	optimize_fragments(Gif_Stream *, int optimizeness, int huge_stream);
 
 /*****
  * image/colormap transformations
@@ -259,6 +260,6 @@ Gt_Frame *	add_frame(Gt_Frameset *, int num, Gif_Stream *, Gif_Image *);
 void		clear_def_frame_once_options(void);
 
 Gif_Stream *	merge_frame_interval(Gt_Frameset *, int f1, int f2,
-				     Gt_OutputData *, int compress);
+				     Gt_OutputData *, int compress, int *huge);
 void		clear_frameset(Gt_Frameset *, int from);
 void		blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.25
+.ds V 1.26
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -128,7 +128,7 @@ options are on the right.
 .Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
 .Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
 .Ix "Image transformations"
-.Ix "\ \ \ cropping" "\fB\-\-crop\fP"
+.Ix "\ \ \ cropping" "\fB\-\-crop\fP, \fB\-\-crop\-transparency\fP"
 .Ix "\ \ \ flipping" "\fB\-\-flip\-*\fP"
 .Ix "\ \ \ resizing" "\fB\-\-resize\fP, \fB\-\-scale\fP"
 .Ix "\ \ \ rotating" "\fB\-\-rotate\-*\fP"
@@ -480,7 +480,7 @@ option below.
 .TP
 .OA \-\-crop x1 , y1 + width\fRx\fIheight
 '
-Crop the following frames to a smaller rectangular area. The top-left
+Crop the following input frames to a smaller rectangular area. The top-left
 corner of this rectangle is
 .RI ( x1 , y1 );
 you can give either the lower-right corner,
@@ -491,7 +491,19 @@ is negative,
 .B gifsicle
 will make the image's width or height smaller by that amount. For example,
 .OP \-\-crop " 2,2+-4x-4"
-will shave 2 pixels off each side of the image.
+will shave 2 pixels off each side of the input image. Cropping takes place
+on the raw input image, before any rotation, flipping, resizing, or
+positioning.
+'
+.Sp
+.TP
+.OP \-\-crop\-transparency
+'
+Crop any transparent borders off the following input frames. This happens
+after any cropping due to the
+.OP \-\-crop
+option. It works on the raw input image; for example, any transparency
+options have not yet been applied.
 '
 .Sp
 .TP

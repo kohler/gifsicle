@@ -217,11 +217,16 @@ erase_screen(u_int16_t *dst)
  **/
 
 static void
-apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace)
+apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 {
-  int i, y;
+  int i, y, was_compressed = 0;
   u_int16_t map[256];
   Gif_Colormap *colormap = gfi->local ? gfi->local : in_global_map;
+
+  if (!gfi->img) {
+    was_compressed = 1;
+    Gif_UncompressImage(gfi);
+  }
   
   /* make sure transparency maps to TRANSP */
   for (i = 0; i < colormap->ncol; i++)
@@ -251,6 +256,9 @@ apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace)
     
     dst += screen_width;
   }
+
+  if (was_compressed && !save_uncompressed)
+    Gif_ReleaseUncompressedImage(gfi);
 }
 
 static void
@@ -508,7 +516,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
  **/
 
 static void
-create_subimages(Gif_Stream *gfs, int optimize_level)
+create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 {
   int screen_size;
   Gif_Image *last_gfi;
@@ -532,9 +540,6 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
     Gif_Image *gfi = gfs->images[image_index];
     Gif_OptData *subimage = new_opt_data();
     
-    if (!gfi->img) Gif_UncompressImage(gfi);
-    Gif_ReleaseCompressedImage(gfi);
-    
     /* save previous data if necessary */
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
       previous_data = Gif_NewArray(u_int16_t, screen_size);
@@ -548,7 +553,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
       next_data = temp;
       next_data_valid = 0;
     } else
-      apply_frame(this_data, gfi, 0);
+      apply_frame(this_data, gfi, 0, save_uncompressed);
     
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
@@ -570,7 +575,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
       Gif_Image *next_gfi = gfs->images[image_index + 1];
       memcpy(next_data, this_data, screen_size * sizeof(u_int16_t));
       apply_frame_disposal(next_data, this_data, gfi);
-      apply_frame(next_data, next_gfi, 0);
+      apply_frame(next_data, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
       /* expand border as necessary */
       expand_difference_bounds(subimage, gfi);
@@ -1094,6 +1099,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *cur_gfi = gfs->images[image_index];
     Gif_OptData *opt = (Gif_OptData *)cur_gfi->user_data;
+    int was_compressed = (cur_gfi->img == 0);
     
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -1102,7 +1108,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     }
     
     /* set up this_data to be equal to the current image */
-    apply_frame(this_data, cur_gfi, 0);
+    apply_frame(this_data, cur_gfi, 0, 0);
     
     /* save actual bounds and disposal from unoptimized version so we can
        apply the disposal correctly next time through */
@@ -1129,6 +1135,10 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
       else
 	simple_frame_data(cur_gfi, map);
       
+      if (was_compressed && cur_gfi->img) {
+	Gif_FullCompressImage(gfs, cur_gfi, gif_write_flags);
+	Gif_ReleaseUncompressedImage(cur_gfi);
+      }
       Gif_DeleteArray(map);
     }
     
@@ -1261,12 +1271,12 @@ finalize_optimizer(Gif_Stream *gfs)
 /* the interface function! */
 
 void
-optimize_fragments(Gif_Stream *gfs, int optimize_level)
+optimize_fragments(Gif_Stream *gfs, int optimize_level, int huge_stream)
 {
   if (!initialize_optimizer(gfs, optimize_level))
     return;
 
-  create_subimages(gfs, optimize_level);
+  create_subimages(gfs, optimize_level, !huge_stream);
   create_out_global_map(gfs);
   create_new_image_data(gfs, optimize_level);
   
