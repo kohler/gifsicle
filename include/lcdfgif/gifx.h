@@ -36,12 +36,14 @@ struct Gif_XContext {
   u_int16_t nclosest;
   Gif_Color *closest;
   
-  unsigned long transparentvalue;
+  unsigned long transparent_value;
+  int refcount;
   
 };
 
 
 Gif_XContext *		Gif_NewXContext(Display *, Window);
+void			Gif_DeleteXContext(Gif_XContext *);
 
 Pixmap			Gif_XImage(Gif_XContext *, Gif_Stream *, Gif_Image *);
 Pixmap			Gif_XImageColormap(Gif_XContext *, Gif_Stream *,

@@ -124,7 +124,19 @@ make_data_reader(Gif_Reader *grr, byte *data, u_int32_t length)
 }
 
 
-#define SAFELS(a,b) ((b) < 0 ? (a) >> -(b) : (a) << (b))
+#ifdef GIF_DEBUGGING
+#include <stdarg.h>
+void
+Gif_Debug(char *format, ...)
+{
+  va_list val;
+  va_start(val, format);
+  vfprintf(stderr, format, val);
+  putc(' ', stderr);
+  va_end(val);
+}
+#endif
+
 
 static byte
 one_code(Gif_Context *gfc, Gif_Code code)
@@ -363,12 +375,16 @@ static int
 read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
   byte buffer[GIF_MAX_BLOCK];
+  int i;
   
   if (grr->is_record) {
     byte *first = grr->v;
     byte *last;
+
+    /* min code size */
+    gifgetbyte(grr);
     
-    int i = gifgetbyte(grr);
+    i = gifgetbyte(grr);
     while (i > 0) {
       gifgetblock(buffer, i, grr);
       i = gifgetbyte(grr);
@@ -389,11 +405,17 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
   } else {
     /* non-record; have to read it block by block. */
     u_int32_t comp_cap = 1024;
-    u_int32_t comp_len = 0;
+    u_int32_t comp_len;
     byte *comp = Gif_NewArray(byte, comp_cap);
-    int i = gifgetbyte(grr);
+    int i;
     if (!comp) return 0;
     
+    /* min code size */
+    i = gifgetbyte(grr);
+    comp[0] = i;
+    comp_len = 1;
+    
+    i = gifgetbyte(grr);
     while (i > 0) {
       /* add 2 before check so we don't have to check after loop when appending
 	 0 block */
@@ -473,6 +495,7 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
   gfi->width = gifgetunsigned(grr);
   gfi->height = gifgetunsigned(grr);
   packed = gifgetbyte(grr);
+  GIF_DEBUG(("< %ux%u > ", gfi->width, gfi->height));
   
   if (packed & 0x80) { /* have a local color table */
     gfi->local = Gif_NewColormap();
@@ -494,9 +517,11 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       if (!uncompress_image(gfc, gfi, &new_grr))
 	return 0;
     }
+    
   } else if (read_flags & GIF_READ_UNCOMPRESSED) {
     if (!uncompress_image(gfc, gfi, grr))
       return 0;
+    
   } else {
     /* skip over the image */
     byte buffer[GIF_MAX_BLOCK];

@@ -135,7 +135,8 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   int i, j, k;
   int bytes_per_line;
   
-  unsigned long savedtransparent = 0;
+  unsigned long saved_transparent = 0;
+  int release_uncompressed = 0;
   u_int16_t nct;
   Gif_Color *ct;
   
@@ -143,19 +144,24 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) /* can't find an image to return */
     return None;
-  
   /* Find the right colormap */
   if (!gfcm) /* can't find a colormap to use */
     return None;
 
+  /* Make sure the image is uncompressed */
+  if (!gfi->img && !gfi->image_data && gfi->compressed) {
+    Gif_UncompressImage(gfi);
+    release_uncompressed = 1;
+  }
+  
   /* Allocate colors from the colormap; make sure the transparent color
    * has the given pixel value */
   ct = gfcm->col;
   nct = gfcm->ncol;
   allocate_colors(gfx, nct, ct);
   if (gfi->transparent > -1 && gfi->transparent < nct) {
-    savedtransparent = ct[ gfi->transparent ].pixel;
-    ct[ gfi->transparent ].pixel = gfx->transparentvalue;
+    saved_transparent = ct[ gfi->transparent ].pixel;
+    ct[ gfi->transparent ].pixel = gfx->transparent_value;
   }
   
   /* Set up the X image */
@@ -227,7 +233,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   
   /* Restore saved transparent pixel value */
   if (gfi->transparent > -1 && gfi->transparent < nct)
-    ct[ gfi->transparent ].pixel = savedtransparent;
+    ct[ gfi->transparent ].pixel = saved_transparent;
 
   /* Create the pixmap */
   pixmap =
@@ -243,6 +249,10 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   Gif_DeleteArray(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
   XDestroyImage(ximage);
+
+  if (release_uncompressed)
+    Gif_ReleaseUncompressedImage(gfi);
+  
   return pixmap;
 }
 
@@ -270,11 +280,18 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   int i, j;
   int transparent;
   int bytes_per_line;
+  int release_uncompressed = 0;
   
   /* Find the correct image */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi)
     return None;
+  
+  /* Make sure the image is uncompressed */
+  if (!gfi->img && !gfi->image_data && gfi->compressed) {
+    Gif_UncompressImage(gfi);
+    release_uncompressed = 1;
+  }
   
   /* Create the X image */
   ximage =
@@ -326,6 +343,10 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   Gif_DeleteArray(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
   XDestroyImage(ximage);
+
+  if (release_uncompressed)
+    Gif_ReleaseUncompressedImage(gfi);
+  
   return pixmap;
 }
 
@@ -356,9 +377,18 @@ Gif_NewXContext(Display *display, Window window)
   gfx->closest = 0;
   gfx->nclosest = 0;
   
-  gfx->transparentvalue = 0;
+  gfx->transparent_value = 0UL;
+  gfx->refcount = 0;
   
   return gfx;
+}
+
+
+void
+Gif_DeleteXContext(Gif_XContext *gfx)
+{
+  Gif_DeleteArray(gfx->closest);
+  Gif_Delete(gfx);
 }
 
 

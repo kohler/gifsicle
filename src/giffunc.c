@@ -400,11 +400,12 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 void
 Gif_ReleaseCompressedImage(Gif_Image *gfi)
 {
-  if (gfi->compressed && gfi->free_compressed)
+  if (gfi->compressed && gfi->free_compressed) {
     (*gfi->free_compressed)(gfi->compressed);
-  gfi->compressed = 0;
-  gfi->compressed_len = 0;
-  gfi->free_compressed = 0;
+    gfi->compressed = 0;
+    gfi->compressed_len = 0;
+    gfi->free_compressed = 0;
+  }
 }
 
 void
