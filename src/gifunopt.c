@@ -78,7 +78,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, byte *screendata,
 
 static int
 fix_transparency_conflict(Gif_Stream *gfs, Gif_Image *gfi,
-			  byte *old_data, int old_transparent)
+			  byte *old_data, int old_transparent, byte *new_data)
 {
   int have[256];
   int transparent = gfi->transparent;
@@ -112,28 +112,37 @@ fix_transparency_conflict(Gif_Stream *gfs, Gif_Image *gfi,
   if (transparent < 0)
     return -1;
   if (transparent >= gfs->global->ncol) {
-    gfs->global->col = Gif_ReArray(gfs->global->col, Gif_Color, 256);
+    Gif_ReArray(gfs->global->col, Gif_Color, 256);
     if (!gfs->global->col) return -1;
     gfs->global->ncol = transparent + 1;
   }
   
   /* transform old transparent colors into new transparent colors */
-  for (i = 0; i < size; i++)
-    if (old_data[i] == old_transparent)
-      old_data[i] = transparent;
+  for (i = 0; i < size; i++, old_data++, new_data++)
+    if (*old_data == old_transparent)
+      *new_data = transparent;
+    else
+      *new_data = *old_data;
   
   return transparent;
 }
 
 
 static int
-unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, byte *old_data,
-		 int old_transparent)
+unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi,
+		 byte **old_data_store, int *old_transparent_store,
+		 byte *old_data_buffer)
 {
+  byte *old_data = *old_data_store;
+  int old_transparent = *old_transparent_store;
   int transparent;
   int size = gfs->screen_width * gfs->screen_height;
   byte *new_data = Gif_NewArray(byte, size);
-  if (!new_data) return -2;
+  if (!new_data) return 0;
+  
+  /* Oops! May need to uncompress it */
+  if (!gfi->img)
+    Gif_UncompressImage(gfi);
   
   /* Treat a full replacement frame (as big as the screen and no transparency)
      specially, since we can do it a lot faster. */
@@ -155,11 +164,12 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, byte *old_data,
     if (put_image_in_screen(gfs, gfi, new_data, old_transparent)) {
       /* This is the bad case. The old transparent color became opaque in this
 	 image, and it was actually used. */
-      transparent =
-	fix_transparency_conflict(gfs, gfi, old_data, old_transparent);
-      if (transparent < 0)
-	return -2;
-      memcpy(new_data, old_data, size);
+      transparent = fix_transparency_conflict
+	(gfs, gfi, old_data, old_transparent, new_data);
+      if (transparent < 0) {
+	Gif_DeleteArray(new_data);
+	return 0;
+      }
       put_image_in_screen(gfs, gfi, new_data, transparent);
       
     } else
@@ -167,12 +177,19 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, byte *old_data,
   }
     
   if (gfi->disposal == GIF_DISPOSAL_NONE || gfi->disposal == GIF_DISPOSAL_ASIS)
-    memcpy(old_data, new_data, size);
-  else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+    /* Reuse new_data as the next old_data if possible. */
+    old_data = new_data;
+  else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+    if (old_data != old_data_buffer)
+      memcpy(old_data_buffer, old_data, size);
+    old_data = old_data_buffer;
     put_background_in_screen(gfs, gfi, old_data, transparent);
+  }
   
-  if (gfi->free_image_data)
+  if (gfi->free_image_data && gfi->image_data)
     (*gfi->free_image_data)((void *)gfi->image_data);
+  if (gfi->free_compressed && gfi->compressed)
+    (*gfi->free_compressed)((void *)gfi->compressed);
   gfi->left = 0;
   gfi->top = 0;
   gfi->width = gfs->screen_width;
@@ -181,9 +198,13 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, byte *old_data,
   gfi->transparent = transparent;
   gfi->image_data = new_data;
   gfi->free_image_data = Gif_DeleteArrayFunc;
+  gfi->compressed = 0;
+  gfi->free_compressed = 0;
   Gif_MakeImg(gfi, gfi->image_data, 0);
   
-  return transparent;
+  *old_transparent_store = transparent;
+  *old_data_store = old_data;
+  return 1;
 }
 
 
@@ -195,6 +216,7 @@ Gif_Unoptimize(Gif_Stream *gfs)
   int size;
   int was_transparent;
   byte *old_data;
+  byte *old_data_buffer;
   byte background;
   Gif_Image *gfi;
   
@@ -215,20 +237,19 @@ Gif_Unoptimize(Gif_Stream *gfs)
 	gfs->screen_height = gfs->images[i]->height;
   size = gfs->screen_width * gfs->screen_height;
   
-  old_data = Gif_NewArray(byte, size);
+  old_data_buffer = Gif_NewArray(byte, size);
   gfi = gfs->images[0];
   background = gfi->transparent >= 0 ? gfi->transparent : gfs->background;
   was_transparent = gfi->transparent;
+  old_data = old_data_buffer;
   memset(old_data, background, size);
   
-  for (i = 0; i < gfs->nimages; i++) {
-    gfi = gfs->images[i];
-    was_transparent = unoptimize_image(gfs, gfi, old_data, was_transparent);
-    if (was_transparent == -2)
+  for (i = 0; i < gfs->nimages; i++)
+    if (!unoptimize_image(gfs, gfs->images[i], &old_data, &was_transparent,
+			  old_data_buffer))
       ok = 0;
-  }
   
-  Gif_DeleteArray(old_data);
+  Gif_DeleteArray(old_data_buffer);
   return ok;
 }
 

@@ -1,5 +1,7 @@
 #ifndef GIF_H /* -*- mode: c -*- */
 #define GIF_H
+#include <stdio.h>
+#include <stdlib.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,12 +20,9 @@ extern "C" {
    holder, allows the compression algorithm to be used without a license in
    software distributed at no cost to the user. */
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	93
-#define GIF_VERSION		"0.93"
+#define GIF_MINOR_VERSION	95
+#define GIF_VERSION		"0.95"
 
 #ifndef BYTE
 #define BYTE
@@ -156,6 +155,7 @@ typedef struct {
 struct Gif_Colormap {
   
   u_int16_t ncol;
+  u_int16_t userflags;
   Gif_Color *col;
   
 };
@@ -180,6 +180,7 @@ struct Gif_Comment {
 
 Gif_Comment *	Gif_NewComment(void);
 void		Gif_DeleteComment(Gif_Comment *);
+int		Gif_AddCommentTake(Gif_Comment *, char *, int);
 int		Gif_AddComment(Gif_Comment *, char *, int);
 
 
@@ -233,13 +234,16 @@ void 		Gif_Debug(char *x, ...);
 #define		GIF_DEBUG(x)
 #endif
 
+@MEMORY_PREPROCESSOR@
 #ifndef Gif_New
 #define Gif_New(t)		((t *)malloc(sizeof(t)))
 #define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
 #define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void*)(p),sizeof(t)*(n))))
 #define Gif_Delete(p)		(free((void *)(p)))
-#define Gif_DeleteFunc		(&free)
 #define Gif_DeleteArray(p)	(free((void *)(p)))
+#endif
+#ifndef Gif_DeleteFunc
+#define Gif_DeleteFunc		(&free)
 #define Gif_DeleteArrayFunc	(&free)
 #endif
 

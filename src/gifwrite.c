@@ -19,7 +19,6 @@
 extern "C" {
 #endif
 
-
 #define WRITE_BUFFER_SIZE	254
 #define HASH_SIZE		(2 << GIF_MAX_CODE_SIZE)
 
@@ -77,7 +76,7 @@ memory_byte_putter(byte b, Gif_Writer *grr)
 {
   if (grr->pos >= grr->cap) {
     grr->cap *= 2;
-    grr->v = Gif_ReArray(grr->v, byte, grr->cap);
+    Gif_ReArray(grr->v, byte, grr->cap);
   }
   if (grr->v) {
     grr->v[grr->pos] = b;
@@ -90,7 +89,7 @@ memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
-    grr->v = Gif_ReArray(grr->v, byte, grr->cap);
+    Gif_ReArray(grr->v, byte, grr->cap);
   }
   if (grr->v) {
     memcpy(grr->v + grr->pos, data, len);
@@ -421,9 +420,23 @@ gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   
   if (gfi->local)
     color_table(gfi->local->col, gfi->local->ncol, grr);
-  
-  image_data(gfi->img, gfi->width, gfi->height, gfi->interlace, ncolor,
-	     gfc, grr);
+
+  /* use existing compressed data if it exists. This will tend to whip
+     people's asses who uncompress an image, keep the compressed data around,
+     but modify the uncompressed data anyway. That sucks. */
+  if (gfi->compressed) {
+    byte *compressed = gfi->compressed;
+    u_int32_t len = gfi->compressed_len;
+    while (len > 0x4000) {
+      gifputblock(compressed, 0x4000, grr);
+      len -= 0x4000;
+      compressed += 0x4000;
+    }
+    gifputblock(compressed, len, grr);
+    
+  } else
+    image_data(gfi->img, gfi->width, gfi->height, gfi->interlace, ncolor,
+	       gfc, grr);
   
   return 1;
 }
