@@ -1,5 +1,6 @@
 /* ungifwrt.c - Functions to write unGIFs -- GIFs with run-length compression,
-   not LZW compression.
+   not LZW compression. Idea due to Hutchinson Avenue Software Corporation
+   <http://www.hasc.com>.
    Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
@@ -206,6 +207,10 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
 }
 
 #else /* GIF_NO_COMPRESSION */
+
+/* Write GIFs compressed with run-length encoding, an idea from code by
+   Hutchinson Avenue Software Corporation <http://www.hasc.com> found in
+   Thomas Boutell's gd library <http://www.boutell.com>. */
 
 static void
 real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
