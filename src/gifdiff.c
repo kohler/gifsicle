@@ -300,9 +300,9 @@ the same, 1 if they're different, and 2 if there was some error.\n\
 Usage: %s [OPTION]... FILE1 FILE2\n\
 \n\
 Options:\n\
-  --brief, -q                   Don't report detailed differences.\n\
-  --help, -h                    Print this message and exit.\n\
-  --version, -v                 Print version number and exit.\n\
+  -q, --brief                   Don't report detailed differences.\n\
+  -h, --help                    Print this message and exit.\n\
+  -v, --version                 Print version number and exit.\n\
 \n\
 Report bugs to <eddietwo@lcs.mit.edu>.\n", program_name);
 }

@@ -18,6 +18,7 @@
 
 const char *program_name = "gifsicle";
 static int verbose_pos = 0;
+int error_count = 0;
 
 
 static void
@@ -33,6 +34,9 @@ verror(int seriousness, char *message, va_list val)
     sprintf(pattern, "%s: warning: %%s\n", program_name);
   else
     sprintf(pattern, "%s: %%s\n", program_name);
+  
+  if (seriousness != 0)
+    error_count++;
   
   /* try and keep error messages together (no interleaving of error messages
      from two gifsicle processes in the same command line) by calling fprintf
@@ -54,7 +58,7 @@ fatal_error(char *message, ...)
   va_start(val, message);
   verror(2, message, val);
   va_end(val);
-  exit(1);
+  exit(EXIT_USER_ERR);
 }
 
 void
@@ -103,22 +107,22 @@ space, and printing information about GIFs.\n\
 Usage: %s [OPTION | FILE | FRAME]...\n\
 \n\
 Mode options: at most one, before any filenames.\n\
-  --merge, -m                   Merge mode: combine inputs, write stdout.\n\
-  --batch, -b                   Batch mode: modify inputs, write back to\n\
+  -m, --merge                   Merge mode: combine inputs, write stdout.\n\
+  -b, --batch                   Batch mode: modify inputs, write back to\n\
                                 same filenames.\n\
-  --explode, -e                 Explode mode: write N files for each input,\n\
+  -e, --explode                 Explode mode: write N files for each input,\n\
                                 one per frame, to `input.frame-number'.\n\
-  --explode-by-name, -E         Explode mode, but write `input.name'.\n\
+  -E, --explode-by-name         Explode mode, but write `input.name'.\n\
 \n\
 General options: Also --no-OPTION for info and verbose.\n\
-  --info, -I                    Print info about input GIFs. Two -I's means\n\
+  -I, --info                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
-  --color-info, --cinfo         --info plus colormap details.\n\
-  --extension-info, --xinfo     --info plus extension details.\n\
-  --verbose, -v                 Prints progress information.\n\
-  --help, -h                    Print this message and exit.\n\
-  --version                     Print version number and exit.\n\
-  --output FILE, -o FILE        Write output to FILE.\n\
+      --color-info, --cinfo     --info plus colormap details.\n\
+      --extension-info, --xinfo --info plus extension details.\n\
+  -v, --verbose                 Prints progress information.\n\
+  -h, --help                    Print this message and exit.\n\
+      --version                 Print version number and exit.\n\
+  -o, --output FILE             Write output to FILE.\n\
 \n", program_name);
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
@@ -131,41 +135,42 @@ Frame change options:\n\
   --done                        Done with frame changes.\n\
 \n\
 Image options: Also --no-OPTION and --same-OPTION.\n\
-  --background COL, -B COL      Makes COL the background color.\n\
-  --crop X,Y+WxH or X,Y-X2,Y2   Crops the image.\n\
-  --flip-horizontal, --flip-vertical\n\
+  -B, --background COL          Makes COL the background color.\n\
+      --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
+                                Crops the image.\n\
+      --flip-horizontal, --flip-vertical\n\
                                 Flips the image.\n\
-  --interlace, -i               Turns on interlacing.\n\
-  --logical-screen WxH, -S WxH  Sets logical screen to WxH.\n\
-  --position X,Y, -p X,Y        Sets frame position to (X,Y).\n\
-  --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
+  -i, --interlace               Turns on interlacing.\n\
+  -S, --logical-screen WxH      Sets logical screen to WxH.\n\
+  -p, --position X,Y            Sets frame position to (X,Y).\n\
+      --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
                                 Rotates the image.\n\
-  --transparent COL, -t COL     Makes COL transparent.\n\
+  -t, --transparent COL         Makes COL transparent.\n\
 \n");
   printf("\
 Extension options: Also --no-OPTION and --same-OPTION.\n\
-  --app-extension N D, -x N D   Adds an app extension named N with data D.\n\
-  --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
-  --extension N D               Adds an extension number N with data D.\n\
-  --name TEXT, -n TEXT          Sets next frame's name.\n\
+  -x, --app-extension N D       Adds an app extension named N with data D.\n\
+  -c, --comment TEXT            Adds a comment before the next frame.\n\
+      --extension N D           Adds an extension number N with data D.\n\
+  -n, --name TEXT               Sets next frame's name.\n\
 \n\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
-  --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
-  --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
-  --loopcount[=N], -l[N]        Sets loop extension to N (default forever).\n\
-  --optimize[=LEV], -O[LEV]     Optimize output GIFs.\n\
-  --unoptimize, -U              Unoptimize input GIFs.\n\
+  -d, --delay TIME              Sets frame delay to TIME (in 1/100sec).\n\
+  -D, --disposal METHOD         Sets frame disposal to METHOD.\n\
+  -l, --loopcount[=N]           Sets loop extension to N (default forever).\n\
+  -O, -optimize[=LEV]           Optimize output GIFs.\n\
+  -U, --unoptimize              Unoptimize input GIFs.\n\
 \n");
   printf("\
 Whole-GIF options: Also --no-OPTION.\n\
-  --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
-  --colors N, -k N              Reduces the number of colors to N.\n\
-  --color-method METHOD         Set method for choosing reduced colors.\n\
-  --dither, -f                  Dither image after changing colormap.\n\
-  --resize WxH                  Resizes the output GIF to WxH.\n\
-  --scale XFACTOR[xYFACTOR]     Scales the output GIF by XFACTORxYFACTOR.\n\
-  --transform-colormap CMD      Transform each output colormap by shell CMD.\n\
-  --use-colormap CMAP           Set output GIF's colormap to CMAP, which can\n\
+      --change-color COL1 COL2  Changes COL1 to COL2 throughout.\n\
+  -k, --colors N                Reduces the number of colors to N.\n\
+      --color-method METHOD     Set method for choosing reduced colors.\n\
+  -f, --dither                  Dither image after changing colormap.\n\
+      --resize WxH              Resizes the output GIF to WxH.\n\
+      --scale XFACTOR[xYFACTOR] Scales the output GIF by XFACTORxYFACTOR.\n\
+      --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
+      --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
                                 be `web', `gray', `bw', or a GIF file.\n\
 \n\
 Report bugs to <eddietwo@lcs.mit.edu>.\n\

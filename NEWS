@@ -1,5 +1,19 @@
 Gifsicle NEWS
 
+Version 1.12   25.Mar.1999
+
+* Added `--window' option to gifview, which lets it display a GIF in an
+  arbitrary X window. Thanks to Larry Smith <lcs@zk3.dec.com> for patches.
+
+* Added `--install-colormap' to gifview. Suggested by Yair Lenga
+  <yair.lenga@ssmb.com>.
+
+* Gifsicle now exits with status 1 if there were any errors, status 0
+  otherwise. Before, it exited with status 1 only if there was a fatal error,
+  or nothing was successfully output. The new behavior seems more useful.
+  Problem reported by David Kelly <dkelly@nebula.tbe.com>.
+
+
 Version 1.11.2   10.Mar.1999
 
 * `gifsicle -U' will now unoptimize 1-image GIFs as well as animations.

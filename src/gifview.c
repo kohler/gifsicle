@@ -27,6 +27,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
+#include <assert.h>
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
@@ -95,6 +96,9 @@ typedef struct Gt_Viewer {
   int depth;
   Colormap colormap;
   Gif_XContext *gfx;
+
+  Window parent;
+  int top_level;
   
   Window window;
   int width;
@@ -130,29 +134,38 @@ static char *cur_display_name = 0;
 static Display *cur_display = 0;
 static char *cur_geometry_spec = 0;
 static const char *cur_resource_name;
+static Window cur_use_window = None;
 
 static Gt_Viewer *viewers;
 static Gt_Viewer *animations;
 static int animating = 0;
 static int unoptimizing = 0;
+static int install_colormap = 0;
+static int interactive = 1;
 
 
-#define DISPLAY_OPT	300
-#define UNOPTIMIZE_OPT	301
-#define VERSION_OPT	302
-#define ANIMATE_OPT	303
-#define GEOMETRY_OPT	304
-#define NAME_OPT	305
-#define HELP_OPT	306
+#define DISPLAY_OPT		300
+#define UNOPTIMIZE_OPT		301
+#define VERSION_OPT		302
+#define ANIMATE_OPT		303
+#define GEOMETRY_OPT		304
+#define NAME_OPT		305
+#define HELP_OPT		306
+#define WINDOW_OPT		307
+#define INSTALL_COLORMAP_OPT	308
+#define INTERACTIVE_OPT		309
 
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
   { "display", 'd', DISPLAY_OPT, Clp_ArgStringNotOption, 0 },
   { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, 0 },
+  { "install-colormap", 'i', INSTALL_COLORMAP_OPT, 0, Clp_Negate },
+  { "interactive", 'e', INTERACTIVE_OPT, 0, Clp_Negate },
   { "help", 0, HELP_OPT, 0, 0 },
   { "name", 0, NAME_OPT, Clp_ArgString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
+  { "window", 'w', WINDOW_OPT, Clp_ArgInt, 0 },
 };
 
 
@@ -171,7 +184,6 @@ fatal_error(char *message, ...)
   exit(1);
 }
 
-
 void
 error(char *message, ...)
 {
@@ -181,7 +193,6 @@ error(char *message, ...)
   vfprintf(stderr, message, val);
   fputc('\n', stderr);
 }
-
 
 void
 warning(char *message, ...)
@@ -193,7 +204,6 @@ warning(char *message, ...)
   fputc('\n', stderr);
 }
 
-
 void
 short_usage(void)
 {
@@ -201,7 +211,6 @@ short_usage(void)
 Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
-
 
 void
 usage(void)
@@ -213,13 +222,16 @@ slideshows, one frame at a time, or as animations.\n\
 Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
 \n\
 Options are:\n\
-  --animate, -a                 Animate multiframe GIFs.\n\
-  --unoptimize, -U              Unoptimize displayed GIFs.\n\
-  --display DISPLAY             Set display to DISPLAY.\n\
-  --name NAME                   Set application resource name to NAME.\n\
-  --geometry GEOMETRY           Set window geometry.\n\
-  --help                        Print this message and exit.\n\
-  --version                     Print version number and exit.\n\
+  -a, --animate                 Animate multiframe GIFs.\n\
+  -U, --unoptimize              Unoptimize displayed GIFs.\n\
+  -d, --display DISPLAY         Set display to DISPLAY.\n\
+      --name NAME               Set application resource name to NAME.\n\
+  -g, --geometry GEOMETRY       Set window geometry.\n\
+  -w, --window WINDOW           Show GIF in existing WINDOW.\n\
+  -i, --install-colormap        Use a private colormap.\n\
+  +e, --no-interactive          Don't pay attention to buttons or keys.\n\
+      --help                    Print this message and exit.\n\
+      --version                 Print version number and exit.\n\
 \n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
 \n\
@@ -258,16 +270,17 @@ choose_visual(Gt_Viewer *viewer)
   Gt_Viewer *trav;
   
   /* Look for an existing Gt_Viewer with the same display and screen number */
-  for (trav = viewers; trav; trav = trav->next)
-    if (trav != viewer && trav->display == display
-	&& trav->screen_number == screen_number) {
-      viewer->visual = trav->visual;
-      viewer->depth = trav->depth;
-      viewer->colormap = trav->colormap;
-      viewer->gfx = trav->gfx;
-      viewer->gfx->refcount++;
-      return;
-    }
+  if (!install_colormap)
+    for (trav = viewers; trav; trav = trav->next)
+      if (trav != viewer && trav->display == display
+	  && trav->screen_number == screen_number) {
+	viewer->visual = trav->visual;
+	viewer->depth = trav->depth;
+	viewer->colormap = trav->colormap;
+	viewer->gfx = trav->gfx;
+	viewer->gfx->refcount++;
+	return;
+      }
   
   /* Find the default visual's XVisualInfo & put it in best_v */
   visi_template.screen = screen_number;
@@ -296,7 +309,8 @@ choose_visual(Gt_Viewer *viewer)
     
     viewer->visual = best_v->visual;
     viewer->depth = best_v->depth;
-    if (best_v->visualid != default_visualid)
+    if (best_v->visualid != default_visualid
+	|| (best_v->VISUAL_CLASS == PseudoColor && install_colormap))
       viewer->colormap =
 	XCreateColormap(display, RootWindow(display, screen_number),
 			viewer->visual, AllocNone);
@@ -314,15 +328,44 @@ choose_visual(Gt_Viewer *viewer)
 
 
 Gt_Viewer *
-new_viewer(Display *display, Gif_Stream *gfs, char *name)
+new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
 {
   Gt_Viewer *viewer;
   
   /* Make the Gt_Viewer structure */
   viewer = Gif_New(Gt_Viewer);
   viewer->display = display;
-  viewer->screen_number = DefaultScreen(display);
-  choose_visual(viewer);
+  
+  if (use_window) {
+    XWindowAttributes attr;
+    int i;
+    XGetWindowAttributes(display, use_window, &attr);
+    
+    viewer->screen_number = -1;
+    for (i = 0; i < ScreenCount(display); i++)
+      if (ScreenOfDisplay(display, i) == attr.screen)
+	viewer->screen_number = i;
+    assert(viewer->screen_number >= 0);
+    
+    viewer->visual = attr.visual;
+    viewer->depth = attr.depth;
+    viewer->colormap = attr.colormap;
+    
+    viewer->gfx = Gif_NewXContextFromVisual
+      (display, viewer->screen_number, viewer->visual, viewer->depth,
+       viewer->colormap);
+    viewer->gfx->refcount++;
+    
+    viewer->parent = use_window;
+    viewer->top_level = 0;
+    
+  } else {
+    viewer->screen_number = DefaultScreen(display);
+    choose_visual(viewer);
+    viewer->parent = RootWindow(display, viewer->screen_number);
+    viewer->top_level = 1;
+  }
+  
   viewer->window = None;
   viewer->being_deleted = 0;
   viewer->pixmap = None;
@@ -403,7 +446,8 @@ get_input_stream(char *name)
   if (unoptimizing)
     Gif_Unoptimize(gfs);
   
-  viewer = new_viewer(cur_display, gfs, name);
+  viewer = new_viewer(cur_display, cur_use_window, gfs, name);
+  cur_use_window = None;
   if (unoptimizing)
     viewer->anim_gfs = gfs;
   return viewer;
@@ -545,7 +589,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   XTextProperty window_name, icon_name;
   XClassHint classh;
   XSizeHints *sizeh = XAllocSizeHints(); /* sets all fields to 0 */
-  
+
   /* Set the window's geometry */
   sizeh->width = w;
   sizeh->height = h;
@@ -566,9 +610,9 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     x_set_attr.background_pixel = 0;
     x_set_attr_mask = CWColormap | CWBorderPixel | CWBackPixel
       | CWBackingStore | CWSaveUnder;
-  
+    
     viewer->window = window = XCreateWindow
-      (display, RootWindow(display, viewer->screen_number),
+      (display, viewer->parent,
        sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
        viewer->depth, InputOutput, viewer->visual,
        x_set_attr_mask, &x_set_attr);
@@ -584,25 +628,30 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   }
   
   /* Set the window's title and class (for window manager resources) */
-  stringlist[0] = "gifview";
-  stringlist[1] = 0;
-  XStringListToTextProperty(stringlist, 1, &window_name);
-  XStringListToTextProperty(stringlist, 1, &icon_name);
-  classh.res_name = (char *)cur_resource_name;
-  classh.res_class = "Gifview";
-  XSetWMProperties(display, window, &window_name, &icon_name,
-		   NULL, 0, sizeh, NULL, &classh);
-  XFree(window_name.value);
-  XFree(icon_name.value);
+  if (viewer->top_level) {
+    stringlist[0] = "gifview";
+    stringlist[1] = 0;
+    XStringListToTextProperty(stringlist, 1, &window_name);
+    XStringListToTextProperty(stringlist, 1, &icon_name);
+    classh.res_name = (char *)cur_resource_name;
+    classh.res_class = "Gifview";
+    XSetWMProperties(display, window, &window_name, &icon_name,
+		     NULL, 0, sizeh, NULL, &classh);
+    XFree(window_name.value);
+    XFree(icon_name.value);
   
-  if (!wm_delete_window_atom) {
-    wm_delete_window_atom = XInternAtom(display, "WM_DELETE_WINDOW", False);
-    wm_protocols_atom = XInternAtom(display, "WM_PROTOCOLS", False);
+    if (!wm_delete_window_atom) {
+      wm_delete_window_atom = XInternAtom(display, "WM_DELETE_WINDOW", False);
+      wm_protocols_atom = XInternAtom(display, "WM_PROTOCOLS", False);
+    }
+    XSetWMProtocols(display, window, &wm_delete_window_atom, 1);
   }
-  XSetWMProtocols(display, window, &wm_delete_window_atom, 1);
-  
-  XSelectInput(display, window, ButtonPressMask | KeyPressMask
-	       | StructureNotifyMask);
+
+  if (interactive)
+    XSelectInput(display, window, ButtonPressMask | KeyPressMask
+		 | StructureNotifyMask);
+  else
+    XSelectInput(display, window, StructureNotifyMask);
   
   XFree(sizeh);
 }
@@ -642,7 +691,8 @@ set_viewer_name(Gt_Viewer *viewer)
   XTextProperty name_prop;
   int len, image_number;
   
-  if (viewer->im_pos >= viewer->nim || viewer->being_deleted)
+  if (!viewer->top_level || viewer->im_pos >= viewer->nim
+      || viewer->being_deleted)
     return;
   
   gfi = viewer->im[ viewer->im_pos ];
@@ -939,34 +989,36 @@ loop(void)
       while (XPending(display)) {
 	XNextEvent(display, &e);
 	v = find_viewer(e.xany.display, e.xany.window);
-	
-	if (v && e.type == ButtonPress && e.xbutton.button == 1)
-	  /* Left mouse button: go to next frame */
-	  view_frame(v, v->im_pos + 1);
-	
-	else if (v && e.type == ButtonPress && e.xbutton.button == 3)
-	  /* Right mouse button: delete window */
-	  pre_delete_viewer(v);
-	
-	else if (v && e.type == KeyPress)
-	  /* Key press: call function */
-	  key_press(v, &e.xkey);
-	
-	else if (v && e.type == ClientMessage
-		 && e.xclient.message_type == wm_protocols_atom
-		 && (Atom)(e.xclient.data.l[0]) == wm_delete_window_atom)
-	  /* WM_DELETE_WINDOW message: delete window */
-	  pre_delete_viewer(v);
-
-	else if (v && e.type == MapNotify && v->animating
-		 && v->scheduled == 0)
-	  /* Window was just mapped; now, start animating it */
-	  schedule_next_frame(v);
+	if (v) {
+	  if (interactive) {
+	    if (e.type == ButtonPress && e.xbutton.button == 1)
+	      /* Left mouse button: go to next frame */
+	      view_frame(v, v->im_pos + 1);
+	    
+	    else if (e.type == ButtonPress && e.xbutton.button == 3)
+	      /* Right mouse button: delete window */
+	      pre_delete_viewer(v);
+	    
+	    else if (e.type == KeyPress)
+	      /* Key press: call function */
+	      key_press(v, &e.xkey);
+	  }
 	  
-	else if (v && e.type == DestroyNotify)
-	  /* Once the window has been destroyed, delete related state */
-	  delete_viewer(v);
-	
+	  if (e.type == ClientMessage
+	      && e.xclient.message_type == wm_protocols_atom
+	      && (Atom)(e.xclient.data.l[0]) == wm_delete_window_atom)
+	    /* WM_DELETE_WINDOW message: delete window */
+	    pre_delete_viewer(v);
+	  
+	  else if (e.type == MapNotify && v->animating
+		   && v->scheduled == 0)
+	    /* Window was just mapped; now, start animating it */
+	    schedule_next_frame(v);
+	  
+	  else if (e.type == DestroyNotify)
+	    /* Once the window has been destroyed, delete related state */
+	    delete_viewer(v);
+	}
       }
     
     xwGETTIME(now);
@@ -1014,6 +1066,18 @@ main(int argc, char **argv)
       
      case ANIMATE_OPT:
       animating = clp->negated ? 0 : 1;
+      break;
+
+     case INSTALL_COLORMAP_OPT:
+      install_colormap = clp->negated ? 0 : 1;
+      break;
+      
+     case WINDOW_OPT:
+      cur_use_window = clp->val.u;
+      break;
+
+     case INTERACTIVE_OPT:
+      interactive = clp->negated ? 0 : 1;
       break;
       
      case VERSION_OPT:

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.11.2
+.ds V 1.12
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -64,7 +64,7 @@ Go to the last frame.
 ESC
 Stop the animation.
 .TP
-.B s
+.BR s " or " a
 Toggle between animation and slideshow mode.
 .TP
 Backspace
@@ -100,9 +100,9 @@ standard input.
 .TP 5
 .OP \-\-animate ", " \-a
 '
-Causes multi-image GIFs to appear as animations. Normally, multi-image GIFs
-first appear in slideshow mode. You can always use the
-.RB ` s '
+Animate multi-image GIFs by default. Normally, multi-image GIFs first
+appear in slideshow mode. You can always use the
+.RB ` a '
 keystroke to toggle between modes. This option has a converse,
 .QO \-\-no\-animate
 or
@@ -112,7 +112,7 @@ or
 .TP 5
 .OP \-\-unoptimize ", " \-U
 '
-Unoptimizes multi-image GIFs before display, creating a complete
+Unoptimize multi-image GIFs before display, creating a complete
 representation of what a user will see at each frame of an animation. See
 .BR gifsicle (1)
 for a more detailed description of unoptimization. This option has a
@@ -120,21 +120,24 @@ converse,
 .QO \-\-no\-unoptimize
 or
 .QO +U .
-GIFs are always displayed unoptimized in animation mode.
+GIFs are always displayed unoptimized in animation mode. Some complex GIFs
+cannot be unoptimized.
 '
 .Sp
 .TP 5
+.OA \-d display
+.TP
 .OA \-\-display display
 '
 Sets the X display to
 .IR display .
-This option must come before any GIF files to be read.
+This option must come before any GIF files.
 '
 .Sp
 .TP 5
 .OA \-\-name name
 '
-Specifies the application name under which resources are found, rather than
+Sets the application name under which resources are found, rather than
 the default of ``gifview''. Since
 .B gifview
 itself does not use the resource database, this is mostly useful for
@@ -144,23 +147,49 @@ communication with your window manager.
 .TP 5
 .OA \-\-geometry geometry
 '
-This standard X option specifies the preferred size and position for
+Set the size and position of
 .BR gifview 's
-windows. At most one
+windows. This is a standard X option. At most one
 .OP \-\-geometry
 option can be given per window (that is, per input GIF file).
 '
 .Sp
 .TP 5
+.OA \-w window
+.TP
+.OA \-\-window window
+'
+Display the next GIF input in an existing X window, instead of making a new
+top-level window. With this option, you can use
+.B gifview
+to display animated GIFs in a window you created with another program.
+'
+.Sp
+.TP 5
+.OP \-\-install\-colormap ", " \-i
+'
+Use a private colormap for each window (if you are using a PseudoColor
+display). This avoids polluting the existing colormap, and may produce
+better results if your colormap is full, but causes annoying colormap
+flashing.
+'
+.Sp
+.TP 5
+.OP \-\-no\-interactive ", " \+e
+'
+Don't pay attention to mouse buttons or keystrokes.
+'
+.Sp
+.TP 5
 .OP \-\-help
 '
-Prints usage information and exits.
+Print usage information and exit.
 '
 .Sp
 .TP
 .OP \-\-version
 '
-Prints the version number and some quickie warranty information and exits.
+Print the version number and some quickie warranty information and exit.
 '
 .PD
 '

@@ -54,16 +54,13 @@ typedef struct Gt_Frame {
 
 
 struct Gt_Frameset {
-  
   int count;
   int cap;
   Gt_Frame *f;
-  
 };
 
 
 struct Gt_Crop {
-  
   int ready;
   int whole_stream;
   int spec_x;
@@ -76,19 +73,16 @@ struct Gt_Crop {
   int h;
   int left_off;
   int right_off;
-  
 };
 
 
 typedef void (*colormap_transform_func)(Gif_Colormap *, void *);
 
 struct Gt_ColorTransform {
-  
   Gt_ColorTransform *prev;
   Gt_ColorTransform *next;
   colormap_transform_func func;
   void *data;
-  
 };
 
 
@@ -123,6 +117,7 @@ typedef struct {
  **/
 extern const char *program_name;
 extern int verbosing;
+extern int error_count;
 
 void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);
@@ -134,6 +129,10 @@ void short_usage(void);
 void verbose_open(char, const char *);
 void verbose_close(char);
 void verbose_endline(void);
+
+#define EXIT_OK		0
+#define EXIT_ERR	1
+#define EXIT_USER_ERR	1
 
 /*****
  * info &c

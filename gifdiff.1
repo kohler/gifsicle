@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.11.2
+.ds V 1.12
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -38,14 +38,13 @@ GIF\-file\-2
 .SH DESCRIPTION
 .B gifdiff
 compares two GIF files and determines if they appear identical. Differences
-which don't affect appearance, like colormap reordering or how much an
-animation is optimized, are not reported.
+that don't affect appearance (like colormap ordering or how much an
+animation is optimized) are not reported.
 .PP
 .B gifdiff
-normally reports details of any important differences it finds, exiting
-without comment if the GIFs are the same. It exits with status 0 if there
-were no differences, 1 if there were some differences, and 2 if there was
-trouble.
+prints details of any differences it finds. If the GIFs are the same, it
+prints nothing. It exits with status 0 if there were no differences, 1 if
+there were some differences, and 2 if there was trouble.
 '
 .SH OPTIONS
 
@@ -59,13 +58,13 @@ Report only whether the GIFs differ, not the details of the differences.
 .TP 5
 .OP \-\-help
 '
-Prints usage information and exits.
+Print usage information and exit.
 '
 .Sp
 .TP
 .OP \-\-version
 '
-Prints the version number and some quickie warranty information and exits.
+Print the version number and some quickie warranty information and exit.
 '
 .PD
 '

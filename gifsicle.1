@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.11.2
+.ds V 1.12
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -157,6 +157,9 @@ with a number sign (#). Anything else is a GIF input file.
 reads and processes GIF input files in order. If no GIF input file is
 given, or you give the special filename `\-',
 it reads from the standard input.
+.PP
+.B gifsicle
+exits with status 0 if there were no errors, or status 1 otherwise.
 '
 .SH OPTIONS
 
@@ -196,20 +199,19 @@ which must precede any GIF inputs.
 .TP 5
 .OP \-\-merge ", " \-m
 '
-Combines all GIF inputs into one file with multiple frames and writes that
+Combine all GIF inputs into one file with multiple frames and write that
 file to the standard output. This is the default mode.
 '
 .TP
 .OP \-\-batch ", " \-b
 '
-Modifies each GIF input in place by reading and writing to the same
-filename. (GIFs read from the standard input are written to the standard
-output.)
+Modify each GIF input in place by reading and writing to the same filename.
+(GIFs read from the standard input are written to the standard output.)
 '
 .TP
 .OP \-\-explode ", " \-e
 '
-Writes separate GIFs containing the individual frames of each GIF input to
+Write separate GIFs containing the individual frames of each GIF input to
 files named `xxx.0', `xxx.1', and so on. `xxx' is either the name of the
 input file or whatever you specified with
 .QO \-\-output .
@@ -219,7 +221,7 @@ input file or whatever you specified with
 '
 Same as
 .OP \-\-explode ","
-but writes named frames to files `xxx.\fIname\fR' instead of
+but write named frames to files `xxx.\fIname\fR' instead of
 `xxx.\fIframe-number\fR'.
 '
 .\" -----------------------------------------------------------------
@@ -239,7 +241,7 @@ can be turned off with
 '
 Like
 .OP \%\-\-info ,
-but also prints information about input files' colormaps.
+but also print information about input files' colormaps.
 .OP \%\-\-cinfo
 is a synonym for
 .OP \%\-\-color\-info .
@@ -250,7 +252,7 @@ is a synonym for
 '
 Like
 .OP \%\-\-info ,
-but also prints any unrecognized GIF extensions in a
+but also print any unrecognized GIF extensions in a
 .BR hexdump (1)-like
 format.
 .OP \%\-\-xinfo
@@ -261,21 +263,19 @@ is a synonym for
 .TP 5
 .OP \-\-help ", " \-h
 '
-Prints usage information and exits.
+Print usage information and exit.
 '
 .Sp
 .TP 5
 .OP \-\-info ", " \-I
 '
-Prints a summary of the contents of each input GIF to standard output,
-and suppresses normal output. (If you give two
+Print a summary of the contents of each input GIF to standard output. This
+option suppresses normal output. (If you give two
 .OP \-\-info
 or
 .OP \-I
-options,
-.B gifsicle
-produces normal output and also writes the summary information to standard
-error.)
+options, the summary will be written to standard error, not standard
+output, and output will occur as usual.)
 '
 .Sp
 .TP
@@ -283,7 +283,7 @@ error.)
 .TP
 .OA \-\-output file
 '
-Sends output to
+Send output to
 .IR file .
 The special filename `-' means the standard output.
 '
@@ -291,14 +291,14 @@ The special filename `-' means the standard output.
 .TP
 .OP \-\-verbose ", " \-v
 '
-Prints progress information (files read and written) to standard
+Print progress information (files read and written) to standard
 error.
 '
 .Sp
 .TP
 .OP \-\-version
 '
-Prints the version number and some short non-warranty information and exits.
+Print the version number and some short non-warranty information and exit.
 '
 .PD
 '
@@ -369,14 +369,14 @@ easy with frame changes.
 .TP 5
 .OA \-\-delete frames " [" frames ".\|.\|.]"
 '
-Deletes
+Delete
 .I frames
 from the input GIF.
 '
 .TP
 .OA \-\-insert\-before "frame other-GIFs"
 '
-Inserts
+Insert
 .I other-GIFs
 before
 .I frame
@@ -385,14 +385,14 @@ in the input GIF.
 .TP
 .OA \-\-append "other-GIFs"
 '
-Appends
+Append
 .I other-GIFs
 to the input GIF.
 '
 .TP
 .OA \-\-replace "frames other-GIFs"
 '
-Replaces
+Replace
 .I frames
 from the input GIF with
 .IR other-GIFs .
@@ -400,7 +400,7 @@ from the input GIF with
 .TP
 \fB\-\-done\fR
 '
-Completes the current set of frame changes.
+Complete the current set of frame changes.
 '
 .PP
 The
@@ -474,7 +474,7 @@ form is generally described.
 .TP
 .OA \-\-background color
 '
-Sets the output GIF's background to
+Set the output GIF's background to
 .IR color .
 The argument can have the same forms as in the
 .OP \-\-transparent
@@ -486,7 +486,7 @@ option below.
 .TP
 .OA \-\-crop x1 , y1 + width\fRx\fIheight
 '
-Crops the following frames to a smaller rectangular area. The top-left
+Crop the following frames to a smaller rectangular area. The top-left
 corner of this rectangle is
 .RI ( x1 , y1 );
 you can give either the lower-right corner,
@@ -505,7 +505,7 @@ will shave 2 pixels off each side of the image.
 .TP
 .OP \-\-flip\-vertical
 '
-Flips the following frames horizontally or vertically.
+Flip the following frames horizontally or vertically.
 '
 .Sp
 .TP
@@ -513,7 +513,7 @@ Flips the following frames horizontally or vertically.
 .TP
 .OP \-\-interlace
 '
-Turns on interlacing.
+Turn interlacing on.
 '
 .Sp
 .TP
@@ -521,7 +521,7 @@ Turns on interlacing.
 .TP
 .OA \-\-logical\-screen width x height
 '
-Sets the output logical screen to
+Set the output logical screen to
 .IR width x height .
 .OP \-\-no\-logical\-screen
 sets the output logical screen to the size of the largest output
@@ -538,7 +538,7 @@ is a synonym for
 .TP
 .OA \-\-position x\fR,\fIy
 '
-Sets the following frames' positions to 
+Set the following frames' positions to 
 .RI ( x , y ).
 .OP \-\-no\-position
 means
@@ -552,7 +552,7 @@ means
 .TP
 .OP \-\-rotate\-270
 '
-Rotates the following frames by 90, 180, or 270 degrees.
+Rotate the following frames by 90, 180, or 270 degrees.
 .OP \-\-no\-rotate
 turns off any rotation.
 '
@@ -562,7 +562,7 @@ turns off any rotation.
 .TP
 .OA \-\-transparent color
 '
-Makes
+Make
 .I color
 transparent in the following frames.
 .I Color
@@ -584,7 +584,7 @@ includes names, comments, and generic extensions.
 .TP
 .OA \-\-app\-extension app\-name " " extension
 '
-Adds an application extension named
+Add an application extension named
 .I app\-name
 and with the value
 .I extension
@@ -596,7 +596,7 @@ to the output GIF.
 .TP
 .OA \-\-comment text
 '
-Adds a comment,
+Add a comment,
 .IR text ,
 to the output GIF. The comment will be placed before the next frame in
 the stream.
@@ -612,7 +612,7 @@ not ones added with
 .TP
 .OA \-\-extension number " " extension
 '
-Adds an extension numbered
+Add an extension numbered
 .I number
 and with the value
 .I extension
@@ -632,7 +632,7 @@ affect all the images following, and apply only to input GIF extensions.
 .TP
 .OA \-\-name text
 '
-Sets the next frame's name to
+Set the next frame's name to
 .IR text .
 This name is stored as an extension in the output GIF. 
 .Sp
@@ -658,7 +658,7 @@ of them act like image options, and have the same three forms (see above).
 .TP
 .OA \-\-delay time
 '
-Sets the delay between frames to
+Set the delay between frames to
 .IR time 
 in hundredths of a second.
 '
@@ -668,7 +668,7 @@ in hundredths of a second.
 .TP
 .OA \-\-disposal method
 '
-Sets the disposal method for the following frames to
+Set the disposal method for the following frames to
 .IR method .
 .I Method
 can be a number between 0 and 7 (although only 0 through 3 are
@@ -687,7 +687,7 @@ means
 .TP
 .OP \-\-loopcount "[=\fIcount\fR]"
 '
-Sets the Netscape loop extension to
+Set the Netscape loop extension to
 .IR count .
 .I Count
 is an integer, or
@@ -703,7 +703,7 @@ turns off looping.
 .TP
 .OP \-\-optimize "[=\fIlevel\fR]"
 '
-Optimizes output GIF animations for space.
+Optimize output GIF animations for space.
 .I Level
 determines how much optimization is done. There are currently two
 levels:
@@ -728,7 +728,7 @@ option.
 .TP
 .OA \-\-unoptimize
 '
-Unoptimizes GIF animations into an easy-to-edit form.
+Unoptimize GIF animations into an easy-to-edit form.
 .Sp
 GIF animations are often optimized (see 
 .OP \-\-optimize )
@@ -757,7 +757,7 @@ be turned off with
 .TP 5
 .OA \-\-change\-color color1 " " color2
 '
-Changes
+Change
 .I color1
 to
 .I color2
@@ -779,7 +779,7 @@ cancels all color changes.
 .TP
 .OA \-\-colors num
 '
-Reduces the number of distinct colors in each output GIF to
+Reduce the number of distinct colors in each output GIF to
 .I num
 or less.
 .I Num 
@@ -799,7 +799,7 @@ in all) if there is transparency in the image.
 .TP
 .OA \-\-color\-method method
 '
-Determines how a smaller colormap is chosen. There are three choices:
+Determine how a smaller colormap is chosen. There are three choices:
 .BR diversity ,
 the default, is
 .BR xv (1)'s
@@ -829,7 +829,7 @@ animation artifacts, so it is off by default.
 .TP
 .OA \-\-resize width x height
 '
-Resizes the output GIF to
+Resize the output GIF to
 .IR width x height .
 Resizing happens after all input frames have been combined and before
 optimization.
@@ -838,7 +838,7 @@ optimization.
 .TP
 .OA \-\-scale Xfactor [x Yfactor ]
 '
-Scales the output GIF's width and height by
+Scale the output GIF's width and height by
 .IR Xfactor " and " Yfactor .
 If
 .I Yfactor
@@ -853,8 +853,8 @@ optimization.
 '
 .I Command
 should be a shell command that reads from standard input and writes to
-standard output. Each colormap in the output GIF will be translated into
-text colormap format (see
+standard output. Each colormap in the output GIF is translated into text
+colormap format (see
 .OP \-\-use\-colormap
 below) and piped to the command. The output that command generates (which
 should also be in text colormap format) will be used as the colormap
@@ -864,7 +864,7 @@ instead.
 .TP
 .OA \-\-use\-colormap colormap
 '
-Sets the image's colormap to 
+Set the image's colormap to 
 .IR colormap .
 .I Colormap
 can be

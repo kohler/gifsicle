@@ -293,7 +293,7 @@ set_mode(int newmode)
   else if (mode == newmode)
     ;
   else
-    error("too late to change modes");
+    fatal_error("too late to change modes");
 }
 
 
@@ -306,7 +306,7 @@ set_frame_change(int kind)
   if (mode == BLANK_MODE)
     set_mode(MERGING);
   if (mode < DELETING && frames_done) {
-    error("frame selection and frame changes don't mix");
+    fatal_error("frame selection and frame changes don't mix");
     return;
   }
   assert(!nested_mode);
@@ -454,7 +454,7 @@ input_stream(char *name)
   gfs->userflags = 97; /* to indicate no output done */
   
   if (gfs->errors)
-    warning("%s is partially corrupted", name);
+    error("%s is partially corrupted", name);
   
   /* Processing when we've got a new input frame */
   if (mode == BLANK_MODE)
@@ -1428,12 +1428,12 @@ main(int argc, char **argv)
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
-      exit(0);
+      exit(EXIT_OK);
       break;
       
      case HELP_OPT:
       usage();
-      exit(0);
+      exit(EXIT_OK);
       break;
       
      case OUTPUT_OPT:
@@ -1461,7 +1461,7 @@ particular purpose.\n");
      bad_option:
      case Clp_BadOption:
       short_usage();
-      exit(1);
+      exit(EXIT_USER_ERR);
       break;
       
      default:
@@ -1491,5 +1491,5 @@ particular purpose.\n");
 #ifdef DMALLOC
   dmalloc_report();
 #endif
-  return (any_output_successful || !outputing ? 0 : 1);
+  return (error_count ? EXIT_ERR : EXIT_OK);
 }
