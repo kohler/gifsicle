@@ -68,8 +68,13 @@ Type %s --help for more information.\n",
 void
 usage(void)
 {
-  /* Split into two strings because of a MORONIC limit in Win32 C compilers */
-  printf("Usage: %s [options, frames, and filenames] ...\n\
+  printf("\
+`Gifsicle' manipulates GIF images in many different ways. Its most common\n\
+uses include combining single frames into animations, adding transparency,\n\
+optimizing animations for space, and printing information about GIFs.\n\
+\n\
+Usage: %s [options, frames, and filenames] ...\n\
+\n\
 Mode options: at most one, before any filenames.\n\
   --merge, -m                   Merge mode: combine inputs, write stdout.\n\
   --batch, -b                   Batch mode: modify inputs, write back to\n\
@@ -77,6 +82,7 @@ Mode options: at most one, before any filenames.\n\
   --explode, -e                 Explode mode: write N files for each input,\n\
                                 one per frame, to `input.frame-number'.\n\
   --explode-by-name, -E         Explode mode, but write `input.name'.\n\
+\n\
 General options: Also --no-opt/+o for info and verbose.\n\
   --info, -I                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
@@ -86,15 +92,18 @@ General options: Also --no-opt/+o for info and verbose.\n\
   --help, -h                    Print this message and exit.\n\
   --version                     Print version number and exit.\n\
   --output FILE, -o FILE        Write output to FILE.\n\
+\n", program_name);
+  printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
+\n\
 Frame change options:\n\
   --delete FRAMES               Delete FRAMES from input.\n\
   --insert-before FRAME GIFS    Insert GIFS before FRAMES in input.\n\
   --append GIFS                 Append GIFS to input.\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
-  --done                        Done with frame changes.\n",
-	 program_name);
-  printf("Image options: Also --no-opt/+o and --same-opt.\n\
+  --done                        Done with frame changes.\n\
+\n\
+Image options: Also --no-opt/+o and --same-opt.\n\
   --background COL, -B COL      Makes COL the background color.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --flip-horizontal, --flip-vertical\n\
@@ -105,23 +114,29 @@ Frame change options:\n\
   --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
                                 Rotates the image.\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
+\n\
 Extension options: Also --no-opt/+o and --same-opt.\n\
   --app-extension N D, -x N D   Adds an app extension named N with data D.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
   --extension N D               Adds an extension number N with data D.\n\
   --name TEXT, -n TEXT          Sets next frame's name.\n\
+\n");
+  printf("\
 Animation options: Also --no-opt/+o and --same-opt.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
   --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
   --loopcount[=N], -l[N]        Sets loop extension to N (default forever).\n\
   --optimize[=LEV], -O[LEV]     Optimize output GIFs.\n\
   --unoptimize, -U              Unoptimize input GIFs.\n\
+\n\
 Whole-GIF options: Also --no-opt.\n\
   --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
   --colors N, -k N              Reduces the number of colors to N.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
   --dither, -f                  Dither image after changing colormap.\n\
-  --use-colormap FILE or `web'  Use specified colormap.\n");
+  --use-colormap FILE or `web'  Use specified colormap.\n\
+\n\
+Report bugs to <eddietwo@lcs.mit.edu>.\n");
 }
 
 
