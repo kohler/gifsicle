@@ -23,8 +23,8 @@ extern "C" {
    this file, probably by #including <sys/types.h>. */
   
 #define GIF_MAJOR_VERSION	1
-#define GIF_MINOR_VERSION	2
-#define GIF_VERSION		"1.2"
+#define GIF_MINOR_VERSION	3
+#define GIF_VERSION		"1.3"
 
 #ifndef BYTE
 #define BYTE

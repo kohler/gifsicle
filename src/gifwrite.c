@@ -378,7 +378,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
   if ((grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
-    if (Gif_UncompressImage(gfi))      
+    if (Gif_UncompressImage(gfi))
       Gif_FullCompressImage(gfs, gfi, grr->flags);
   }
   
@@ -574,7 +574,7 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   if (grr->global_size > 0) {
     u_int16_t size = 2;
     packed |= 0x80;
-    while (size < grr->global_size && size < 256)
+    while (size < grr->global_size)
       size *= 2, packed++;
   }
   
