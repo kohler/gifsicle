@@ -110,6 +110,7 @@ int
 main(int argc, char **argv)
 {
   int reckless = 0;
+  int make_name = 0;
   
   argc--, argv++;
   
@@ -120,20 +121,26 @@ main(int argc, char **argv)
       is_static = 1, argc--, argv++;
     else if (!strcmp(argv[0], "-extern"))
       is_static = 0, argc--, argv++;
+    else if (!strcmp(argv[0], "-makename"))
+      make_name = 1, argc--, argv++;
     else
       break;
   }
   
-  if (argc % 2 != 0 || argc < 2 || (argv[0] && argv[0][0] == '-')) {
+  if ((!make_name && argc % 2 != 0)
+      || argc < 1
+      || (argv[0] && argv[0][0] == '-')) {
     fprintf(stderr, "\
-usage: giftoc [-reckless] [-extern] giffile gifname [giffile gifname...]\n");
+usage: giftoc [-reckless] [-extern] giffile gifname [giffile gifname...]\n\
+or:    giftoc -makename [-reckless] [-extern] giffile [giffile...]\n");
     exit(1);
   }
-
+  
   if (!is_static)
     printf("#include \"gif.h\"\n\n");
   
-  for (; argc > 0; argc -= 2, argv += 2) {
+  for (; argc > 0; argc--, argv++) {
+    char *rec_name;
     FILE *f = fopen(argv[0], "rb");
     
     if (!f) {
@@ -141,9 +148,28 @@ usage: giftoc [-reckless] [-extern] giffile gifname [giffile gifname...]\n");
       continue;
     }
     
-    if (reckless) print_reckless(f, argv[1]);
-    else print_unreckless(f, argv[1]);
+    if (make_name) {
+      char *sin, *sout;
+      sin = argv[0];
+      sout = rec_name = (char *)malloc(strlen(argv[0]) + 2);
+      if (isdigit(*sin)) *sout++ = 'N';
+      for (; *sin; sin++, sout++)
+	if (isalnum(*sin))
+	  *sout = *sin;
+	else
+	  *sout = '_';
+      *sout = 0;
+      
+    } else {
+      argv++, argc--;
+      rec_name = argv[0];
+    }
     
+    if (reckless) print_reckless(f, rec_name);
+    else print_unreckless(f, rec_name);
+    
+    if (make_name)
+      free(rec_name);
     fclose(f);
   }
   
