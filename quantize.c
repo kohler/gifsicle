@@ -326,7 +326,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   int i, j, transparent;
   
   /* This code was uses XV's modified diversity algorithm, and was written
-     with reference to XV's implementation by that algorithm by John Bradley
+     with reference to XV's implementation of that algorithm by John Bradley
      <bradley@cis.upenn.edu> and Tom Lane <Tom.Lane@g.gp.cs.cmu.edu>. */
   
   if (adapt_size < 2 || adapt_size > 256)
