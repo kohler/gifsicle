@@ -148,6 +148,7 @@ verbose_endline(void)
 {
   if (verbose_pos) {
     fputc('\n', stderr);
+    fflush(stderr);
     verbose_pos = 0;
   }
 }
@@ -689,7 +690,20 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
   fset->f[number].stream = gfs;
   fset->f[number].image = gfi;
   
-  /* Get rid of next-frame-only options */
+  /* Get rid of next-frame-only options.
+
+     This causes problems with frame selection. In the command `gifsicle
+     -nblah f.gif', the name should be applied to frame 0 of f.gif. This will
+     happen automatically when f.gif is read, since all of its frames will be
+     added when it is input. After frame 0, the name in def_frame will be
+     cleared.
+
+     Now, `gifsicle -nblah f.gif #1' should apply the name to frame 1 of
+     f.gif. But once f.gif is input, its frames are added, and the name
+     component of def_frame is cleared!! So when #1 comes around it's gone!
+
+     We handle this in gifsicle.c by introducing a def_frame_before_input
+     variable. */
   def_frame.name = 0;
   def_frame.comment = 0;
   

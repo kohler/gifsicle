@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.2
+
+* Fixed small bug with the interaction between per-frame options (--name,
+  --comment) and frame selections.
+
+
 Version 1.2b6
 
 * License clarification in README.

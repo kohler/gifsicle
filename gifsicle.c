@@ -280,6 +280,8 @@ frame_change_done(void)
 }
 
 
+static Gt_Frame def_frame_before_input;
+
 void
 show_frame(int imagenumber, int usename)
 {
@@ -289,14 +291,18 @@ show_frame(int imagenumber, int usename)
   if (!input) return;
   gfi = Gif_GetImage(input, imagenumber);
   if (!gfi) return;
-
+  
   switch (mode) {
     
    case MERGING:
    case EXPLODING:
    case INSERTING:
-    if (!frames_done)
+    if (!frames_done) {
       clear_frameset(frames, first_input_frame);
+      /* Restore per-frame options. See add_frame() in support.c for a
+	 description of the problem */
+      def_frame = def_frame_before_input;
+    }
     frame = add_frame(frames, -1, input, gfi);
     if (usename) frame->explode_by_name = 1;
     break;
@@ -379,7 +385,8 @@ input_stream(char *name)
 	def_frame.output_name = name;
     }
   }
-  
+
+  def_frame_before_input = def_frame;
   first_input_frame = frames->count;
   for (i = 0; i < gfs->nimages; i++)
     add_frame(frames, -1, gfs, gfs->images[i]);
@@ -1034,8 +1041,6 @@ particular purpose. That's right: you're on your own!\n");
   
   if (!files_given)
     input_stream(0);
-  else if (next_frame || next_input)
-    warning("some options didn't affect anything");
   
   frame_change_done();
   input_done();
@@ -1043,5 +1048,7 @@ particular purpose. That's right: you're on your own!\n");
     output_frames();
   
   verbose_endline();
+  if (next_frame || next_input)
+    warning("some options didn't affect anything");
   return 0;
 }
