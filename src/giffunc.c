@@ -15,7 +15,7 @@
 # include <config.h>
 #endif
 #include "gif.h"
-#include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #ifdef __cplusplus
 extern "C" {

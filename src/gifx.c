@@ -17,6 +17,7 @@
 #include "gifx.h"
 #include <X11/Xutil.h>
 #include <assert.h>
+#include <string.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -19,6 +19,7 @@
 #endif
 #include "gif.h"
 #include <stdarg.h>
+#include <string.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
