@@ -68,7 +68,8 @@ Type %s --help for more information.\n",
 void
 usage(void)
 {
-  fprintf(stderr, "Usage: %s [options, frames, and filenames] ...\n\
+  /* Split into two strings because of a MORONIC limit in Win32 C compilers */
+  printf("Usage: %s [options, frames, and filenames] ...\n\
 Mode options: at most one, before any filenames.\n\
   --merge, -m                   Merge mode: combine inputs, write stdout.\n\
   --batch, -b                   Batch mode: modify inputs, write back to\n\
@@ -91,8 +92,9 @@ Frame change options:\n\
   --insert-before FRAME GIFS    Insert GIFS before FRAMES in input.\n\
   --append GIFS                 Append GIFS to input.\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
-  --done                        Done with frame changes.\n\
-Image options: Also --no-opt/+o and --same-opt.\n\
+  --done                        Done with frame changes.\n",
+	 program_name);
+  printf("Image options: Also --no-opt/+o and --same-opt.\n\
   --background COL, -B COL      Makes COL the background color.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --flip-horizontal, --flip-vertical\n\
@@ -119,9 +121,7 @@ Whole-GIF options: Also --no-opt.\n\
   --colors N, -k N              Reduces the number of colors to N.\n\
   --color-method METHOD         Set method for choosing reduced colors.\n\
   --dither, -f                  Dither image after changing colormap.\n\
-  --use-colormap FILE or `web'  Use specified colormap.\n\
-",
-	  program_name);
+  --use-colormap FILE or `web'  Use specified colormap.\n");
 }
 
 

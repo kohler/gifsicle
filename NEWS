@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.5   ??.Sep.1998
+
+* `--help' now prints on stdout, as according to the GNU standards.
+
+* Changes to support Win32 port thanks to Emil Mikulic
+  <darkmoon@connexus.net.au>.
+
+
 Version 1.4.1   16.Sep.1998
 
 * Fixed `--unoptimize' bug: a frame's transparency could disappear under rare

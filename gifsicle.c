@@ -8,7 +8,6 @@
    is no warranty, express or implied. */
 
 #include "gifsicle.h"
-#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
