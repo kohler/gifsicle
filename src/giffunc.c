@@ -2,11 +2,10 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*; you can copy, distribute, or alter it at
-   will, as long as this notice is kept intact and this source code is made
-   available. Hypo(pa)thetical commerical developers are asked to write the
-   author a note, which might make his day. There is no warranty, express or
-   implied.
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
 
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in
@@ -54,7 +53,7 @@ Gif_NewImage(void)
   gfi->interlace = 0;
   gfi->img = 0;
   gfi->image_data = 0;
-  gfi->free_image_data = 0;
+  gfi->free_image_data = Gif_DeleteArrayFunc;
   gfi->compressed_len = 0;
   gfi->compressed = 0;
   gfi->free_compressed = 0;
@@ -70,18 +69,21 @@ Gif_NewColormap(void)
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
   if (!gfcm) return 0;
   gfcm->ncol = 0;
+  gfcm->capacity = 0;
   gfcm->col = 0;
   return gfcm;
 }
 
 
 Gif_Colormap *
-Gif_NewFullColormap(int nc)
+Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
   if (!gfcm) return 0;
-  gfcm->ncol = nc;
-  gfcm->col = Gif_NewArray(Gif_Color, nc);
+  if (count > capacity) capacity = count;
+  gfcm->ncol = count;
+  gfcm->capacity = capacity;
+  gfcm->col = Gif_NewArray(Gif_Color, capacity);
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;
@@ -212,6 +214,32 @@ Gif_ImageNumber(Gif_Stream *gfs, Gif_Image *gfi)
 }
 
 
+void
+Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
+{
+  int i;
+  int screen_width = 0;
+  int screen_height = 0;
+  
+  for (i = 0; i < gfs->nimages; i++) {
+    Gif_Image *gfi = gfs->images[i];
+    if (gfi->left != 0 || gfi->top != 0) continue;
+    if (screen_width < gfi->width) screen_width = gfi->width;
+    if (screen_height < gfi->height) screen_height = gfi->height;
+  }
+
+  if (screen_width == 0) {
+    screen_width = 640;
+    screen_height = 480;
+  }
+  
+  if (gfs->screen_width <= 0 || force)
+    gfs->screen_width = screen_width;
+  if (gfs->screen_height <= 0 || force)
+    gfs->screen_height = screen_height;
+}
+
+
 Gif_Stream *
 Gif_CopyStreamSkeleton(Gif_Stream *gfs)
 {
@@ -253,7 +281,7 @@ Gif_CopyColormap(Gif_Colormap *src)
   Gif_Colormap *dest;
   if (!src) return 0;
   
-  dest = Gif_NewFullColormap(src->ncol);
+  dest = Gif_NewFullColormap(src->ncol, src->capacity);
   if (!dest) return 0;
   
   for (i = 0; i < src->ncol; i++) {
@@ -420,6 +448,44 @@ Gif_DeleteExtension(Gif_Extension *gfex)
 }
 
 
+int
+Gif_ColorEq(Gif_Color *c1, Gif_Color *c2)
+{
+  return GIF_COLOREQ(c1, c2);
+}
+
+
+int
+Gif_FindColor(Gif_Colormap *gfcm, Gif_Color *c)
+{
+  int i;
+  for (i = 0; i < gfcm->ncol; i++)
+    if (GIF_COLOREQ(&gfcm->col[i], c))
+      return i;
+  return -1;
+}
+
+
+int
+Gif_AddColor(Gif_Colormap *gfcm, Gif_Color *c, int look_from)
+{
+  int i;
+  if (look_from >= 0)
+    for (i = look_from; i < gfcm->ncol; i++)
+      if (GIF_COLOREQ(&gfcm->col[i], c))
+	return i;
+  if (gfcm->ncol >= gfcm->capacity) {
+    gfcm->capacity *= 2;
+    Gif_ReArray(gfcm->col, Gif_Color, gfcm->capacity);
+    if (gfcm->col == 0) return -1;
+  }
+  i = gfcm->ncol;
+  gfcm->ncol++;
+  gfcm->col[i] = *c;
+  return i;
+}
+
+
 Gif_Image *
 Gif_GetImage(Gif_Stream *gfs, int imagenumber)
 {
@@ -469,15 +535,41 @@ Gif_ReleaseUncompressedImage(Gif_Image *gfi)
 }
 
 
-Gif_Color *
-Gif_GetBackground(Gif_Stream *gfs, Gif_Colormap *gfcm)
+int
+Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
 {
-  if (!gfcm)
-    gfcm = gfs->global;
-  if (gfcm && gfs->background < gfcm->ncol)
-    return &gfcm->col[gfs->background];
-  else
-    return 0;
+  int new_width = gfi->width, new_height = gfi->height;
+  int y;
+
+  if (!gfi->img) return 0;
+  
+  if (gfi->left < left) {
+    int shift = left - gfi->left;
+    for (y = 0; y < gfi->height; y++)
+      gfi->img[y] += shift;
+    gfi->left += shift;
+    new_width -= shift;
+  }
+  
+  if (gfi->top < top) {
+    int shift = top - gfi->top;
+    for (y = gfi->height - 1; y >= shift; y++)
+      gfi->img[y - shift] = gfi->img[y];
+    gfi->top += shift;
+    new_height -= shift;
+  }
+  
+  if (gfi->left + new_width >= width)
+    new_width = width - gfi->left;
+  
+  if (gfi->top + new_height >= height)
+    new_height = height - gfi->top;
+  
+  if (new_width < 0) new_width = 0;
+  if (new_height < 0) new_height = 0;
+  gfi->width = new_width;
+  gfi->height = new_height;
+  return 1;
 }
 
 

@@ -2,11 +2,10 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*; you can copy, distribute, or alter it at
-   will, as long as this notice is kept intact and this source code is made
-   available. Hypo(pa)thetical commerical developers are asked to write the
-   author a note, which might make his day. There is no warranty, express or
-   implied.
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
 
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in
@@ -212,9 +211,7 @@ int
 Gif_Unoptimize(Gif_Stream *gfs)
 {
   int ok = 1;
-  int i;
-  int size;
-  int was_transparent;
+  int i, size, was_transparent;
   byte *old_data;
   byte *old_data_buffer;
   byte background;
@@ -226,15 +223,8 @@ Gif_Unoptimize(Gif_Stream *gfs)
       return 0;
   if (!gfs->global)
     return 0;
-  
-  if (gfs->screen_width <= 0)
-    for (i = 0; i < gfs->nimages; i++)
-      if (gfs->screen_width < gfs->images[i]->width)
-	gfs->screen_width = gfs->images[i]->width;
-  if (gfs->screen_height <= 0)
-    for (i = 0; i < gfs->nimages; i++)
-      if (gfs->screen_height < gfs->images[i]->height)
-	gfs->screen_height = gfs->images[i]->height;
+
+  Gif_CalculateScreenSize(gfs, 0);
   size = gfs->screen_width * gfs->screen_height;
   
   old_data_buffer = Gif_NewArray(byte, size);

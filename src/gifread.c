@@ -2,11 +2,10 @@
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*; you can copy, distribute, or alter it at
-   will, as long as this notice is kept intact and this source code is made
-   available. Hypo(pa)thetical commerical developers are asked to write the
-   author a note, which might make his day. There is no warranty, express or
-   implied.
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
 
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in
@@ -51,6 +50,17 @@ typedef struct Gif_Reader {
 } Gif_Reader;
 
 
+void
+Gif_Debug(char *format, ...)
+{
+  va_list val;
+  va_start(val, format);
+  vfprintf(stderr, format, val);
+  va_end(val);
+  fputc(' ', stderr);
+}
+
+
 #define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
 #define gifgetbyte(grr) ((*grr->byte_getter)(grr))
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
@@ -78,6 +88,7 @@ file_byte_getter(Gif_Reader *grr)
 static void
 file_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
 {
+  GIF_DEBUG(("b%d", s));
   fread(p, s, 1, grr->f);
 }
 
@@ -119,20 +130,6 @@ make_data_reader(Gif_Reader *grr, byte *data, u_int32_t length)
   grr->block_getter = record_block_getter;
   grr->eofer = record_eofer;
 }
-
-
-#ifdef GIF_DEBUGGING
-#include <stdarg.h>
-void
-Gif_Debug(char *format, ...)
-{
-  va_list val;
-  va_start(val, format);
-  vfprintf(stderr, format, val);
-  putc(' ', stderr);
-  va_end(val);
-}
-#endif
 
 
 static byte
@@ -194,9 +191,9 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
   gfc->decodepos = 0;
   
   min_code_size = gifgetbyte(grr);
-  if (min_code_size >= GIF_MAX_CODE_SIZE) {
+  if (min_code_size >= GIF_MAX_CODE_BITS) {
     gfc->stream->errors++;
-    min_code_size = GIF_MAX_CODE_SIZE - 1;
+    min_code_size = GIF_MAX_CODE_BITS - 1;
   }
   clear_code = 1 << min_code_size;
   codemask = 0;
@@ -213,8 +210,6 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
   bits_needed = min_code_size + 1;
   amountleftover = 0;
   leftover = 0;
-  GIF_DEBUG(("clear(%d) mask(%d) eoi(%d) needed(%d)", clear_code, codemask,
-	     eoi_code, bits_needed));
   
   code = clear_code;
   
@@ -238,7 +233,6 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
 	if (buf == bufmax) {
 	  /* Read in the next data block. */
 	  i = gifgetbyte(grr);
-	  GIF_DEBUG(("imageblock(%d)", i));
 	  if (i == 0) goto zero_length_block;
 	  buf = buffer;
 	  bufmax = buffer + i;
@@ -263,7 +257,6 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
     }
     
     if (code == clear_code) {
-      GIF_DEBUG(("!!"));
       bits_needed = min_code_size + 1;
       next_code = eoi_code + 1;
       max_code = clear_code << 1;
@@ -308,13 +301,12 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
       one_code(gfc, code);
     
     if (next_code == max_code) {
-      if (bits_needed < GIF_MAX_CODE_SIZE) {
+      if (bits_needed < GIF_MAX_CODE_BITS) {
 	bits_needed++;
 	max_code <<= 1;
 	codemask = (codemask << 1) | 1;
       } else
 	next_code = 0;
-      GIF_DEBUG(("%d/%d", bits_needed, max_code));
     }
     
   }
@@ -335,22 +327,22 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
 }
 
 
-static Gif_Color *
+static Gif_Colormap *
 color_table(int size, Gif_Reader *grr)
 {
+  Gif_Colormap *gfcm = Gif_NewFullColormap(size, size);
   Gif_Color *c;
-  Gif_Color *ct = Gif_NewArray(Gif_Color, size);
-  if (!ct) return 0;
+  if (!gfcm) return 0;
   
   GIF_DEBUG(("colormap(%d)", size));
-  for (c = ct; size; size--, c++) {
+  for (c = gfcm->col; size; size--, c++) {
     c->red = gifgetbyte(grr);
     c->green = gifgetbyte(grr);
     c->blue = gifgetbyte(grr);
     c->haspixel = 0;
   }
   
-  return ct;
+  return gfcm;
 }
 
 
@@ -371,11 +363,9 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
   gifgetbyte(grr);
   
   if (packed & 0x80) { /* have a global color table */
-    gfs->global = Gif_NewColormap();
+    int ncol = 1 << ((packed & 0x07) + 1);
+    gfs->global = color_table(ncol, grr);
     if (!gfs->global) return 0;
-    gfs->global->ncol = 1 << ((packed & 0x07) + 1);
-    gfs->global->col = color_table(gfs->global->ncol, grr);
-    if (!gfs->global->col) return 0;
   }
   
   return 1;
@@ -454,7 +444,6 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 static int
 uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
 {
-  GIF_DEBUG(("%dx%d", gfi->width, gfi->height));
   gfi->image_data = Gif_NewArray(byte, gfi->width * gfi->height);
   gfi->free_image_data = Gif_DeleteArrayFunc;
   if (!gfi->image_data) return 0;
@@ -488,9 +477,9 @@ Gif_UncompressImage(Gif_Image *gfi)
   
   fake_gfs.errors = 0;
   gfc.stream = &fake_gfs;
-  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
-  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
-  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
+  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
+  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
+  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
   
   if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
@@ -515,14 +504,12 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
   gfi->width = gifgetunsigned(grr);
   gfi->height = gifgetunsigned(grr);
   packed = gifgetbyte(grr);
-  GIF_DEBUG(("< %ux%u > ", gfi->width, gfi->height));
+  GIF_DEBUG(("<%ux%u>", gfi->width, gfi->height));
   
   if (packed & 0x80) { /* have a local color table */
-    gfi->local = Gif_NewColormap();
+    int ncol = 1 << ((packed & 0x07) + 1);
+    gfi->local = color_table(ncol, grr);
     if (!gfi->local) return 0;
-    gfi->local->ncol = 1 << ((packed & 0x07) + 1);
-    gfi->local->col = color_table(gfi->local->ncol, grr);
-    if (!gfi->local->col) return 0;
   }
   
   gfi->interlace = (packed & 0x40) != 0;
@@ -720,14 +707,14 @@ gif_read(Gif_Reader *grr, int read_flags)
   gfi = Gif_NewImage();
   
   gfc.stream = gfs;
-  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
-  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
-  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
+  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
+  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
+  gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
   
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
   
-  GIF_DEBUG(("GIF"));
+  GIF_DEBUG(("\nGIF"));
   if (!logical_screen_descriptor(gfs, grr))
     goto done;
   GIF_DEBUG(("logscrdesc"));
@@ -735,7 +722,6 @@ gif_read(Gif_Reader *grr, int read_flags)
   while (!gifeof(grr)) {
     
     byte block = gifgetbyte(grr);
-    GIF_DEBUG(("block(%x)", block));
     
     switch (block) {
       
@@ -762,7 +748,7 @@ gif_read(Gif_Reader *grr, int read_flags)
       break;
       
      case ';': /* terminator */
-      GIF_DEBUG(("fuck"));
+      GIF_DEBUG(("term"));
       ok = 1;
       goto done;
       
@@ -807,7 +793,7 @@ gif_read(Gif_Reader *grr, int read_flags)
   /* Move comments after last image into stream. */
   gfs->comment = gfi->comment;
   gfi->comment = 0;
-  
+
   Gif_DeleteImage(gfi);
   Gif_DeleteArray(last_name);
   Gif_DeleteArray(gfc.prefix);

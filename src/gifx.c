@@ -2,11 +2,10 @@
    Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*; you can copy, distribute, or alter it at
-   will, as long as this notice is kept intact and this source code is made
-   available. Hypo(pa)thetical commerical developers are asked to write the
-   author a note, which might make his day. There is no warranty, express or
-   implied.
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
 
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in

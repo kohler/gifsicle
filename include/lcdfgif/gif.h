@@ -10,11 +10,10 @@ extern "C" {
    Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*; you can copy, distribute, or alter it at
-   will, as long as this notice is kept intact and this source code is made
-   available. Hypo(pa)thetical commerical developers are asked to write the
-   author a note, which might make his day. There is no warranty, express or
-   implied.
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
 
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in
@@ -74,6 +73,7 @@ Gif_Stream *	Gif_CopyStreamImages(Gif_Stream *);
 #define		Gif_ScreenHeight(gfs)		((gfs)->screen_height)
 #define		Gif_ImageCount(gfs)		((gfs)->nimages)
 
+void		Gif_CalculateScreenSize(Gif_Stream *, int force);
 int		Gif_Unoptimize(Gif_Stream *);
 
 
@@ -137,6 +137,8 @@ int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
 void		Gif_ReleaseUncompressedImage(Gif_Image *);
 void		Gif_ReleaseCompressedImage(Gif_Image *);
 
+int		Gif_ClipImage(Gif_Image *, int l, int t, int w, int h);
+
 
 /** GIF_COLORMAP **/
 
@@ -155,18 +157,24 @@ typedef struct {
 struct Gif_Colormap {
   
   u_int16_t ncol;
-  u_int16_t userflags;
+  u_int16_t capacity;
+  u_int32_t userflags;
   Gif_Color *col;
   
 };
 
 Gif_Colormap *	Gif_NewColormap(void);
-Gif_Colormap *	Gif_NewFullColormap(int);
+Gif_Colormap *	Gif_NewFullColormap(int count, int capacity);
 void		Gif_DeleteColormap(Gif_Colormap *);
 
 Gif_Colormap *	Gif_CopyColormap(Gif_Colormap *);
 
-Gif_Color *	Gif_GetBackground(Gif_Stream *, Gif_Colormap *);
+int		Gif_ColorEq(Gif_Color *, Gif_Color *);
+#define		GIF_COLOREQ(c1, c2) \
+((c1)->red==(c2)->red && (c1)->green==(c2)->green && (c1)->blue==(c2)->blue)
+
+int		Gif_FindColor(Gif_Colormap *, Gif_Color *);
+int		Gif_AddColor(Gif_Colormap *, Gif_Color *, int look_from);
 
 
 /** GIF_COMMENT **/
@@ -248,8 +256,8 @@ void 		Gif_Debug(char *x, ...);
 #endif
 
 typedef u_int16_t Gif_Code;
-#define GIF_MAX_CODE_SIZE	12
-#define GIF_MAX_CODE		0xFFF
+#define GIF_MAX_CODE_BITS	12
+#define GIF_MAX_CODE		0x1000
 #define GIF_MAX_BLOCK		255
 
 #ifdef __cplusplus
