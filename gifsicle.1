@@ -722,10 +722,14 @@ Set the Netscape loop extension to
 .I Count
 is an integer, or
 .B forever
-to loop endlessly. The default is
+to loop endlessly. If you supply a
+.OP \-\-loopcount
+option without specifying
+.IR count ,
+Gifsicle will use
 .BR forever .
 .OP \-\-no\-loopcount
-turns off looping.
+(the default) turns off looping.
 .Sp
 Set the loop count to one less than the number of times you want the
 animation to run. An animation with
@@ -733,6 +737,12 @@ animation to run. An animation with
 will show every frame once;
 .OP \-\-loopcount =1
 will loop once, thus showing every frame twice; and so forth.
+Note that
+.OP \-\-loopcount =0
+is equivalent to
+.OP \-\-loopcount =forever,
+not
+.OP \-\-no\-loopcount .
 '
 .Sp
 .TP
