@@ -36,7 +36,7 @@ put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   
   for (y = 0; y < h; y++) {
     uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
-    byte *line = gfi->img[y];
+    uint8_t *line = gfi->img[y];
     for (x = 0; x < w; x++, move++, line++)
       if (*line != transparent)
 	*move = *line;
@@ -71,7 +71,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 
 static int
 create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
-		  byte *new_data)
+		  uint8_t *new_data)
 {
   int have[257];
   int transparent = -1;
@@ -119,7 +119,7 @@ static int
 unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int size = gfs->screen_width * gfs->screen_height;
-  byte *new_data = Gif_NewArray(byte, size);
+  uint8_t *new_data = Gif_NewArray(uint8_t, size);
   uint16_t *new_screen = screen;
   if (!new_data) return 0;
   

@@ -326,7 +326,7 @@ Gif_Image *
 Gif_CopyImage(Gif_Image *src)
 {
   Gif_Image *dest;
-  byte *data;
+  uint8_t *data;
   int i;
   if (!src) return 0;
   
@@ -358,8 +358,8 @@ Gif_CopyImage(Gif_Image *src)
   
   dest->interlace = src->interlace;
   if (src->img) {
-    dest->img = Gif_NewArray(byte *, dest->height + 1);
-    dest->image_data = Gif_NewArray(byte, dest->width * dest->height);
+    dest->img = Gif_NewArray(uint8_t *, dest->height + 1);
+    dest->image_data = Gif_NewArray(uint8_t, dest->width * dest->height);
     dest->free_image_data = Gif_DeleteArrayFunc;
     if (!dest->img || !dest->image_data) goto failure;
     for (i = 0, data = dest->image_data; i < dest->height; i++) {
@@ -373,7 +373,7 @@ Gif_CopyImage(Gif_Image *src)
     if (src->free_compressed == 0)
       dest->compressed = src->compressed;
     else {
-      dest->compressed = Gif_NewArray(byte, src->compressed_len);
+      dest->compressed = Gif_NewArray(uint8_t, src->compressed_len);
       dest->free_compressed = Gif_DeleteArrayFunc;
       memcpy(dest->compressed, src->compressed, src->compressed_len);
     }
@@ -695,18 +695,18 @@ Gif_InterlaceLine(int line, int height)
 
 
 int
-Gif_SetUncompressedImage(Gif_Image *gfi, byte *image_data,
+Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
 			 void (*free_data)(void *), int data_interlaced)
 {
   int i;
   int width = gfi->width;
   int height = gfi->height;
-  byte **img;
+  uint8_t **img;
   
   Gif_ReleaseUncompressedImage(gfi);
   if (!image_data) return 0;
   
-  img = Gif_NewArray(byte *, height + 1);
+  img = Gif_NewArray(uint8_t *, height + 1);
   if (!img) return 0;
   
   if (data_interlaced)
@@ -726,7 +726,7 @@ Gif_SetUncompressedImage(Gif_Image *gfi, byte *image_data,
 int
 Gif_CreateUncompressedImage(Gif_Image *gfi)
 {
-  byte *data = Gif_NewArray(byte, gfi->width * gfi->height);
+  uint8_t *data = Gif_NewArray(uint8_t, gfi->width * gfi->height);
   return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
 				  gfi->interlace);
 }

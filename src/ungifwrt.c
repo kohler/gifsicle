@@ -35,14 +35,14 @@ typedef struct Gif_Context {
 typedef struct Gif_Writer {
   
   FILE *f;
-  byte *v;
+  uint8_t *v;
   uint32_t pos;
   uint32_t cap;
   int flags;
   int global_size;
   int local_size;
-  void (*byte_putter)(byte, struct Gif_Writer *);
-  void (*block_putter)(byte *, uint16_t, struct Gif_Writer *);
+  void (*byte_putter)(uint8_t, struct Gif_Writer *);
+  void (*block_putter)(uint8_t *, uint16_t, struct Gif_Writer *);
   
 } Gif_Writer;
 
@@ -59,24 +59,24 @@ gifputunsigned(uint16_t uns, Gif_Writer *grr)
 
 
 static void
-file_byte_putter(byte b, Gif_Writer *grr)
+file_byte_putter(uint8_t b, Gif_Writer *grr)
 {
   fputc(b, grr->f);
 }
 
 static void
-file_block_putter(byte *block, uint16_t size, Gif_Writer *grr)
+file_block_putter(uint8_t *block, uint16_t size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
 }
 
 
 static void
-memory_byte_putter(byte b, Gif_Writer *grr)
+memory_byte_putter(uint8_t b, Gif_Writer *grr)
 {
   if (grr->pos >= grr->cap) {
     grr->cap *= 2;
-    Gif_ReArray(grr->v, byte, grr->cap);
+    Gif_ReArray(grr->v, uint8_t, grr->cap);
   }
   if (grr->v) {
     grr->v[grr->pos] = b;
@@ -85,11 +85,11 @@ memory_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(byte *data, uint16_t len, Gif_Writer *grr)
+memory_block_putter(uint8_t *data, uint16_t len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
-    Gif_ReArray(grr->v, byte, grr->cap);
+    Gif_ReArray(grr->v, uint8_t, grr->cap);
   }
   if (grr->v) {
     memcpy(grr->v + grr->pos, data, len);
@@ -105,28 +105,28 @@ memory_block_putter(byte *data, uint16_t len, Gif_Writer *grr)
    Thomas Boutell's gd library <http://www.boutell.com>. */
 
 static void
-write_compressed_data(byte **img, uint16_t width, uint16_t height,
-		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
+		      uint8_t min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
-  byte buffer[WRITE_BUFFER_SIZE];
-  byte *buf;
+  uint8_t buffer[WRITE_BUFFER_SIZE];
+  uint8_t *buf;
   
   uint16_t xleft;
-  byte *imageline;
+  uint8_t *imageline;
   
   uint32_t leftover;
-  byte bits_left_over;
+  uint8_t bits_left_over;
   
   Gif_Code next_code;
   Gif_Code output_code;
   Gif_Code clear_code;
   Gif_Code eoi_code;
 #define CUR_BUMP_CODE (1 << cur_code_bits)
-  byte suffix;
+  uint8_t suffix;
   
   Gif_Code *rle_next = gfc->rle_next;
   
-  byte cur_code_bits;
+  uint8_t cur_code_bits;
   
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
@@ -237,17 +237,17 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
 #else /* GIF_NO_COMPRESSION */
 
 static void
-write_compressed_data(byte **img, uint16_t width, uint16_t height,
-		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
+		      uint8_t min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
-  byte buffer[WRITE_BUFFER_SIZE];
-  byte *buf;
+  uint8_t buffer[WRITE_BUFFER_SIZE];
+  uint8_t *buf;
   
   uint16_t xleft;
-  byte *imageline;
+  uint8_t *imageline;
   
   uint32_t leftover;
-  byte bits_left_over;
+  uint8_t bits_left_over;
   
   Gif_Code next_code;
   Gif_Code output_code;
@@ -255,7 +255,7 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
   Gif_Code eoi_code;
   Gif_Code bump_code;
   
-  byte cur_code_bits;
+  uint8_t cur_code_bits;
   
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
@@ -372,7 +372,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
     int x, y, width = gfi->width, height = gfi->height;
     colors_used = 0;
     for (y = 0; y < height && colors_used < 128; y++) {
-      byte *data = gfi->img[y];
+      uint8_t *data = gfi->img[y];
       for (x = width; x > 0; x--, data++)
 	if (*data > colors_used)
 	  colors_used = *data;
@@ -402,15 +402,15 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 }
 
 static int
-write_image_data(Gif_Image *gfi, byte min_code_bits,
+write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
 		 Gif_Context *gfc, Gif_Writer *grr)
 {
-  byte **img = gfi->img;
+  uint8_t **img = gfi->img;
   uint16_t width = gfi->width, height = gfi->height;
     
   if (gfi->interlace) {
     uint16_t y;
-    byte **nimg = Gif_NewArray(byte *, height + 1);
+    uint8_t **nimg = Gif_NewArray(uint8_t *, height + 1);
     if (!nimg) return 0;
     
     for (y = 0; y < height; y++)
@@ -433,7 +433,7 @@ int
 Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 {
   int ok = 0;
-  byte min_code_bits;
+  uint8_t min_code_bits;
   Gif_Writer grr;
   Gif_Context gfc;
   
@@ -447,7 +447,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
      supplying the buggy files. */
   gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   
-  grr.v = Gif_NewArray(byte, 1024);
+  grr.v = Gif_NewArray(uint8_t, 1024);
   grr.pos = 0;
   grr.cap = 1024;
   grr.byte_putter = memory_byte_putter;
@@ -532,7 +532,7 @@ write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
 static int
 write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
-  byte min_code_bits, packed = 0;
+  uint8_t min_code_bits, packed = 0;
   grr->local_size = get_color_table_size(gfs, gfi, grr);
   
   gifputbyte(',', grr);
@@ -562,7 +562,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
      people's asses who uncompress an image, keep the compressed data around,
      but modify the uncompressed data anyway. That sucks. */
   if (gfi->compressed) {
-    byte *compressed = gfi->compressed;
+    uint8_t *compressed = gfi->compressed;
     uint32_t compressed_len = gfi->compressed_len;
     while (compressed_len > 0) {
       uint16_t amt = (compressed_len > 0x7000 ? 0x7000 : compressed_len);
@@ -581,7 +581,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 static void
 write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 {
-  byte packed = 0x70;		/* high resolution colors */
+  uint8_t packed = 0x70;		/* high resolution colors */
   grr->global_size = get_color_table_size(gfs, 0, grr);
 
   Gif_CalculateScreenSize(gfs, 0);
@@ -615,7 +615,7 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 static void
 write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
 {
-  byte packed = 0;
+  uint8_t packed = 0;
   gifputbyte('!', grr);
   gifputbyte(0xF9, grr);
   gifputbyte(4, grr);
@@ -623,13 +623,13 @@ write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
   packed |= (gfi->disposal & 0x07) << 2;
   gifputbyte(packed, grr);
   gifputunsigned(gfi->delay, grr);
-  gifputbyte((byte)gfi->transparent, grr);
+  gifputbyte((uint8_t)gfi->transparent, grr);
   gifputbyte(0, grr);
 }
 
 
 static void
-blast_data(byte *data, int len, Gif_Writer *grr)
+blast_data(uint8_t *data, int len, Gif_Writer *grr)
 {
   while (len > 0) {
     int s = len > 255 ? 255 : len;
@@ -647,7 +647,7 @@ write_name_extension(char *id, Gif_Writer *grr)
 {
   gifputbyte('!', grr);
   gifputbyte(0xCE, grr);
-  blast_data((byte *)id, strlen(id), grr);
+  blast_data((uint8_t *)id, strlen(id), grr);
 }
 
 
@@ -658,7 +658,7 @@ write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
   for (i = 0; i < gfcom->count; i++) {
     gifputbyte('!', grr);
     gifputbyte(0xFE, grr);
-    blast_data((byte *)gfcom->str[i], gfcom->len[i], grr);
+    blast_data((uint8_t *)gfcom->str[i], gfcom->len[i], grr);
   }
 }
 
@@ -666,7 +666,7 @@ write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 static void
 write_netscape_loop_extension(uint16_t value, Gif_Writer *grr)
 {
-  gifputblock((byte *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
+  gifputblock((uint8_t *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
   gifputunsigned(value, grr);
   gifputbyte(0, grr);
 }
@@ -684,7 +684,7 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
     int len = gfex->application ? strlen(gfex->application) : 0;
     if (len) {
       gifputbyte(len, grr);
-      gifputblock((byte *)gfex->application, len, grr);
+      gifputblock((uint8_t *)gfex->application, len, grr);
     }
   }
   while (pos + 255 < gfex->length) {
@@ -715,7 +715,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
     goto done;
   
   {
-    byte isgif89a = 0;
+    uint8_t isgif89a = 0;
     if (gfs->comment || gfs->loopcount > -1)
       isgif89a = 1;
     for (i = 0; i < gfs->nimages && !isgif89a; i++) {
@@ -725,9 +725,9 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 	isgif89a = 1;
     }
     if (isgif89a)
-      gifputblock((byte *)"GIF89a", 6, grr);
+      gifputblock((uint8_t *)"GIF89a", 6, grr);
     else
-      gifputblock((byte *)"GIF87a", 6, grr);
+      gifputblock((uint8_t *)"GIF87a", 6, grr);
   }
   
   write_logical_screen_descriptor(gfs, grr);

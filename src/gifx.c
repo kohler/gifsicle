@@ -270,7 +270,7 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 		       Pixmap pixmap, int pixmap_x, int pixmap_y)
 {
   XImage *ximage;
-  byte *xdata;
+  uint8_t *xdata;
   
   int i, j, k;
   int bytes_per_line;
@@ -328,7 +328,7 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
-  xdata = Gif_NewArray(byte, bytes_per_line * height);
+  xdata = Gif_NewArray(uint8_t, bytes_per_line * height);
   ximage->data = (char *)xdata;
   
   /* The main loop */
@@ -337,8 +337,8 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
     int bytes_per_pixel = ximage->bits_per_pixel / 8;
     
     for (j = 0; j < height; j++) {
-      byte *line = gfi->img[top + j] + left;
-      byte *writer = xdata + bytes_per_line * j;
+      uint8_t *line = gfi->img[top + j] + left;
+      uint8_t *writer = xdata + bytes_per_line * j;
       for (i = 0; i < width; i++) {
 	unsigned long pixel;
 	if (line[i] < nct)
@@ -360,8 +360,8 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
     for (j = 0; j < height; j++) {
       int imshift = 0;
       uint32_t impixel = 0;
-      byte *line = gfi->img[top + j] + left;
-      byte *writer = xdata + bytes_per_line * j;
+      uint8_t *line = gfi->img[top + j] + left;
+      uint8_t *writer = xdata + bytes_per_line * j;
       
       for (i = 0; i < width; i++) {
 	unsigned long pixel;
@@ -461,7 +461,7 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
 {
   Pixmap pixmap = None;
   XImage *ximage;
-  byte *xdata;
+  uint8_t *xdata;
   
   int i, j;
   int transparent;
@@ -492,7 +492,7 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
   
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
-  xdata = Gif_NewArray(byte, bytes_per_line * height);
+  xdata = Gif_NewArray(uint8_t, bytes_per_line * height);
   ximage->data = (char *)xdata;
   
   transparent = gfi->transparent;
@@ -501,8 +501,8 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
   for (j = 0; j < height; j++) {
     int imshift = 0;
     uint32_t impixel = 0;
-    byte *line = gfi->img[top + j] + left;
-    byte *writer = xdata + bytes_per_line * j;
+    uint8_t *line = gfi->img[top + j] + left;
+    uint8_t *writer = xdata + bytes_per_line * j;
     
     for (i = 0; i < width; i++) {
       if (line[i] == transparent)
