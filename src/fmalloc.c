@@ -11,7 +11,8 @@ extern "C" {
 static void
 fail_die_malloc_die(size_t size, const char *file, int line)
 {
-  fprintf(stderr, "Out of memory! (wanted %d at %s:%d)\n", size, file, line);
+  fprintf(stderr, "Out of memory! (wanted %lu at %s:%d)\n",
+	  (unsigned long)size, file, line);
   exit(1);
 }
 
