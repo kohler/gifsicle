@@ -18,6 +18,10 @@ Version 1.9b3   10.Dec.1998
   animations. Suggestion by Markus F.X.J. Oberhumer
   <k3040e4@c210.edvz.uni-linz.ac.at>.
 
+* GIF library changes: cleaner, somewhat faster GIF reading code inspired
+  by Patrick J. Naughton <naughton@wind.sun.com>, whose code is distributed
+  with XV.
+
 
 Version 1.9b2   9.Dec.1998
 
