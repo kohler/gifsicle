@@ -16,16 +16,21 @@ Copyright: GPL
 BuildRoot: /tmp/gifsicle-build
 
 %description
-Gifsicle manipulates GIF image files on the command line. It supports merging
-several GIFs into a GIF animation; exploding an animation into its component
-frames; changing individual frames in an animation; turning interlacing on and
-off; adding transparency; adding delays, disposals, and looping to animations;
-adding or removing comments; optimizing animations for space; and changing
-images' colormaps, among other things. 
+Gifsicle manipulates GIF image files on the
+command line. It supports merging several GIFs
+into a GIF animation; exploding an animation into
+its component frames; changing individual frames
+in an animation; turning interlacing on and off;
+adding transparency; adding delays, disposals, and
+looping to animations; adding or removing
+comments; optimizing animations for space; and
+changing images' colormaps, among other things.
 
-The gifsicle package contains two other programs: gifview, a lightweight GIF
-viewer for X, can show animations as slideshows or in real time, and gifdiff
-compares two GIFs for identical visual appearance.
+The gifsicle package contains two other programs:
+gifview, a lightweight GIF viewer for X, can show
+animations as slideshows or in real time, and
+gifdiff compares two GIFs for identical visual
+appearance.
 
 %prep
 %setup
