@@ -1,0 +1,80 @@
+# Win32 Makefile originally by Emil Mikulic <darkmoon@connexus.net.au>
+# Updates by Eddie Kohler <eddietwo@lcs.mit.edu> and
+# Steven Marthouse <comments@vrml3d.com>
+
+# ----------------------------------------------------------
+# Makefile adapted for Borland C++ 5.5 Compiler
+# Stephen Schnipsel <schnipsel@m4f.net>
+#
+# set this to your bcc directory!
+MYBCCDIR = D:\BCC55
+#
+# ----------------------------------------------------------
+
+
+# *** MAKING UNGIFSICLE ***
+# If `GIFWRITE_OBJ' is defined to `gifwrite.obj', Gifsicle will use
+# Unisys-patented LZW compression. If it is defined to `ungifwrt.obj', it
+# will use unpatented run-length compression, which creates larger GIFs but
+# is completely free software. If you downloaded the ungifsicle package,
+# which doesn't have `gifwrite.c', you MUST define `GIFWRITE_OBJ' to
+# `ungifwrt.obj' by commenting the first line below and uncommenting the
+# second.
+GIFWRITE_OBJ = gifwrite.obj
+#GIFWRITE_OBJ = ungifwrt.obj
+
+# *** SUPPORTING WILDCARD EXPANSION ***
+# Define `SETARGV_OBJ' to the filename for the `setargv.obj' object file.
+# The definition included here works for Microsoft compilers; you will
+# probably need to change it if you're using a different compiler. You can
+# define it to the empty string, in which case Gifsicle will compile fine,
+# but you won't be able to use wildcards in file name arguments.
+SETARGV_OBJ = $(MYBCCDIR)\LIB\WILDARGS.OBJ
+
+
+CC = bcc32
+CFLAGS = -I.. -I..\INCLUDE -DHAVE_CONFIG_H -DWIN32 -D_CONSOLE -O2 -D_setmode=setmode
+
+GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
+	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
+	xform.obj gifsicle.obj $(SETARGV_OBJ)
+
+GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj \
+	$(SETARGV_OBJ)
+
+.c.obj:
+	$(CC) $(CFLAGS) -c $<
+	
+all: gifsicle.exe gifdiff.exe
+
+gifsicle.exe: $(GIFSICLE_OBJS)
+	$(CC) $(CFLAGS) -egifsicle $(GIFSICLE_OBJS)
+
+gifdiff.exe: $(GIFDIFF_OBJS)
+	$(CC) $(CFLAGS) -egifdiff $(GIFDIFF_OBJS)
+
+clp.obj: ..\config.h ..\include\lcdf\clp.h clp.c
+
+fmalloc.obj: ..\config.h fmalloc.c
+
+giffunc.obj: ..\config.h giffunc.c ..\include\lcdfgif\gif.h
+gifread.obj: ..\config.h gifread.c ..\include\lcdfgif\gif.h
+gifwrite.obj: ..\config.h gifwrite.c ..\include\lcdfgif\gif.h
+ungifwrt.obj: ..\config.h ungifwrt.c ..\include\lcdfgif\gif.h
+gifunopt.obj: ..\config.h gifunopt.c ..\include\lcdfgif\gif.h
+
+merge.obj: ..\config.h gifsicle.h merge.c
+optimize.obj: ..\config.h gifsicle.h optimize.c
+quantize.obj: ..\config.h gifsicle.h quantize.c
+support.obj: ..\config.h gifsicle.h support.c
+xform.obj: ..\config.h gifsicle.h xform.c
+gifsicle.obj: ..\config.h gifsicle.h gifsicle.c
+
+..\config.h: win32cfg.h
+	copy win32cfg.h ..\config.h
+
+clean:
+	del *.obj
+	del *.exe
+	del *.tds
+	

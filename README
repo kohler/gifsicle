@@ -78,10 +78,17 @@ unpack the distribution, change into its "src" directory, and type
 
 	nmake -f Makefile.w32
 
-Gifview will not be built. You will need to edit `Makefile.w32' if you are
-building ungifsicle, or if you are not compiling with a Microsoft compiler.
-You can edit it with any text editor (like Notepad). See the file for more
-information.
+Gifview will not be built. 
+
+   Stephen Schnipsel <schnipsel@m4f.net> provided an altered Makefile for
+building gifsicle on Windows using Borland C++. Unpack the distribution,
+change into its "src" directory, and type
+
+	nmake -f Makefile.bcc
+
+   You will need to edit one of these Makefiles if you are building
+ungifsicle, or if you are compiling with a different compiler. You can edit
+it with any text editor (like Notepad). See the file for more information.
 
 CHANGES
 -------

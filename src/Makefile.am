@@ -28,4 +28,4 @@ gifdiff_SOURCES = clp.c \
 INCLUDES = $(X_CFLAGS) -I$(top_srcdir)/include
 
 EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c gifwrite.c ungifwrt.c \
-	Makefile.w32 win32cfg.h
+	Makefile.bcc Makefile.w32 win32cfg.h
