@@ -4,8 +4,8 @@ Version 1.30   27.Jul.2001
 
 * Fixed bug in ungif code: Writing a large ungif could corrupt memory,
   leading eventually to bad output. This bug has been present since
-  Gifsicle could write ungifs! Bad files and assistance provided by and
-  Jeff Brown <jabrown@ipn.caida.org>.
+  Gifsicle could write ungifs! Bad files and assistance provided by Jeff
+  Brown <jabrown@ipn.caida.org>.
 
 
 Version 1.29   22.May.2001
