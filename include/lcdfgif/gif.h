@@ -1,19 +1,19 @@
-/* gif.h - Interface to the GIF library.
+/* gif.h - Interface to the LCDF GIF library.
    Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of the GIF library.
+   This file is part of the LCDF GIF library.
    
-   The GIF library is free software*. It is distributed under the GNU General
-   Public License, version 2 or later; you can copy, distribute, or alter it
-   at will, as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied.
+   The LCDF GIF library is free software*. It is distributed under the GNU
+   General Public License, version 2 or later; you can copy, distribute, or
+   alter it at will, as long as this notice is kept intact and this source
+   code is made available. There is no warranty, express or implied.
    
    *There is a patent on the LZW compression method used by GIFs, and included
    in gifwrite.c. Unisys, the patent holder, allows the compression algorithm
    to be used without a license in software distributed at no cost to the
    user. The decompression algorithm is not patented. */
 
-#ifndef GIF_H /* -*- mode: c -*- */
-#define GIF_H
+#ifndef LCDF_GIF_H /* -*- mode: c -*- */
+#define LCDF_GIF_H
 #ifndef __cplusplus
 # include <stdio.h>
 # include <stdlib.h>
@@ -23,17 +23,12 @@
 extern "C" {
 #endif
 
-/* NOTE: You should define the types uint16_t and uint32_t before #including
-   this file, probably by #including <inttypes.h>. */
+/* NOTE: You should define the types uint8_t, uint16_t and uint32_t before
+   including this file, probably by #including <inttypes.h>. */
 
 #define GIF_MAJOR_VERSION	1
-#define GIF_MINOR_VERSION	4
-#define GIF_VERSION		"1.4"
-
-#ifndef BYTE
-#define BYTE
-typedef unsigned char byte;
-#endif
+#define GIF_MINOR_VERSION	5
+#define GIF_VERSION		"1.5"
 
 typedef struct Gif_Stream	Gif_Stream;
 typedef struct Gif_Image	Gif_Image;
@@ -47,25 +42,25 @@ typedef struct Gif_Record	Gif_Record;
 
 struct Gif_Stream {
   
-  Gif_Colormap *global;
-  byte background;
+    Gif_Colormap *global;
+    uint8_t background;
   
-  uint16_t screen_width;
-  uint16_t screen_height;
-  long loopcount;		/* -1 means no loop count */
+    uint16_t screen_width;
+    uint16_t screen_height;
+    long loopcount;		/* -1 means no loop count */
   
-  Gif_Comment *comment;
+    Gif_Comment *comment;
   
-  Gif_Image **images;
-  int nimages;
-  int imagescap;
+    Gif_Image **images;
+    int nimages;
+    int imagescap;
   
-  Gif_Extension *extensions;
+    Gif_Extension *extensions;
   
-  unsigned errors;
-  
-  int userflags;
-  int refcount;
+    unsigned errors;
+    
+    int userflags;
+    int refcount;
   
 };
 
@@ -87,32 +82,32 @@ int		Gif_Unoptimize(Gif_Stream *);
 
 struct Gif_Image {
   
-  char *identifier;
-  Gif_Comment *comment;
+    char *identifier;
+    Gif_Comment *comment;
   
-  Gif_Colormap *local;
-  short transparent;		/* -1 means no transparent index */
+    Gif_Colormap *local;
+    short transparent;		/* -1 means no transparent index */
   
-  uint16_t delay;
-  byte disposal;
-  uint16_t left;
-  uint16_t top;
+    uint16_t delay;
+    uint8_t disposal;
+    uint16_t left;
+    uint16_t top;
   
-  uint16_t width;
-  uint16_t height;
+    uint16_t width;
+    uint16_t height;
   
-  byte interlace;
-  byte **img;			/* img[y][x] == image byte (x,y) */
-  byte *image_data;
-  void (*free_image_data)(void *);
+    uint8_t interlace;
+    uint8_t **img;		/* img[y][x] == image byte (x,y) */
+    uint8_t *image_data;
+    void (*free_image_data)(void *);
   
-  uint32_t compressed_len;
-  byte *compressed;
-  void (*free_compressed)(void *);
+    uint32_t compressed_len;
+    uint8_t *compressed;
+    void (*free_compressed)(void *);
   
-  void *user_data;
-  void (*free_user_data)(void *);
-  int refcount;
+    void *user_data;
+    void (*free_user_data)(void *);
+    int refcount;
   
 };
 
@@ -146,7 +141,7 @@ int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
 int		Gif_FullCompressImage(Gif_Stream *, Gif_Image *, int);
 void		Gif_ReleaseUncompressedImage(Gif_Image *);
 void		Gif_ReleaseCompressedImage(Gif_Image *);
-int		Gif_SetUncompressedImage(Gif_Image *, byte *data,
+int		Gif_SetUncompressedImage(Gif_Image *, uint8_t *data,
 			void (*free_data)(void *), int data_interlaced);
 int		Gif_CreateUncompressedImage(Gif_Image *);
 
@@ -157,23 +152,23 @@ int		Gif_ClipImage(Gif_Image *, int l, int t, int w, int h);
 
 typedef struct {
   
-  byte haspixel;
-  byte red;
-  byte green;
-  byte blue;
+    uint8_t haspixel;
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
   
-  uint32_t pixel;
+    uint32_t pixel;
   
 } Gif_Color;
 
 
 struct Gif_Colormap {
   
-  int ncol;
-  int capacity;
-  uint32_t userflags;
-  int refcount;
-  Gif_Color *col;
+    int ncol;
+    int capacity;
+    uint32_t userflags;
+    int refcount;
+    Gif_Color *col;
   
 };
 
@@ -194,10 +189,10 @@ int		Gif_AddColor(Gif_Colormap *, Gif_Color *, int look_from);
 /** GIF_COMMENT **/
 
 struct Gif_Comment {
-  char **str;
-  int *len;
-  int count;
-  int cap;
+    char **str;
+    int *len;
+    int count;
+    int cap;
 };
 
 Gif_Comment *	Gif_NewComment(void);
@@ -210,15 +205,15 @@ int		Gif_AddComment(Gif_Comment *, const char *, int);
 
 struct Gif_Extension {
   
-  int kind;			/* negative kinds are reserved */
-  char *application;
-  byte *data;
-  uint32_t length;
-  int position;
+    int kind;			/* negative kinds are reserved */
+    char *application;
+    uint8_t *data;
+    uint32_t length;
+    int position;
   
-  Gif_Stream *stream;
-  Gif_Extension *next;
-  void (*free_data)(void *);
+    Gif_Stream *stream;
+    Gif_Extension *next;
+    void (*free_data)(void *);
   
 };
 
@@ -232,8 +227,8 @@ Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
 /** READING AND WRITING **/
 
 struct Gif_Record {
-  const unsigned char *data;
-  uint32_t length;
+    const unsigned char *data;
+    uint32_t length;
 };
 
 #define GIF_READ_COMPRESSED		1

@@ -15,7 +15,7 @@
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "gif.h"
+#include <lcdfgif/gif.h>
 #include <assert.h>
 #include <string.h>
 #ifdef __cplusplus

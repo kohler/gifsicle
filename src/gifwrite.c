@@ -20,7 +20,7 @@
 /* Assume we don't have inline by default */
 # define inline
 #endif
-#include "gif.h"
+#include <lcdfgif/gif.h>
 #include <stdarg.h>
 #include <string.h>
 #ifdef __cplusplus

@@ -1,18 +1,18 @@
-#ifndef GIFX_H
-#define GIFX_H
-#include "gif.h"
+#ifndef LCDF_GIFX_H
+#define LCDF_GIFX_H
+#include <lcdfgif/gif.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* gifx.h - Functions to turn GIFs in memory into X Pixmaps.
    Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of the GIF library.
+   This file is part of the LCDF GIF library.
 
-   The GIF library is free software*. It is distributed under the GNU General
-   Public License, version 2 or later; you can copy, distribute, or alter it
-   at will, as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied.
+   The LCDF GIF library is free software*. It is distributed under the GNU
+   General Public License, version 2 or later; you can copy, distribute, or
+   alter it at will, as long as this notice is kept intact and this source
+   code is made available. There is no warranty, express or implied.
 
    *There is a patent on the LZW compression method used by GIFs, and included
    in gifwrite.c. Unisys, the patent holder, allows the compression algorithm
@@ -29,27 +29,27 @@ typedef struct Gif_XColormap Gif_XColormap;
 
 struct Gif_XContext {
   
-  Display *display;
-  int screen_number;
-  Drawable drawable;
-  Visual *visual;
-  uint16_t depth;
-  uint16_t ncolormap;
-  Colormap colormap;
+    Display *display;
+    int screen_number;
+    Drawable drawable;
+    Visual *visual;
+    uint16_t depth;
+    uint16_t ncolormap;
+    Colormap colormap;
   
-  uint16_t nclosest;
-  Gif_Color *closest;
+    uint16_t nclosest;
+    Gif_Color *closest;
+    
+    int free_deleted_colormap_pixels;
+    Gif_XColormap *xcolormap;
   
-  int free_deleted_colormap_pixels;
-  Gif_XColormap *xcolormap;
+    GC image_gc;
+    GC mask_gc;
   
-  GC image_gc;
-  GC mask_gc;
-  
-  unsigned long transparent_pixel;
-  unsigned long foreground_pixel;
-  int refcount;
-  
+    unsigned long transparent_pixel;
+    unsigned long foreground_pixel;
+    int refcount;
+    
 };
 
 
