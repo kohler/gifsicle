@@ -40,6 +40,9 @@ typedef struct {
   byte *maximage;
   
   unsigned decodepos;
+
+  Gif_ReadErrorHandler handler;
+  void *handler_thunk;
   
 } Gif_Context;
 
@@ -125,6 +128,15 @@ make_data_reader(Gif_Reader *grr, byte *data, u_int32_t length)
 }
 
 
+static void
+gif_read_error(Gif_Context *gfc, const char *error)
+{
+  gfc->stream->errors++;
+  if (gfc->handler)
+    gfc->handler(error, gfc->stream->nimages, gfc->handler_thunk);
+}
+
+
 static byte
 one_code(Gif_Context *gfc, Gif_Code code)
 {
@@ -133,11 +145,11 @@ one_code(Gif_Context *gfc, Gif_Code code)
   byte *ptr;
   int lastsuffix;
   u_int16_t codelength = gfc->length[code];
-  
+
   gfc->decodepos += codelength;
   ptr = gfc->image + gfc->decodepos;
   if (ptr > gfc->maximage || !codelength) {
-    gfc->stream->errors++;
+    gif_read_error(gfc, (!codelength ? "bad code" : "too much image data"));
     /* 5/26/98 It's not good enough simply to count an error, because in the
        read_image_data function, if code == next_code, we will store a byte in
        gfc->image[gfc->decodepos-1]. Thus, fix decodepos so it's w/in the
@@ -206,24 +218,24 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   Gif_Code clear_code;
   Gif_Code eoi_code;
   Gif_Code next_code;
-  Gif_Code max_code;
+#define CUR_BUMP_CODE (1 << bits_needed)
+#define CUR_CODE_MASK ((1 << bits_needed) - 1)
   
   int min_code_size;
   int bits_needed;
-  Gif_Code codemask;
-
-  u_int32_t ncodes = 0;
   
   gfc->decodepos = 0;
   
   min_code_size = gifgetbyte(grr);
   GIF_DEBUG(("min_code_size(%d)", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
-    gfc->stream->errors++;
+    gif_read_error(gfc, "min_code_size too big");
     min_code_size = GIF_MAX_CODE_BITS - 1;
+  } else if (min_code_size < 2) {
+    gif_read_error(gfc, "min_code_size too small");
+    min_code_size = 2;
   }
   clear_code = 1 << min_code_size;
-  codemask = 0;
   for (code = 0; code < clear_code; code++) {
     gfc->prefix[code] = 49428;
     gfc->suffix[code] = (byte)code;
@@ -232,8 +244,6 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   eoi_code = clear_code + 1;
   
   next_code = eoi_code;
-  max_code = clear_code << 1;
-  codemask = clear_code | (clear_code - 1);
   bits_needed = min_code_size + 1;
   
   code = clear_code;
@@ -260,23 +270,21 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       if (!read_image_block(grr, buffer, &bit_position, &bit_length,
 			    bits_needed))
 	goto zero_length_block;
-      
+    
     i = bit_position / 8;
     accum = buffer[i] + (buffer[i+1] << 8);
     if (bits_needed >= 8)
       accum |= (buffer[i+2]) << 16;
-    code = (Gif_Code)((accum >> (bit_position % 8)) & codemask);
+    code = (Gif_Code)((accum >> (bit_position % 8)) & CUR_CODE_MASK);
     bit_position += bits_needed;
     
     GIF_DEBUG(("code(%d)", code));
-    ncodes++;
+    
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
     if (code == clear_code) {
       bits_needed = min_code_size + 1;
       next_code = eoi_code;
-      max_code = clear_code << 1;
-      codemask = clear_code | (clear_code - 1);
       continue;
       
     } else if (code == eoi_code)
@@ -289,7 +297,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 	 to 0 to prevent errors later. (If we didn't zero code, we'd later set
 	 old_code = code; then we had old_code >= next_code; so the prefixes
 	 array got all screwed up!) */
-      gfc->stream->errors++;
+      gif_read_error(gfc, "unexpected code");
       code = 0;
     }
     
@@ -316,12 +324,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
        when we're reading at the end of a GIF) */
     if (next_code != clear_code) {
       next_code++;
-      if (next_code == max_code) {
-	if (bits_needed < GIF_MAX_CODE_BITS) {
+      if (next_code == CUR_BUMP_CODE) {
+	if (bits_needed < GIF_MAX_CODE_BITS)
 	  bits_needed++;
-	  max_code <<= 1;
-	  codemask = (codemask << 1) | 1;
-	} else
+	else
 	  next_code = clear_code;
       }
     }
@@ -340,9 +346,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   /* zero-length block reached. */
  zero_length_block:
   
-  if (gfc->image + gfc->decodepos != gfc->maximage)
-    /* Not enough data, or too much data, was read. */
-    gfc->stream->errors++;
+  if (gfc->image + gfc->decodepos < gfc->maximage)
+    gif_read_error(gfc, "not enough image data for image size");
+  else if (gfc->image + gfc->decodepos > gfc->maximage)
+    gif_read_error(gfc, "too much image data for image size");
 }
 
 
@@ -475,7 +482,7 @@ uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
 
 
 int
-Gif_UncompressImage(Gif_Image *gfi)
+Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
 {
   Gif_Context gfc;
   Gif_Stream fake_gfs;
@@ -496,6 +503,8 @@ Gif_UncompressImage(Gif_Image *gfi)
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
   gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
+  gfc.handler = h;
+  gfc.handler_thunk = hthunk;
   
   if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
@@ -535,7 +544,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
   if (read_flags & GIF_READ_COMPRESSED) {
     if (!read_compressed_image(gfi, grr, read_flags))
       return 0;
-    if (read_flags & GIF_READ_UNCOMPRESSED || 1) {
+    if (read_flags & GIF_READ_UNCOMPRESSED) {
       Gif_Reader new_grr;
       make_data_reader(&new_grr, gfi->compressed, gfi->compressed_len);
       if (!uncompress_image(gfc, gfi, &new_grr))
@@ -561,7 +570,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
 
 
 static void
-read_graphic_control_extension(Gif_Stream *gfs, Gif_Image *gfi,
+read_graphic_control_extension(Gif_Context *gfc, Gif_Image *gfi,
 			       Gif_Reader *grr)
 {
   byte len;
@@ -580,13 +589,13 @@ read_graphic_control_extension(Gif_Stream *gfs, Gif_Image *gfi,
   }
   
   if (len > 0) {
-    gfs->errors++;
+    gif_read_error(gfc, "odd graphic extension format");
     gifgetblock(crap, len, grr);
   }
   
   len = gifgetbyte(grr);
   while (len > 0) {
-    gfs->errors++;
+    gif_read_error(gfc, "odd graphic extension format");
     gifgetblock(crap, len, grr);
     len = gifgetbyte(grr);
   }
@@ -657,9 +666,10 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
 
 
 static int
-read_application_extension(Gif_Stream *gfs, Gif_Image *gfi, int position,
+read_application_extension(Gif_Context *gfc, Gif_Image *gfi, int position,
 			   Gif_Reader *grr)
 {
+  Gif_Stream *gfs = gfc->stream;
   byte buffer[GIF_MAX_BLOCK + 1];
   byte len = gifgetbyte(grr);
   gifgetblock(buffer, len, grr);
@@ -672,9 +682,9 @@ read_application_extension(Gif_Stream *gfs, Gif_Image *gfi, int position,
       gifgetbyte(grr); /* throw away the 1 */
       gfs->loopcount = gifgetunsigned(grr);
       len = gifgetbyte(grr);
-      if (len) gfs->errors++;
+      if (len) gif_read_error(gfc, "bad loop extension");
     } else
-      gfs->errors++;
+      gif_read_error(gfc, "bad loop extension");
     
     while (len > 0) {
       gifgetblock(buffer, len, grr);
@@ -706,7 +716,8 @@ read_comment_extension(Gif_Image *gfi, Gif_Reader *grr)
 
 
 static Gif_Stream *
-read_gif(Gif_Reader *grr, int read_flags)
+read_gif(Gif_Reader *grr, int read_flags,
+	 Gif_ReadErrorHandler handler, void *handler_thunk)
 {
   Gif_Stream *gfs;
   Gif_Image *gfi;
@@ -730,6 +741,8 @@ read_gif(Gif_Reader *grr, int read_flags)
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE);
   gfc.length = Gif_NewArray(u_int16_t, GIF_MAX_CODE);
+  gfc.handler = handler;
+  gfc.handler_thunk = handler_thunk;
   
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
@@ -779,7 +792,7 @@ read_gif(Gif_Reader *grr, int read_flags)
       switch (block) {
 	
        case 0xF9:
-	read_graphic_control_extension(gfs, gfi, grr);
+	read_graphic_control_extension(&gfc, gfi, grr);
 	break;
 	
        case 0xCE:
@@ -791,7 +804,7 @@ read_gif(Gif_Reader *grr, int read_flags)
 	break;
 	
        case 0xFF:
-	read_application_extension(gfs, gfi, extension_position, grr);
+	read_application_extension(&gfc, gfi, extension_position, grr);
 	break;
 	
        default:
@@ -802,7 +815,7 @@ read_gif(Gif_Reader *grr, int read_flags)
       break;
       
      default:
-      gfs->errors++;
+      gif_read_error(&gfc, "unknown block type");
       break;
       
     }
@@ -830,7 +843,8 @@ read_gif(Gif_Reader *grr, int read_flags)
 
 
 Gif_Stream *
-Gif_FullReadFile(FILE *f, int read_flags)
+Gif_FullReadFile(FILE *f, int read_flags,
+		 Gif_ReadErrorHandler h, void *hthunk)
 {
   Gif_Reader grr;
   if (!f) return 0;
@@ -839,18 +853,19 @@ Gif_FullReadFile(FILE *f, int read_flags)
   grr.byte_getter = file_byte_getter;
   grr.block_getter = file_block_getter;
   grr.eofer = file_eofer;
-  return read_gif(&grr, read_flags);
+  return read_gif(&grr, read_flags, h, hthunk);
 }
 
 Gif_Stream *
-Gif_FullReadRecord(Gif_Record *gifrec, int read_flags)
+Gif_FullReadRecord(Gif_Record *gifrec, int read_flags,
+		   Gif_ReadErrorHandler h, void *hthunk)
 {
   Gif_Reader grr;
   if (!gifrec) return 0;
   make_data_reader(&grr, gifrec->data, gifrec->length);
   if (read_flags & GIF_READ_CONST_RECORD)
     read_flags |= GIF_READ_COMPRESSED;
-  return read_gif(&grr, read_flags);
+  return read_gif(&grr, read_flags, h, hthunk);
 }
 
 

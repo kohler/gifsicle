@@ -23,8 +23,8 @@ extern "C" {
    this file, probably by #including <sys/types.h>. */
   
 #define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	999
-#define GIF_VERSION		"0.999"
+#define GIF_MINOR_VERSION	9999
+#define GIF_VERSION		"0.9999"
 
 #ifndef BYTE
 #define BYTE
@@ -132,8 +132,11 @@ int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
 #define		Gif_ImageDelay(gfi)		((gfi)->delay)
 #define		Gif_ImageUserData(gfi)		((gfi)->userdata)
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
+  
+typedef		void (*Gif_ReadErrorHandler)(const char *, int, void *);
 
-int		Gif_UncompressImage(Gif_Image *);
+#define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
+int		Gif_FullUncompressImage(Gif_Image*,Gif_ReadErrorHandler,void*);
 int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
 void		Gif_ReleaseUncompressedImage(Gif_Image *);
 void		Gif_ReleaseCompressedImage(Gif_Image *);
@@ -232,11 +235,13 @@ struct Gif_Record {
 #define GIF_READ_UNCOMPRESSED		(4)
 #define GIF_READ_CONST_RECORD		(8)
 
-#define		Gif_ReadFile(f)   Gif_FullReadFile((f), GIF_READ_UNCOMPRESSED)
-#define		Gif_ReadRecord(r) Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED)
+#define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)
+#define	Gif_ReadRecord(r)	Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED,0,0)
 
-Gif_Stream *	Gif_FullReadFile(FILE *, int read_flags);
-Gif_Stream *	Gif_FullReadRecord(Gif_Record *, int read_flags);
+Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
+				 void *);
+Gif_Stream *	Gif_FullReadRecord(Gif_Record *, int flags,
+				   Gif_ReadErrorHandler, void *);
 int 		Gif_WriteFile(Gif_Stream *, FILE *);
 
 

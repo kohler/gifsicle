@@ -30,9 +30,9 @@ extern "C" {
 
 /* 1.Aug.1999 - Removed code hashing in favor of an adaptive tree strategy
    based on Whirlgif-3.04, written by Hans Dinsen-Hansen <dino@danbbs.dk>. Mr.
-   Dinsen-Hansen brought the adaptive tree strategy to my attention and
-   convinced me at length that it was better than hashing. In fact, he was
-   right: it runs a lot faster and is deterministic.
+   Dinsen-Hansen brought the adaptive tree strategy to my attention and argued
+   at length that it was better than hashing. In fact, he was right: it runs a
+   lot faster. However, it does NOT create "better" results in any way.
    
    Each code is represented by a Node. The Nodes form a tree with variable
    fan-out -- up to `clear_code' children per Node. There are two kinds of
@@ -207,7 +207,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     
     /*****
      * Output `output_code' to the data stream. */
-    
+
     leftover |= output_code << bits_left_over;
     bits_left_over += cur_code_bits;
     while (bits_left_over >= 8) {
