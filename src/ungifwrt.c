@@ -23,9 +23,9 @@ extern "C" {
 #define WRITE_BUFFER_SIZE	255
 
 typedef struct Gif_Context {
-
+  
   Gif_Code *rle_next;
-
+  
 } Gif_Context;
 
 typedef struct Gif_Writer {
@@ -159,16 +159,12 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
       next_code = eoi_code + 1;
       bump_code = clear_code << 1;
       
-    } else if (next_code > bump_code) {
+    } else if (next_code == bump_code) {
       
-      /* bump up compression size */
-      if (cur_code_bits == GIF_MAX_CODE_BITS) {
-	output_code = clear_code;
-	continue;
-      } else {
-	cur_code_bits++;
-	bump_code <<= 1;
-      }
+      /* never bump up compression size -- keep cur_code_bits small by
+         generating clear_codes */
+      output_code = clear_code;
+      continue;
       
     } else if (output_code == eoi_code)
       break;
