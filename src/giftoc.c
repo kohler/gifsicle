@@ -1,4 +1,9 @@
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+#ifndef PATHNAME_SEPARATOR
+# define PATHNAME_SEPARATOR '/'
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -137,9 +142,10 @@ main(int argc, char **argv)
     else if (!strcmp(argv[0], "-dir") && argc > 1) {
       directory = argv[1], argc -= 2, argv += 2;
       /* make sure directory is slash-terminated */
-      if (directory[ strlen(directory) - 1 ] != '/' && directory[0]) {
+      if (directory[ strlen(directory) - 1 ] != PATHNAME_SEPARATOR
+	  && directory[0]) {
 	char *ndirectory = (char *)fmalloc(strlen(directory) + 2);
-	sprintf(ndirectory, "%s/", directory);
+	sprintf(ndirectory, "%s%c", directory, PATHNAME_SEPARATOR);
 	directory = ndirectory;
       }
     } else
@@ -174,7 +180,7 @@ or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
     
     if (make_name) {
       char *sin, *sout;
-      sin = strrchr(file_name, '/') + 1;
+      sin = strrchr(file_name, PATHNAME_SEPARATOR) + 1;
       if (!sin) sin = file_name;
       sout = rec_name = (char *)fmalloc(strlen(sin) + 2);
       if (isdigit(*sin)) *sout++ = 'N';
