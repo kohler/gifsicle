@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.6   23.Nov.1998
+
+* A frame extracted from the middle of an animation will now have the
+  animation's screen size. Problem reported by Mr. Moose
+  <mrmoose@execpc.com>.
+
+
 Version 1.5   27.Sep.1998
 
 * `--help' now prints on stdout, as according to the GNU standards.
@@ -78,9 +85,9 @@ Version 1.3b1   2.Aug.1998
   - Made the `-O2' heuristic better. Some other small changes and
     improvements here and there.
 
-  - The optimizer has been pretty extensively tested using `gifdiff'.
+  - The optimizer has been pretty extensively tested using gifdiff.
 
-* New program: `gifdiff' compares two GIFs for identical appearance. It is
+* New program: gifdiff compares two GIFs for identical appearance. It is
   not built unless you give the `--enable-gifdiff' option to `./configure'.
   It's probably not useful unless you're testing a GIF optimizer.
 
@@ -103,8 +110,8 @@ Version 1.2.1   8.Jun.1998
 
 Version 1.2   28.May.1998
 
-* Fixed small bug with the interaction between per-frame options (--name,
-  --comment) and frame selections.
+* Fixed small bug with the interaction between per-frame options (`--name',
+  `--comment') and frame selections.
 
 * Fixed bad bug in merge: If a global colormap from the source needed to be
   dumped into a local colormap in the destination, the pixel map was wrong,
@@ -133,19 +140,20 @@ Version 1.2b6   25.May.1998
 
 * License clarification in README.
 
-* GIF comments are now printed out more carefully in --info: binary characters
-  appear as backslash escapes. (Literal backslashes are printed as `\\'.)
+* GIF comments are now printed out more carefully in `--info': binary
+  characters appear as backslash escapes. (Literal backslashes are printed
+  as `\\'.)
 
-* New --extension-info/--xinfo option.
+* New `--extension-info/--xinfo' option.
 
-* Removed spurious warning about local colormaps when a --colors option is in
-  effect.
+* Removed spurious warning about local colormaps when a `--colors' option
+  is in effect.
 
 * Replacing a named frame with another image now keeps the name by default.
 
-* Many changes to gifview. Added --animate, --display, --geometry, --name,
-  --help options, keystrokes, multiple GIFs on the command line, and a manual
-  page.
+* Many changes to gifview. Added `--animate', `--display', `--geometry',
+  `--name', `--help' options, keystrokes, multiple GIFs on the command
+  line, and a manual page.
 
 
 Version 1.2b5	12.May.1998
@@ -154,33 +162,33 @@ Version 1.2b5	12.May.1998
   caused strange behavior when later optimizing, as the underlying data
   wasn't deinterlaced.
 
-* Further improvements in optimizer; specifically, -O2 works better now --
-  it uses actual image data to look for an unused pixel value when
+* Further improvements in optimizer; specifically, `-O2' works better now
+  -- it uses actual image data to look for an unused pixel value when
   there's no transparency specified.
 
 
 Version 1.2b4	12.May.1998
 
-* Improved --optimize's performance on images where successive frames had
+* Improved `--optimize's performance on images where successive frames had
   different transparent color indexes.
 
 
 Version 1.2b3	11.May.1998
 
-* Fixed bugs in --unoptimize: it would try to unoptimize images with local
-  color tables and some transparency manipulations could cause a silent
-  failure (example: 2 colors; frame 0 = [*11], frame 1 = [*0*], where * is
-  a transparent pixel. Unoptimized, frame 1 should contain [*01] -- but this
-  can't be expressed with only 2 colors.)
+* Fixed bugs in `--unoptimize': it would try to unoptimize images with
+  local color tables and some transparency manipulations could cause a
+  silent failure (example: 2 colors; frame 0 = [*11], frame 1 = [*0*],
+  where * is a transparent pixel. Unoptimized, frame 1 should contain [*01]
+  -- but this can't be expressed with only 2 colors.)
 
-* Greatly improved --optimize's performance on some images by changing the
-  way frames were switched to --disposal=background. Problem noticed by
+* Greatly improved `--optimize's performance on some images by changing the
+  way frames were switched to `--disposal=background'. Problem noticed by
   David Hedbor <david@hedbor.org>
 
 * Documentation improvements.
 
 * Unrecognized extensions are now passed through without change. The
-  --no-extensions option (currently undocumented) removes all
+  `--no-extensions' option (currently undocumented) removes all
   unrecognized extensions.
 
 * Bug fix in gifview: frame selections now prevent display of entire GIF.
@@ -229,19 +237,17 @@ Version 1.0	21.Jun.1997
 
 * Added `--output/-o' option to specify output filename.
 
-* Slight behavior change: Now, if you --replace a frame
-  (say frame #2), its delay value will be preserved in the
-  replacement frame, unless you give an explicit delay.
-  (Before, the replacement frame's delay would be used,
-  which was probably 0.) 
+* Slight behavior change: Now, if you replace a frame (say frame #2), its
+  delay value will be preserved in the replacement frame, unless you give
+  an explicit delay. (Before, the replacement frame's delay would be used,
+  which was probably 0.)
 
 
 Version 0.91	15.Jun.1997
 
-* Bug fix: `--optimize' didn't handle the bottom row of
-  an image's changed area correctly. This could lead to
-  incorrect animations.
-  Specific change: merge.c line 744: was y < fbt, now y <= fbt.
+* Bug fix: `--optimize' didn't handle the bottom row of an image's changed
+  area correctly. This could lead to incorrect animations. Specific change:
+  merge.c line 744: was y < fbt, now y <= fbt.
 
 * Added `-S' as synonym for `--logical-screen'. 
 

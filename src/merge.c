@@ -163,9 +163,6 @@ merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments)
   if (src->global)
     unmark_colors_2(src->global);
   
-  /* Don't actually set the screen width & height. This won't actually result
-     in bad behavior when extracting a frame from an image, since `left' and
-     `top' will still be available. */
   if (dest->loopcount < 0)
     dest->loopcount = src->loopcount;
   

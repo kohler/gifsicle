@@ -997,7 +997,7 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, Gt_Frame *fr,
   byte **img = gfi->img;
   byte *new_data = Gif_NewArray(byte, width * height);
   byte *trav = new_data;
-
+  
   if (fr->rotation == 1) {
     for (x = 0; x < width; x++)
       for (y = height - 1; y >= 0; y--)
@@ -1014,7 +1014,7 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, Gt_Frame *fr,
     gfi->top = screen_width - (gfi->left + width);
     gfi->left = y;
   }
-
+  
   /* If this is the first frame, set the frame's screen width & height as the
      flipped screen height & width. This ensures that if a single rotated
      frame is output, its logical screen will be rotated too. */
@@ -1031,23 +1031,43 @@ do_rotate(Gif_Image *gfi, int screen_width, int screen_height, Gt_Frame *fr,
 
 
 static void
-handle_flips(Gif_Image *desti, Gt_Frame *fr, int first_image)
+handle_screen(Gif_Stream *dest, u_int16_t width, u_int16_t height)
+{
+  /* Set the screen width & height, if the current input width and height are
+     larger */
+  if (dest->screen_width < width)
+    dest->screen_width = width;
+  if (dest->screen_height < height)
+    dest->screen_height = height;
+}
+
+static void
+handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
+		       Gt_Frame *fr, int first_image)
 {
   Gif_Stream *gfs = fr->stream;
-  Gif_CalculateScreenSize(gfs, 0);
+
+  u_int16_t screen_width = gfs->screen_width;
+  u_int16_t screen_height = gfs->screen_height;
   
   if (fr->flip_horizontal)
-    do_flip(desti, gfs->screen_width, gfs->screen_height, 0);
+    do_flip(desti, screen_width, screen_height, 0);
   if (fr->flip_vertical)
-    do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
-
+    do_flip(desti, screen_width, screen_height, 1);
+  
   if (fr->rotation == 1)
-    do_rotate(desti, gfs->screen_width, gfs->screen_height, fr, first_image);
+    do_rotate(desti, screen_width, screen_height, fr, first_image);
   else if (fr->rotation == 2) {
-    do_flip(desti, gfs->screen_width, gfs->screen_height, 0);
-    do_flip(desti, gfs->screen_width, gfs->screen_height, 1);
+    do_flip(desti, screen_width, screen_height, 0);
+    do_flip(desti, screen_width, screen_height, 1);
   } else if (fr->rotation == 3)
-    do_rotate(desti, gfs->screen_width, gfs->screen_height, fr, first_image);
+    do_rotate(desti, screen_width, screen_height, fr, first_image);
+  
+  /* handle screen size, which might have height & width exchanged */
+  if (fr->rotation == 1 || fr->rotation == 3)
+    handle_screen(dest, screen_height, screen_width);
+  else
+    handle_screen(dest, screen_width, screen_height);
 }
 
 
@@ -1062,6 +1082,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   
   global->ncol = 0;
   dest->global = global;
+  /* 11/23/98 A new stream's screen size is 0x0; we'll use the max of the
+     merged-together streams' screen sizes by default (in merge_stream()) */
   
   if (f2 < 0) f2 = fset->count - 1;
   nmerger = 0;
@@ -1077,6 +1099,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   for (i = 0; i < nmerger; i++) {
     if (merger[i]->stream->userflags) {
       Gif_Stream *src = merger[i]->stream;
+      Gif_CalculateScreenSize(src, 0);
       /* merge_stream() unmarks the global colormap */
       merge_stream(dest, src, merger[i]->no_comments);
       src->userflags = 0;
@@ -1140,7 +1163,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       srci = fr->image;
       Gif_UncompressImage(srci);
     }
-
+    
     /* It was pretty stupid to remove this code, which I did between 1.2b6 and
        1.2 */
     old_transparent = srci->transparent;
@@ -1154,9 +1177,11 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     
     srci->transparent = old_transparent; /* restore real transparent value */
     
-    /* Flipping and rotating */
+    /* Flipping and rotating, and also setting the screen size */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-      handle_flips(desti, fr, i == 0);
+      handle_flip_and_screen(dest, desti, fr, i == 0);
+    else
+      handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
     
     /* Names and comments */
     if (fr->name || fr->no_name) {
