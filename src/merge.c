@@ -252,7 +252,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   } else {
     imagecm = src->global;
     if (!imagecm)
-      fatal_error("no global or local colormap in source image");
+      fatal_error("no global or local colormap for source image");
   }
   
   mark_colors(imagecm, srci);
@@ -266,7 +266,11 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
 			   srci->transparent, islocal)) {
     localcm = Gif_NewFullColormap(256);
     localcm->ncol = 0;
-    warning("had to use a local colormap");
+    if (warn_local_colormaps == 1) {
+      warning("too many colors, had to use a local colormap");
+      warning("  (you may want to try `--colors 256')");
+      warn_local_colormaps = 2;
+    }
     if (!try_merge_colormaps(dest, localcm, src, imagecm,
 			     srci->transparent, 1))
       fatal_error("can't happen: colormap mixing");
@@ -633,124 +637,6 @@ optimize_fragments(Gif_Stream *gfs, int optimize_trans)
   Gif_DeleteArray(lastdata);
 }
 
-
-/********************************************************/
-
-#if 0
-struct map {
-  long count;
-  int value;
-};
-
-
-static void
-count_image_colors(Gif_Image *gfi, struct map *map)
-{
-  byte *data = gfi->imagedata;
-  byte *enddata = data + gfi->width * gfi->height;
-  for (; data < enddata; data++)
-    map[*data].count++;
-}
-
-
-static int
-qsorter(const void *v1, const void *v2)
-{
-  struct map *m1 = (struct map *)v1;
-  struct map *m2 = (struct map *)v2;
-  return m2->count - m1->count;
-}
-
-
-static void
-calculate_permutation(struct map *map, byte *permuter)
-{
-  int i;
-  qsort(map, 256, sizeof(struct map), qsorter);
-  for (i = 0; i < 256; i++) {
-    fprintf(stderr, "%ld ", map[i].count);
-    permuter[ map[i].value ] = i;
-  }
-}
-
-
-static void
-permute_image(Gif_Image *gfi, byte *permutation)
-{
-  byte *data = gfi->imagedata;
-  byte *enddata = data + gfi->width * gfi->height;
-  for (; data < enddata; data++)
-    *data = permutation[*data];
-  if (gfi->transparent >= 0)
-    gfi->transparent = permutation[gfi->transparent];
-}
-
-
-static void
-permute_colormap(Gif_Colormap *gfcm, byte *permutation)
-{
-  int i;
-  Gif_Colormap *newcm = Gif_NewFullColormap(256);
-  for (i = 0; i < gfcm->ncol; i++) {
-    assert(permutation[i] < gfcm->ncol);
-    newcm->col[ permutation[i] ] = gfcm->col[i];
-  }
-  Gif_DeleteArray(gfcm->col);
-  gfcm->col = newcm->col;
-  newcm->col = 0;
-  Gif_DeleteColormap(newcm);
-}
-
-
-static void
-zero_map(struct map *map)
-{
-  int i;
-  for (i = 0; i < 256; i++) {
-    map[i].count = 0;
-    map[i].value = i;
-  }
-}
-
-
-void
-optimize_colors(Gif_Stream *gfs)
-{
-  struct map map[256];
-  struct map localmap[256];
-  byte permuter[256];
-  long counted_pixels = 0;
-  int counting_global = 1;
-  int i;
-  int wim;
-  
-  zero_map(map);
-  zero_map(localmap);
-  
-  for (wim = 0; wim < gfs->nimages; wim++) {
-    Gif_Image *gfi = gfs->images[wim];
-    if (gfi->local) {
-      zero_map(localmap);
-      count_image_colors(gfi, localmap);
-      calculate_permutation(localmap, permuter);
-      permute_image(gfi, permuter);
-      permute_colormap(gfi->local, permuter);
-    } else if (counting_global) {
-      count_image_colors(gfi, map);
-      counted_pixels += gfi->width * gfi->height;
-      if (counted_pixels < 0) counting_global = 0;
-    }
-  }
-  
-  if (counted_pixels != 0) {
-    calculate_permutation(map, permuter);
-    permute_colormap(gfs->global, permuter);
-    for (wim = 0; wim < gfs->nimages; wim++)
-      if (!gfs->images[wim]->local)
-	permute_image(gfs->images[wim], permuter);
-  }
-}
-#endif
 
 
 /*****

@@ -36,8 +36,11 @@ static int files_given = 0;
 static int optimizing = 0;
 static Gt_ColorChange *color_changes = 0;
 
-static int adaptive_palette_size = 0;
-static int adaptive_palette_algorithm = ADAPTIVE_ALG_DIVERSITY;
+static Gif_Colormap *new_colormap_fixed = 0;
+static int new_colormap_size = 0;
+static int new_colormap_algorithm = COLORMAP_DIVERSITY;
+static int new_colormap_dither = 0;
+int warn_local_colormaps = 1;
 
 #define BLANK_MODE	0
 #define MERGING		1
@@ -89,6 +92,8 @@ static int verbosing = 0;
 #define CHANGE_COLOR_OPT	334
 #define COLORMAP_OPT		335
 #define COLORMAP_ALGORITHM_OPT	336
+#define DITHER_OPT		337
+#define USE_COLORMAP_OPT	338
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -98,20 +103,18 @@ static int verbosing = 0;
 #define POSITION_TYPE		(Clp_MaxDefaultType + 6)
 #define RECTANGLE_TYPE		(Clp_MaxDefaultType + 7)
 #define TWO_COLORS_TYPE		(Clp_MaxDefaultType + 8)
-#define ADAPTIVE_ALG_TYPE	(Clp_MaxDefaultType + 9)
+#define COLORMAP_ALG_TYPE	(Clp_MaxDefaultType + 9)
 
 Clp_Option options[] = {
-  { "algorithm", 0, COLORMAP_ALGORITHM_OPT, ADAPTIVE_ALG_TYPE, 0 },
   { "append", 0, APPEND_OPT, 0, 0 },
   { "batch", 'b', 'b', 0, 0 },
   { "cc", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "colormap", 0, COLORMAP_OPT, Clp_ArgInt, Clp_Negate },
   { "colors", 0, COLORMAP_OPT, Clp_ArgInt,
     Clp_Negate | Clp_LongMinMatch, 3 }, /****/
-  { "color-algorithm", 0, COLORMAP_ALGORITHM_OPT, ADAPTIVE_ALG_TYPE, 0 },
+  { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
   { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
@@ -119,6 +122,7 @@ Clp_Option options[] = {
   { "delay", 'd', 'd', Clp_ArgInt, 0 },
   { "delete", 0, DELETE_OPT, 0, 0 },
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, 0 },
+  { "dither", 0, DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 1 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
@@ -129,6 +133,7 @@ Clp_Option options[] = {
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
   { "merge", 'm', 'm', 0, 0 },
+  { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "name", 'n', NAME_OPT, Clp_ArgString, Clp_Negate },
   { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   { "netscape-workaround", 0, NETSCAPE_WORK_OPT, 0, Clp_Negate },
@@ -151,6 +156,7 @@ Clp_Option options[] = {
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "transparent", 't', 't', COLOR_TYPE, Clp_Negate },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
+  { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
 };
@@ -322,7 +328,7 @@ input_stream(char *name)
   else
     f = fopen(name, "rb");
   if (!f) {
-    error("can't open `%s'", name);
+    error("can't open `%s' for reading", name);
     return;
   }
   
@@ -425,32 +431,59 @@ output_stream(char *output_name, Gif_Stream *gfs)
 
 
 static void
-change_palette(Gif_Stream *gfs)
+do_set_colormap(Gif_Stream *gfs, Gif_Colormap *gfcm)
 {
-  Gif_Color *col = 0;
-  int ncol;
-  int i;
+  colormap_image_func image_func;
+  if (new_colormap_dither)
+    image_func = colormap_image_floyd_steinberg;
+  else
+    image_func = colormap_image_posterize;
+  colormap_stream(gfs, gfcm, image_func);
+}
 
-  if (adaptive_palette_size > 0) {
-    Gif_Color *(*adapt_func)(Gif_Color *, int, int, int *);
-    int nhist;
-    Gif_Color *hist;
 
-    hist = histogram(gfs, &nhist);
-
-    if (adaptive_palette_algorithm == ADAPTIVE_ALG_MEDIAN_CUT)
-      adapt_func = &adaptive_palette_median_cut;
-    else
-      adapt_func = &adaptive_palette_diversity;
-    
-    col = (*adapt_func)(hist, nhist, adaptive_palette_size, &ncol);
-
-    Gif_DeleteArray(hist);
-  }
+static void
+do_colormap_change(Gif_Stream *gfs)
+{
+  if (new_colormap_fixed)
+    do_set_colormap(gfs, new_colormap_fixed);
   
-  for (i = 0; i < ncol; i++)
-    fprintf(stderr, "%3d: #%02X%02X%02X\n", i, col[i].red, col[i].green,
-	    col[i].blue);
+  if (new_colormap_size > 0) {
+    int nhist;
+    Gif_Color *hist = histogram(gfs, &nhist);
+    Gif_Colormap *(*adapt_func)(Gif_Color *, int, int);
+    Gif_Colormap *new_cm;
+    
+    switch (new_colormap_algorithm) {
+      
+     case COLORMAP_DIVERSITY:
+      adapt_func = new_colormap_fixed ? &colormap_flat_diversity
+	: &colormap_blend_diversity;
+      break;
+
+     case COLORMAP_BLEND_DIVERSITY:
+      adapt_func = &colormap_blend_diversity;
+      break;
+
+     case COLORMAP_FLAT_DIVERSITY:
+      adapt_func = &colormap_flat_diversity;
+      break;
+
+     case COLORMAP_MEDIAN_CUT:
+      adapt_func = &colormap_median_cut;
+      break;
+
+     default:
+      fatal_error("can't happen");
+      
+    }
+    
+    new_cm = (*adapt_func)(hist, nhist, new_colormap_size);
+    do_set_colormap(gfs, new_cm);
+    
+    Gif_DeleteArray(hist);
+    Gif_DeleteColormap(new_cm);
+  }
 }
 
 
@@ -463,14 +496,16 @@ do_frames_output(char *outfile, int f1, int f2)
   
   out = merge_frame_interval(frames, f1, f2);
   if (out) {
-    if (adaptive_palette_size > 0)
-      change_palette(out);
+    if (new_colormap_size > 0 || new_colormap_fixed)
+      do_colormap_change(out);
     if (optimizing > 0)
       optimize_fragments(out, optimizing > 1);
     output_stream(outfile, out);
     Gif_DeleteStream(out);
   }
-  
+
+  /* Reset warn_local_colormaps after each GIF is output. */
+  warn_local_colormaps = new_colormap_size || new_colormap_fixed;
   if (verbosing) verbose_close(']');
 }
 
@@ -541,6 +576,56 @@ frame_argument(Clp_Parser *clp, char *arg)
 }
 
 
+static void
+set_new_fixed_colormap(char *name)
+{
+  if (name && strcmp(name, "web") == 0) {
+    Gif_Colormap *cm = Gif_NewFullColormap(216);
+    Gif_Color *col = cm->col;
+    int i;
+    for (i = 0; i < 216; i++) {
+      col[i].red = (i / 36) * 0x33;
+      col[i].green = ((i / 6) % 6) * 0x33;
+      col[i].blue = (i % 6) * 0x33;
+    }
+    new_colormap_fixed = cm;
+     
+  } else {
+    FILE *f;
+    Gif_Stream *gfs;
+    
+    if (name && strcmp(name, "-") == 0)
+      name = 0;
+    if (!name)
+      f = stdin;
+    else
+      f = fopen(name, "rb");
+    if (!f) {
+      error("can't open `%s' for reading", name);
+      return;
+    }
+    
+    name = name ? name : "<stdin>";
+    if (verbosing) verbose_open('<', name);
+    gfs = Gif_ReadFile(f);
+    fclose(f);
+    if (verbosing) verbose_close('>');
+    
+    if (!gfs)
+      error("`%s' doesn't seem to contain a GIF", name);
+    else if (!gfs->global)
+      error("can't use `%s' as a palette (no global color table)", name);
+    else {
+      if (gfs->errors)
+	warning("there were errors reading `%s'", name);
+      new_colormap_fixed = Gif_CopyColormap(gfs->global);
+    }
+
+    Gif_DeleteStream(gfs);
+  }
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -560,11 +645,12 @@ main(int argc, char **argv)
      "previous", 3,
      0);
   Clp_AddStringListType
-    (clp, ADAPTIVE_ALG_TYPE, 0,
-     "diversity", ADAPTIVE_ALG_DIVERSITY,
-     "xv", ADAPTIVE_ALG_DIVERSITY,
-     "median-cut", ADAPTIVE_ALG_MEDIAN_CUT,
-     "mediancut", ADAPTIVE_ALG_MEDIAN_CUT,
+    (clp, COLORMAP_ALG_TYPE, 0,
+     "diversity", COLORMAP_DIVERSITY,
+     "blend-diversity", COLORMAP_BLEND_DIVERSITY,
+     "no-blend-diversity", COLORMAP_FLAT_DIVERSITY,
+     "flat-diversity", COLORMAP_FLAT_DIVERSITY, 
+     "median-cut", COLORMAP_MEDIAN_CUT,
      0);
   Clp_AddType(clp, DIMENSIONS_TYPE, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, parse_position, 0);
@@ -656,7 +742,7 @@ main(int argc, char **argv)
       frame_change_done();
       break;
       
-      /* FRAME OPTIONS */
+      /* IMAGE OPTIONS */
       
      case NAME_OPT:
       if (clp->negated) goto no_names;
@@ -734,6 +820,19 @@ main(int argc, char **argv)
       def_frame.transparent.haspixel = 0;
       break;
       
+     case LOGICAL_SCREEN_OPT:
+      if (clp->negated)
+	def_frame.screen_width = def_frame.screen_height = 0;
+      else {
+	def_frame.screen_width = dimensions_x;
+	def_frame.screen_height = dimensions_y;
+      }
+      break;
+      
+     case SAME_LOGICAL_SCREEN_OPT:
+      def_frame.screen_width = def_frame.screen_height = -1;
+      break;
+      
      case CROP_OPT:
       if (clp->negated) goto no_crop;
       next_frame = 1;
@@ -754,20 +853,6 @@ main(int argc, char **argv)
      case SAME_CROP_OPT:
       next_frame = 1;
       def_frame.crop = 0;
-      break;
-      
-     case CHANGE_COLOR_OPT:
-      next_input = 1;
-      if (clp->negated)
-	color_changes = 0;
-      else {
-	Gt_ColorChange *cc = malloc(sizeof(Gt_ColorChange));
-	/* Memory leak on color changes; again, this ain't a problem. */
-	cc->old_color = parsed_color;
-	cc->new_color = parsed_color2;
-	cc->next = color_changes;
-	color_changes = cc;
-      }
       break;
       
       /* ANIMATION OPTIONS */
@@ -819,53 +904,61 @@ main(int argc, char **argv)
       unoptimizing = clp->negated ? 0 : 1;
       break;
       
-      /* STREAM OPTIONS */
-      
-     case LOGICAL_SCREEN_OPT:
-      if (clp->negated)
-	def_frame.screen_width = def_frame.screen_height = 0;
-      else {
-	def_frame.screen_width = dimensions_x;
-	def_frame.screen_height = dimensions_y;
-      }
-      break;
-      
-     case SAME_LOGICAL_SCREEN_OPT:
-      def_frame.screen_width = def_frame.screen_height = -1;
-      break;
+      /* WHOLE-GIF OPTIONS */
       
      case NETSCAPE_WORK_OPT:
       netscape_workaround = clp->negated ? 0 : 1;
       break;
       
-     case COLORMAP_OPT:
+     case CHANGE_COLOR_OPT:
+      next_input = 1;
       if (clp->negated)
-	adaptive_palette_size = 0;
+	color_changes = 0;
       else {
-	adaptive_palette_size = clp->val.i;
-	if (adaptive_palette_size < 2 || adaptive_palette_size > 256) {
-	  warning("bad adaptive palette size: must be between 2 and 256");
-	  adaptive_palette_size = 0;
-	}
+	Gt_ColorChange *cc = malloc(sizeof(Gt_ColorChange));
+	/* Memory leak on color changes; again, this ain't a problem. */
+	cc->old_color = parsed_color;
+	cc->new_color = parsed_color2;
+	cc->next = color_changes;
+	color_changes = cc;
       }
       break;
-
-     case COLORMAP_ALGORITHM_OPT:
-      adaptive_palette_algorithm = clp->val.i;
+      
+     case COLORMAP_OPT:
+      if (clp->negated)
+	new_colormap_size = 0;
+      else {
+	new_colormap_size = clp->val.i;
+	if (new_colormap_size < 2 || new_colormap_size > 256) {
+	  warning("bad adaptive palette size: must be between 2 and 256");
+	  new_colormap_size = 0;
+	}
+      }
+      warn_local_colormaps = new_colormap_size || new_colormap_fixed;
       break;
       
-     case OUTPUT_OPT:
-      if (strcmp(clp->arg, "-") == 0)
-	def_frame.output_name = 0;
+     case USE_COLORMAP_OPT:
+      Gif_DeleteColormap(new_colormap_fixed);
+      if (clp->negated)
+	new_colormap_fixed = 0;
       else
-	def_frame.output_name = clp->arg;
+	set_new_fixed_colormap(clp->arg);
+      warn_local_colormaps = new_colormap_size || new_colormap_fixed;
       break;
-
+      
+     case COLORMAP_ALGORITHM_OPT:
+      new_colormap_algorithm = clp->val.i;
+      break;
+      
+     case DITHER_OPT:
+      new_colormap_dither = !clp->negated;
+      break;
+      
       /* RANDOM OPTIONS */
       
      case VERSION_OPT:
       printf("Gifsicle version %s\n", VERSION);
-      printf("Copyright (C) 1997 Eddie Kohler\n\
+      printf("Copyright (C) 1997-8 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose. That's right: you're on your own!\n");
@@ -875,6 +968,13 @@ particular purpose. That's right: you're on your own!\n");
      case HELP_OPT:
       usage();
       exit(0);
+      break;
+      
+     case OUTPUT_OPT:
+      if (strcmp(clp->arg, "-") == 0)
+	def_frame.output_name = 0;
+      else
+	def_frame.output_name = clp->arg;
       break;
       
       /* NONOPTIONS */

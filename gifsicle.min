@@ -34,22 +34,13 @@ gifsicle \- manipulates GIF images and animations
 '
 .SH DESCRIPTION
 .B gifsicle
-manipulates GIF image files. 
-.ig
-GIF, probably the most popular image
-format on the World Wide Web, is an indexed-color format with at most
-256 colors per image and optional transparency. GIF also supports
-animations by allowing multiple images, or ``frames'', per file.
-.PP
-.B gifsicle
-..
-supports merging several GIFs into a GIF animation; exploding an
-animation into its component frames; changing individual frames in an
-animation; turning interlacing on and off; adding transparency; adding
-delays, disposals, and the Netscape loop extension to animations;
-adding and removing comments; and optimizing animations for space,
-among other things. Extensive command-line options control which, if
-any, of these occur.
+manipulates GIF image files. It supports merging several GIFs into a GIF
+animation; exploding an animation into its component frames; changing
+individual frames in an animation; turning interlacing on and off; adding
+transparency; adding delays, disposals, and the Netscape loop extension to
+animations; adding and removing comments; optimizing animations for space;
+and changing images' colormaps, among other things. Extensive command-line
+options control which, if any, of these occur.
 .PP
 This man page assumes that you already know what a GIF is and the
 possibilities of GIF animations. For a tutorial, you might try Royal
@@ -58,7 +49,7 @@ http://member.aol.com/royalef/ gifanim.htm.
 .PP
 The next sections tell you how to run
 .BR gifsicle
-in gory detail. You might want to skip first to the Examples section at the
+in gory detail. New users might want to skip to the Examples section at the
 end.
 '
 .SH COMMAND LINE
@@ -116,9 +107,9 @@ Select the frame named \fIname\fR.
 '
 .SH OPTIONS
 
-Options come in six categories. First come
-.IR "mode options" ,
-which control
+There are seven option categories. First,
+.IR "mode options"
+control
 .BR gifsicle 's
 output mode. The default is
 .IR "merge mode" ,
@@ -149,12 +140,16 @@ example, changing one frame in an animation\*Eare difficult to express with
 frame selection, but easy with frame changes.
 .PP
 .I Image options
-modify input images. Interlacing and transparency changes are examples
-of image options.
+modify input images. Interlacing, transparency changes, and cropping are
+examples of image options.
+.PP
+.I Animation options
+are image options which apply only to GIF animations.
 .PP
 Finally,
-.I animation options
-are image options which apply only to GIF animations.
+.I whole-GIF options
+affect entire GIF files rather than particular images. Colormap
+modifications are examples of whole-GIF options.
 '
 .SS General
 
@@ -220,9 +215,9 @@ but writes named frames to files `input.\fIname\fR' instead of
 .\" -----------------------------------------------------------------
 .SS General Options
 
-The information options and
+The info options and
 .OP \-\-verbose
-have converses,
+can be turned off with
 .QO \-\-no\-option .
 '
 .Sp
@@ -386,10 +381,8 @@ Completes the current set of frame changes.
 .\" -----------------------------------------------------------------
 .SS Image Options
 
-Each image option stays in effect until the next image option in the
-same category.
-.PP
-Image options have three forms:
+Each image option stays in effect until the next image option in the same
+category. Image options have three forms:
 .QO \-\-X ,
 .QO \-\-no\-X ,
 and
@@ -406,28 +399,6 @@ turns interlacing off, while
 strips comments. Only the
 .QO \-\-X
 form is generally described.
-'
-.Sp
-.PD 0
-.TP 5
-.OA \-\-change\-color color1 " " color2
-'
-Changes
-.I color1
-to
-.I color2
-in the following output GIFs. (The 
-.I color
-arguments are specified as with the
-.OP \-t
-option.) You can change multiple colors by giving the option multiple
-times. Color changes take effect globally when each output GIF is written,
-so you can't change a color in only some of an animation's frames.
-.Sp
-.OP \-\-no\-change\-color
-cancels all color changes. There is no
-.OP \-\-same\-change\-color
-option.
 '
 .Sp
 .PD 0
@@ -628,13 +599,12 @@ option.
 Unoptimizes GIF animations into an easy-to-edit form.
 .Sp
 GIF animations are often optimized (see 
-.OP \-\-optimize
-above) to make them smaller and faster to load. Optimized animations,
-which store only the changed portions of each frame and can use
-transparency in strange ways, are difficult to edit.
+.OP \-\-optimize )
+to make them smaller and faster to load, which unfortunately makes them
+difficult to edit.
 .OP \-\-unoptimize
-changes optimized input GIFs into unoptimized GIFs, where each frame
-is a faithful representation of what a user sees at that point in the
+changes optimized input GIFs into unoptimized GIFs, where each frame is a
+faithful representation of what a user would see at that point in the
 animation.
 .Sp
 There is no
@@ -642,6 +612,95 @@ There is no
 option.
 .PD
 '
+.\" -----------------------------------------------------------------
+.SS Whole-GIF Options
+
+Whole-GIF options effect entire GIFs as they are read or written. They can
+be turned off with
+.QO \-\-no\-option .
+.Sp
+.PD 0
+.TP 5
+.OA \-\-change\-color color1 " " color2
+'
+Changes
+.I color1
+to
+.I color2
+in the following input GIFs. (The 
+.I color
+arguments can have the same forms as in the
+.OP \-t
+option.) You can change multiple colors by giving the option multiple
+times. Color changes take effect globally when each input GIF is read.
+.OP \-\-no\-change\-color
+cancels all color changes.
+'
+.Sp
+.TP
+.OA \-\-colors num
+'
+Reduces the number of distinct colors in each output GIF to
+.I num
+or less.
+.I Num 
+must be between 2 and 256. This can be used to shrink output GIFs or to
+eliminate any local color tables. An adaptive group of colors is chosen
+from the existing color table; you can affect this process with the
+.OP \-\-color\-method
+option.
+'
+.Sp
+.TP
+.OA \-\-color\-method method
+'
+Sets the method for reducing a colormap's size with
+.OP \-\-colors .
+There are four choices:
+.B median\-cut
+is the median cut algorithm described by Heckbert.
+.B no\-blend\-diversity
+is
+.BR xv (1)'s
+diversity algorithm, which uses a strict subset of the existing colors.
+.B blend\-diversity
+is a modification of this: some color values are blended.
+.BR diversity ,
+the default, equals
+.B no\-blend\-diversity
+if
+.OP \-\-use\-colormap
+is in effect and
+.B blend\-diversity
+otherwise.
+'
+.Sp
+.TP
+.OA \-\-dither
+'
+This option only matters if the colormap was changed; with
+.OP \-\-dither
+on, Floyd-Steinberg error diffusion is used to approximate any colors that
+were removed. This looks better, but makes bigger files and can cause
+animation artifacts, so it is off by default.
+'
+.Sp
+.TP
+.OA \-\-use\-colormap colormap
+'
+Sets the image's colormap to 
+.IR colormap .
+.I Colormap
+is either the name of a GIF file, whose global colormap will be used, or
+the word
+.BR web ,
+which represents the 216-color ``Web-safe palette''. If
+.OP \-\-colors
+is also given, a subset of the colormap will be used.
+'
+.PD
+'
+
 .SH EXAMPLES
 
 Here are a bunch of examples showing how
@@ -722,20 +781,19 @@ Giving
 twice forces normal output to occur. With only one
 .OP \-I ,
 the GIFs would not have changed on disk.
+.PP
+To change `anim.gif's colors to a 64-color subset of the Web-safe palette:
+.Es
+% \fBgifsicle -b --colors=64 --use-col=web anim.gif\fR
+.Ee
 '
 .SH BUGS
 
 Insufficient testing and poor code doumentation.
 .PP
-There should be an information option to show how often each color is
-used, and an optimize level which compresses colormaps. You should be
-able to dither an image to a given colormap (although this might be
-out of
-.B gifsicle\c
-\&'s scope).
-.PP
 Please email suggestions, additions, patches and bugs to
-eddietwo@lcs.mit.edu.
+eddietwo@lcs.mit.edu. Also email that address to be added to a Gifsicle
+mailing list (non-spammy).
 '
 .SH AUTHORS
 .na

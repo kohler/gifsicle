@@ -1,6 +1,6 @@
 AC_INIT(gifsicle.h)
 
-VERSION=1.1.2
+VERSION=1.2b1
 AC_SUBST(VERSION)
 
 GIF_MAJOR_VERSION=0
@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
   ac_cv_int32=int)])
   
   INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
+typedef $ac_cv_int32 int32_t;\\
 typedef unsigned $ac_cv_int32 u_int32_t;"
 fi
 AC_SUBST(INTEGER_TYPES)dnl

@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.2b1
+
+* Added colormap options: `--colors', `--color-method', `--dither', and
+  `--use-colormap'. All this code is in quantize.c.
+
+* Renamed `--color-change' to `--change-color'.
+
 Version 1.1.2
 
 * Added `--color-change' option.

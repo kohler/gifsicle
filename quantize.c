@@ -16,8 +16,9 @@ add_histogram_color(Gif_Color *color, Gif_Color **hist_store,
   int i;
   Gif_Color *hist = *hist_store;
   int nhist = *nhist_store;
-  
-  for (i = 0; i < nhist; i++)
+
+  /* have to start from 1 because the 0 slot is the transparent color. */
+  for (i = 1; i < nhist; i++)
     if (hist[i].red == color->red && hist[i].green == color->green
 	&& hist[i].blue == color->blue) {
       color->haspixel = 1;
@@ -90,6 +91,9 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     if (transparent >= 0 && transparent < ncol) {
       col[transparent].haspixel = 1;
       col[transparent].pixel = 0;
+      hist[0].red = col[transparent].red;
+      hist[0].green = col[transparent].green;
+      hist[0].blue = col[transparent].blue;
     }
     
     /* sweep over the image data, counting pixels */
@@ -119,13 +123,6 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   *nhist_store = nhist;
   return hist;
 }
-
-
-typedef struct adaptive_slot {
-  u_int32_t first;
-  u_int32_t count;
-  u_int32_t pixel;
-} adaptive_slot;
 
 
 #undef min
@@ -181,17 +178,23 @@ check_hist_transparency(Gif_Color *hist, int nhist)
 }
 
 
-/* ADAPTIVE_PALETTE FUNCTIONS return a palette (a vector of Gif_Colors). The
+/* COLORMAP FUNCTIONS return a palette (a vector of Gif_Colors). The
    pixel fields are undefined; the haspixel fields are all 0. If there was
    transparency in the image, the last color in the palette represents
    transparency, and its haspixel field equals 255. */
 
-Gif_Color *
-adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
-			    int *nadapt_store)
+typedef struct {
+  u_int32_t first;
+  u_int32_t count;
+  u_int32_t pixel;
+} adaptive_slot;
+
+Gif_Colormap *
+colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
 {
   adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
-  Gif_Color *adapt = Gif_NewArray(Gif_Color, adapt_size);
+  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size);
+  Gif_Color *adapt = gfcm->col;
   int nadapt;
   int i, j, transparent;
   
@@ -204,7 +207,7 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
     warning("trivial adaptive palette (only %d colors in source)", nhist);
     adapt_size = nhist;
   }
-
+  
   /* 0. remove any transparent color from consideration */
   transparent = check_hist_transparency(hist, nhist);
   if (transparent >= 0) nhist--, adapt_size--;
@@ -297,7 +300,7 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
     adapt[i].blue = (byte)(blue_total / slots[i].pixel);
     adapt[i].haspixel = 0;
   }
-
+  
   /* 4. if there was transparency, add it */
   if (transparent >= 0) {
     adapt[nadapt] = hist[transparent];
@@ -306,19 +309,19 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
   }
     
   Gif_DeleteArray(slots);
-  *nadapt_store = nadapt;
-  return adapt;
+  gfcm->ncol = nadapt;
+  return gfcm;
 }
 
 
 
-Gif_Color *
-adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
-			   int *nadapt_store)
+static Gif_Colormap *
+colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 {
   u_int32_t *min_dist = Gif_NewArray(u_int32_t, nhist);
   int *closest = Gif_NewArray(int, nhist);
-  Gif_Color *adapt = Gif_NewArray(Gif_Color, adapt_size);
+  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size);
+  Gif_Color *adapt = gfcm->col;
   int nadapt = 0;
   int i, j, transparent;
   
@@ -406,12 +409,13 @@ adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
       }
     /* Only blend if total number of mismatched pixels exceeds total number of
        matched pixels. */
-    if (mismatch_pixel_total > pixel_total - mismatch_pixel_total) {
+    if (!blend || 2 * mismatch_pixel_total <= pixel_total)
+      adapt[i] = hist[match];
+    else {
       adapt[i].red = (byte)(red_total / pixel_total);
       adapt[i].green = (byte)(green_total / pixel_total);
       adapt[i].blue = (byte)(blue_total / pixel_total);
-    } else
-      adapt[i] = hist[match];
+    }
     adapt[i].haspixel = 0;
   }
   
@@ -424,6 +428,314 @@ adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
   
   Gif_DeleteArray(min_dist);
   Gif_DeleteArray(closest);
-  *nadapt_store = nadapt;
-  return adapt;
+  gfcm->ncol = nadapt;
+  return gfcm;
+}
+
+
+Gif_Colormap *
+colormap_blend_diversity(Gif_Color *hist, int nhist, int adapt_size)
+{
+  return colormap_diversity(hist, nhist, adapt_size, 1);
+}
+
+Gif_Colormap *
+colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size)
+{
+  return colormap_diversity(hist, nhist, adapt_size, 0);
+}
+
+
+struct color_hash_item {
+  byte red;
+  byte green;
+  byte blue;
+  u_int32_t pixel;
+  color_hash_item *next;
+};
+#define COLOR_HASH_SIZE 20023
+#define COLOR_HASH_CODE(r, g, b)	((u_int32_t)(r * 33023 + g * 30013 + b * 27011) % COLOR_HASH_SIZE)
+
+
+/*****
+ * color_hash_item allocation and deallocation
+ **/
+
+static color_hash_item *hash_item_alloc_list;
+static int hash_item_alloc_left;
+#define HASH_ITEM_ALLOC_AMOUNT 512
+
+static color_hash_item **
+new_color_hash(void)
+{
+  int i;
+  color_hash_item **hash = Gif_NewArray(color_hash_item *, COLOR_HASH_SIZE);
+  for (i = 0; i < COLOR_HASH_SIZE; i++)
+    hash[i] = 0;
+  return hash;
+}
+
+
+static color_hash_item *
+new_color_hash_item(byte red, byte green, byte blue)
+{
+  color_hash_item *chi;
+  if (hash_item_alloc_left <= 0) {
+    color_hash_item *new_alloc =
+      Gif_NewArray(color_hash_item, HASH_ITEM_ALLOC_AMOUNT);
+    new_alloc[HASH_ITEM_ALLOC_AMOUNT-1].next = hash_item_alloc_list;
+    hash_item_alloc_list = new_alloc;
+    hash_item_alloc_left = HASH_ITEM_ALLOC_AMOUNT - 1;
+  }
+  
+  --hash_item_alloc_left;
+  chi = &hash_item_alloc_list[hash_item_alloc_left];
+  chi->red = red;
+  chi->green = green;
+  chi->blue = blue;
+  chi->next = 0;
+  return chi;
+}
+
+static void
+free_all_color_hash_items(void)
+{
+  while (hash_item_alloc_list) {
+    color_hash_item *next =
+      hash_item_alloc_list[HASH_ITEM_ALLOC_AMOUNT - 1].next;
+    Gif_DeleteArray(hash_item_alloc_list);
+    hash_item_alloc_list = next;
+  }
+  hash_item_alloc_left = 0;
+}
+
+
+static int
+hash_color(byte red, byte green, byte blue,
+	   color_hash_item **hash, Gif_Colormap *new_cm)
+{
+  u_int32_t hash_code = COLOR_HASH_CODE(red, green, blue);
+  color_hash_item *prev = 0, *trav;
+  
+  for (trav = hash[hash_code]; trav; prev = trav, trav = trav->next)
+    if (trav->red == red && trav->green == green && trav->blue == blue)
+      return trav->pixel;
+  
+  trav = new_color_hash_item(red, green, blue);
+  if (prev)
+    prev->next = trav;
+  else
+    hash[hash_code] = trav;
+  
+  /* find the closest color in the new colormap */
+  {
+    Gif_Color *col = new_cm->col;
+    int ncol = new_cm->ncol, i, found;
+    u_int32_t min_dist = 0x7FFFFFFF;
+    
+    for (i = 0; i < ncol; i++)
+      if (col[i].haspixel != 255) {
+	u_int32_t dist = (red - col[i].red) * (red - col[i].red)
+	  + (green - col[i].green) * (green - col[i].green)
+	  + (blue - col[i].blue) * (blue - col[i].blue);
+	if (dist < min_dist) {
+	  min_dist = dist;
+	  found = i;
+	}
+      }
+    
+    trav->pixel = found;
+    return found;
+  }
+}
+
+
+void
+colormap_image_posterize(Gif_Image *gfi, Gif_Colormap *old_cm,
+			 Gif_Colormap *new_cm, int new_transparent,
+			 color_hash_item **hash)
+{
+  int ncol = old_cm->ncol;
+  Gif_Color *col = old_cm->col;
+  int map[256]; 
+  int i, j;
+  
+  /* mark transparent color if it exists */
+  if (gfi->transparent >= 0 && gfi->transparent < ncol) {
+    col[gfi->transparent].haspixel = 255;
+    col[gfi->transparent].pixel = new_transparent;
+  }
+  
+  /* find closest colors in new colormap */
+  for (i = 0; i < ncol; i++)
+    if (col[i].haspixel)
+      map[i] = col[i].pixel;
+    else {
+      map[i] = col[i].pixel =
+	hash_color(col[i].red, col[i].green, col[i].blue, hash, new_cm);
+      col[i].haspixel = 1;
+    }
+  
+  /* map image */
+  for (j = 0; j < gfi->height; j++) {
+    byte *data = gfi->img[j];
+    for (i = 0; i < gfi->width; i++, data++)
+      *data = map[*data];
+  }
+  
+  /* unmark transparent color */
+  if (gfi->transparent >= 0 && gfi->transparent < ncol) {
+    col[gfi->transparent].haspixel = 0;
+    gfi->transparent = new_transparent;
+  }
+}
+
+
+#define DITHER_SCALE 1024
+
+void
+colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
+			       Gif_Colormap *new_cm, int new_transparent,
+			       color_hash_item **hash)
+{
+  int width = gfi->width;
+  int dither_direction = 0;
+  int transparent = gfi->transparent;
+  int i, j;
+  int32_t *r_err, *g_err, *b_err, *r_err1, *g_err1, *b_err1;
+  Gif_Color *col = old_cm->col;
+  Gif_Color *new_col = new_cm->col;
+  
+  /* Initialize Floyd-Steinberg error vectors to small random values, so
+     we don't get an artifact on the top row */
+  r_err = Gif_NewArray(int32_t, width + 2);
+  g_err = Gif_NewArray(int32_t, width + 2);
+  b_err = Gif_NewArray(int32_t, width + 2);
+  r_err1 = Gif_NewArray(int32_t, width + 2);
+  g_err1 = Gif_NewArray(int32_t, width + 2);
+  b_err1 = Gif_NewArray(int32_t, width + 2);
+  for (i = 0; i < width + 2; i++) {
+    r_err[i] = random() % (980 * 2) - 980;
+    g_err[i] = random() % (980 * 2) - 980;
+    b_err[i] = random() % (980 * 2) - 980;
+  }
+  
+  /* Do the image! */
+  for (j = 0; j < gfi->height; j++) {
+    int d0, d1, d2, d3;		/* used for error diffusion */
+    byte *data;
+    int x;
+    
+    if (dither_direction) {
+      data = &gfi->img[j][width-1];
+      x = width - 1;
+      d0 = 0, d1 = 2, d2 = 1, d3 = 0;
+    } else {
+      data = gfi->img[j];
+      x = 0;
+      d0 = 2, d1 = 0, d2 = 1, d3 = 2;
+    }
+    
+    for (i = 0; i < width + 2; i++)
+      r_err1[i] = g_err1[i] = b_err1[i] = 0;
+    
+    /* Do a single row */
+    while (x >= 0 && x < width) {
+      int e, eh, e_acc, use_r, use_g, use_b;
+      
+      /* the transparent color never gets adjusted */
+      if (*data == transparent) {
+	*data = new_transparent;
+	goto next;
+      }
+      
+      /* use Floyd-Steinberg errors to adjust actual color */
+      use_r = col[*data].red + r_err[x+1] / DITHER_SCALE;
+      use_g = col[*data].green + g_err[x+1] / DITHER_SCALE;
+      use_b = col[*data].blue + b_err[x+1] / DITHER_SCALE;
+      use_r = max(use_r, 0);  use_r = min(use_r, 255);
+      use_g = max(use_g, 0);  use_g = min(use_g, 255);
+      use_b = max(use_b, 0);  use_b = min(use_b, 255);
+      
+      *data = hash_color(use_r, use_g, use_b, hash, new_cm);
+      
+      /* calculate and propagate the error between desired and selected
+	 color */
+      e = (use_r - new_col[*data].red) * DITHER_SCALE;  e_acc = 0;
+      eh = (e*7) / 16;  r_err[x+d0] += eh;  e_acc += eh;
+      eh = (e*3) / 16;  r_err1[x+d1] += eh;  e_acc += eh;
+      eh = (e*5) / 16;  r_err1[x+d2] += eh;  e_acc += eh;
+      r_err1[x+d3] += e - e_acc;
+      
+      e = (use_g - new_col[*data].green) * DITHER_SCALE;  e_acc = 0;
+      eh = (e*7) / 16;  g_err[x+d0] += eh;  e_acc += eh;
+      eh = (e*3) / 16;  g_err1[x+d1] += eh;  e_acc += eh;
+      eh = (e*5) / 16;  g_err1[x+d2] += eh;  e_acc += eh;
+      g_err1[x+d3] += e - e_acc;
+      
+      e = (use_b - new_col[*data].blue) * DITHER_SCALE;  e_acc = 0;
+      eh = (e*7) / 16;  b_err[x+d0] += eh;  e_acc += eh;
+      eh = (e*3) / 16;  b_err1[x+d1] += eh;  e_acc += eh;
+      eh = (e*5) / 16;  b_err1[x+d2] += eh;  e_acc += eh;
+      b_err1[x+d3] += e - e_acc;
+      
+     next:
+      if (dither_direction)
+	x--, data--;
+      else
+	x++, data++;
+    }
+    /* Did a single row */
+    
+    /* change dithering directions */
+    {
+      int32_t *temp;
+      temp = r_err;  r_err = r_err1;  r_err1 = temp;
+      temp = g_err;  g_err = g_err1;  g_err1 = temp;
+      temp = b_err;  b_err = b_err1;  b_err1 = temp;
+      dither_direction = !dither_direction;
+    }
+  }
+  
+  if (transparent >= 0)
+    gfi->transparent = new_transparent;
+  
+  /* delete temporary storage */
+  Gif_DeleteArray(r_err);
+  Gif_DeleteArray(g_err);
+  Gif_DeleteArray(b_err);
+  Gif_DeleteArray(r_err1);
+  Gif_DeleteArray(g_err1);
+  Gif_DeleteArray(b_err1);
+}
+
+
+void
+colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
+		colormap_image_func image_changer)
+{ 
+  color_hash_item **hash = new_color_hash();
+  int new_transparent = new_cm->ncol - 1;
+  int i;
+  
+  unmark_colors(gfs->global);
+  for (i = 0; i < gfs->nimages; i++)
+    unmark_colors(gfs->images[i]->local);
+  
+  for (i = 0; i < gfs->nimages; i++) {
+    Gif_Image *gfi = gfs->images[i];
+    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+    if (gfcm)
+      image_changer(gfi, gfcm, new_cm, new_transparent, hash);
+    if (gfi->local) {
+      Gif_DeleteColormap(gfi->local);
+      gfi->local = 0;
+    }
+  }
+  
+  Gif_DeleteColormap(gfs->global);
+  gfs->global = Gif_CopyColormap(new_cm);
+
+  free_all_color_hash_items();
+  Gif_DeleteArray(hash);
 }

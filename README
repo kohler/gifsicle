@@ -1,4 +1,4 @@
-GIFSICLE 1.1.2
+GIFSICLE 1.2b1
 ==============
 
 ABOUT GIFSICLE
@@ -11,9 +11,9 @@ thing, it has more options.
 animation into its component frames; changing individual frames in an
 animation; turning interlacing on and off; adding transparency; adding
 delays, disposals, and the Netscape loop extension to animations; adding
-and removing comments; and optimizing animations for space, among other
-things. Extensive command-line options control which, if any, of these
-occur.
+and removing comments; optimizing animations for space; and changing
+images' colormaps, among other things. Extensive command-line options
+control which, if any, of these occur.
 
    Please see the man page, `gifsicle.man', for more information.
 
@@ -46,8 +46,9 @@ program and is not built by default. To build gifview, give
 
 BUGS, SUGGESTIONS, ETC.
 -----------------------
-   Please write me if you have trouble building or running gifsicle,
-or if you have suggestions or (preferably) patches.
+   Please write me if you have trouble building or running gifsicle, or if
+you have suggestions or (preferably) patches. Also write to this address to
+get on a (spam-free) Gifsicle mailing list.
 
 	Eddie Kohler
 	eddietwo@lcs.mit.edu

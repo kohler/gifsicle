@@ -92,7 +92,6 @@ Frame change options:\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
   --done                        Done with frame changes.\n\
 Image options: Also --no-opt/+o and --same-opt.\n\
-  --change-color COL1 COL2      Changes COL1 to COL2 throughout the image.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
   --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
@@ -106,6 +105,12 @@ Animation options: Also --no-opt/+o and --same-opt.\n\
   --loopcount[=N], -l[N]        Sets loop extension to N (default forever).\n\
   --optimize[=LEV], -O[LEV]     Optimize output GIFs.\n\
   --unoptimize, -U              Unoptimize input GIFs.\n\
+Whole-GIF options: Also --no-opt.\n\
+  --change-color COL1 COL2      Changes COL1 to COL2 throughout.\n\
+  --colors N                    Reduces the number of colors to N.\n\
+  --color-method METHOD         Set method for choosing reduced colors.\n\
+  --dither                      Dither image after changing colormap.\n\
+  --use-colormap FILE or `web'  Use specified colormap.\n\
 ",
 	  program_name);
 }

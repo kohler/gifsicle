@@ -120,6 +120,7 @@ void unmark_colors(Gif_Colormap *);
 
 int find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color);
 
+extern int warn_local_colormaps;
 void merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
 Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
@@ -135,10 +136,23 @@ void apply_color_changes(Gif_Stream *, Gt_ColorChange *);
 
 Gif_Color *histogram(Gif_Stream *, int *);
 
-#define ADAPTIVE_ALG_DIVERSITY	0
-#define ADAPTIVE_ALG_MEDIAN_CUT	1
-Gif_Color *adaptive_palette_median_cut(Gif_Color *, int, int, int *);
-Gif_Color *adaptive_palette_diversity(Gif_Color *, int, int, int *);
+#define COLORMAP_DIVERSITY		0
+#define COLORMAP_BLEND_DIVERSITY	1
+#define COLORMAP_FLAT_DIVERSITY		2
+#define COLORMAP_MEDIAN_CUT		3
+Gif_Colormap *colormap_blend_diversity(Gif_Color *, int, int);
+Gif_Colormap *colormap_flat_diversity(Gif_Color *, int, int);
+Gif_Colormap *colormap_median_cut(Gif_Color *, int, int);
+
+typedef struct color_hash_item color_hash_item;
+typedef void (*colormap_image_func)
+     (Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+
+void colormap_image_posterize
+	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+void colormap_image_floyd_steinberg
+	(Gif_Image *, Gif_Colormap *, Gif_Colormap *, int, color_hash_item **);
+void colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
 
 /*****
  * parsing stuff

@@ -523,7 +523,7 @@ fi
 
 
 
-VERSION=1.1.2
+VERSION=1.2b1
 
 
 GIF_MAJOR_VERSION=0
@@ -1880,6 +1880,7 @@ fi
 echo "$ac_t""$ac_cv_int32" 1>&6
   
   INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
+typedef $ac_cv_int32 int32_t;\\
 typedef unsigned $ac_cv_int32 u_int32_t;"
 fi
 
