@@ -1,6 +1,9 @@
 Gifsicle NEWS
 
-Version 1.16.2
+Version 1.17   15.Mar.2000
+
+* Added `--resize _xH' and `--resize Wx_'. Requested by Edwin Piekart
+  <edwin@ckz.com.pl>.
 
 * Changed behavior of `--no-logical-screen'. Now gifsicle will include all
   visible GIFs when calculating the size of the logical screen.

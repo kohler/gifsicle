@@ -1,5 +1,5 @@
 /* gifview.c - gifview's main loop.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifview, in the gifsicle package.
 
    Gifview is free software. It is distributed under the GNU Public License,
@@ -629,7 +629,6 @@ void
 create_viewer_window(Gt_Viewer *viewer, int w, int h)
 {
   Display *display = viewer->display;
-  Window window;
   char *stringlist[2];
   XTextProperty window_name, icon_name;
   XClassHint classh;
@@ -656,7 +655,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     x_set_attr_mask = CWColormap | CWBorderPixel | CWBackPixel
       | CWBackingStore | CWSaveUnder;
     
-    viewer->window = window = XCreateWindow
+    viewer->window = XCreateWindow
       (display, viewer->parent,
        sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
        viewer->depth, InputOutput, viewer->visual,
@@ -677,7 +676,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     XStringListToTextProperty(stringlist, 1, &icon_name);
     classh.res_name = (char *)cur_resource_name;
     classh.res_class = "Gifview";
-    XSetWMProperties(display, window, &window_name, &icon_name,
+    XSetWMProperties(display, viewer->window, &window_name, &icon_name,
 		     NULL, 0, sizeh, NULL, &classh);
     XFree(window_name.value);
     XFree(icon_name.value);
@@ -686,14 +685,14 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
       wm_delete_window_atom = XInternAtom(display, "WM_DELETE_WINDOW", False);
       wm_protocols_atom = XInternAtom(display, "WM_PROTOCOLS", False);
     }
-    XSetWMProtocols(display, window, &wm_delete_window_atom, 1);
+    XSetWMProtocols(display, viewer->window, &wm_delete_window_atom, 1);
   }
 
   if (interactive)
-    XSelectInput(display, window, ButtonPressMask | KeyPressMask
+    XSelectInput(display, viewer->window, ButtonPressMask | KeyPressMask
 		 | StructureNotifyMask);
   else
-    XSelectInput(display, window, StructureNotifyMask);
+    XSelectInput(display, viewer->window, StructureNotifyMask);
   
   XFree(sizeh);
 }
@@ -1172,7 +1171,7 @@ main(int argc, char **argv)
       
      case VERSION_OPT:
       printf("gifview (LCDF Gifsicle) %s\n", VERSION);
-      printf("Copyright (C) 1997-9 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2000 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

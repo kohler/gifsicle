@@ -565,10 +565,18 @@ int
 parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
-  
-  dimensions_x = strtol(arg, &val, 10);
+
+  if (*arg == '_' && arg[1] == 'x') {
+    dimensions_x = 0;
+    val = (char *)(arg + 1);
+  } else
+    dimensions_x = strtol(arg, &val, 10);
   if (*val == 'x') {
-    dimensions_y = strtol(val + 1, &val, 10);
+    if (val[1] == '_' && val[2] == 0) {
+      dimensions_y = 0;
+      val = val + 2;
+    } else
+      dimensions_y = strtol(val + 1, &val, 10);
     if (*val == 0)
       return 1;
   }

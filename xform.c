@@ -424,6 +424,11 @@ resize_stream(Gif_Stream *gfs, int new_width, int new_height)
 {
   double xfactor, yfactor;
   int i;
+
+  if (new_width <= 0)
+    new_width = (int)(((double)gfs->screen_width / gfs->screen_height) * new_height);
+  if (new_height <= 0)
+    new_height = (int)(((double)gfs->screen_height / gfs->screen_width) * new_width);
   
   Gif_CalculateScreenSize(gfs, 0);
   xfactor = (double)new_width / gfs->screen_width;

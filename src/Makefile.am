@@ -70,23 +70,27 @@ versionize:
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
-	mkdir -p /tmp/rpm-g/SOURCES /tmp/rpm-g/RPMS/$$buildarch \
-	/tmp/rpm-g/BUILD ; \
-	echo 'topdir: /tmp/rpm-g' > /tmp/rpm-g/rc ; \
-	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-g/SOURCES ; \
-	rpm --rcfile /tmp/rpm-g/rc -bb rpm.spec ; \
-	cp /tmp/rpm-g/RPMS/$$buildarch/*.rpm .
-	rm -rf /tmp/rpm-g
+	mkdir -p /tmp/rpm-gfs/SOURCES /tmp/rpm-gfs/RPMS/$$buildarch \
+	/tmp/rpm-gfs/BUILD ; \
+	echo 'include: /usr/lib/rpm/rpmrc' > /tmp/rpm-gfs/rc ; \
+	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-gfs/macros' >> /tmp/rpm-gfs/rc ; \
+	echo '%_topdir /tmp/rpm-gfs' > /tmp/rpm-gfs/macros ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-gfs/SOURCES ; \
+	rpm --rcfile /tmp/rpm-gfs/rc -bb rpm.spec ; \
+	cp /tmp/rpm-gfs/RPMS/$$buildarch/*.rpm .
+	rm -rf /tmp/rpm-gfs
 
 rpm-ungif: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
-	mkdir -p /tmp/rpm-ug/SOURCES /tmp/rpm-ug/RPMS/$$buildarch \
-	/tmp/rpm-ug/BUILD ; \
-	echo 'topdir: /tmp/rpm-ug' > /tmp/rpm-ug/rc ; \
-	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-ug/SOURCES ; \
-	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpm-ug/rc -bb rpm.spec ; \
-	cp /tmp/rpm-ug/RPMS/$$buildarch/*.rpm `echo /tmp/rpm-ug/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
-	rm -rf /tmp/rpm-ug
+	mkdir -p /tmp/rpm-ugfs/SOURCES /tmp/rpm-ugfs/RPMS/$$buildarch \
+	/tmp/rpm-ugfs/BUILD ; \
+	echo 'include: /usr/lib/rpm/rpmrc' > /tmp/rpm-ugfs/rc ; \
+	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-ugfs/macros' >> /tmp/rpm-ugfs/rc ; \
+	echo '%_topdir /tmp/rpm-ugfs' > /tmp/rpm-ugfs/macros ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-ugfs/SOURCES ; \
+	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpm-ugfs/rc -bb rpm.spec ; \
+	cp /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm `echo /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
+	rm -rf /tmp/rpm-ugfs
 
 dist-ungif: dist
 	tar xzf gifsicle-$(VERSION).tar.gz
