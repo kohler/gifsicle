@@ -19,9 +19,6 @@
 extern "C" {
 #endif
 
-
-#define CODE_STORE_SIZE 512
-
 typedef struct {
   
   Gif_Stream *stream;
