@@ -1,3 +1,16 @@
+/* gif.h - Interface to the GIF library.
+   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   This file is part of the GIF library.
+   
+   The GIF library is free software*. It is distributed under the GNU Public
+   License, version 2 or later; you can copy, distribute, or alter it at will,
+   as long as this notice is kept intact and this source code is made
+   available. There is no warranty, express or implied.
+   
+   * The LZW compression method used by GIFs (and contained in gifwrite.c) is
+   patented. Unisys, the patent holder, allows the compression algorithm to
+   be used without a license in software distributed at no cost to the user. */
+
 #ifndef GIF_H /* -*- mode: c -*- */
 #define GIF_H
 #include <stdio.h>
@@ -6,28 +19,17 @@
 extern "C" {
 #endif
 
-/* gif.h - Interface to the GIF library.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of the GIF library.
-
-   The GIF library is free software*. It is distributed under the GNU Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
-   as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied.
-
-   *The LZW compression method used by GIFs is patented. Unisys, the patent
-   holder, allows the compression algorithm to be used without a license in
-   software distributed at no cost to the user. */
-
+/* NOTE: You should define the types u_int16_t and u_int32_t before #including
+   this file, probably by #including <sys/types.h>. */
+  
 #define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	98
-#define GIF_VERSION		"0.98"
+#define GIF_MINOR_VERSION	99
+#define GIF_VERSION		"0.99"
 
 #ifndef BYTE
 #define BYTE
 typedef unsigned char byte;
 #endif
-@INTEGER_TYPES@
 
 typedef struct Gif_Stream	Gif_Stream;
 typedef struct Gif_Image	Gif_Image;
@@ -257,23 +259,22 @@ void 		Gif_Debug(char *x, ...);
 #define		GIF_DEBUG(x)
 #endif
 
-@GIF_MEMORY_DEFINES@
-#ifndef Gif_New
-#define Gif_New(t)		((t *)malloc(sizeof(t)))
-#define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
-#define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void*)(p),sizeof(t)*(n))))
-#define Gif_Delete(p)		(free((void *)(p)))
-#define Gif_DeleteArray(p)	(free((void *)(p)))
-#endif
-#ifndef Gif_DeleteFunc
-#define Gif_DeleteFunc		(&free)
-#define Gif_DeleteArrayFunc	(&free)
-#endif
-
 typedef u_int16_t Gif_Code;
 #define GIF_MAX_CODE_BITS	12
 #define GIF_MAX_CODE		0x1000
 #define GIF_MAX_BLOCK		255
+
+#ifndef Gif_New
+#define Gif_New(t)		((t *)malloc(sizeof(t)))
+#define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
+#define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void*)(p),sizeof(t)*(n))))
+#define Gif_DeleteFunc		(&free)
+#define Gif_DeleteArrayFunc	(&free)
+#endif
+#ifndef Gif_Delete
+#define Gif_Delete(p)		(*Gif_DeleteFunc)((void *)(p))
+#define Gif_DeleteArray(p)	(*Gif_DeleteArrayFunc)((void *)(p))
+#endif
 
 #ifdef __cplusplus
 }

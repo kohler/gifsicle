@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -153,7 +154,7 @@ or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
     FILE *f;
     char *rec_name = 0;
     char *file_name = (char *)malloc(strlen(argv[0]) + strlen(directory) + 1);
-
+    
     strcpy(file_name, directory);
     strcat(file_name, argv[0]);
     f = fopen(file_name, "rb");

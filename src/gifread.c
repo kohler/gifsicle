@@ -11,7 +11,7 @@
    holder, allows the compression algorithm to be used without a license in
    software distributed at no cost to the user. */
 
-/* #define GIF_DEBUGGING */
+#include "config.h"
 #include "gif.h"
 #include <stdarg.h>
 #include <assert.h>

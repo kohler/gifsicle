@@ -11,6 +11,7 @@
    holder, allows the compression algorithm to be used without a license in
    software distributed at no cost to the user. */
 
+#include "config.h"
 #include "gifx.h"
 #include "gif.h"
 #include <X11/Xutil.h>
