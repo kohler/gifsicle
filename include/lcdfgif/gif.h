@@ -24,8 +24,8 @@ extern "C" {
    this file, probably by #including <inttypes.h>. */
 
 #define GIF_MAJOR_VERSION	1
-#define GIF_MINOR_VERSION	3
-#define GIF_VERSION		"1.3"
+#define GIF_MINOR_VERSION	4
+#define GIF_VERSION		"1.4"
 
 #ifndef BYTE
 #define BYTE
@@ -236,6 +236,7 @@ struct Gif_Record {
 #define GIF_READ_COMPRESSED		1
 #define GIF_READ_UNCOMPRESSED		2
 #define GIF_READ_CONST_RECORD		4
+#define GIF_READ_TRAILING_GARBAGE_OK	8
 #define GIF_WRITE_CAREFUL_MIN_CODE_SIZE	1
 
 Gif_Stream *	Gif_ReadFile(FILE *);

@@ -101,7 +101,13 @@ file_offseter(Gif_Reader *grr)
 static int
 file_eofer(Gif_Reader *grr)
 {
-  return feof(grr->f);
+  int c = getc(grr->f);
+  if (c == EOF)
+    return 1;
+  else {
+    ungetc(c, grr->f);
+    return 0;
+  }
 }
 
 
@@ -849,6 +855,13 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
+
+  if (gfs->errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
+    gif_read_error(&gfc, "trailing garbage after GIF ignored");
+    /* but clear error count, since the GIF itself was all right */
+    gfs->errors = 0;
+  }
+  
   return gfs;
 }
 
