@@ -21,8 +21,9 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-#define GIF_MAJOR_VERSION	@GIF_MAJOR_VERSION@
-#define GIF_MINOR_VERSION	@GIF_MINOR_VERSION@
+#define GIF_MAJOR_VERSION	0
+#define GIF_MINOR_VERSION	92
+#define GIF_VERSION		"0.92"
 
 #ifndef BYTE
 #define BYTE
