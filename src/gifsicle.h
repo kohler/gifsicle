@@ -116,6 +116,8 @@ char *explode_filename(char *filename, int number, char *name);
  * merging images
  **/
 
+void unmark_colors(Gif_Colormap *);
+
 int find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color);
 
 void merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
@@ -126,6 +128,12 @@ void optimize_fragments(Gif_Stream *, int opt_trans);
 
 void crop_image(Gif_Image *, Gt_Crop *);
 void apply_color_changes(Gif_Stream *, Gt_ColorChange *);
+
+/*****
+ * quantization
+ **/
+
+void histogram(Gif_Stream *);
 
 /*****
  * parsing stuff

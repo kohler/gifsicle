@@ -429,6 +429,7 @@ do_frames_output(char *outfile, int f1, int f2)
   }
   
   if (verbosing) verbose_close(']');
+  histogram(out);
 }
 
 

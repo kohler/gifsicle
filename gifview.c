@@ -1,5 +1,5 @@
 /* gifview.c - gifview's main loop.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifview.
 
    Gifview is free software; you can copy, distribute, or alter it at will, as

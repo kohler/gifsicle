@@ -35,7 +35,7 @@ INSTALL_DATA	= @INSTALL_DATA@
 PROGRAMS	= gifsicle @BUILD_GIFVIEW@
 GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o gifview.o clp.o
 GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o clp.o \
-		merge.o support.o gifsicle.o
+		merge.o support.o quantize.o gifsicle.o
 
 all: $(PROGRAMS)
 
@@ -69,6 +69,7 @@ gifx.o: gifx.c gifx.h gif.h
 gifsicle.o: gifsicle.c gifsicle.h
 merge.o: merge.c gifsicle.h
 support.o: support.c gifsicle.h
+quantize.o: quantize.c gifsicle.h
 
 srclinks:
 	for i in clp.c clp.h ; do \
@@ -93,7 +94,7 @@ dist: mostlyclean
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h \
-	gifsicle.h merge.c support.c gifsicle.c gifsicle.min \
+	gifsicle.h merge.c support.c quantize.c gifsicle.c gifsicle.min \
 	gifx.h gifx.c gifview.c \
 	$(PACKAGE)-$(VERSION)
 	gtar czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)

@@ -1,5 +1,5 @@
 /* merge.c - Functions which actually combine and manipulate GIF image data.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software; you can copy, distribute, or alter it at will, as
@@ -15,12 +15,13 @@
 #include <string.h>
 
 
-static void
+void
 unmark_colors(Gif_Colormap *gfcm)
 {
   int i;
-  for (i = 0; i < gfcm->ncol; i++)
-    gfcm->col[i].haspixel = 0;
+  if (gfcm)
+    for (i = 0; i < gfcm->ncol; i++)
+      gfcm->col[i].haspixel = 0;
 }
 
 
