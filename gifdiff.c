@@ -1,5 +1,5 @@
 /* gifdiff.c - Gifdiff compares GIF images for identical appearance.
-   Copyright (C) 1998 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1998-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifdiff, in the gifsicle package.
 
    Gifdiff is free software. It is distributed under the GNU Public License,
@@ -283,7 +283,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 void
 short_usage(void)
 {
-  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
+  fprintf(stderr, "Usage: %s [OPTION]... FILE1 FILE2\n\
+Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -296,7 +297,7 @@ visual appearance. An animation and an optimized version of the same animation\n
 should compare as the same. Gifdiff exits with status 0 if the images are\n\
 the same, 1 if they're different, and 2 if there was some error.\n\
 \n\
-Usage: %s [options] GIF-file-1 GIF-file-2\n\
+Usage: %s [OPTION]... FILE1 FILE2\n\
 \n\
 Options:\n\
   --brief, -q                   Don't report detailed differences.\n\
@@ -365,7 +366,7 @@ main(int argc, char **argv)
       
      case VERSION_OPT:
       printf("Gifdiff version %s\n", VERSION);
-      printf("Copyright (C) 1998 Eddie Kohler\n\
+      printf("Copyright (C) 1998-9 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

@@ -1,5 +1,5 @@
 /* support.c - Support functions for gifsicle.
-   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -86,7 +86,8 @@ clp_error_handler(char *message)
 void
 short_usage(void)
 {
-  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
+  fprintf(stderr, "Usage: %s [OPTION | FILE | FRAME]...\n\
+Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -95,11 +96,11 @@ void
 usage(void)
 {
   printf("\
-`Gifsicle' manipulates GIF images in many different ways. Its most common\n\
-uses include combining single frames into animations, adding transparency,\n\
-optimizing animations for space, and printing information about GIFs.\n\
+`Gifsicle' manipulates GIF images. Its most common uses include combining\n\
+single images into animations, adding transparency, optimizing animations for\n\
+space, and printing information about GIFs.\n\
 \n\
-Usage: %s [options, frames, and filenames] ...\n\
+Usage: %s [OPTION | FILE | FRAME]...\n\
 \n\
 Mode options: at most one, before any filenames.\n\
   --merge, -m                   Merge mode: combine inputs, write stdout.\n\

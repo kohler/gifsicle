@@ -1,5 +1,5 @@
 /* gifview.c - gifview's main loop.
-   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifview, in the gifsicle package.
 
    Gifview is free software. It is distributed under the GNU Public License,
@@ -197,7 +197,8 @@ warning(char *message, ...)
 void
 short_usage(void)
 {
-  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
+  fprintf(stderr, "Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
+Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -209,7 +210,7 @@ usage(void)
 `Gifview' is a lightweight GIF viewer for X. It can display animaged GIFs as\n\
 slideshows, one frame at a time, or as animations.\n\
 \n\
-Usage: %s [--display DISPLAY] [options] [filenames and frames] ...\n\
+Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
 \n\
 Options are:\n\
   --animate, -a                 Animate multiframe GIFs.\n\
@@ -1015,7 +1016,7 @@ main(int argc, char **argv)
       
      case VERSION_OPT:
       printf("Gifview version %s\n", VERSION);
-      printf("Copyright (C) 1997-8 Eddie Kohler\n\
+      printf("Copyright (C) 1997-9 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
