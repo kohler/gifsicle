@@ -1,5 +1,5 @@
 /* clp.c - Complete source code for CLP.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of CLP, the command line parser package.
 
    CLP is free software. It is distributed under the GNU Public License,
@@ -1012,7 +1012,8 @@ Clp_Next(Clp_Parser *clp)
     if (cli->ambiguous)
       ambiguity_error(clp, cli->ambiguous, cli->ambiguous_values,
 		      cli->opt, cli->option_chars,
-		      "`%s%s' is ambiguous", cli->option_chars, cli->text);
+		      "option `%s%s' is ambiguous",
+		      cli->option_chars, cli->text);
     else if (cli->is_short)
       Clp_OptionError(clp, "unrecognized option `%s%c'",
 		      cli->option_chars, cli->text[0]);
