@@ -233,7 +233,7 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, Clp_Option *opt)
   
     for (i = 0; i < 256; i++)
 	cli->option_class[i] = 0;
-    cli->option_class['-'] = Clp_Short;
+    cli->option_class[(int) '-'] = Clp_Short;
     cli->both_short_and_long = 0;
   
     cli->is_short = 0;
