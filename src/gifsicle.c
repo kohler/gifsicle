@@ -746,27 +746,36 @@ output_frames(void)
       merge_and_write_frames(outfile, 0, -1);
       break;
       
-     case EXPLODING:
-      /* Use the current output name for consistency, even though that means we
-	 can't explode different frames to different names. Not a big deal
-	 anyway; they can always repeat the gif on the cmd line. */
-      if (!outfile) /* Watch out! */
-	outfile = "-";
-      
-      for (i = 0; i < frames->count; i++) {
-	Gt_Frame *fr = &FRAME(frames, i);
-	int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
-	char *explodename;
-	
-	char *imagename = 0;
-	if (fr->explode_by_name)
-	  imagename = fr->name ? fr->name : fr->image->identifier;
-	
-	explodename = explode_filename(outfile, imagenumber, imagename);
-	merge_and_write_frames(explodename, i, i);
-      }
-      break;
-      
+     case EXPLODING: {
+       /* Use the current output name for consistency, even though that means
+	  we can't explode different frames to different names. Not a big deal
+	  anyway; they can always repeat the gif on the cmd line. */
+       int max_nimages = 0;
+       for (i = 0; i < frames->count; i++) {
+	 Gt_Frame *fr = &FRAME(frames, i);
+	 if (fr->stream->nimages > max_nimages)
+	   max_nimages = fr->stream->nimages;
+       }
+       
+       if (!outfile) /* Watch out! */
+	 outfile = "-";
+       
+       for (i = 0; i < frames->count; i++) {
+	 Gt_Frame *fr = &FRAME(frames, i);
+	 int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
+	 char *explodename;
+	 
+	 char *imagename = 0;
+	 if (fr->explode_by_name)
+	   imagename = fr->name ? fr->name : fr->image->identifier;
+	 
+	 explodename = explode_filename(outfile, imagenumber, imagename,
+					max_nimages);
+	 merge_and_write_frames(explodename, i, i);
+       }
+       break;
+     }
+     
      case INSERTING:
       /* do nothing */
       break;

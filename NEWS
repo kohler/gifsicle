@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.13
+
+* `--explode' now generates filenames of the form `file.001 .. file.100'
+  rather than `file.1 .. file.100', so you can use shell globbing and still
+  get correct sequencing.
+
+
 Version 1.12   25.Mar.1999
 
 * Added `--window' option to gifview, which lets it display a GIF in an

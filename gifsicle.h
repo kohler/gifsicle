@@ -140,7 +140,7 @@ void verbose_endline(void);
 void stream_info(FILE *, Gif_Stream *, char *, int colormaps, int extensions);
 void image_info(FILE *, Gif_Stream *, Gif_Image *, int colormaps);
 
-char *explode_filename(char *filename, int number, char *name);
+char *explode_filename(char *filename, int number, char *name, int max_nimg);
 
 /*****
  * merging images
