@@ -29,6 +29,10 @@ Version 1.15   20.Aug.1999
 * `--replace' now preserves the replaced frame's disposal as well as its
   delay.
 
+* `gifsicle -I -' reports "<stdin>" as the input file name.
+
+* Improved the way the optimizer reorders colormaps.
+
 
 Version 1.14.2   16.Aug.1999
 

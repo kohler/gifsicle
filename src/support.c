@@ -358,8 +358,8 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename,
   if (!gfs) return;
   
   verbose_endline();
-  fprintf(where, "* %s %d image%s\n", filename, gfs->nimages,
-	  gfs->nimages == 1 ? "" : "s");
+  fprintf(where, "* %s %d image%s\n", (filename ? filename : "<stdin>"),
+	  gfs->nimages, gfs->nimages == 1 ? "" : "s");
   fprintf(where, "  logical screen %dx%d\n",
 	  gfs->screen_width, gfs->screen_height);
   
@@ -411,9 +411,12 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
   if (gfi->transparent >= 0)
     fprintf(where, " transparent %d", gfi->transparent);
   
-#ifdef PRINT_SIZE
-  if (gfi->compressed)
+#if defined(PRINT_SIZE) || 1
+  if (gfi->compressed) {
     fprintf(where, " compressed size %u", gfi->compressed_len);
+    Gif_UncompressImage(gfi);
+    Gif_ReleaseUncompressedImage(gfi);
+  }
 #endif
   
   fprintf(where, "\n");

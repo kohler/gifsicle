@@ -339,11 +339,45 @@ warning(char *message, ...)
   fputc('\n', stderr);
 }
 
-void
+static int gifread_error_count;
+
+static void
 gifread_error(const char *message, int which_image, void *thunk)
 {
+  static int last_which_image = 0;
+  static const char *last_message = 0;
+  static int different_error_count = 0;
+  static int same_error_count = 0;
   const char *filename = (const char *)thunk;
-  error("error reading %s: %s", filename, message);
+  
+  if (gifread_error_count == 0) {
+    last_which_image = -1;
+    different_error_count = 0;
+  }
+  
+  gifread_error_count++;
+  if (last_message && different_error_count <= 10
+      && (message != last_message || last_which_image != which_image)) {
+    if (same_error_count == 1)
+      error("  %s", last_message);
+    else if (same_error_count > 0)
+      error("  %s (%d times)", last_message, same_error_count);
+    same_error_count = 0;
+  }
+
+  if (message != last_message)
+    different_error_count++;
+  
+  same_error_count++;
+  last_message = message;
+  if (last_which_image != which_image && different_error_count <= 10
+      && message) {
+    error("Error while reading `%s' frame #%d:", filename, which_image);
+    last_which_image = which_image;
+  }
+  
+  if (different_error_count == 11 && message)
+    error("(more errors while reading `%s')", filename);
 }
 
 
@@ -424,7 +458,9 @@ particular purpose.\n");
     if (!f1)
       fatal_error("%s: %s", filename1, strerror(errno));
   }
+  gifread_error_count = 0;
   gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED, gifread_error, (void *)filename1);
+  gifread_error(0, -1, (void *)filename1); /* print out last error message */
   if (!gfs1)
     fatal_error("`%s' doesn't seem to contain a GIF", filename1);
   
@@ -436,7 +472,9 @@ particular purpose.\n");
     if (!f2)
       fatal_error("%s: %s", filename2, strerror(errno));
   }
+  gifread_error_count = 0;
   gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED, gifread_error, (void *)filename2);
+  gifread_error(0, -1, (void *)filename2); /* print out last error message */
   if (!gfs2) fatal_error("`%s' doesn't seem to contain a GIF", filename2);
   
   status = (compare(gfs1, gfs2) == DIFFERENT);

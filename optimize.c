@@ -757,6 +757,8 @@ create_out_global_map(Gif_Stream *gfs)
      The strategy used here -- just count in how many images a color is used
      and sort on that -- isn't strictly optimal, but it does well for most
      images. */
+  /* 20.Aug.1999 - Use a slightly smarter strategy: rank a color higher if
+     it is used in an image with relatively few colors. */
   {
     int32_t *rank = Gif_NewArray(int32_t, all_ncol);
     for (i = 0; i < all_ncol; i++)
@@ -765,12 +767,22 @@ create_out_global_map(Gif_Stream *gfs)
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
       byte *need = optdata->needed_colors;
+      int num_colors, rank_incr;
       /* ignore images that will require a local colormap */
       if (!optdata->global_penalty)
 	continue;
+      /* count colors */
+      for (i = 1, num_colors = 0; i < all_ncol; i++)
+	if (need[i] == REQUIRED)
+	  num_colors++;
+      if (num_colors == 0) continue;
+      /* change color count into a rank (9 - ceil(lg num_colors)) */
+      for (i = 128, rank_incr = 1; i >= num_colors; i >>= 1)
+	rank_incr++;
+      /* add rank_incr to all required colors */
       for (i = 1; i < all_ncol; i++)
 	if (need[i] == REQUIRED)
-	  rank[i]++;
+	  rank[i] += rank_incr;
     }
     
     sort_permutation(global_all, nglobal_all, rank, 1);
