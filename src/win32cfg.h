@@ -13,6 +13,7 @@
 /* #undef GETTIMEOFDAY_PROTO */
 
 /* Get the [u_]int*_t typedefs. */
+typedef unsigned __int8 uint8_t;
 typedef unsigned __int16 uint16_t;
 typedef unsigned __int32 uint32_t;
 typedef signed __int16 int16_t;
@@ -59,7 +60,7 @@ typedef signed __int32 int32_t;
 #define PACKAGE "gifsicle"
 
 /* Version number of package */
-#define VERSION "1.36 (Windows)"
+#define VERSION "1.38 (Windows)"
 
 
 #ifdef __cplusplus

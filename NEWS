@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.38   26.Jun.2003
+
+* Include Makefile.w32 (oops).
+
+
 Version 1.37   11.Feb.2003
 
 * Fix bug where combining `--rotate-X' and `-O' options would cause a
