@@ -111,6 +111,14 @@ codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
   return hashish1;
 }
 
+static void
+print_output_code(Gif_Context *gfc, Gif_Code code, Gif_Code eoi_code)
+{
+  if (gfc->prefix[code] != eoi_code){fprintf(stderr,"P%x",gfc->prefix[code]);
+  print_output_code(gfc, gfc->prefix[code], eoi_code);}
+  fprintf(stderr, "%X ", gfc->suffix[code]);
+}
+
 
 static void
 write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
@@ -140,7 +148,8 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   Gif_Code *prefixes = gfc->prefix;
   byte *suffixes = gfc->suffix;
   Gif_Code *codes = gfc->code;
-  
+
+  /* Here we go! */
   gifputbyte(min_code_bits, grr);
   clear_code = 1 << min_code_bits;
   eoi_code = clear_code + 1;
@@ -197,7 +206,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
       
     } else if (next_code > bump_code) {
       
-      GIF_DEBUG(("%d/%d", next_code, bump_code));
       /* bump up compression size */
       if (cur_code_bits == GIF_MAX_CODE_BITS) {
 	output_code = clear_code;
@@ -214,10 +222,10 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     /*****
      * Find the next code to output. */
     
-    /* If height is 0 -- no more pixels to write -- set hash to ensure
-       prefixes[hash] != eoi_code. That way we'll output work_code next time
-       around. */
-    hash = 0;
+    /* If height is 0 -- no more pixels to write -- we output work_code next
+       time around. */
+    if (height == 0)
+      goto out_of_data;
     
     /* Actual code finding. */
     while (height != 0) {
@@ -239,25 +247,25 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
       work_code = codes[hash];
     }
     
-    if (prefixes[hash] == eoi_code) {
+    if (hash < HASH_SIZE && prefixes[hash] == eoi_code) {
       /* We need to add something to the table. */
       
       prefixes[hash] = work_code;
       suffixes[hash] = suffix;
       codes[hash] = next_code;
       next_code++;
-      
+
       output_code = work_code;
       work_code = suffix;	/* code for a pixel == the pixel value */
       
     } else {
       /* Ran out of data and don't need to add anything to the table. */
+     out_of_data:
       output_code = work_code;
       work_code = eoi_code;
     }
     
   }
-  
   
   if (bits_left_over > 0)
     *buf++ = leftover;
@@ -321,7 +329,7 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   int ncolor;
   Gif_Writer grr;
   Gif_Context gfc;
-  
+
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
   
@@ -420,12 +428,12 @@ gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   if (gfi->compressed) {
     byte *compressed = gfi->compressed;
     u_int32_t len = gfi->compressed_len;
-    while (len > 0x4000) {
-      gifputblock(compressed, 0x4000, grr);
-      len -= 0x4000;
-      compressed += 0x4000;
+    while (len > 0x1000) {
+      gifputblock(compressed, 0x1000, grr);
+      len -= 0x1000;
+      compressed += 0x1000;
     }
-    gifputblock(compressed, len, grr);
+    if (len > 0) gifputblock(compressed, len, grr);
     
   } else
     image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
