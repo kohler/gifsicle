@@ -37,7 +37,9 @@ typedef signed __int32 int32_t;
 /* #undef const */
 
 /* Define as __inline if that's what the C compiler calls it.  */
-#define inline __inline
+#ifndef inline
+# define inline __inline
+#endif
 
 /* Define if the X Window System is missing or not being used.  */
 #define X_DISPLAY_MISSING 1
