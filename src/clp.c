@@ -43,9 +43,18 @@ typedef struct {
 } Clp_ArgType;
 
 
+typedef struct {
+
+  int pos;
+  int neg;
+
+} Clp_LongMinMatch;
+
+
 struct Clp_Internal {
-  
+
   Clp_Option *opt;
+  Clp_LongMinMatch *long_min_match;
   int nopt;
   
   Clp_ArgType *argtype;
@@ -91,12 +100,14 @@ struct Clp_ParserState {
 };
 
 
-typedef struct {
+typedef struct Clp_StringList {
+
+  Clp_Option *items;
+  Clp_LongMinMatch *long_min_match;
+  int nitems;
   
   int allow_int;
-  int nitems;
   int nitems_invalid_report;
-  Clp_Option *items;
   
 } Clp_StringList;
 
@@ -149,9 +160,11 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
   int i;
   Clp_Parser *clp = (Clp_Parser *)malloc(sizeof(Clp_Parser));
   Clp_Internal *cli = (Clp_Internal *)malloc(sizeof(Clp_Internal));
-  if (!clp || !cli) goto failed;
+  Clp_LongMinMatch *lmm = (Clp_LongMinMatch *)malloc(sizeof(Clp_LongMinMatch) * nopt);
+  if (!clp || !cli || !lmm) goto failed;
   
   clp->internal = cli;
+  cli->long_min_match = lmm;
   
   /* Get rid of negative option_ids, which are internal to CLP */
   for (i = 0; i < nopt; i++)
@@ -189,11 +202,11 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
   /* Calculate long options' minimum unambiguous length */
   for (i = 0; i < nopt; i++)
     if (opt[i].long_name && !TEST(&opt[i], Clp_OnlyNegated))
-      opt[i].long_min_match = calculate_long_min_match
+      lmm[i].pos = calculate_long_min_match
 	(nopt, opt, i, Clp_OnlyNegated, 0);
   for (i = 0; i < nopt; i++)
     if (opt[i].long_name && TEST(&opt[i], Clp_Negate))
-      opt[i].negated_long_min_match = calculate_long_min_match
+      lmm[i].neg = calculate_long_min_match
 	(nopt, opt, i, Clp_Negate, Clp_Negate);
   
   /* Set up clp->internal */
@@ -236,6 +249,7 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
   if (cli && cli->argtype) free(cli->argtype);
   if (cli) free(cli);
   if (clp) free(clp);
+  if (lmm) free(lmm);
   return 0;
 }
 
@@ -255,10 +269,12 @@ Clp_DeleteParser(Clp_Parser *clp)
     if (cli->argtype[i].func == parse_string_list) {
       Clp_StringList *clsl = (Clp_StringList *)cli->argtype[i].thunk;
       free(clsl->items);
+      free(clsl->long_min_match);
       free(clsl);
     }
   
   free(cli->argtype);
+  free(cli->long_min_match);
   free(cli);
   free(clp);
 }
@@ -338,9 +354,9 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
       for (i = 0; i < cli->nopt; i++)
 	have_short[cli->opt[i].short_name] = 1;
       for (i = 0; i < cli->nopt; i++)
-	if (cli->opt[i].long_name && cli->opt[i].long_min_match == 1
+	if (cli->opt[i].long_name && cli->long_min_match[i].pos == 1
 	    && have_short[ (unsigned char)cli->opt[i].long_name[0] ])
-	  cli->opt[i].long_min_match++;
+	  cli->long_min_match[i].pos++;
       cli->both_short_and_long = 1;
     }
   }
@@ -414,6 +430,7 @@ argcmp(const char *ref, const char *arg, int min_match)
 
 static int
 find_prefix_opt(const char *arg, int nopt, Clp_Option *opt,
+		Clp_LongMinMatch *lmmvec,
 		int *ambiguous, int *ambiguous_values, int negated)
      /* Looks for an unambiguous match of `arg' against one of the long
         options in `opt'. Returns positive if it finds one; otherwise, returns
@@ -428,7 +445,7 @@ find_prefix_opt(const char *arg, int nopt, Clp_Option *opt,
 	|| (!negated && TEST(&opt[i], Clp_OnlyNegated)))
       continue;
     
-    lmm = (negated ? opt[i].negated_long_min_match : opt[i].long_min_match);
+    lmm = (negated ? lmmvec[i].neg : lmmvec[i].pos);
     len = argcmp(opt[i].long_name, arg, lmm);
     if (len > 0)
       return i;
@@ -582,7 +599,8 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
   /* actually look for a string value */
   index = find_prefix_opt
-    (arg, sl->nitems, sl->items, &ambiguous, ambiguous_values, 0);
+    (arg, sl->nitems, sl->items, sl->long_min_match,
+     &ambiguous, ambiguous_values, 0);
   if (index >= 0) {
     clp->val.i = sl->items[index].option_id;
     return 1;
@@ -614,11 +632,13 @@ finish_string_list(Clp_Parser *clp, int type_id, int flags,
 {
   int i;
   Clp_StringList *clsl = (Clp_StringList *)malloc(sizeof(Clp_StringList));
-  if (!clsl) return 0;
+  Clp_LongMinMatch *lmm = (Clp_LongMinMatch *)malloc(sizeof(Clp_LongMinMatch) * nitems);
+  if (!clsl || !lmm) goto error;
   
-  clsl->allow_int = (flags & Clp_AllowNumbers) != 0;
   clsl->items = items;
+  clsl->long_min_match = lmm;
   clsl->nitems = nitems;
+  clsl->allow_int = (flags & Clp_AllowNumbers) != 0;
   
   if (nitems < MAX_AMBIGUOUS_VALUES && nitems < itemscap && clsl->allow_int) {
     items[nitems].long_name = "any integer";
@@ -629,14 +649,15 @@ finish_string_list(Clp_Parser *clp, int type_id, int flags,
     clsl->nitems_invalid_report = nitems;
   
   for (i = 0; i < nitems; i++)
-    items[i].long_min_match = calculate_long_min_match(nitems, items, i, 0, 0);
+    lmm[i].pos = calculate_long_min_match(nitems, items, i, 0, 0);
   
   if (Clp_AddType(clp, type_id, 0, parse_string_list, clsl))
     return 1;
-  else {
-    free(clsl);
-    return 0;
-  }
+
+ error:
+  if (clsl) free(clsl);
+  if (lmm) free(lmm);
+  return 0;
 }
 
 int
@@ -956,8 +977,9 @@ find_long(Clp_Parser *clp, char *arg)
   int first_negative_ambiguous;
   
   /* Look for a normal option. */
-  value = find_prefix_opt(arg, cli->nopt, opt, &cli->ambiguous,
-			  cli->ambiguous_values, clp->negated);
+  value = find_prefix_opt
+    (arg, cli->nopt, opt, cli->long_min_match,
+     &cli->ambiguous, cli->ambiguous_values, clp->negated);
   if (value >= 0)
     goto worked;
   
@@ -968,8 +990,9 @@ find_long(Clp_Parser *clp, char *arg)
   while (arg[0] == 'n' && arg[1] == 'o' && arg[2] == '-') {
     arg += 3;
     clp->negated = !clp->negated;
-    value = find_prefix_opt(arg, cli->nopt, opt, &cli->ambiguous,
-			    cli->ambiguous_values, clp->negated);
+    value = find_prefix_opt
+      (arg, cli->nopt, opt, cli->long_min_match,
+       &cli->ambiguous, cli->ambiguous_values, clp->negated);
     if (value >= 0)
       goto worked;
   }
@@ -985,7 +1008,7 @@ find_long(Clp_Parser *clp, char *arg)
   }
   
  worked:
-  len = argcmp(opt[value].long_name, arg, opt[value].long_min_match);
+  len = argcmp(opt[value].long_name, arg, cli->long_min_match[value].pos);
   if (arg[len] == '=') {
     clp->have_arg = 1;
     clp->arg = arg + len + 1;

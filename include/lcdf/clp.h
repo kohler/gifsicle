@@ -72,10 +72,6 @@ struct Clp_Option {
   int arg_type;
   int flags;
   
-  /* remaining fields are calculated automatically */
-  int long_min_match;
-  int negated_long_min_match;
-  
 };
 
 
