@@ -158,7 +158,6 @@ char *explode_filename(const char *filename, int number,
 /*****
  * merging images
  **/
-#define COLORMAP_ENSURE_SLOT_255 1
 void	unmark_colors(Gif_Colormap *);
 void	unmark_colors_2(Gif_Colormap *);
 int	find_color_index(Gif_Color *c, int nc, Gif_Color *);

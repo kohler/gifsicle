@@ -1,4 +1,4 @@
-GIFSICLE 1.30
+GIFSICLE 1.31
 =============
 
 ABOUT GIFSICLE
@@ -93,8 +93,8 @@ BUGS, SUGGESTIONS, ETC.
 you have suggestions or patches.
 
 	Eddie Kohler
-	eddietwo@lcs.mit.edu
-	http://www.pdos.lcs.mit.edu/~eddietwo/
+	kohler@icir.org
+	http://www.icir.org/kohler/
 
 GIFSICLE HOME PAGE
 ------------------
@@ -141,11 +141,11 @@ contact the author and obtain permission before doing so.
 
 AUTHORS
 -------
-Eddie Kohler <eddietwo@lcs.mit.edu>
-http://www.pdos.lcs.mit.edu/~eddietwo/
+Eddie Kohler <kohler@icir.org>
+http://www.icir.org/kohler/
 He wrote it.
 
-Anne Dudfield <anne@lvld.hp.com>
+Anne Dudfield <anne@mazunetworks.com>
 http://www.frii.com/~annied/
 She named it.
 

@@ -1028,92 +1028,6 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 }
 
 
-static void
-find_background(Gif_Colormap *dest_global, Gif_Color *background)
-{
-  int i;
-  /* This code is SUCH a PAIN in the PATOOTIE!! */
-  
-  /* 0. report warnings if the user wants an impossible background setting */
-  if (background->haspixel) {
-    int first_img_transp = 0;
-    if (merger[0]->transparent.haspixel < 255)
-      first_img_transp = (merger[0]->image->transparent >= 0
-			  || merger[0]->transparent.haspixel);
-    if (first_img_transp) {
-      static int context = 0;
-      warning("irrelevant background color");
-      if (!context) {
-	warncontext("(The background will appear transparent because");
-	warncontext("the first image contains transparency.)");
-	context = 1;
-      }
-    }
-  }
-  
-  /* 1. user set the background to a color index
-     -> find the associated color */
-  if (background->haspixel == 2) {
-    Gif_Stream *gfs = merger[0]->stream;
-    if (gfs->global && background->pixel < (uint32_t)gfs->global->ncol) {
-      *background = gfs->global->col[ background->pixel ];
-      background->haspixel = 1;
-    } else {
-      error("background color index `%d' out of range", background->pixel);
-      background->haspixel = 0;
-    }
-  }
-  
-  /* 2. search the existing streams and images for background colors
-        (prefer colors from images with disposal == BACKGROUND)
-     -> choose the color. warn if two such images have conflicting colors */
-  if (background->haspixel == 0) {
-    int relevance = 0;
-    int saved_bg_transparent = 0;
-    for (i = 0; i < nmerger; i++) {
-      Gif_Stream *gfs = merger[i]->stream;
-      int bg_disposal = merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND;
-      int bg_transparent = gfs->images[0]->transparent >= 0;
-      int bg_exists = gfs->global && gfs->background < gfs->global->ncol;
-      
-      if ((!bg_exists && !bg_transparent) || (bg_disposal + 1 < relevance))
-	continue;
-      else if (bg_disposal + 1 > relevance) {
-	if (bg_exists)
-	  *background = gfs->global->col[gfs->background];
-	else
-	  background->red = background->green = background->blue = 0;
-	saved_bg_transparent = bg_transparent;
-	relevance = bg_disposal + 1;
-	continue;
-      }
-      
-      /* check for conflicting background requirements */
-      if (bg_transparent != saved_bg_transparent
-	  || (!saved_bg_transparent &&
-	      !GIF_COLOREQ(background, &gfs->global->col[gfs->background]))) {
-	static int context = 0;
-	warning("input images have conflicting background colors");
-	if (!context) {
-	  warncontext("(This means some animation frames may appear incorrect.)");
-	  context = 1;
-	}
-	break;
-      }
-    }
-    background->haspixel = relevance != 0;
-  }
-  
-  /* 3. we found a background color
-     -> force the merging process to keep it in the global colormap with
-     COLORMAP_ENSURE_SLOT_255. See merge.c function ensure_slot_255 */
-  if (background->haspixel) {
-    dest_global->userflags |= COLORMAP_ENSURE_SLOT_255;
-    dest_global->col[255] = *background;
-  }
-}
-
-
 static int
 find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
 		    char *color_context)
@@ -1126,7 +1040,8 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
     if (color->pixel < (uint32_t)gfcm->ncol)
       return color->pixel;
     else {
-      if (color_context) error("%s color out of range", color_context);
+      if (color_context)
+	  error("%s color out of range", color_context);
       return -1;
     }
   }
@@ -1136,6 +1051,82 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
     error("%s color not in colormap", color_context);
   return index;
 }
+
+static void
+set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
+{
+    Gif_Color background;
+    int i, conflict, want_transparent;
+
+    /* Check for user-specified background. */
+    /* If they specified the number, silently cooperate. */
+    if (output_data->background.haspixel == 2) {
+	gfs->background = output_data->background.pixel;
+	return;
+    }
+
+    /* Otherwise, if they specified a color, search for it. */
+    if (output_data->background.haspixel) {
+	if (gfs->images[0]->transparent >= 0) {
+	    static int context = 0;
+	    warning("irrelevant background color");
+	    if (!context) {
+		warncontext("(The background will appear transparent because");
+		warncontext("the first image contains transparency.)");
+		context = 1;
+	    }
+	}
+	background = output_data->background;
+	goto search;
+    }
+
+    /* If we get here, user doesn't care about background. */
+    /* Search for required background colors. */
+    conflict = want_transparent = background.haspixel = 0;
+    for (i = 0; i < nmerger; i++) {
+	Gif_Image *gfi = gfs->images[i];
+	if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
+	    || (i > 0 && (gfi->left != 0 || gfi->top != 0
+			  || gfi->width != gfs->screen_width
+			  || gfi->height != gfs->screen_height))) {
+	    Gif_Stream *ogfs = merger[i]->stream;
+	    int original_bg_transparent = (merger[i]->transparent.haspixel < 255 && (merger[i]->transparent.haspixel > 0 || merger[i]->image->transparent >= 0));
+	    if (original_bg_transparent != background.haspixel)
+		conflict = 1;
+	    else if (original_bg_transparent)
+		want_transparent = 1;
+	    else if (ogfs->global && ogfs->background < ogfs->global->ncol) {
+		if (background.haspixel && !GIF_COLOREQ(&background, &ogfs->global->col[ogfs->background]))
+		    conflict = 1;
+		else {
+		    background = ogfs->global->col[ogfs->background];
+		    background.haspixel = 1;
+		}
+	    }
+	}
+    }
+
+    /* Report conflicts. */
+    if (conflict || (want_transparent && gfs->images[0]->transparent < 0)) {
+	static int context = 0;
+	warning("input images have conflicting background colors");
+	if (!context) {
+	  warncontext("(This means some animation frames may appear incorrect.)");
+	  context = 1;
+	}
+    }
+
+    /* If no important background color, bag. */
+    if (!background.haspixel) {
+	gfs->background = 0;
+	return;
+    }
+    
+  search:
+    i = find_color_or_error(&background, gfs, 0, "background");
+    gfs->background = (i >= 0 ? i : 0);
+}
+
 
 
 static void
@@ -1260,7 +1251,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
-  Gif_Color dest_background;
   int i, same_compressed_ok, all_same_compressed_ok;
   
   global->ncol = 0;
@@ -1302,10 +1292,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (merger[i]->image->local)
       unmark_colors_2(merger[i]->image->local);
   }
-  
-  /* decide on the background. use the one from output_data */
-  dest_background = output_data->background;
-  find_background(global, &dest_background);
   
   /* analyze crops */
   for (i = 0; i < nmerger; i++)
@@ -1483,19 +1469,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     dest->screen_width = output_data->screen_width;
   if (output_data->screen_height >= 0)
     dest->screen_height = output_data->screen_height;
+  Gif_CalculateScreenSize(dest, 0);
   
   /* Find the background color in the colormap, or add it if we can */
-  {
-    int bg = find_color_or_error(&dest_background, dest, 0, 0);
-    if (bg < 0 && dest->images[0]->transparent >= 0)
-      dest->background = dest->images[0]->transparent;
-    else if (bg < 0 && global->ncol < 256) {
-      dest->background = global->ncol;
-      global->col[ global->ncol ] = dest_background;
-      global->ncol++;
-    } else
-      dest->background = bg;
-  }
+  set_background(dest, output_data);
 
   return dest;
 }

@@ -175,7 +175,7 @@ static int interactive = 1;
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
   { "background", 'b', BACKGROUND_OPT, Clp_ArgString, 0 },
-  { "bg", 0, BACKGROUND_OPT, Clp_ArgString, 0 },
+  { "bg", 't', BACKGROUND_OPT, Clp_ArgString, 0 },
   { "display", 'd', DISPLAY_OPT, Clp_ArgStringNotOption, 0 },
   { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, 0 },
   { "install-colormap", 'i', INSTALL_COLORMAP_OPT, 0, Clp_Negate },

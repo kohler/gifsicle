@@ -492,7 +492,8 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
        "actually used" pixels */
     if (!use_transparency) {
       for (i = 0; i < all_ncol; i++)
-	if (need[i] == REPLACE_TRANSP) need[i] = REQUIRED;
+	if (need[i] == REPLACE_TRANSP)
+	  need[i] = REQUIRED;
       count[REQUIRED] += count[REPLACE_TRANSP];
     }
     /* If too many "actually used" pixels, fail miserably */
@@ -788,10 +789,12 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
     /* fail if a needed pixel isn't in the global map */
     if (is_global) {
       val = all_col[i].pixel;
-      if (val >= ncol) goto error;
+      if (val >= ncol)
+	goto error;
     } else {
       /* always place colors in a local colormap */
-      if (ncol == 256) goto error;
+      if (ncol == 256)
+	goto error;
       val = ncol;
       col[val] = all_col[i];
       ncol++;
@@ -885,7 +888,7 @@ prepare_colormap(Gif_Image *gfi, byte *need)
     
     gfi->local = Gif_NewFullColormap(0, 256);
     map = prepare_colormap_map(gfi, gfi->local, need);
-    
+
     /* The global colormap has already been canonicalized; we should
        canonicalize the local colormaps as well. Do that here */
     local_col = gfi->local->col;
@@ -945,10 +948,8 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   int transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;
-  byte *data;
+  byte *data, *swit;
   int transparentizing;
-  int run_length;
-  int run_pixel_value = 0;
   
   /* First, try w/o transparency. Compare this to the result using
      transparency and pick the better of the two. */
@@ -957,97 +958,81 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   
   /* Actually copy data to frame.
     
-    Use transparency if possible to shrink the size of the written GIF.
-    
-    The written GIF will be small if patterns (sequences of pixel values)
-    recur in the image.
-    We could conceivably use transparency to produce THE OPTIMAL image,
-    with the most recurring patterns of the best kinds; but this would
-    be very hard (wouldn't it?). Instead, we settle for a heuristic:
-    we try and create RUNS. (Since we *try* to create them, they will
-    presumably recur!) A RUN is a series of adjacent pixels all with the
-    same value.
-    
-    By & large, we just use the regular image's values. However, we might
-    create a transparent run *not in* the regular image, if TWO OR MORE
-    adjacent runs OF DIFFERENT COLORS *could* be made transparent.
-    
-    (An area can be made transparent if the corresponding area in the previous
-    frame had the same colors as the area does now.)
-    
-    Why? If only one run (say of color C) could be transparent, we get no
-    large immediate advantage from making it transparent (it'll be a run of
-    the same length regardless). Also, we might LOSE: what if the run was
-    adjacent to some more of color C, which couldn't be made transparent? If
-    we use color C (instead of the transparent color), then we get a longer
-    run.
-    
-    This simple heuristic does a little better than Gifwizard's (6/97)
-    on some images, but does *worse than nothing at all* on others.
-    
-    However, it DOES do better than the complicated, greedy algorithm I
-    commented out above; and now we pick either the transparency-optimized
-    version or the normal version, whichever compresses smaller, for the best
-    of both worlds. (9/98) */
+     Use transparency if possible to shrink the size of the written GIF.
 
-  x = width;
-  y = -1;
-  data = gfi->image_data;
-  transparentizing = 0;
-  run_length = 0;
-  
-  while (y < height) {
+     The written GIF will be small if patterns (sequences of pixel values)
+     recur in the image.
+     We could conceivably use transparency to produce THE OPTIMAL image,
+     with the most recurring patterns of the best kinds; but this would
+     be very hard (wouldn't it?). Instead, we settle for a heuristic:
+     we try and create RUNS. (Since we *try* to create them, they will
+     presumably recur!) A RUN is a series of adjacent pixels all with the
+     same value.
+
+     By & large, we just use the regular image's values. However, we might
+     create a transparent run *not in* the regular image, if TWO OR MORE
+     adjacent runs OF DIFFERENT COLORS *could* be made transparent.
+     
+     (An area can be made transparent if the corresponding area in the previous
+     frame had the same colors as the area does now.)
+     
+     Why? If only one run (say of color C) could be transparent, we get no
+     large immediate advantage from making it transparent (it'll be a run of
+     the same length regardless). Also, we might LOSE: what if the run was
+     adjacent to some more of color C, which couldn't be made transparent? If
+     we use color C (instead of the transparent color), then we get a longer
+     run.
     
-    if (!transparentizing) {
-      /* In an area that can't be made transparent */
-      while (x < width && !transparentizing) {
-	*data = map[*cur];
-	
-	/* If this pixel could be transparent... */
-	if (map[*cur] == transparent)
-	  transparentizing = 1;
-	else if (*cur == *last) {
-	  if (*cur == run_pixel_value)
-	    /* within a transparent run */
-	    run_length++;
-	  else if (run_length > 0)
-	    /* Ooo!! adjacent transparent runs -- combine them */
-	    transparentizing = 1;
-	  else {
-	    /* starting a new transparent run */
-	    run_pixel_value = *cur;
-	    run_length = 1;
-	  }
-	} else
-	  run_length = 0;
-	
-	data++, last++, cur++, x++;
-      }
-      
-      if (transparentizing)
-	memset(data - run_length - 1, transparent, run_length + 1);
-      
-    } else
-      /* Make a sequence of pixels transparent */
-      while (x < width && transparentizing) {
-	if (*last == *cur || map[*cur] == transparent) {
-	  *data = transparent;
-	  data++, last++, cur++, x++;
-	} else
-	  /* If this pixel can't be made transparent, just go back to
-	     copying normal runs. */
-	  transparentizing = 0;
-      }
+     This simple heuristic does a little better than Gifwizard's (6/97)
+     on some images, but does *worse than nothing at all* on others.
     
-    /* Move to the next row */
-    if (x >= width) {
-      x = 0;
-      y++;
-      last = last_data + screen_width * (y+top) + gfi->left;
-      cur = this_data + screen_width * (y+top) + gfi->left;
+     However, it DOES do better than the complicated, greedy algorithm I
+     commented out above; and now we pick either the transparency-optimized
+     version or the normal version, whichever compresses smaller, for the best
+     of both worlds. (9/98) */
+
+    x = y = 0;
+    data = swit = gfi->image_data;
+    transparentizing = 0;
+    goto calculate_pointers;
+
+    while (y < height) {
+	if (transparentizing) {
+	    while (x < width && transparentizing)
+		if (*cur == *last || map[*cur] == transparent) {
+		    *data = transparent;
+		    data++, last++, cur++, x++;
+		} else {
+		    *data = map[*cur];
+		    transparentizing = 0;
+		    swit = data + 1;
+		    data++, last++, cur++, x++;
+		}
+	} else {
+	    while (x < width && !transparentizing) {
+		*data = map[*cur];
+		if (*data == transparent || (*cur == *last && *swit != *data)) {
+		    transparentizing = 1;
+		    memset(swit, transparent, data - swit);
+		} else {
+		    if (*cur != *last)
+			swit = data + 1;
+		    else if (*swit != *data)
+			swit = data;
+		    data++, last++, cur++, x++;
+		}
+	    }
+	}
+
+	if (x >= width) {
+	    x = 0;
+	    y++;
+	  calculate_pointers:
+	    last = last_data + screen_width * (y+top) + gfi->left;
+	    cur = this_data + screen_width * (y+top) + gfi->left;
+	}
     }
-  }
-  
+
   
   /* Now, try compressed transparent version and pick the better of the two. */
   {
@@ -1130,7 +1115,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
       Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
       
       /* don't use transparency on first frame */
-      if (optimize_level > 1 && image_index > 0)
+      if (optimize_level > 1 && image_index > 0 && cur_gfi->transparent >= 0)
 	transp_frame_data(gfs, cur_gfi, map);
       else
 	simple_frame_data(cur_gfi, map);

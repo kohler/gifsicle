@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.31
+Version 1.31   17.Jun.2002
 
 * Changed behavior of `--crop X,Y+WIDTHxHEIGHT' option when WIDTH or HEIGHT
   is negative. Previously, zero or negative WIDTH and HEIGHT referred to
@@ -9,6 +9,12 @@ Version 1.31
   the crop width (the image width) was 10 pixels beyond the image edge. The
   new behavior measures zero or negative WIDTH and HEIGHT relative to the
   image's bottom-right corner.
+
+* Changed background behavior. Hopefully the only user-visible effect will
+  be fewer spurious warnings.
+
+* Fixed a bug that could corrupt output when optimizing images with `-O2'
+  that had more than 256 colors.
 
 
 Version 1.30   27.Jul.2001

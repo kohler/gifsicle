@@ -88,17 +88,6 @@ find_color_index(Gif_Color *c, int nc, Gif_Color *color)
 }
 
 
-static int
-ensure_slot_255(Gif_Colormap *dest, int ncol)
-{
-  Gif_Color *background = &dest->col[255];
-  int i;
-  for (i = 0; i < ncol; i++)
-    if (GIF_COLOREQ(&dest->col[i], background))
-      return ncol;
-  return ncol + 1;
-}
-
 int
 merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 {
@@ -118,15 +107,6 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
       
       if (mapto == -1)
 	mapto = find_color_index(destcol, ndestcol, &srccol[i]);
-      
-      if (mapto == -1 && ndestcol == 255
-	  && (dest_userflags & COLORMAP_ENSURE_SLOT_255) != 0) {
-	ndestcol = ensure_slot_255(dest, ndestcol);
-	dest_userflags &= ~COLORMAP_ENSURE_SLOT_255;
-	/* slot 255 might have been equal to `srccol[i]'! */
-	if (ndestcol == 256 && GIF_COLOREQ(&destcol[255], &srccol[i]))
-	  mapto = 255;
-      }
       
       if (mapto == -1 && ndestcol < 256) {
 	/* add the color */
