@@ -175,7 +175,7 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
       for (c = 0; c < clear_code; c++)
 	rle_next[c] = clear_code;
       
-    } else if (next_code > CUR_BUMP_CODE) {
+    } else if (next_code >= CUR_BUMP_CODE) {
       /* bump up compression size */
       if (cur_code_bits == GIF_MAX_CODE_BITS) {
 	output_code = clear_code;
