@@ -8,11 +8,22 @@
 
 # If you have a problem mail me at the address above.
 
+# *** MAKING UNGIFSICLE ***
+# If `GIFWRITE_OBJ' is defined to `gifwrite.obj', Gifsicle will use
+# Unisys-patented LZW compression. If it is defined to `ungifwrt.obj', it
+# will use unpatented run-length compression, which creates larger GIFs but
+# is completely free software. If you downloaded the ungifsicle package,
+# which doesn't have `gifwrite.c', you MUST define `GIFWRITE_OBJ' to
+# `ungifwrt.obj' by commenting the first line below and uncommenting the
+# second.
+GIFWRITE_OBJ = gifwrite.obj
+# GIFWRITE_OBJ = ungifwrt.obj
+
 CC = cl
 CFLAGS = -I. -DHAVE_CONFIG_H -DWIN32 -D_CONSOLE /W3 /ML -O2
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
-       gifwrite.obj merge.obj optimize.obj quantize.obj support.obj \
+       $(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
        xform.obj gifsicle.obj
 
 GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj

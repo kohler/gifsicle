@@ -74,7 +74,9 @@ MAKING GIFSICLE ON 32-BIT WINDOWS
    Emil Mikulic <darkmoon@connexus.net.au> has provided a Makefile for
 building gifsicle out of the box on 32-bit Windows. Just unpack the
 distribution, change into that directory, and type `nmake -f Makefile.w32'.
-Gifview will not be built. See the `Makefile.w32' file for more
+Gifview will not be built. You will need to edit `Makefile.w32' if you are
+building ungifsicle. If you downloaded the ungifsicle distribution,
+`Makefile.w32' will not work until you edit it. See the file for more
 information.
 
 CHANGES
