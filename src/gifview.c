@@ -1015,7 +1015,7 @@ main(int argc, char **argv)
       break;
       
      case VERSION_OPT:
-      printf("Gifview version %s\n", VERSION);
+      printf("gifview (LCDF Gifsicle) %s\n", VERSION);
       printf("Copyright (C) 1997-9 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
