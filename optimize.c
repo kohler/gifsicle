@@ -17,11 +17,14 @@ typedef struct {
   u_int16_t top;
   u_int16_t width;
   u_int16_t height;
+  u_int32_t size;
   byte disposal;
   int transparent;
   byte *needed_colors;
   u_int16_t required_color_count;
-  u_int16_t global_penalty;
+  int32_t active_penalty;
+  int32_t global_penalty;
+  int32_t colormap_penalty;
   Gif_Image *new_gfi;
 } Gif_OptData;
 
@@ -614,90 +617,6 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
  * CALCULATE OUTPUT GLOBAL COLORMAP
  **/
 
-/* choose_256_colors: If we need to have some local colormaps, then choose for
-   the global colormap an optimal subset of all the colors, to minimize the
-   size of extra local colormaps required.
-   
-   On return, the `global_penalty' component of an image's Gif_OptData
-   structure is 0 iff that image will need a local colormap. */
-
-static void
-choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
-{
-  int i, imagei;
-  int all_ncol = all_colormap->ncol;
-  int32_t *penalty = Gif_NewArray(int32_t, all_ncol);
-  u_int16_t *ordering = Gif_NewArray(u_int16_t, all_ncol);
-  int nordering = all_ncol - 1;
-  int penalties_changed;
-  
-  for (i = 0; i < nordering; i++)
-    ordering[i] = i + 1;
-  
-  /* choose appropriate penalties for each image */
-  for (imagei = 0; imagei < gfs->nimages; imagei++) {
-    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
-    optdata->global_penalty = 1;
-    for (i = 1; i < optdata->required_color_count; i *= 2)
-      optdata->global_penalty *= 3;
-  }
-  
-  /* set initial penalties for each color */
-  for (i = 0; i < all_ncol; i++)
-    penalty[i] = 0;
-  for (imagei = 0; imagei < gfs->nimages; imagei++) {
-    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
-    byte *need = optdata->needed_colors;
-    int this_penalty = optdata->global_penalty;
-    for (i = 0; i < all_ncol; i++)
-      if (need[i] == REQUIRED)
-	penalty[i] += this_penalty;
-  }
-  
-  /* force the background to occur in the global colormap by giving it a very
-     high penalty */
-  if (background != TRANSP)
-    penalty[background] = 0x7FFFFFFF;
-  
-  /* loop, removing the most useless color each time, until we have exactly
-     256 colors */
-  penalties_changed = 1;
-  while (nordering > 256) {
-    int removed_color;
-    
-    if (penalties_changed)
-      sort_permutation(ordering, nordering, penalty, 1);
-    
-    /* remove the color which is least expensive to remove */
-    removed_color = ordering[nordering - 1];
-    nordering--;
-    
-    /* adjust penalties. if an image now must have a local colormap, then any
-       penalty values for its other colors shouldn't be considered */
-    penalties_changed = 0;
-    for (imagei = 0; imagei < gfs->nimages; imagei++) {
-      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
-      byte *need = optdata->needed_colors;
-      int this_penalty = optdata->global_penalty;
-      
-      if (this_penalty == 0 || need[removed_color] != REQUIRED)
-	continue;
-      
-      for (i = 0; i < all_ncol; i++)
-	if (need[i] == REQUIRED)
-	  penalty[i] -= this_penalty;
-      optdata->global_penalty = 0;
-      penalties_changed = 1;
-    }
-  }
-  
-  for (i = 0; i < 256; i++)
-    global_all[i] = ordering[i];
-  
-  Gif_DeleteArray(ordering);
-  Gif_DeleteArray(penalty);
-}
-
 /* create_out_global_map: The interface function to this pass. It creates
    out_global_map and sets pixel values on all_colormap appropriately.
    Specifically:
@@ -705,126 +624,122 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
    all_colormap->col[P].pixel >= 256 ==> P is not in the global colormap.
    
    Otherwise, all_colormap->col[P].pixel == the J so that
-   GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]). */
+   GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]).
+
+   On return, the `colormap_penalty' component of an image's Gif_OptData
+   structure is <0 iff that image will need a local colormap.
+
+   20.Aug.1999 - updated to new version that arranges the entire colormap, not
+   just the stuff above 256 colors. */
+
+static void
+increment_penalties(Gif_OptData *opt, int32_t *penalty, int32_t delta)
+{
+  int i;
+  int all_ncol = all_colormap->ncol;
+  byte *need = opt->needed_colors;
+  for (i = 1; i < all_ncol; i++)
+    if (need[i] == REQUIRED)
+      penalty[i] += delta;
+}
 
 static void
 create_out_global_map(Gif_Stream *gfs)
 {
-  int i, imagei;
   int all_ncol = all_colormap->ncol;
-  u_int16_t *global_all = Gif_NewArray(u_int16_t, 256);
-  int nglobal_all;
-
-  /* 1. First determine which colors should be in the global colormap. Do this
-     by calculating the penalty should a color NOT be in the global colormap;
-     then choose the lowest of these.
-     
-     Note: Don't need to do this if there are <=256 colors overall. */
+  int32_t *penalty = Gif_NewArray(int32_t, all_ncol);
+  u_int16_t *permute = Gif_NewArray(u_int16_t, all_ncol);
+  u_int16_t *ordering = Gif_NewArray(u_int16_t, all_ncol);
+  int cur_ncol, i, imagei;
+  int nglobal_all = (all_ncol <= 257 ? all_ncol - 1 : 256);
+  int permutation_changed;
+		     
+  /* initial permutation is null */
+  for (i = 0; i < all_ncol - 1; i++)
+    permute[i] = i + 1;
   
-  if (all_ncol - 1 > 256) {
-    nglobal_all = 256;
-    choose_256_colors(gfs, global_all);
-  } else {
-    nglobal_all = all_ncol - 1;
-    for (i = 0; i < nglobal_all; i++)
-      global_all[i] = i + 1;
-    /* Depend on each image's global_penalty being != 0 by default */
+  /* choose appropriate penalties for each image */
+  for (imagei = 0; imagei < gfs->nimages; imagei++) {
+    Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
+    opt->global_penalty = opt->colormap_penalty = 1;
+    for (i = 2; i < opt->required_color_count; i *= 2)
+      opt->colormap_penalty *= 3;
+    opt->active_penalty =
+      (all_ncol > 257 ? opt->colormap_penalty : opt->global_penalty);
   }
   
-  /* Colormap Canonicalization
-     
-     Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at> would like
-     gifsicle to `canonicalize' colormaps, meaning that you might want the
-     colormap to have a predictable arrangement after piping it through
-     gifsicle. This is a nice place to do that. Basically, sort the colormap
-     on RGB order first (so that colors with equal rank have a predictable
-     order), then sort on rank. (For rank sorting information see below.) */
-  {
-    int32_t *rgb_rank = Gif_NewArray(int32_t, all_ncol);
-    Gif_Color *all_col = all_colormap->col;
-    for (i = 0; i < all_ncol; i++)
-      rgb_rank[i] = (all_col[i].red << 16) | (all_col[i].green << 8)
-	| (all_col[i].blue);
-    
-    sort_permutation(global_all, nglobal_all, rgb_rank, 0);
-    
-    Gif_DeleteArray(rgb_rank);
+  /* set initial penalties for each color */
+  for (i = 1; i < all_ncol; i++)
+    penalty[i] = 0;
+  for (imagei = 0; imagei < gfs->nimages; imagei++) {
+    Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
+    increment_penalties(opt, penalty, opt->active_penalty);
   }
+  permutation_changed = 1;
   
-  /* Now, reorder global colors. Colors used in a lot of images should appear
-     first in the global colormap; then those images might be able to use a
-     smaller min_code_size, since the colors they need are clustered first.
-     The strategy used here -- just count in how many images a color is used
-     and sort on that -- isn't strictly optimal, but it does well for most
-     images. */
-  /* 20.Aug.1999 - Use a slightly smarter strategy: rank a color higher if
-     it is used in an image with relatively few colors. */
-  {
-    int32_t *rank = Gif_NewArray(int32_t, all_ncol);
-    for (i = 0; i < all_ncol; i++)
-      rank[i] = 0;
+  /* Loop, removing one color at a time. */
+  for (cur_ncol = all_ncol - 1; cur_ncol; cur_ncol--) {
+    u_int16_t removed;
     
+    /* sort permutation based on penalty */
+    if (permutation_changed)
+      sort_permutation(permute, cur_ncol, penalty, 1);
+    permutation_changed = 0;
+    
+    /* update reverse permutation */
+    removed = permute[cur_ncol - 1];
+    ordering[removed] = cur_ncol - 1;
+    
+    /* decrement penalties for colors that are out of the running */
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
-      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
-      byte *need = optdata->needed_colors;
-      int num_colors, rank_incr;
-      /* ignore images that will require a local colormap */
-      if (!optdata->global_penalty)
-	continue;
-      /* count colors */
-      for (i = 1, num_colors = 0; i < all_ncol; i++)
-	if (need[i] == REQUIRED)
-	  num_colors++;
-      if (num_colors == 0) continue;
-      /* change color count into a rank: (9 - ceil(lg num_colors)) */
-      for (i = 128, rank_incr = 1; i >= num_colors; i >>= 1)
-	rank_incr++;
-      /* add rank_incr to all required colors */
-      for (i = 1; i < all_ncol; i++)
-	if (need[i] == REQUIRED)
-	  rank[i] += rank_incr;
+      Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
+      byte *need = opt->needed_colors;
+      if (opt->global_penalty > 0 && need[removed] == REQUIRED) {
+	increment_penalties(opt, penalty, -opt->active_penalty);
+	opt->global_penalty = 0;
+	opt->colormap_penalty = (cur_ncol > 256 ? -1 : 0);
+	permutation_changed = 1;
+      }
     }
     
-    sort_permutation(global_all, nglobal_all, rank, 1);
-    
-    /* get rid of unused colors; warning: we may need to include the
-       background explicitly below */
-    for (i = 0; i < nglobal_all; i++)
-      if (!rank[global_all[i]])
-	nglobal_all = i;
-    
-    Gif_DeleteArray(rank);
+    /* change colormap penalties if we're no longer working w/globalmap */
+    if (cur_ncol == 257) {
+      for (i = 0; i < all_ncol; i++)
+	penalty[i] = 0;
+      for (imagei = 0; imagei < gfs->nimages; imagei++) {
+	Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
+	opt->active_penalty = opt->global_penalty;
+	increment_penalties(opt, penalty, opt->global_penalty);
+      }
+      permutation_changed = 1;
+    }
   }
   
-  /* Finally, make out_global_map. */
+  /* make sure background is in the global colormap */
+  if (background != TRANSP && ordering[background] >= 256) {
+    u_int16_t other = permute[255];
+    ordering[other] = ordering[background];
+    ordering[background] = 255;
+  }
+  
+  /* assign out_global_map based on permutation */
   out_global_map = Gif_NewFullColormap(nglobal_all, 256);
   
-  for (i = 0; i < all_ncol; i++)
-    all_colormap->col[i].pixel = NOT_IN_OUT_GLOBAL;
-  for (i = 0; i < nglobal_all; i++) {
-    int all_i = global_all[i];
-    out_global_map->col[i] = all_colormap->col[all_i];
-    all_colormap->col[all_i].pixel = i;
-  }
+  for (i = 1; i < all_ncol; i++)
+    if (ordering[i] < 256) {
+      out_global_map->col[ordering[i]] = all_colormap->col[i];
+      all_colormap->col[i].pixel = ordering[i];
+    } else
+      all_colormap->col[i].pixel = NOT_IN_OUT_GLOBAL;
   
   /* set the stream's background color */
-  if (background != TRANSP) {
-    int val = all_colormap->col[background].pixel;
-    if (val == NOT_IN_OUT_GLOBAL) {
-      /* this is the case where there were less than 256 colors total, but the
-	 background wasn't used, so it was removed above. there must be room
-	 for it in the output colormap. */
-      assert(out_global_map->ncol < 256);
-      val = out_global_map->ncol;
-      out_global_map->col[val] = all_colormap->col[background];
-      all_colormap->col[background].pixel = val;
-      out_global_map->ncol++;
-    }
-    gfs->background = val;
-  }
-  
-  Gif_DeleteArray(global_all);
-  assert(out_global_map->ncol <= 256);
+  if (background != TRANSP)
+    gfs->background = ordering[background];
+
+  /* cleanup */
+  Gif_DeleteArray(penalty);
+  Gif_DeleteArray(permute);
+  Gif_DeleteArray(ordering);
 }
 
 
@@ -1178,7 +1093,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
   
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *cur_gfi = gfs->images[image_index];
-    Gif_OptData *optdata = (Gif_OptData *)cur_gfi->user_data;
+    Gif_OptData *opt = (Gif_OptData *)cur_gfi->user_data;
     
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -1195,16 +1110,16 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     
     /* set bounds and disposal from optdata */
     Gif_ReleaseUncompressedImage(cur_gfi);
-    cur_gfi->left = optdata->left;
-    cur_gfi->top = optdata->top;
-    cur_gfi->width = optdata->width;
-    cur_gfi->height = optdata->height;
-    cur_gfi->disposal = optdata->disposal;
+    cur_gfi->left = opt->left;
+    cur_gfi->top = opt->top;
+    cur_gfi->width = opt->width;
+    cur_gfi->height = opt->height;
+    cur_gfi->disposal = opt->disposal;
     if (image_index > 0) cur_gfi->interlace = 0;
     
     /* find the new image's colormap and then make new data */
     {
-      byte *map = prepare_colormap(cur_gfi, optdata->needed_colors);
+      byte *map = prepare_colormap(cur_gfi, opt->needed_colors);
       byte *data = Gif_NewArray(byte, cur_gfi->width * cur_gfi->height);
       Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
       
@@ -1217,7 +1132,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
       Gif_DeleteArray(map);
     }
     
-    delete_opt_data(optdata);
+    delete_opt_data(opt);
     cur_gfi->user_data = 0;
     
     /* Set up last_data and this_data. last_data must contain this_data + new

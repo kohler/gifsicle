@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.16
+
+* Optimization improvement: More colormap manipulation. Version 1.16 is
+  smaller than 1.15 in the large majority of cases (but not all).
+
+
 Version 1.15   20.Aug.1999
 
 * Bug fix: no more assertion failures when combining images that require
@@ -16,6 +22,9 @@ Version 1.15   20.Aug.1999
 * Bug fix: Exploding the standard input results in files named
   `#stdin#.NNN', as the documentation claims, not `<stdin>.NNN'.
 
+* Optimization improvement: the optimizer reorders colormaps in a slightly
+  smarter way, which can result in smaller compression.
+
 * If a position option like `-p 0,5' is followed by a multi-frame GIF
   (without frame specifications), then the position option places the
   animation as a whole, not each of its individual frames.
@@ -30,8 +39,6 @@ Version 1.15   20.Aug.1999
   delay.
 
 * `gifsicle -I -' reports "<stdin>" as the input file name.
-
-* Improved the way the optimizer reorders colormaps.
 
 
 Version 1.14.2   16.Aug.1999
