@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.23   12.Dec.2000
+
+* In Houston on a layover because of stupid Continental Airlines: allow
+  GIFs without terminators. Problem reported by Matt Olech
+  <Matt.Olech@airliance.com>.
+
+
 Version 1.22   23.Nov.2000
 
 * Handle time more carefully when displaying animations. Should result in
