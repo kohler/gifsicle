@@ -126,7 +126,7 @@ main(int argc, char **argv)
   
   if (argc % 2 != 0 || argc < 2 || (argv[0] && argv[0][0] == '-')) {
     fprintf(stderr, "\
-usage: giftoc [-reckless] [-extern] giffile gifname [giftofile gifname...]\n");
+usage: giftoc [-reckless] [-extern] giffile gifname [giffile gifname...]\n");
     exit(1);
   }
 
