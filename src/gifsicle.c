@@ -80,11 +80,10 @@ static int next_frame = 0;
 #define CH_EXTENSION		8
 #define CH_FLIP			9
 #define CH_ROTATE		10
-#define CH_MEMORY		11
 static const char *frame_option_types[] = {
   "interlace", "disposal", "delay", "transparency",
   "comment", "name", "position", "crop",
-  "extension", "flip", "rotation", "memory conservation"
+  "extension", "flip", "rotation"
 };
 
 /* input option types */
@@ -112,10 +111,11 @@ static int any_output_successful = 0;
 #define CH_BACKGROUND		8
 #define CH_COLOR_TRANSFORM	9
 #define CH_RESIZE		10
+#define CH_MEMORY		11
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
   "colormap size", "dither", "colormap", "colormap method",
-  "background", "color transformation", "resize"
+  "background", "color transformation", "resize", "memory conservation"
 };
 
 
