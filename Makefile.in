@@ -34,8 +34,8 @@ INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 
 PROGRAMS	= gifsicle @BUILD_GIFVIEW@
-GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o mm.o gifx.o gifview.o clp.o
-GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o mm.o clp.o \
+GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o gifview.o clp.o
+GIFSICLEOBJS	= gifread.o giffunc.o gifwrite.o gifunopt.o clp.o \
 		merge.o support.o gifsicle.o
 
 all: $(PROGRAMS)
@@ -59,21 +59,24 @@ install: $(PROGRAMS)
 	$(INSTALL_PROGRAM) gifview $(bindir)/gifview ; \
 	fi
 
-gifread.o: gifread.c gifint.h gif.h
-gifwrite.o: gifwrite.c gifint.h gif.h
-giffunc.o: giffunc.c gifint.h gif.h
-gifx.o: gifx.c gifx.h gifint.h gif.h
-gifunopt.o: gifunopt.c gifint.h gif.h
-gifsicle.o: gifsicle.c gifsicle.h gifint.h
-merge.o: merge.c gifint.h
-support.o: support.c gifsicle.h gifint.h
 clp.o: clp.c clp.h
-mm.o: mm.c mm.h
+
+giffunc.o: giffunc.c gif.h
+gifread.o: gifread.c gif.h
+gifwrite.o: gifwrite.c gif.h
+gifunopt.o: gifunopt.c gif.h
+gifx.o: gifx.c gifx.h gif.h
+
+gifsicle.o: gifsicle.c gifsicle.h
+merge.o: merge.c gifsicle.h
+support.o: support.c gifsicle.h
 
 srclinks:
-	ln -s ../giflib/gif.h ../giflib/gifint.h ../giflib/giffunc.c \
-	../giflib/gifread.c ../giflib/gifwrite.c ../giflib/gifunopt.c \
-	../giflib/gifx.h ../giflib/gifx.c ../edlib/clp.c ../edlib/clp.h .
+	for i in clp.c clp.h ; do \
+	ln -s ../edlib/$$i $$i ; done
+	for i in gif.h.in giffunc.c gifread.c gifwrite.c gifunopt.c \
+	gifx.h gifx.c giftoc.c ; do \
+	ln -s ../giflib/$$i $$i ; done
 
 #####
 # Cleaning and distribution
@@ -89,8 +92,8 @@ dist: mostlyclean
 	rm -rf gifsicle-$(VERSION)
 	mkdir gifsicle-$(VERSION) && chmod 0777 gifsicle-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
-	gif.h gifint.h gifread.c gifwrite.c giffunc.c gifunopt.c \
-	mm.c mm.h clp.c clp.h \
+	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
+	clp.c clp.h \
 	gifsicle.h merge.c support.c gifsicle.c gifsicle.man \
 	gifx.h gifx.c gifview.c \
 	gifsicle-$(VERSION)

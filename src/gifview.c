@@ -29,20 +29,13 @@ static int frames_done = 0;
 static int files_given = 0;
 static char *input_name = 0;
 
-static Gif_Colormap *use_colormap = 0;
-static char *use_colormap_name = 0;
-static int use_colormap_number = -1;
-
 static int unoptimizing = 0;
 
 
-#define COLORMAP_OPT	'c'
 #define UNOPTIMIZE_OPT	'U'
 
 Clp_Option options[] = {
-  { "colormap", 'c', COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "display", 'd', 'd', Clp_ArgString, 0 },
-  { "use-colormap", 'c', COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
 };
 
@@ -137,23 +130,6 @@ makewindow(Gif_Stream *gfs, Gif_Image *gfi)
 
 
 static void
-get_use_colormap()
-{
-  if (!input) return;
-  use_colormap = 0;
-  if (use_colormap_name) {
-    use_colormap = Gif_GetNamedColormap(input, use_colormap_name);
-    if (!use_colormap)
-      error("can't find colormap `%s'", use_colormap_name);
-  } else if (use_colormap_number >= 0) {
-    use_colormap = Gif_GetColormap(input, use_colormap_number);
-    if (!use_colormap)
-      error("can't find colormap %d", use_colormap_number);
-  }
-}
-
-
-static void
 get_input_stream(char *name)
 {
   FILE *f;
@@ -185,7 +161,6 @@ get_input_stream(char *name)
   input = gfs;
   if (unoptimizing)
     Gif_Unoptimize(gfs);
-  get_use_colormap();
 }
 
 
@@ -215,7 +190,7 @@ show_frame(int imagenumber, char *imagename)
     gfx = Gif_NewXContext(display, window);
     gfx->transparentvalue = 3;
   }
-  pixmap = Gif_XImageColormap(gfx, input, use_colormap, gfi);
+  pixmap = Gif_XImage(gfx, input, gfi);
   
   XSetWindowBackgroundPixmap(display, window, pixmap);
   if (!oldpixmap) /* first image; map the window */
@@ -304,20 +279,6 @@ main(int argc, char **argv)
   while (1) {
     opt = Clp_Next(clp);
     switch (opt) {
-
-     case COLORMAP_OPT:
-      if (clp->negated) {
-        use_colormap = 0;
-        use_colormap_name = 0;
-        use_colormap_number = -1;
-      } else {
-        char *c;
-        use_colormap_number = strtol(clp->arg, &c, 10);
-        if (*c != 0)
-          use_colormap_name = clp->arg;
-        get_use_colormap();
-      }
-      break;
 
      case 'd':
       display_name = clp->arg;

@@ -24,7 +24,6 @@ typedef struct Gt_Frame {
   
   Gif_Stream *stream;
   Gif_Image *image;
-  Gif_Colormap *colormap;
   int use;
   
   char *name;
@@ -119,14 +118,9 @@ char *explode_filename(char *filename, int number, char *name);
 
 int find_image_color(Gif_Stream *gfs, Gif_Image *gfi, Gif_Color *color);
 
-void merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments,
-		  int extras);
+void merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
 Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci);
-Gif_Image *merge_image_colormap(Gif_Stream *dest,
-				Gif_Stream *, Gif_Image *, Gif_Colormap *);
-Gif_Colormap *merge_as_colormap(Gif_Stream *dest, Gif_Image *desti,
-				Gif_Colormap *srccm, Gif_Image *srci);
 
 void optimize_fragments(Gif_Stream *, int opt_trans);
 

@@ -1,5 +1,5 @@
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software; you can copy, distribute, or alter it at will, as
@@ -8,7 +8,6 @@
    which might make his day. There is no warranty, express or implied. */
 
 #include "gifsicle.h"
-#include "gifint.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,17 +15,7 @@
 #include <assert.h>
 
 
-typedef struct Gt_Protoframe {
-  
-  int colormap;
-  char *colormap_name;
-  int colormap_number;
-  
-} Gt_Protoframe;
-
-
 Gt_Frame def_frame;
-Gt_Protoframe def_protoframe;
 
 Gt_Frameset *frames = 0;
 int first_input_frame = 0;
@@ -47,12 +36,12 @@ static int files_given = 0;
 static int optimizing = 0;
 static Gt_ColorChange *color_changes = 0;
 
-#define BLANK_MODE 0
-#define MERGING	1
-#define BATCHING 2
-#define EXPLODING 3
-#define DELETING 4
-#define INSERTING 5
+#define BLANK_MODE	0
+#define MERGING		1
+#define BATCHING	2
+#define EXPLODING	3
+#define DELETING	4
+#define INSERTING	5
 static int mode = BLANK_MODE;
 static int nested_mode = 0;
 
@@ -71,8 +60,6 @@ static char *colormerge_name = 0;
 #define SAME_LOOPCOUNT_OPT	303
 #define SAME_DISPOSAL_OPT	304
 #define SAME_DELAY_OPT		305
-#define COLORMAP_OPT		306
-#define AS_COLORMAP_OPT		307
 #define SAME_TRANSPARENT_OPT	308
 #define LOGICAL_SCREEN_OPT	309
 #define COMMENT_OPT		310
@@ -117,8 +104,6 @@ Clp_Option options[] = {
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "colormap", 0, COLORMAP_OPT, Clp_ArgString,
-    Clp_Negate | Clp_LongMinMatch, 3 }, /****/
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
   { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
@@ -135,7 +120,6 @@ Clp_Option options[] = {
   { "interlace", 'i', 'i', 0, Clp_Negate },
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
-  { "make-colormap", 0, AS_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "merge", 'm', 'm', 0, 0 },
   { "name", 'n', NAME_OPT, Clp_ArgString, Clp_Negate },
   { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
@@ -159,7 +143,6 @@ Clp_Option options[] = {
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "transparent", 't', 't', COLOR_TYPE, Clp_Negate },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
-  { "use-colormap", 0, COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
 };
@@ -172,7 +155,6 @@ initialize_def_frame(void)
   
   def_frame.stream = 0;
   def_frame.image = 0;
-  def_frame.colormap = 0;
   def_frame.use = 1;
   
   def_frame.name = 0;
@@ -197,29 +179,6 @@ initialize_def_frame(void)
   def_frame.loopcount = -2;
   def_frame.screen_width = -1;
   def_frame.screen_height = -1;
-  
-  def_protoframe.colormap = 0;
-}
-
-
-static void
-make_def_frame(Gif_Stream *gfs)
-{
-  Gif_Colormap *gfcm = 0;
-  
-  if (def_protoframe.colormap && gfs) {
-    if (def_protoframe.colormap_name)
-      gfcm = Gif_GetNamedColormap(gfs, def_protoframe.colormap_name);
-    else
-      gfcm = Gif_GetColormap(gfs, def_protoframe.colormap_number);
-
-    if (!gfcm) {
-      error("can't find specified colormap");
-      def_protoframe.colormap = 0;
-    }
-  }
-  def_frame.colormap = gfcm;
-  
 }
 
 
@@ -334,7 +293,6 @@ show_frame(int imagenumber, int usename)
 }
 
 
-
 void
 input_stream(char *name)
 {
@@ -373,6 +331,7 @@ input_stream(char *name)
   }
   
   input = gfs;
+  gfs->userflags = 97; /* to indicate no output done */
   
   if (gfs->errors)
     warning("there were errors reading `%s'", name);
@@ -382,7 +341,6 @@ input_stream(char *name)
     warning("ignored application extensions in `%s'", name);
   
   /* Processing when we've got a new input frame */
-  make_def_frame(gfs);
   if (mode == BLANK_MODE)
     set_mode(MERGING);
   
@@ -423,6 +381,8 @@ input_done(void)
   if (verbosing) verbose_close('>');
   if (infoing) {
     int i;
+    if (input->userflags == 97)	/* no stream info produced yet */
+      stream_info(input, input_name, colormap_infoing);
     for (i = first_input_frame; i < frames->count; i++)
       if (FRAME(frames, i).stream == input && FRAME(frames, i).use)
 	image_info(input, FRAME(frames, i).image, colormap_infoing);
@@ -576,7 +536,7 @@ main(int argc, char **argv)
      Really I should go through & change everything over, but it doesn't
      seem worth my time. */
   {
-    UINT16 m = 0xFFFFU;
+    u_int16_t m = 0xFFFFU;
     int i = m;
     assert(i > 0 && "configuration/lameness failure! bug the author!");
   }
@@ -618,7 +578,7 @@ main(int argc, char **argv)
 	outputing = !outputing;
       }
       break;
-
+      
      case COLOR_INFO_OPT:
       if (clp->negated)
 	colormap_infoing = 0;
@@ -630,7 +590,7 @@ main(int argc, char **argv)
 	}
       }
       break;
-
+      
      case VERBOSE_OPT:
       verbosing = clp->negated ? 0 : 1;
       break;
@@ -684,11 +644,11 @@ main(int argc, char **argv)
       def_frame.comment = 0;
       def_frame.no_comments = 1;
       break;
-
+      
      case SAME_COMMENTS_OPT:
       def_frame.no_comments = 0;
       break;
-
+      
      case 'i':
       next_frame = 1;
       def_frame.interlacing = clp->negated ? 0 : 1;
@@ -698,7 +658,7 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.interlacing = -1;
       break;
-
+      
      case POSITION_OPT:
       next_frame = 1;
       def_frame.left = clp->negated ? 0 : position_x;
@@ -732,7 +692,7 @@ main(int argc, char **argv)
       next_frame = 1;
       {
 	Gt_Crop *crop = malloc(sizeof(Gt_Crop));
-	/* Memory leak on crops: NOT a problem. */
+	/* Memory leak on crops, but this just is NOT a problem. */
 	crop->ready = 0;
 	crop->whole_stream = 0;
 	crop->spec_x = position_x;
@@ -748,14 +708,14 @@ main(int argc, char **argv)
       next_frame = 1;
       def_frame.crop = 0;
       break;
-
+      
      case CHANGE_COLOR_OPT:
       next_input = 1;
       if (clp->negated)
 	color_changes = 0;
       else {
 	Gt_ColorChange *cc = malloc(sizeof(Gt_ColorChange));
-	/* Memory leak on color changes: NOT a problem. */
+	/* Memory leak on color changes; again, this ain't a problem. */
 	cc->old_color = parsed_color;
 	cc->new_color = parsed_color2;
 	cc->next = color_changes;
@@ -810,24 +770,6 @@ main(int argc, char **argv)
      case UNOPTIMIZE_OPT:
       next_input = 1;
       unoptimizing = clp->negated ? 0 : 1;
-      break;
-      
-      /* COLORMAP OPTIONS */
-      
-     case COLORMAP_OPT:
-      if (clp->negated)
-	def_protoframe.colormap = 0;
-      
-      else {
-	char *c;
-	def_protoframe.colormap = 1;
-	def_protoframe.colormap_number = strtol(clp->arg, &c, 10);
-	if (*c != 0)
-	  def_protoframe.colormap_name = clp->arg;
-	else
-	  def_protoframe.colormap_name = 0;
-      }
-      make_def_frame(input);
       break;
       
       /* STREAM OPTIONS */

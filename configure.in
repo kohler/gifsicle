@@ -3,6 +3,11 @@ AC_INIT(gifsicle.h)
 VERSION=1.1.2
 AC_SUBST(VERSION)
 
+GIF_MAJOR_VERSION=0
+GIF_MINOR_VERSION=9
+AC_SUBST(GIF_MAJOR_VERSION)
+AC_SUBST(GIF_MINOR_VERSION)
+
 AC_PROG_CC
 AC_PROG_INSTALL
 
@@ -37,7 +42,8 @@ int main(int argc, char **argv) {
 }], ac_cv_int16=`cat conftestval`,
 AC_MSG_ERROR(no 16-bit value found),
 ac_cv_int16=short)])dnl
-AC_DEFINE_UNQUOTED(INT16, $ac_cv_int16)
+INT16=$ac_cv_int16
+AC_SUBST(INT16)
 AC_MSG_RESULT($ac_cv_int16)
 
 AC_MSG_CHECKING(for a 32-bit value)
@@ -55,7 +61,8 @@ int main(int argc, char **argv) {
 }], ac_cv_int32=`cat conftestval`, 
 AC_MSG_ERROR(no 32-bit value found),
 ac_cv_int32=int)])dnl
-AC_DEFINE_UNQUOTED(INT32, $ac_cv_int32)
+INT32=$ac_cv_int32
+AC_SUBST(INT32)
 AC_MSG_RESULT($ac_cv_int32)
 
-AC_OUTPUT(Makefile)
+AC_OUTPUT(Makefile gif.h gifsicle.man:gifsicle.min)

@@ -1,4 +1,4 @@
-.\" SCCSID: @(#)gifsicle.1    3.1   11/12/95`-'
+.\" -*- mode: nroff -*-
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -24,7 +24,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "21 Jun 1997" "Version 1.0"
+.TH GIFSICLE 1 "27 Apr 1998" "Version 1.1.2"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
@@ -52,13 +52,14 @@ among other things. Extensive command-line options control which, if
 any, of these occur.
 .PP
 This man page assumes that you already know what a GIF is and the
-possibilities of GIF animations. For a tutorial if you're a little
-overwhelmed, you might try Royal Frazier's GIF Animation Page on the
-World Wide Web at http://member.aol.com/royalef/gifanim.htm.
+possibilities of GIF animations. For a tutorial, you might try Royal
+Frazier's GIF Animation Page on the World Wide Web at
+http://member.aol.com/royalef/ gifanim.htm.
 .PP
-The next sections give the details of running
-.BR gifsicle ;
-you might want to first read the Examples section at the end.
+The next sections tell you how to run
+.BR gifsicle
+in gory detail. You might want to skip first to the Examples section at the
+end.
 '
 .SH COMMAND LINE
 
@@ -86,14 +87,16 @@ generally an animation. Frame specifications can be used to tell
 .B gifsicle
 which parts of an animation to process.
 .PP
-Here are the possible frame specifications.
+Here are the legal forms for frame specifications.
 .Sp
 .PD 0
 .TP 13
-.BI # number
+.BI # num
 '
-Select frame \fInumber\fR. (The first frame is
-.QO #0 .)
+Select frame \fInum\fR. (The first frame is
+.QO #0 .
+Negative numbers count backwards from the last frame, which is
+.QO #-1 .)
 '
 .TP 13
 .BI # num1 \- num2
@@ -104,11 +107,6 @@ Select frames \fInum1\fR through \fInum2\fR.
 .BI # num1 \-
 '
 Select frames \fInum1\fR through the last frame.
-'
-.TP 13
-.BI #\- num2
-'
-Select frames 0 through \fInum2\fR.
 '
 .TP 13
 .BI # name
@@ -412,6 +410,28 @@ form is generally described.
 .Sp
 .PD 0
 .TP 5
+.OA \-\-change\-color color1 " " color2
+'
+Changes
+.I color1
+to
+.I color2
+in the following output GIFs. (The 
+.I color
+arguments are specified as with the
+.OP \-t
+option.) You can change multiple colors by giving the option multiple
+times. Color changes take effect globally when each output GIF is written,
+so you can't change a color in only some of an animation's frames.
+.Sp
+.OP \-\-no\-change\-color
+cancels all color changes. There is no
+.OP \-\-same\-change\-color
+option.
+'
+.Sp
+.PD 0
+.TP 5
 .OA \-c text
 .TP
 .OA \-\-comment text
@@ -626,8 +646,8 @@ option.
 
 Here are a bunch of examples showing how
 .B gifsicle
-might commonly be used. Note that the command given often isn't the
-only, or even the best, way.
+is commonly used. The command given in each example isn't always the only,
+or even the best, way.
 .PP
 This command combines a bunch of GIFs into one animation, `anim.gif':
 .Es
@@ -731,10 +751,9 @@ http://web.mit.edu/annied/www/home.html
 .br
 She named it.
 .PP
-http://www.pdos.lcs.mit.edu/~eddietwo/gifsicle/
+http://www.lcdf.org/~eddietwo/gifsicle/
 .br
 The 
 .B gifsicle
 home page.
 '
-.. colormap, make-colormap, use-colormap

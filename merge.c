@@ -8,7 +8,6 @@
    which might make his day. There is no warranty, express or implied. */
 
 #include "gifsicle.h"
-#include "gifint.h"
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -35,7 +34,7 @@ sweep_colors(Gif_Colormap *gfcm)
 
 
 void
-merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments, int extras)
+merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments)
 {
   int i;
   assert(dest->global);
@@ -53,22 +52,6 @@ merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments, int extras)
     if (!dest->comment) dest->comment = Gif_NewComment();
     merge_comments(dest->comment, src->comment);
   }
-  
-  if (extras)
-    for (i = 0; i < src->nextra; i++) {
-      Gif_Colormap *srccm = src->extra[i];
-      Gif_Colormap *destcm;
-      if (srccm->identifier) {
-	destcm = Gif_GetNamedColormap(dest, srccm->identifier);
-	if (!destcm) {
-	  destcm = Gif_NewFullColormap(256);
-	  destcm->identifier = Gif_CopyString(srccm->identifier);
-	  destcm->ncol = dest->global->ncol;
-	  unmark_colors(destcm);
-	  Gif_AddColormap(dest, destcm);
-	}
-      }
-    }
 }
 
 
@@ -147,29 +130,6 @@ find_color_from(Gif_Colormap *cm, Gif_Color *color, int index)
 
 
 static int
-extra_colors_match(Gif_Stream *dest, int desti, Gif_Stream *src, int srci)
-{
-  int i;
-  
-  for (i = 0; i < src->nextra; i++) {
-    Gif_Colormap *cms = src->extra[i];
-    Gif_Colormap *cmd = 0;
-    if (cms->identifier) cmd = Gif_GetNamedColormap(dest, cms->identifier);
-    
-    if (cmd && cms->ncol > srci) {
-      assert(cmd->ncol > desti);
-      if (!cmd->col[desti].pixel)
-	cmd->col[desti] = cms->col[srci];
-      else if (!coloreq(&cms->col[srci], &cmd->col[desti]))
-	return 0;
-    }
-  }
-  
-  return 1;
-}
-
-
-static int
 add_color(Gif_Colormap *cm, Gif_Color *color)
 {
   if (cm->ncol >= 256)
@@ -181,52 +141,14 @@ add_color(Gif_Colormap *cm, Gif_Color *color)
 
 
 static int
-add_extra_colors(Gif_Stream *dest, int destindex,
-		 Gif_Stream *src, int srcindex,
-		 Gif_Color *color)
-{
-  int i;
-  
-  /* Copy the extra colormaps. */
-  for (i = 0; i < dest->nextra; i++) {
-    Gif_Colormap *cmd = dest->extra[i];
-    Gif_Colormap *cms = Gif_GetNamedColormap(src, cmd->identifier);
-    int newi;
-    
-    if (cms) {
-      newi = add_color(cmd, &cms->col[srcindex]);
-      cmd->col[newi].haspixel = 1;
-    } else
-      newi = add_color(cmd, color);
-    
-    if (newi != destindex) {
-      error("extra colormaps confusion");
-      return 0;
-    }
-  }
-  
-  return 1;
-}
-
-
-static int
 fetch_color_from(Gif_Stream *dest, Gif_Colormap *destcm, int destindex,
-		 Gif_Stream *src, int srcindex,
-		 Gif_Color *color, int doextras)
+		 Gif_Stream *src, int srcindex, Gif_Color *color)
 {
-  destindex--;
-  
-  do {
-    destindex = find_color_from(destcm, color, destindex + 1);
-  } while (destindex >= 0 && doextras &&
-	   !extra_colors_match(dest, destindex, src, srcindex));
-  
-  if (destindex < 0) {
+  destindex = find_color_from(destcm, color, destindex);
+  if (destindex < 0)
     destindex = add_color(destcm, color);
-    if (destindex < 0 ||
-	(doextras && !add_extra_colors(dest, destindex, src, srcindex, color)))
-      return -1;
-  }
+  if (destindex < 0)
+    return -1;
   
   destcm->col[destindex].pixel++;
   return destindex;
@@ -252,7 +174,7 @@ try_merge_colormaps(Gif_Stream *dest, Gif_Colormap *destcm,
   for (i = 0; i < nmap && !forcelocal; i++)
     if (map[i].haspixel == 1) {
       result =
-	fetch_color_from(dest, destcm, 0, src, i, &map[i], !islocal);
+	fetch_color_from(dest, destcm, 0, src, i, &map[i]);
       if (result < 0)
 	forcelocal = 1;
       else {
@@ -279,8 +201,7 @@ try_merge_colormaps(Gif_Stream *dest, Gif_Colormap *destcm,
       if (map[i].pixel == transmap && i != transparent
 	  && (map[i].haspixel & 1) != 0) {
 	result =
-	  fetch_color_from(dest, destcm, othersearch, src, i,
-			   &map[i], !islocal);
+	  fetch_color_from(dest, destcm, othersearch, src, i, &map[i]);
 	if (result < 0)
 	  forcelocal = 1;
 	else
@@ -290,9 +211,6 @@ try_merge_colormaps(Gif_Stream *dest, Gif_Colormap *destcm,
   
   if (forcelocal) {
     destcm->ncol = last_ncol;
-    if (!islocal)
-      for (i = 0; i < dest->nextra; i++)
-	dest->extra[i]->ncol = last_ncol;
     for (i = 0; i < nmap; i++)
       if (map[i].haspixel & 1)
 	map[i].haspixel = 1;
@@ -348,7 +266,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
 			   srci->transparent, islocal)) {
     localcm = Gif_NewFullColormap(256);
     localcm->ncol = 0;
-    warning("had to go to a local colormap");
+    warning("had to use a local colormap");
     if (!try_merge_colormaps(dest, localcm, src, imagecm,
 			     srci->transparent, 1))
       fatalerror("can't happen: colormap mixing");
@@ -406,182 +324,6 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   
   Gif_AddImage(dest, desti);
   return desti;  
-}
-
-
-Gif_Image *
-merge_image_colormap(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
-		     Gif_Colormap *usecm)
-{
-  Gif_Colormap *oldsrcglobal = src->global;
-  int oldsrcnextra = src->nextra;
-  Gif_Image *desti;
-
-  if (usecm == 0) return merge_image(dest, src, srci);
-  
-  src->global = usecm;
-  src->nextra = 0;
-  
-  desti = merge_image(dest, src, srci);
-  
-  src->global = oldsrcglobal;
-  src->nextra = oldsrcnextra;
-  return desti;
-}
-
-
-/*********************************************************/
-
-
-void
-permute_extra_colormaps(Gif_Stream *dest, Gif_Colormap *permutecm)
-{
-  int i, j;
-  Gif_Color *permutecol = permutecm->col;
-  for (i = 0; i < dest->nextra; i++) {
-    Gif_Colormap *oldcm = dest->extra[i];
-    Gif_Colormap *newcm = Gif_NewFullColormap(permutecm->ncol);
-    newcm->identifier = Gif_CopyString(oldcm->identifier);
-    
-    for (j = 0; j < permutecm->ncol; j++)
-      newcm->col[j] = oldcm->col[ permutecol[j].pixel ];
-
-    Gif_DeleteColormap(oldcm);
-    dest->extra[i] = newcm;
-  }
-}
-
-
-Gif_Colormap *
-merge_as_colormap(Gif_Stream *dest, Gif_Image *desti,
-		  Gif_Colormap *srccm, Gif_Image *srci)
-{
-  int i;
-  byte *map = 0;
-
-#if 0
-  Gif_Colormap *newcm = 0;
-  Gif_Colormap *madecm = 0;
-  Gif_Colormap *destcm = dest->global;
-  
-  Gif_Color *srccol;
-  Gif_Color *destcol;
-  Gif_Color *newcol;
-  Gif_Color *madecol;
-  
-  int size;
-  byte *destdata;
-  byte *srcdata;
-  byte *newdata = 0;
-  byte *enddata;
-  
-  int src_255 = -1;
-  int dest_255 = -1;
-  int newindex;
-  
-  if (srci->local)
-    srccm = srci->local;
-  if (desti->local) {
-    error("can't merge as colormap: local problems");
-    return 0;
-  }
-  if (srci->width != desti->width || srci->height != desti->height) {
-    error("can't merge as colormap: the images have different sizes");
-    return 0;
-  }
-  
-  newcm = Gif_NewFullColormap(256);
-  madecm = Gif_NewFullColormap(256);
-  srccol = srccm->col;
-  destcol = destcm->col;
-  newcol = newcm->col;
-  madecol = madecm->col;
-  
-  map = Gif_NewArray(byte, 256 * 256);
-  memset(map, 255, 256 * 256);
-  
-  /* combine identical colors */
-  for (i = 0; i < srccm->ncol; i++) {
-    int j = find_color(srccm, &srccol[i]);
-    if ((j == srci->transparent) != (i == srci->transparent))
-      j = find_color_from(srccm, &srccol[i], j + 1);
-    srccol[i].pixel = j;
-  }
-  
-  Gif_ChangeInterlace(srci, desti->interlace);
-  size = desti->width * desti->height;
-  srcdata = srci->imagedata;
-  destdata = desti->imagedata;
-  newdata = Gif_NewArray(byte, size);
-  enddata = newdata + size;
-  
-  newindex = 0;
-  
-  while (newdata < enddata) {
-    int srcpixel = srccol[ *srcdata++ ].pixel;
-    int destpixel = *destdata++;
-    int mapindex = srcpixel + destpixel * 256;
-    
-    if (map[mapindex] == 255) {
-      
-      if (srcpixel == src_255 && destpixel == dest_255)
-	/* do nothing */;
-      
-      else if (srcpixel >= srccm->ncol || destpixel >= destcm->ncol)
-	map[mapindex] = 0;
-      
-      else if ((srcpixel == srci->transparent) !=
-	       (destpixel == desti->transparent)) {
-	error("can't merge as colormap: transparency conflict");
-	goto error;
-	
-      } else if (newindex >= 256) {
-	error("can't merge as colormap: image too complicated");
-	goto error;
-	
-      } else {
-	map[mapindex] = newindex;
-	newcol[newindex] = destcol[destpixel];
-	newcol[newindex].pixel = destpixel;
-	madecol[newindex] = srccol[srcpixel];
-	newindex++;
-	if (newindex >= 256)
-	  src_255 = srcpixel, dest_255 = destpixel;
-      }
-      
-    }
-    
-    *newdata++ = map[mapindex];
-  }
-  
-  newcm->ncol = newindex;
-  madecm->ncol = newindex;
-  permute_extra_colormaps(dest, newcm);
-  
-  if (desti->transparent >= 0)
-    for (i = 0; i < newindex; i++)
-      if (newcol[i].pixel == desti->transparent) {
-	desti->transparent = i;
-	break;
-      }
-  
-  Gif_DeleteArray(map);
-  Gif_DeleteArray(desti->imagedata);
-  desti->imagedata = newdata - size;
-  
-  Gif_DeleteColormap(dest->global);
-  dest->global = newcm;
-  
-  return madecm;
-  
- error:
-  
-  Gif_DeleteColormap(newcm);
-  Gif_DeleteColormap(madecm);
-  Gif_DeleteArray(map);
-  Gif_DeleteArray(newdata);
-#endif
-  return 0;
 }
 
 
@@ -691,13 +433,6 @@ add_transparent(Gif_Stream *gfs, Gif_Image *gfi, int transparent)
     transparent = gfs->global->ncol;
     gfs->global->col[transparent] = black;
     gfs->global->ncol++;
-    
-    for (i = 0; i < gfs->nextra; i++) {
-      Gif_Colormap *gfcm = gfs->extra[i];
-      assert(gfcm->ncol == transparent);
-      gfcm->col[transparent] = black;
-      gfcm->ncol++;
-    }
   }
   
   gfi->transparent = transparent;
@@ -729,13 +464,13 @@ copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
     adjacent runs OF DIFFERENT COLORS *could* be made transparent.
     
     (An area can be made transparent if the corresponding area in the previous
-    image had the same colors as the area does now.)
+    frame had the same colors as the area does now.)
     
     Why? If only one run (say of color C) could be transparent, we get no
     large immediate advantage from making it transparent (it'll be a run of
     the same length regardless). Also, we might LOSE: what if the run was
     adjacent to some more of color C, which couldn't be made transparent? If
-    we use color C (instead of the transparent color), then, we get a longer
+    we use color C (instead of the transparent color), then we get a longer
     run.
     
     This simple heuristic does a little better than Gifwizard's (6/97)
@@ -1012,8 +747,6 @@ optimize_colors(Gif_Stream *gfs)
   if (counted_pixels != 0) {
     calculate_permutation(map, permuter);
     permute_colormap(gfs->global, permuter);
-    for (wim = 0; wim < gfs->nextra; wim++)
-      permute_colormap(gfs->extra[wim], permuter);
     for (wim = 0; wim < gfs->nimages; wim++)
       if (!gfs->images[wim]->local)
 	permute_image(gfs->images[wim], permuter);

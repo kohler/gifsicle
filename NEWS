@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.1.2
+
+* Added `--color-change' option.
+
+* Added negative frame numbers. `#-N' no longer means `#0-N'; it means the
+  `N'th frame from the end (where `#-1' is the last frame). You can use
+  negative frame numbers in ranges as well (e.g., `#-5--1').
+
 Version 1.1.1
 
 * Added `--crop' option.

@@ -8,7 +8,6 @@
    which might make his day. There is no warranty, express or implied. */
 
 #include "gifsicle.h"
-#include "gifint.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -93,14 +92,14 @@ Frame change options:\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
   --done                        Done with frame changes.\n\
 Image options: Also --no-opt/+o and --same-opt.\n\
+  --change-color COL1 COL2      Changes COL1 to COL2 throughout the image.\n\
   --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
+  --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
   --logical-screen WxH, -S WxH  Sets logical screen to WxH.\n\
   --name TEXT, -n TEXT          Sets next frame's name.\n\
   --position X,Y, -p X,Y        Sets frame position to (X,Y).\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
-  --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
-  --change-color COL1 COL2      Changes COL1 to COL2 throughout the image.\n\
 Animation options: Also --no-opt/+o and --same-opt.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
   --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
@@ -191,7 +190,8 @@ stream_info(Gif_Stream *gfs, char *filename, int colormaps)
 {
   int i;
   if (!gfs) return;
-
+  gfs->userflags = 0; /* clear userflags to indicate stream info produced */
+  
   verbose_endline();
   fprintf(stderr, "* %s %d image%s\n", filename, gfs->nimages,
 	  gfs->nimages == 1 ? "" : "s");
@@ -211,15 +211,6 @@ stream_info(Gif_Stream *gfs, char *filename, int colormaps)
     fprintf(stderr, "  loop forever\n");
   else if (gfs->loopcount > 0)
     fprintf(stderr, "  loop count %u\n", (unsigned)gfs->loopcount);
-  
-  if (gfs->nextra)
-    for (i = 0; i < gfs->nextra; i++) {
-      fprintf(stderr, "  extra color table #%d ", i + 1);
-      if (gfs->extra[i]->identifier)
-	fprintf(stderr, "#%s ", gfs->extra[i]->identifier);
-      fprintf(stderr, "[%d]\n", gfs->extra[i]->ncol);
-      if (colormaps) colormap_info(gfs->extra[i], "  |");
-    }
 }
 
 
@@ -326,15 +317,24 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, void *v, int complain)
   arg++;
   c = (char *)arg;
   
-  /* Get a number range (#x, #x-y, #x-, or #-y). First, read x. */
+  /* Get a number range (#x, #x-y, or #x-). First, read x. */
   if (isdigit(c[0]))
     frame_spec_1 = frame_spec_2 = strtol(c, &c, 10);
+  else if (c[0] == '-' && isdigit(c[1])) {
+    frame_spec_1 = frame_spec_2 = Gif_ImageCount(input) + strtol(c, &c, 10);
+    if (frame_spec_1 < 0)
+      return complain ? Clp_OptionError(clp, "there are only %d frames",
+					Gif_ImageCount(input)) : 0;
+  }
   
-  /* Then, if the next character is a dash, read y. */
-  if (c[0] == '-') {
+  /* Then, if the next character is a dash, read y. Be careful to prevent
+     #- from being interpreted as a frame range. */
+  if (c[0] == '-' && (frame_spec_2 > 0 || c[1] != 0)) {
     c++;
-    if (isdigit(arg[0]))
+    if (isdigit(c[0]))
       frame_spec_2 = strtol(c, &c, 10);
+    else if (c[0] == '-' && isdigit(c[1]))
+      frame_spec_2 = Gif_ImageCount(input) + strtol(c, &c, 10);
     else
       frame_spec_2 = Gif_ImageCount(input) - 1;
   }
@@ -348,26 +348,25 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, void *v, int complain)
       frame_spec_1 = frame_spec_2 = Gif_ImageNumber(input, gfi);
       return 1;
     } else if (complain)
-      return Clp_OptionError(clp, "no image named `#%s'", arg);
+      return Clp_OptionError(clp, "no frame named `#%s'", arg);
     else
       return 0;
     
   } else {
     if (frame_spec_1 >= 0 && frame_spec_1 <= frame_spec_2
-	&& frame_spec_1 < Gif_ImageCount(input)
 	&& frame_spec_2 < Gif_ImageCount(input))
       return 1;
     else if (!complain)
       return 0;
     
     if (frame_spec_1 == frame_spec_2)
-      return Clp_OptionError(clp, "no image number #%d", frame_spec_1);
+      return Clp_OptionError(clp, "no frame number #%d", frame_spec_1);
     else if (frame_spec_1 < 0)
-      return Clp_OptionError(clp, "image numbers can't be negative");
+      return Clp_OptionError(clp, "frame numbers can't be negative");
     else if (frame_spec_1 > frame_spec_2)
-      return Clp_OptionError(clp, "empty image range");
+      return Clp_OptionError(clp, "empty frame range");
     else
-      return Clp_OptionError(clp, "there are only %d images",
+      return Clp_OptionError(clp, "there are only %d frames",
 			     Gif_ImageCount(input));
   }
 }
@@ -665,15 +664,12 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
   merger_flatten(fset, f1, f2);
   
   for (i = 0; i < nmerger; i++)
-    merger[i]->stream->userflags = 0;
-  for (i = 0; i < nmerger; i++)
-    merger[i]->stream->userflags |=
-      merger[i]->colormap ? 1 : 3;
+    merger[i]->stream->userflags = 1;
   
   for (i = 0; i < nmerger; i++)
     if (merger[i]->stream->userflags) {
       Gif_Stream *src = merger[i]->stream;
-      merge_stream(dest, src, merger[i]->no_comments, src->userflags > 1);
+      merge_stream(dest, src, merger[i]->no_comments);
       src->userflags = 0;
     }
   
@@ -715,7 +711,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
     if (new_transparent > -2)
       fr->image->transparent = new_transparent;
     
-    desti = merge_image_colormap(dest, fr->stream, fr->image, fr->colormap);
+    desti = merge_image(dest, fr->stream, fr->image);
     
     if (fr->name || fr->no_name) {
       /* Use the fact that Gif_CopyString(0) == 0 */
