@@ -200,10 +200,14 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop)
   h = crop->h;
   
   /* Check that the rectangle actually intersects with the image. */
-  if (x < 0) w += x, x = 0;
-  if (y < 0) h += y, y = 0;
-  if (x + w > gfi->width) w = gfi->width - x;
-  if (y + h > gfi->height) h = gfi->height - y;
+  if (x < 0)
+      w += x, x = 0;
+  if (y < 0)
+      h += y, y = 0;
+  if (x + w > gfi->width)
+      w = gfi->width - x;
+  if (y + h > gfi->height)
+      h = gfi->height - y;
 
   /* Remove transparent edges if required. */
   if (w > 0 && h > 0 && crop->transparent_edges && gfi->transparent >= 0) {

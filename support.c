@@ -1,5 +1,5 @@
 /* support.c - Support functions for gifsicle.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2002 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -1295,10 +1295,23 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       unmark_colors_2(merger[i]->image->local);
   }
   
+  /* is it ok to save the same compressed image? This is true only if we
+     will recompress later from scratch. */
+  /* 13.Aug.2002 - Can't save the same compressed image if we crop, so turn
+     off all_same_compressed_ok below ('analyze crops'). Reported by Tom
+     Schumm <phong@phong.org>. */
+  if (output_data->colormap_size > 0
+      || output_data->colormap_fixed
+      || output_data->optimizing > 0
+      || output_data->scaling > 0)
+    all_same_compressed_ok = 1;
+  else
+    all_same_compressed_ok = 0;
+  
   /* analyze crops */
   for (i = 0; i < nmerger; i++)
     if (merger[i]->crop)
-      merger[i]->crop->ready = 0;
+      merger[i]->crop->ready = all_same_compressed_ok = 0;
   for (i = 0; i < nmerger; i++)
     if (merger[i]->crop && !merger[i]->crop->ready)
       analyze_crop(nmerger, merger[i]->crop);
@@ -1308,16 +1321,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     dest->loopcount = output_data->loopcount;
   dest->screen_width = dest->screen_height = 0;
 
-  /* is it ok to save the same compressed image? This is true only if we
-     will recompress later from scratch. */
-  if (output_data->colormap_size > 0
-      || output_data->colormap_fixed
-      || output_data->optimizing > 0
-      || output_data->scaling > 0)
-    all_same_compressed_ok = 1;
-  else
-    all_same_compressed_ok = 0;
-  
   /** ACTUALLY MERGE FRAMES INTO THE NEW STREAM **/
   for (i = 0; i < nmerger; i++) {
     Gt_Frame *fr = merger[i];

@@ -251,12 +251,13 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
     else
       for (x = 0; x < gfi->width; x++) {
 	uint16_t new_pixel = map[gfi_pointer[x]];
-	if (new_pixel != TRANSP) dst[x] = new_pixel;
+	if (new_pixel != TRANSP)
+	    dst[x] = new_pixel;
       }
     
     dst += screen_width;
   }
-
+  
   if (was_compressed && !save_uncompressed)
     Gif_ReleaseUncompressedImage(gfi);
 }
