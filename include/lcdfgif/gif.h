@@ -193,10 +193,10 @@ void 		Gif_Debug(char *x, ...);
 
 #ifndef Gif_New
 #define Gif_New(t)		((t *)malloc(sizeof(t)))
-#define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * n))
-#define Gif_ReArray(p, t, n)	((p) = ((t *)realloc((void *)p, sizeof(t)*n)))
-#define Gif_Delete(p)		(free((void *)p))
-#define Gif_DeleteArray(p)	(free((void *)p))
+#define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
+#define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void *)p, sizeof(t)*(n))))
+#define Gif_Delete(p)		(free((void *)(p)))
+#define Gif_DeleteArray(p)	(free((void *)(p)))
 #endif
 
 typedef u_int16_t Gif_Code;
