@@ -1,3 +1,4 @@
+/* -*- related-file-name: "../include/lcdf/clp.h" -*- */
 /* clp.c - Complete source code for CLP.
  * This file is part of CLP, the command line parser package.
  *
@@ -17,7 +18,7 @@
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include "clp.h"
+#include <lcdf/clp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

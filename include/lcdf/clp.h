@@ -1,5 +1,6 @@
-#ifndef CLP_H
-#define CLP_H
+/* -*- related-file-name: "../../liblcdf/clp.c" -*- */
+#ifndef LCDF_CLP_H
+#define LCDF_CLP_H
 #ifdef __cplusplus
 extern "C" {
 #endif
