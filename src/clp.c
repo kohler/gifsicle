@@ -1486,6 +1486,48 @@ ambiguity_error(Clp_Parser *clp, int ambiguous, int *ambiguous_values,
     return 0;
 }
 
+static int
+copy_string(char *buf, int buflen, int bufpos, const char *what)
+{
+    int l = strlen(what);
+    if (l > buflen - bufpos - 1)
+	l = buflen - bufpos - 1;
+    memcpy(buf + bufpos, what, l);
+    return l;
+}
+
+int
+Clp_CurOptionNameBuf(Clp_Parser *clp, char *buf, int buflen)
+{
+    Clp_Internal *cli = clp->internal;
+    Clp_Option *opt = cli->current_option;
+    int pos = 0;
+    if (!opt)
+	pos += copy_string(buf, buflen, pos, "(no current option!)");
+    else if (cli->current_short) {
+	pos += copy_string(buf, buflen, pos, cli->option_chars);
+	if (pos < buflen - 1)
+	    buf[pos++] = opt->short_name;
+    } else if (cli->negated_by_no) {
+	pos += copy_string(buf, buflen, pos, cli->option_chars);
+	pos += copy_string(buf, buflen, pos, "no-");
+	pos += copy_string(buf, buflen, pos, opt->long_name);
+    } else {
+	pos += copy_string(buf, buflen, pos, cli->option_chars);
+	pos += copy_string(buf, buflen, pos, opt->long_name);
+    }
+    buf[pos] = 0;
+    return pos;
+}
+
+const char *
+Clp_CurOptionName(Clp_Parser *clp)
+{
+    static char buf[256];
+    Clp_CurOptionNameBuf(clp, buf, 256);
+    return buf;
+}
+
 #ifdef __cplusplus
 }
 #endif
