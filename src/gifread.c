@@ -13,6 +13,9 @@
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
+#elif !defined(__cplusplus)
+/* Assume we don't have inline by default */
+# define inline
 #endif
 #include "gif.h"
 #include <stdarg.h>
@@ -70,10 +73,7 @@ Gif_Debug(char *format, ...)
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
 #define gifeof(grr)	((*grr->eofer)(grr))
 
-#ifdef __GNUC__
-__inline__
-#endif
-static u_int16_t
+static inline u_int16_t
 gifgetunsigned(Gif_Reader *grr)
 {
   byte one = gifgetbyte(grr);

@@ -6,6 +6,7 @@ AM_CONFIG_HEADER(config.h)
 AC_PROG_CC
 AC_PROG_CPP
 AC_C_CONST
+AC_C_INLINE
 
 build_gifview=yes
 AC_ARG_ENABLE(gifview,

@@ -9,11 +9,7 @@
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
-#else
-/* Assume we have strtoul by default. */
-# define HAVE_STRTOUL 1
 #endif
-
 #include "clp.h"
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +17,16 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <ctype.h>
+
+/* By default, assume we have strtoul. */
+#if !defined(HAVE_STRTOUL) && !defined(HAVE_CONFIG_H)
+# define HAVE_STRTOUL 1
+#endif
+/* By default, assume we don't have inline. */
+#if !defined(inline) && !defined(__cplusplus) && !defined(HAVE_CONFIG_H)
+# define inline
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -444,7 +450,7 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   if (thunk != 0) {		/* unsigned */
-#ifdef HAVE_STRTOUL
+#if HAVE_STRTOUL
     clp->val.u = strtoul(arg, &val, 10);
 #else
     /* don't bother trying to do it right */
@@ -1137,10 +1143,7 @@ grow_build_string(Clp_BuildString *bs, int want)
   bs->pos = bs->text + ipos;
 }
 
-#ifdef __GNUC__
-__inline__
-#endif
-static void
+static inline void
 ensure_build_string(Clp_BuildString *bs, int space)
 {
   if ((bs->pos - bs->text) + space >= bs->capacity)

@@ -13,6 +13,9 @@
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
+#elif !defined(__cplusplus)
+/* Assume we don't have inline by default */
+# define inline
 #endif
 #include "gif.h"
 #include <stdarg.h>
@@ -48,10 +51,7 @@ typedef struct Gif_Writer {
 #define gifputbyte(b, grr)	((*grr->byte_putter)(b, grr))
 #define gifputblock(b, l, grr)	((*grr->block_putter)(b, l, grr))
 
-#ifdef __GNUC__
-__inline__
-#endif
-static void
+static inline void
 gifputunsigned(u_int16_t uns, Gif_Writer *grr)
 {
   gifputbyte(uns & 0xFF, grr);
