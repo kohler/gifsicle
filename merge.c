@@ -36,7 +36,6 @@ sweep_colors(Gif_Colormap *gfcm)
 void
 merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments)
 {
-  int i;
   assert(dest->global);
   
   if (src->global)
@@ -425,9 +424,7 @@ add_transparent(Gif_Stream *gfs, Gif_Image *gfi, int transparent)
     ;
   
   else if (gfs->global->ncol < 256) {
-    int i;
     Gif_Color black;
-    
     black.red = black.green = black.blue = 0;
     
     transparent = gfs->global->ncol;

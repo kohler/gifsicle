@@ -50,9 +50,6 @@ static int colormap_infoing = 0;
 static int outputing = 1;
 static int verbosing = 0;
 
-static int colormerging = 0;
-static char *colormerge_name = 0;
-
 
 #define SAME_INTERLACE_OPT	300
 #define INFO_OPT		301

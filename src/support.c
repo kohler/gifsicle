@@ -188,7 +188,6 @@ colormap_info(Gif_Colormap *gfcm, char *prefix)
 void
 stream_info(Gif_Stream *gfs, char *filename, int colormaps)
 {
-  int i;
   if (!gfs) return;
   gfs->userflags = 0; /* clear userflags to indicate stream info produced */
   
