@@ -43,6 +43,13 @@ if test "x$enableval" = xyes ; then
   CC="$CC -Wall"
 fi)
 
+ungif=
+AC_ARG_ENABLE(ungif,
+[  --enable-ungif          build without compression (no patent problems)],
+if test "x$enableval" = xyes ; then
+  ungif=yes
+fi)
+
 dnl
 dnl Choose programs to build. Always build gifsicle
 dnl
@@ -83,11 +90,27 @@ dnl
 
 if test "x$use_dmalloc" = xyes ; then
   AC_DEFINE(DMALLOC)
-  MALLOC_O='dmalloc.o'
+  MALLOC_O=dmalloc.o
 else
-  MALLOC_O='fmalloc.o'
+  MALLOC_O=fmalloc.o
 fi
 AC_SUBST(MALLOC_O)dnl
+
+dnl
+dnl Set up `ungif' support
+dnl
+
+if test "x$ungif" = xyes -o "x$GIFSICLE_UNGIF" = xyes ; then
+  GIFWRITE_O=ungifwrt.o
+  AC_DEFINE(GIF_UNGIF)
+elif test -r gifwrite.c ; then
+  GIFWRITE_O=gifwrite.o
+else
+  AC_MSG_ERROR(This version of gifsicle cannot create compressed GIFs.
+*** Either reconfigure with the \`--enable-ungif' option or download the
+*** version with compression from http://www.lcdf.org/gifsicle/)
+fi
+AC_SUBST(GIFWRITE_O)
 
 dnl
 dnl random or rand, strerror, strtoul, sys/select.h

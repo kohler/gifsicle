@@ -36,7 +36,7 @@ appearance.
 %setup
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --enable-gifview --enable-gifdiff
+CFLAGS="$RPM_OPT_FLAGS" ./configure
 make
 
 %install

@@ -1431,7 +1431,11 @@ main(int argc, char **argv)
       /* RANDOM OPTIONS */
       
      case VERSION_OPT:
+#ifdef GIF_UNGIF
+      printf("LCDF Gifsicle %s (ungif)\n", VERSION);
+#else
       printf("LCDF Gifsicle %s\n", VERSION);
+#endif
       printf("Copyright (C) 1997-9 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\

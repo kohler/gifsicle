@@ -6,14 +6,15 @@ EXTRA_PROGRAMS = gifview gifdiff
 man_MANS = gifsicle.1 @OTHERMANS@
 
 LDADD = @MALLOC_O@ @LIBOBJS@
+gifsicle_LDADD = $(LDADD) @GIFWRITE_O@
 gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
-gifsicle_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
+gifsicle_DEPENDENCIES = @GIFWRITE_O@ @MALLOC_O@ @LIBOBJS@
 gifview_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
 gifdiff_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
 
 gifsicle_SOURCES = clp.h clp.c \
-		gif.h giffunc.c gifread.c gifunopt.c gifwrite.c \
+		gif.h giffunc.c gifread.c gifunopt.c \
 		gifsicle.h merge.c optimize.c quantize.c support.c xform.c \
 		gifsicle.c
 
@@ -28,6 +29,7 @@ gifdiff_SOURCES = clp.h clp.c \
 INCLUDES = $(X_CFLAGS)
 
 EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c \
+		gifwrite.c ungifwrt.c \
 		gifsicle.1 gifview.1 gifdiff.1 \
 		logo.gif logo1.gif rpm.spec \
 		Makefile.w32 win32cfg.h
@@ -40,6 +42,7 @@ dmalloc.o: dmalloc.h dmalloc.c
 giffunc.o: gif.h giffunc.c
 gifread.o: gif.h gifread.c
 gifwrite.o: gif.h gifwrite.c
+ungifwrt.o: gif.h ungifwrt.c
 gifunopt.o: gif.h gifunopt.c
 gifx.o: gif.h gifx.h gifx.c
 
@@ -56,7 +59,7 @@ gifdiff.o: gifdiff.c
 srclinks:
 	for i in clp.c clp.h fmalloc.c strerror.c ; do \
 	ln -sf ~/src/edlib/$$i $$i ; done
-	for i in gif.h giffunc.c gifread.c gifwrite.c gifunopt.c \
+	for i in gif.h giffunc.c gifread.c gifwrite.c ungifwrt.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \
 	ln -sf ~/src/giflib/$$i $$i ; done
 
@@ -75,4 +78,22 @@ rpm: dist
 	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm .
 	rm -rf /tmp/rpmb
 
-.PHONY: srclinks versionize rpm
+rpm-ungif: rpm
+	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
+	mkdir -p /tmp/rpmb/SOURCES /tmp/rpmb/RPMS/$$buildarch \
+	/tmp/rpmb/BUILD ; \
+	echo 'topdir: /tmp/rpmb' > /tmp/rpmb/rc ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmb/SOURCES ; \
+	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpmb/rc -bb rpm.spec ; \
+	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm `echo /tmp/rpmb/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
+	rm -rf /tmp/rpmb
+
+dist-ungif: dist
+	tar xzf gifsicle-$(VERSION).tar.gz
+	@rm gifsicle-$(VERSION)/gifwrite.c
+	rm -rf ungifsicle-$(VERSION)
+	mv gifsicle-$(VERSION) ungifsicle-$(VERSION)
+	GZIP=--best gtar chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
+	rm -rf ungifsicle-$(VERSION)
+
+.PHONY: srclinks versionize rpm dist-ungif rpm-ungif

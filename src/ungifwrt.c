@@ -1,15 +1,11 @@
-/* gifwrite.c - Functions to write GIFs.
+/* ungifwrt.c - Functions to write unGIFs -- GIFs without compression.
    Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*. It is distributed under the GNU Public
+   The GIF library is free software. It is distributed under the GNU Public
    License, version 2 or later; you can copy, distribute, or alter it at will,
    as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied.
-   
-   *The LZW compression method used by GIFs is patented. Unisys, the patent
-   holder, allows the compression algorithm to be used without a license in
-   software distributed at no cost to the user. */
+   available. There is no warranty, express or implied. */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -24,17 +20,6 @@ extern "C" {
 #endif
 
 #define WRITE_BUFFER_SIZE	255
-#define HASH_SIZE		(2 << GIF_MAX_CODE_BITS)
-
-typedef struct Gif_Context {
-  
-  Gif_Code *prefix;
-  byte *suffix;
-  Gif_Code *code;
-  
-} Gif_Context;
-
-
 
 typedef struct Gif_Writer {
   
@@ -99,35 +84,9 @@ memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 }
 
 
-static u_int32_t
-codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
-{
-  u_int32_t hashish1 = (prefix << 9 ^ prefix << 2 ^ suffix) % HASH_SIZE;
-  u_int32_t hashish2 = ((prefix | suffix << 7) % HASH_SIZE) | 1;
-  Gif_Code *prefixes = gfc->prefix;
-  byte *suffixes = gfc->suffix;
-  
-  while ((prefixes[hashish1] != prefix || suffixes[hashish1] != suffix)
-	 && prefixes[hashish1] != eoi_code)
-    hashish1 = (hashish1 + hashish2) % HASH_SIZE;
-  
-  return hashish1;
-}
-
 static void
-print_output_code(Gif_Context *gfc, Gif_Code code, Gif_Code eoi_code)
-{
-  if (gfc->prefix[code] != eoi_code) {
-    fprintf(stderr, "P%X", gfc->prefix[code]);
-    print_output_code(gfc, gfc->prefix[code], eoi_code);
-  }
-  fprintf(stderr, "%X ", gfc->suffix[code]);
-}
-
-
-static void
-write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
-		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+write_uncompressed_data(byte **img, u_int16_t width, u_int16_t height,
+			byte min_code_bits, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
@@ -138,7 +97,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   u_int32_t leftover;
   byte bits_left_over;
   
-  Gif_Code work_code;
   Gif_Code next_code;
   Gif_Code output_code;
   Gif_Code clear_code;
@@ -150,10 +108,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   
   byte cur_code_bits;
   
-  Gif_Code *prefixes = gfc->prefix;
-  byte *suffixes = gfc->suffix;
-  Gif_Code *codes = gfc->code;
-  
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
   clear_code = 1 << min_code_bits;
@@ -163,7 +117,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   /* bump_code, next_code set by first runthrough of output clear_code */
   GIF_DEBUG(("clear(%d) eoi(%d)", clear_code, eoi_code));
   
-  work_code = output_code = clear_code;
+  output_code = clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, bump_code,
      et al. below. */
   
@@ -195,19 +149,9 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     
     if (output_code == clear_code) {
       
-      Gif_Code c;
       cur_code_bits = min_code_bits + 1;
       next_code = eoi_code + 1;
       bump_code = clear_code << 1;
-      
-      for (hash = 0; hash < HASH_SIZE; hash++)
-	prefixes[hash] = eoi_code;
-      for (c = 0; c < clear_code; c++) {
-	hash = codehash(gfc, clear_code, c, eoi_code);
-	prefixes[hash] = clear_code;
-	suffixes[hash] = c;
-	codes[hash] = c;
-      }
       
     } else if (next_code > bump_code) {
       
@@ -227,16 +171,14 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     /*****
      * Find the next code to output. */
     
-    /* If height is 0 -- no more pixels to write -- we output work_code next
-       time around. */
+    /* If height is 0 -- no more pixels to write -- output eoi_code. */
     if (height == 0)
-      goto out_of_data;
+      output_code = eoi_code;
     
-    /* Actual code finding. */
-    while (height != 0) {
-      suffix = *imageline;
-      if (suffix >= clear_code) suffix = 0;
-      hash = codehash(gfc, work_code, suffix, eoi_code);
+    else {
+      /* Use suffix as code (no compression). */
+      output_code = *imageline;
+      if (output_code >= clear_code) output_code = 0;
       
       imageline++;
       xleft--;
@@ -247,29 +189,8 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 	imageline = img[0];
       }
       
-      if (prefixes[hash] == eoi_code)
-	break;
-      work_code = codes[hash];
-    }
-    
-    if (hash < HASH_SIZE && prefixes[hash] == eoi_code) {
-      /* We need to add something to the table. */
-      
-      prefixes[hash] = work_code;
-      suffixes[hash] = suffix;
-      codes[hash] = next_code;
       next_code++;
-      
-      output_code = work_code;
-      work_code = suffix;	/* code for a pixel == the pixel value */
-      
-    } else {
-      /* Ran out of data and don't need to add anything to the table. */
-     out_of_data:
-      output_code = work_code;
-      work_code = eoi_code;
     }
-    
   }
   
   if (bits_left_over > 0)
@@ -287,7 +208,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 
 static int
 write_image_data(byte **img, u_int16_t width, u_int16_t height,
-		 byte interlaced, Gif_Context *gfc, Gif_Writer *grr)
+		 byte interlaced, Gif_Writer *grr)
 {
   int i;
   u_int16_t x, y, max_color;
@@ -317,11 +238,11 @@ write_image_data(byte **img, u_int16_t width, u_int16_t height,
       nimg[y] = img[Gif_InterlaceLine(y, height)];
     nimg[height] = 0;
     
-    write_compressed_data(nimg, width, height, min_code_bits, gfc, grr);
+    write_uncompressed_data(nimg, width, height, min_code_bits, grr);
     
     Gif_DeleteArray(nimg);
   } else
-    write_compressed_data(img, width, height, min_code_bits, gfc, grr);
+    write_uncompressed_data(img, width, height, min_code_bits, grr);
   
   return 1;
 }
@@ -332,14 +253,9 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
 {
   int ok = 0;
   Gif_Writer grr;
-  Gif_Context gfc;
   
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
-  
-  gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
-  gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
-  gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
   
   grr.v = Gif_NewArray(byte, 1024);
   grr.pos = 0;
@@ -347,11 +263,11 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
   
-  if (!gfc.prefix || !gfc.suffix || !gfc.code || !grr.v)
+  if (!grr.v)
     goto done;
   
   ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-			&gfc, &grr);
+			&grr);
   
  done:
   if (!ok) {
@@ -361,9 +277,6 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   gfi->compressed = grr.v;
   gfi->compressed_len = grr.pos;
   gfi->free_compressed = Gif_DeleteArrayFunc;
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.code);
   return grr.v != 0;
 }
 
@@ -396,7 +309,7 @@ write_color_table(Gif_Color *c, int ncol, Gif_Writer *grr)
 
 
 static int
-write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
+write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
   byte packed = 0;
   
@@ -434,7 +347,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
     
   } else
     write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-		     gfc, grr);
+		     grr);
   
   return 1;
 }
@@ -569,13 +482,6 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   int i;
   Gif_Image *gfi;
   Gif_Extension *gfex = gfs->extensions;
-  Gif_Context gfc;
-  
-  gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
-  gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
-  gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
-  if (!gfc.prefix || !gfc.suffix || !gfc.code)
-    goto done;
   
   {
     byte isgif89a = 0;
@@ -610,7 +516,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
       write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
       write_graphic_control_extension(gfi, grr);
-    if (!write_image(gfs, gfi, &gfc, grr))
+    if (!write_image(gfs, gfi, grr))
       goto done;
   }
   
@@ -625,9 +531,6 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   ok = 1;
   
  done:
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.code);
   return ok;
 }
 

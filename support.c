@@ -175,6 +175,11 @@ Whole-GIF options: Also --no-OPTION.\n\
 \n\
 Report bugs to <eddietwo@lcs.mit.edu>.\n\
 Too much information? Try `%s --help | more'.\n", program_name);
+#ifdef GIF_UNGIF
+  printf("\
+This version of gifsicle writes uncompressed GIFs, which can be far larger\n\
+than compressed GIFs. See http://www.lcdf.org/gifsicle for more information.\n");
+#endif
 }
 
 
