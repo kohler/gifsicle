@@ -124,7 +124,7 @@ static int verbosing = 0;
 Clp_Option options[] = {
   
   { "append", 0, APPEND_OPT, 0, 0 },
-  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, 0 },
+  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, Clp_AllowDash },
   
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
@@ -137,7 +137,7 @@ Clp_Option options[] = {
     Clp_Negate | Clp_LongMinMatch, 3 }, /****/
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
-  { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
+  { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate | Clp_AllowDash },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
   { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
   
@@ -149,7 +149,8 @@ Clp_Option options[] = {
   
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
-  { "extension", 0, EXTENSION_OPT, Clp_ArgString, Clp_LongMinMatch, 3 }, /***/
+  { "extension", 0, EXTENSION_OPT, Clp_ArgString,
+    Clp_LongMinMatch | Clp_AllowDash, 3 }, /***/
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
