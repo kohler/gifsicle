@@ -1157,7 +1157,7 @@ main(int argc, char *argv[])
   Clp_AddStringListType
     (clp, LOOP_TYPE, Clp_AllowNumbers,
      "infinite", 0, "forever", 0,
-     0);
+     (const char*) 0);
   Clp_AddStringListType
     (clp, DISPOSAL_TYPE, Clp_AllowNumbers,
      "none", GIF_DISPOSAL_NONE,
@@ -1165,13 +1165,13 @@ main(int argc, char *argv[])
      "background", GIF_DISPOSAL_BACKGROUND,
      "bg", GIF_DISPOSAL_BACKGROUND,
      "previous", GIF_DISPOSAL_PREVIOUS,
-     0);
+     (const char*) 0);
   Clp_AddStringListType
     (clp, COLORMAP_ALG_TYPE, 0,
      "diversity", COLORMAP_DIVERSITY,
      "blend-diversity", COLORMAP_BLEND_DIVERSITY,
      "median-cut", COLORMAP_MEDIAN_CUT,
-     0);
+     (const char*) 0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
   Clp_AddType(clp, SCALE_FACTOR_TYPE, 0, parse_scale_factor, 0);

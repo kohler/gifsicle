@@ -1225,7 +1225,7 @@ main(int argc, char *argv[])
   Clp_AddStringListType
     (clp, WINDOW_TYPE, Clp_AllowNumbers,
      "root", -1,
-     0);
+     (const char*) 0);
   program_name = cur_resource_name = Clp_ProgramName(clp);
   
   xwGETTIMEOFDAY(&genesis_time);

@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.41   19.Aug.2004
+
+* Fix problems with 64-bit machines.  Thanks to Dan Stahlke for pointing
+  out the problem and providing a patch.
+
+
 Version 1.40   28.Aug.2003
 
 * Fix longstanding bug where '--disposal=previous' was mistakenly

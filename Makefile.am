@@ -27,9 +27,9 @@ srclinks:
 	ln -sf ../../liblcdf/liblcdfgif/$$i.c src/$$i.c ; done
 
 versionize:
-	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
-	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" gifsicle.spec
-	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" src/win32cfg.h
+	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" $(top_srcdir)/gifsicle.1 $(top_srcdir)/gifview.1 $(top_srcdir)/gifdiff.1
+	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" $(top_srcdir)/gifsicle.spec
+	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" $(top_srcdir)/src/win32cfg.h
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
