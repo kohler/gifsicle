@@ -221,10 +221,12 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, Clp_Option *opt)
     cli->opt = opt;
     cli->nopt = nopt;
   
-    cli->argtype = (Clp_ArgType *)malloc(sizeof(Clp_ArgType) * 5);
+    cli->argtype = (Clp_ArgType *)malloc(sizeof(Clp_ArgType) * 8);
     if (!cli->argtype)
 	goto failed;
-    cli->nargtype = 5;
+    for (i = 0; i < 8; i++)
+	cli->argtype[i].func = 0;
+    cli->nargtype = 8;
   
     for (i = 0; i < 256; i++)
 	cli->option_class[i] = 0;
