@@ -114,7 +114,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
       /* Store an image color cell's mapping to the global colormap in its
 	 `pixel' slot. This is useful caching: oftentimes many input frames
 	 will share a colormap */
-      int mapto = srccol[i].pixel < 256 ? srccol[i].pixel : -1;
+      int mapto = (srccol[i].pixel < 256 ? (int)srccol[i].pixel : -1);
       
       if (mapto == -1)
 	mapto = find_color_index(destcol, ndestcol, &srccol[i]);
@@ -188,7 +188,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
      away. We assigned it this time through if the cached mapping is >=
      dest->ncol. */
   for (x = 0; x < i; x++)
-    if (srccol[x].haspixel == 1 && srccol[x].pixel >= dest->ncol)
+    if (srccol[x].haspixel == 1 && srccol[x].pixel >= (uint32_t)dest->ncol)
       srccol[x].pixel = 256;
   
   return 0;
