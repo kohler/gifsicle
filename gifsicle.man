@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.3.4
+.ds V 1.4
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -390,24 +390,6 @@ The argument can have the same forms as in the
 option, below.
 '
 .Sp
-.TP 5
-.OA \-c text
-.TP
-.OA \-\-comment text
-'
-Adds a comment,
-.IR text ,
-to the output GIF. The comment will be placed before the next frame in
-the stream.
-.Sp
-.OP \-\-no\-comments
-and
-.OP \-\-same\-comments
-affect all the images following, and apply only to input GIF comments,
-not ones added with
-.OP \-\-comment .
-'
-.Sp
 .TP
 .OA \-\-crop x1 , y1 - x2\fR,\fIy2
 .TP
@@ -461,23 +443,6 @@ is a synonym for
 '
 .Sp
 .TP
-.OA \-n text
-.TP
-.OA \-\-name text
-'
-Sets the next frame's name to
-.IR text .
-This name is stored as an extension in the output GIF. 
-.Sp
-.OP \-\-no\-names
-and
-.OP \-\-same\-names
-affect all the images following. They apply only to input GIF names,
-not ones added with
-.OP \-\-name .
-'
-.Sp
-.TP
 .OA \-p x\fR,\fIy
 .TP
 .OA \-\-position x\fR,\fIy
@@ -513,6 +478,82 @@ transparent in the following frames.
 can be a colormap index (0\-255), a hexadecimal color specification
 (like #FF00FF for magenta), or slash- or comma-separated red, green
 and blue values (each between 0 and 255).
+.PD
+'
+.\" -----------------------------------------------------------------
+.SS Extension Options
+
+Extension options add non-visual information to the output GIF. This
+includes names, comments, and generic extensions.
+'
+.Sp
+'
+.Sp
+.PD 0
+.TP 5
+.OA \-x app\-name " " extension
+.TP
+.OA \-\-app\-extension app\-name " " extension
+'
+Adds an application extension named
+.I app\-name
+and with the value
+.I extension
+to the output GIF.
+'
+.Sp
+.TP
+.OA \-c text
+.TP
+.OA \-\-comment text
+'
+Adds a comment,
+.IR text ,
+to the output GIF. The comment will be placed before the next frame in
+the stream.
+.Sp
+.OP \-\-no\-comments
+and
+.OP \-\-same\-comments
+affect all the images following, and apply only to input GIF comments,
+not ones added with
+.OP \-\-comment .
+'
+.Sp
+.TP
+.OA \-\-extension number " " extension
+'
+Adds an extension numbered
+.I number
+and with the value
+.I extension
+to the output GIF.
+.I Number
+can be in decimal, octal, hex, or it can be a single character like `n',
+whose ASCII value is used.
+.Sp
+.OP \-\-no\-extensions
+and
+.OP \-\-same\-extensions
+affect all the images following, and apply only to input GIF extensions.
+'
+.Sp
+.TP
+.OA \-n text
+.TP
+.OA \-\-name text
+'
+Sets the next frame's name to
+.IR text .
+This name is stored as an extension in the output GIF. 
+.Sp
+.OP \-\-no\-names
+and
+.OP \-\-same\-names
+affect all the images following. They apply only to input GIF names,
+not ones added with
+.OP \-\-name .
+'
 .PD
 '
 .\" -----------------------------------------------------------------

@@ -94,17 +94,20 @@ Frame change options:\n\
   --done                        Done with frame changes.\n\
 Image options: Also --no-opt/+o and --same-opt.\n\
   --background COL, -B COL      Makes COL the background color.\n\
-  --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
+  --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --flip-horizontal, --flip-vertical\n\
                                 Flips the image.\n\
-  --crop X,Y+WxH or X,Y-X2,Y2   Clips the image.\n\
   --interlace, -i               Turns on interlacing.\n\
   --logical-screen WxH, -S WxH  Sets logical screen to WxH.\n\
-  --name TEXT, -n TEXT          Sets next frame's name.\n\
   --position X,Y, -p X,Y        Sets frame position to (X,Y).\n\
   --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
                                 Rotates the image.\n\
   --transparent COL, -t COL     Makes COL transparent.\n\
+Extension options: Also --no-opt/+o and --same-opt.\n\
+  --app-extension N D, -x N D   Adds an app extension named N with data D.\n\
+  --comment TEXT, -c TEXT       Adds a comment before the next frame.\n\
+  --extension N D               Adds an extension number N with data D.\n\
+  --name TEXT, -n TEXT          Sets next frame's name.\n\
 Animation options: Also --no-opt/+o and --same-opt.\n\
   --delay TIME, -d TIME         Sets frame delay to TIME (in 1/100sec).\n\
   --disposal METHOD, -D METHOD  Sets frame disposal to METHOD.\n\
@@ -398,6 +401,7 @@ int position_y;
 Gif_Color parsed_color;
 Gif_Color parsed_color2;
 
+
 int
 parse_frame_spec(Clp_Parser *clp, const char *arg, void *v, int complain)
 {
@@ -518,7 +522,7 @@ int
 parse_rectangle(Clp_Parser *clp, const char *arg, void *v, int complain)
 {
   char *val;
-
+  
   int x = position_x = strtol(arg, &val, 10);
   if (*val == ',') {
     int y = position_y = strtol(val + 1, &val, 10);
@@ -635,7 +639,6 @@ parse_color(Clp_Parser *clp, const char *arg, void *v, int complain)
 }
 
 
-
 int
 parse_two_colors(Clp_Parser *clp, const char *arg, void *v, int complain)
 {
@@ -707,6 +710,9 @@ clear_def_frame_once_options(void)
 
   def_frame.background.haspixel = 0;
   def_frame.background_change = 0;
+
+  def_frame.extensions = 0;
+  def_frame.extensions_change = 0;
 }
 
 
@@ -748,6 +754,7 @@ copy_extension(Gif_Extension *src)
   if (!dest) return 0;
   dest->data = Gif_NewArray(byte, src->length);
   dest->length = src->length;
+  dest->free_data = Gif_DeleteArrayFunc;
   if (!dest->data) {
     Gif_DeleteExtension(dest);
     return 0;
@@ -1036,7 +1043,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
   Gif_Color dest_background;
-  int i;
+  int i, j;
   
   global->ncol = 0;
   dest->global = global;
@@ -1083,16 +1090,25 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     Gt_Frame *fr = merger[i];
     Gif_Image *srci;
     Gif_Image *desti;
-    Gif_Extension *gfex;
     int old_transparent;
     
     /* First, check for extensions */
-    gfex = fr->stream->extensions;
-    while (gfex && gfex->position < i)
-      gfex = gfex->next;
-    while (!fr->no_extensions && gfex && gfex->position == i) {
-      Gif_AddExtension(dest, copy_extension(gfex), i);
-      gfex = gfex->next;
+    {
+      int j;
+      Gif_Extension *gfex = fr->stream->extensions;
+      for (j = 0; fr->stream->images[j] != fr->image; j++) ;
+      while (gfex && gfex->position < j)
+	gfex = gfex->next;
+      while (!fr->no_extensions && gfex && gfex->position == j) {
+	Gif_AddExtension(dest, copy_extension(gfex), i);
+	gfex = gfex->next;
+      }
+      gfex = fr->extensions;
+      while (gfex) {
+	Gif_Extension *next = gfex->next;
+	Gif_AddExtension(dest, gfex, i);
+	gfex = next;
+      }
     }
     
     /* Make a copy of the image and crop it if we're cropping */

@@ -108,6 +108,8 @@ static int verbosing = 0;
 #define ROTATE_180_OPT		348
 #define ROTATE_270_OPT		349
 #define NO_ROTATE_OPT		350
+#define APP_EXTENSION_OPT	351
+#define EXTENSION_OPT		352
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -122,6 +124,7 @@ static int verbosing = 0;
 Clp_Option options[] = {
   
   { "append", 0, APPEND_OPT, 0, 0 },
+  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, 0 },
   
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
@@ -146,6 +149,7 @@ Clp_Option options[] = {
   
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
+  { "extension", 0, EXTENSION_OPT, Clp_ArgString, Clp_LongMinMatch, 3 }, /***/
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
@@ -219,6 +223,7 @@ initialize_def_frame(void)
   def_frame.name_change = 0;
   def_frame.comment_change = 0;
   def_frame.background_change = 0;
+  def_frame.extensions_change = 0;
   
   def_frame.name = 0;
   def_frame.no_name = 0;
@@ -245,6 +250,7 @@ initialize_def_frame(void)
   def_frame.screen_height = -1;
   
   def_frame.no_extensions = 0;
+  def_frame.extensions = 0;
   
   def_frame.flip_horizontal = 0;
   def_frame.flip_vertical = 0;
@@ -428,9 +434,9 @@ input_stream(char *name)
      strictly sequentially, one at a time, we can't tell the difference
      between these:
      
+     --name=X g.gif             h.gif   // name on g.gif #0
      --name=X g.gif          #2 h.gif   // name on g.gif #2
               g.gif --name=X #2 h.gif   // name on g.gif #2
-     --name=X g.gif             h.gif   // name on g.gif #0
               g.gif --name=X    h.gif   // name on h.gif #0 !!!
       
      Here's the solution. Mark when we CHANGE an option. After processing
@@ -450,6 +456,8 @@ input_stream(char *name)
     def_frame.comment = 0;
   if (!def_frame.background_change)
     def_frame.background.haspixel = 0;
+  if (!def_frame.extensions_change)
+    def_frame.extensions = 0;
   
   old_def_frame = def_frame;
   first_input_frame = frames->count;
@@ -461,6 +469,7 @@ input_stream(char *name)
   def_frame.name_change = 0;
   def_frame.comment_change = 0;
   def_frame.background_change = 0;
+  def_frame.extensions_change = 0;
   
   if (unoptimizing)
     if (!Gif_Unoptimize(gfs)) {
@@ -735,6 +744,41 @@ set_new_fixed_colormap(char *name)
 }
 
 
+static int
+handle_extension(Clp_Parser *clp, int is_app)
+{
+  Gif_Extension *gfex;
+  char *extension_type = clp->arg;
+  char *extension_body = Clp_GetNextArgument(clp);
+  if (!extension_body) {
+    Clp_OptionError(clp, "%O requires two arguments");
+    return 0;
+  }
+  
+  next_frame = 1;
+  if (is_app)
+    gfex = Gif_NewExtension(255, extension_type);
+  else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
+    gfex = Gif_NewExtension(extension_type[0], 0);
+  else {
+    long l = strtol(extension_type, &extension_type, 0);
+    if (*extension_type != 0 || l < 0 || l >= 256)
+      fatal_error("bad extension type: must be a number between 0 and 255");
+    gfex = Gif_NewExtension(l, 0);
+  }
+  
+  if (!def_frame.extensions_change)
+    def_frame.extensions = 0;
+  gfex->data = extension_body;
+  gfex->length = strlen(extension_body);
+  gfex->next = def_frame.extensions;
+  def_frame.extensions = gfex;
+  def_frame.extensions_change = 1;
+  
+  return 1;
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -771,7 +815,7 @@ main(int argc, char **argv)
   
   frames = new_frameset(16);
   initialize_def_frame();
-
+  
 #ifdef DMALLOC
   dmalloc_verbose(fopen("fudge", "w"));
 #endif
@@ -1002,6 +1046,8 @@ main(int argc, char **argv)
       def_frame.crop = 0;
       break;
 
+      /* extensions options */
+      
      case NO_EXTENSIONS_OPT:
       next_frame = 1;
       def_frame.no_extensions = 1;
@@ -1012,6 +1058,16 @@ main(int argc, char **argv)
       def_frame.no_extensions = 0;
       break;
 
+     case EXTENSION_OPT:
+      if (!handle_extension(clp, 0))
+	goto bad_option;
+      break;
+      
+     case APP_EXTENSION_OPT:
+      if (!handle_extension(clp, 1))
+	goto bad_option;
+      break;
+      
       /* IMAGE DATA OPTIONS */
 
      case FLIP_HORIZ_OPT:
@@ -1187,7 +1243,8 @@ particular purpose. That's right: you're on your own!\n");
       
      case Clp_Done:
       goto done;
-      
+
+     bad_option:
      case Clp_BadOption:
       short_usage();
       exit(1);

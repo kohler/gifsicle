@@ -28,6 +28,7 @@ typedef struct Gt_Frame {
   unsigned name_change: 1;
   unsigned comment_change: 1;
   unsigned background_change: 1;
+  unsigned extensions_change: 1;
   
   char *name;
   int no_name;
@@ -54,6 +55,7 @@ typedef struct Gt_Frame {
   int screen_height;
   
   int no_extensions;
+  Gif_Extension *extensions;
   
   unsigned flip_horizontal: 1;
   unsigned flip_vertical: 1;
