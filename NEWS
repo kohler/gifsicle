@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.4.1   16.Sep.1998
+
+* Fixed `--unoptimize' bug: a frame's transparency could disappear under rare
+  circumstances. Bug reported by Rodney Brown <rodneybrown@pmsc.com>
+
+
 Version 1.4   12.Sep.1998
 
 * Added `--extension' and `--app-extension'.
