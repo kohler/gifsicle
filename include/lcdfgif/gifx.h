@@ -43,6 +43,8 @@ struct Gif_XContext {
 
 
 Gif_XContext *		Gif_NewXContext(Display *, Window);
+Gif_XContext *		Gif_NewXContextFromVisual(Display *, int screen_number,
+					Visual *, int depth, Colormap);
 void			Gif_DeleteXContext(Gif_XContext *);
 
 Pixmap			Gif_XImage(Gif_XContext *, Gif_Stream *, Gif_Image *);

@@ -359,20 +359,19 @@ Gif_XPreallocateColors(Gif_XContext *gfx, Gif_Colormap *gfcm)
 
 
 Gif_XContext *
-Gif_NewXContext(Display *display, Window window)
+Gif_NewXContextFromVisual(Display *display, int screen_number,
+			  Visual *visual, int depth, Colormap colormap)
 {
   Gif_XContext *gfx;
-  XWindowAttributes attr;
   
   gfx = Gif_New(Gif_XContext);
   gfx->display = display;
-  gfx->drawable = window;
+  gfx->drawable = RootWindow(display, screen_number);
   
-  XGetWindowAttributes(display, window, &attr);
-  gfx->visual = attr.visual;
-  gfx->colormap = attr.colormap;
-  gfx->ncolormap = gfx->visual->map_entries;
-  gfx->depth = attr.depth;
+  gfx->visual = visual;
+  gfx->colormap = colormap;
+  gfx->ncolormap = visual->map_entries;
+  gfx->depth = depth;
   
   gfx->closest = 0;
   gfx->nclosest = 0;
@@ -381,6 +380,16 @@ Gif_NewXContext(Display *display, Window window)
   gfx->refcount = 0;
   
   return gfx;
+}
+
+
+Gif_XContext *
+Gif_NewXContext(Display *display, Window window)
+{
+  XWindowAttributes attr;
+  XGetWindowAttributes(display, window, &attr);
+  return Gif_NewXContextFromVisual(display, XScreenNumberOfScreen(attr.screen),
+				   attr.visual, attr.depth, attr.colormap);
 }
 
 
