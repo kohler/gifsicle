@@ -1092,8 +1092,9 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 			   || gfi->height != gfs->screen_height))) {
 	    /* transparent.haspixel set below, at merge_frame_done */
 	    int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
-	    if (original_bg_transparent != background.haspixel)
-		conflict = 1;
+	    if ((original_bg_transparent && background.haspixel)
+		|| (!original_bg_transparent && want_transparent))
+		conflict = 2;
 	    else if (original_bg_transparent)
 		want_transparent = 1;
 	    else if (merger[i]->transparent.haspixel) {
