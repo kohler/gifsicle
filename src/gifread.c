@@ -641,8 +641,9 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
     data_len += block_len;
     block_len = gifgetbyte(grr);
   }
-  
-  gfex = Gif_NewExtension(kind, app_name);
+
+  if (data)
+    gfex = Gif_NewExtension(kind, app_name);
   if (gfex) {
     gfex->data = data;
     gfex->length = data_len;
@@ -819,7 +820,7 @@ read_gif(Gif_Reader *grr, int read_flags)
   /* Move comments after last image into stream. */
   gfs->comment = gfi->comment;
   gfi->comment = 0;
-
+  
   Gif_DeleteImage(gfi);
   Gif_DeleteArray(last_name);
   Gif_DeleteArray(gfc.prefix);
@@ -846,7 +847,6 @@ Gif_FullReadFile(FILE *f, int read_flags)
   grr.eofer = file_eofer;
   return read_gif(&grr, read_flags);
 }
-
 
 Gif_Stream *
 Gif_FullReadRecord(Gif_Record *gifrec, int read_flags)

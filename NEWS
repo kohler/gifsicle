@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.11.1   24.Jan.1999
+
+* Fixed core dump on corrupted GIF files (in particular, bad extensions).
+  Problem reported by tenthumbs <10@dhyp6-159.cybernex.net>.
+
+
 Version 1.11   22.Jan.1999
 
 * Added `--scale XFACTORxYFACTOR' to complement `--resize'.

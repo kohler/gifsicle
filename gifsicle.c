@@ -454,7 +454,7 @@ input_stream(char *name)
   gfs->userflags = 97; /* to indicate no output done */
   
   if (gfs->errors)
-    warning("%s contained some errors", name);
+    warning("%s is partially corrupted", name);
   
   /* Processing when we've got a new input frame */
   if (mode == BLANK_MODE)
