@@ -441,7 +441,10 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
     (*gfi->free_compressed)((void *)gfi->compressed);
     gfi->compressed = 0;
   }
-  
+
+  /* 27.Jul.2001: Must allocate GIF_MAX_CODE + 1 because we assign to
+     rle_next[GIF_MAX_CODE]! Thanks, Jeff Brown <jabrown@ipn.caida.org>, for
+     supplying the buggy files. */
   gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   
   grr.v = Gif_NewArray(byte, 1024);
