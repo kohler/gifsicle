@@ -182,7 +182,7 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
     /* Options that start with `no-' should be changed to OnlyNegated */
     if (opt[i].long_name && strncmp(opt[i].long_name, "no-", 3) == 0) {
       opt[i].long_name += 3;
-      opt[i].flags |= Clp_OnlyNegated | Clp_Negate;
+      opt[i].flags |= Clp_Negate | Clp_OnlyNegated;
     }
   }
   
@@ -949,8 +949,8 @@ static Clp_Option *
 find_long(Clp_Parser *clp, char *arg)
      /* If arg corresponds to one of clp's options, finds that option &
 	returns it. If any argument is given after an = sign in arg, sets
-	clp->have_arg = 1 and clp->arg to that argument. Sets cli->ambiguous = 1
-	iff there was no match because the argument given was ambiguous. */
+	clp->have_arg = 1 and clp->arg to that argument. Sets cli->ambiguous
+	to 1 iff there was no match because the argument was ambiguous. */
 {
   Clp_Internal *cli = clp->internal;
   int value, len;
