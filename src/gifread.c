@@ -684,8 +684,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
 
 
 static int
-read_application_extension(Gif_Context *gfc, Gif_Image *gfi, int position,
-			   Gif_Reader *grr)
+read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
 {
   Gif_Stream *gfs = gfc->stream;
   byte buffer[GIF_MAX_BLOCK + 1];
@@ -816,7 +815,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 	break;
 	
        case 0xFF:
-	read_application_extension(&gfc, gfi, extension_position, grr);
+	read_application_extension(&gfc, extension_position, grr);
 	break;
 	
        default:
