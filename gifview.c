@@ -216,7 +216,7 @@ void
 usage(void)
 {
   printf("\
-`Gifview' is a lightweight GIF viewer for X. It can display animaged GIFs as\n\
+`Gifview' is a lightweight GIF viewer for X. It can display animated GIFs as\n\
 slideshows, one frame at a time, or as animations.\n\
 \n\
 Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
@@ -229,7 +229,7 @@ Options are:\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
-  +e, --no-interactive          Don't pay attention to buttons or keys.\n\
+  +e, --no-interactive          Ignore buttons and keystrokes.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
 \n\
