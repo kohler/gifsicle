@@ -62,18 +62,17 @@ http://www.webreference.com/authoring/graphics/animation\|.html
 '
 .SH INTRODUCTION
 '
+Without options,
 .B gifsicle
-normally acts like a filter: you feed it a GIF on standard input, and it
-writes that GIF on standard output. That means these two commands do the
-same thing:
+acts like a filter: you feed it a GIF on standard input, and it writes that
+GIF on standard output. That means these two commands do the same thing:
 .Es
 % \fBgifsicle < in.gif > out.gif\fR
 % \fBgifsicle < in.gif | gifsicle | gifsicle | gifsicle > out.gif\fR
 .Ee
-Well, that's not very interesting! Most times you will probably give
+Well, that's not very interesting! Most times you'll tell
 .B gifsicle
-some command line options which tell it to alter the input GIF in some way.
-The
+to alter its inputs by giving it command line options. The
 .OP \-i
 option, for example, tells it to interlace its input files:
 .Es
@@ -125,7 +124,7 @@ options are on the right.
 .Ix "\ \ \ disposal" "\fB\-\-disposal\fP"
 .Ix "\ \ \ looping" "\fB\-\-loopcount\fP"
 .Ix "\ \ \ portions of" "frame selections"
-.Ix "\ \ \ smaller" "see File size"
+.Ix "\ \ \ smaller" "\fB\-\-optimize\fP, \fB\-\-colors\fP"
 .Ix "\ \ \ speed" "\fB\-\-delay\fP"
 .Ix "Background color" "\fB\-\-background\fP"
 .Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
