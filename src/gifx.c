@@ -249,19 +249,19 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
   Pixmap pixmap = None;
   XImage *ximage;
-
+  
   byte *xdata;
   byte **img;
   
   int i, j;
   int transparent;
   int bytesperline;
-
+  
   /* Find the correct image */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi)
     return None;
-
+  
   /* Create the X image */
   ximage =
     XCreateImage(gfx->display, gfx->visual, 1,
@@ -297,7 +297,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
     if (imshift)
       *writer++ = impixel;
   }
-
+  
   /* Create the pixmap */
   pixmap =
     XCreatePixmap(gfx->display, gfx->drawable,
