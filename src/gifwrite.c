@@ -284,20 +284,21 @@ static int
 image_data(byte **img, u_int16_t width, u_int16_t height, byte interlaced,
 	   u_int16_t num_colors, Gif_Context *gfc, Gif_Writer *grr)
 {
-  int i = 4;
+  int i;
   u_int16_t y, max_color;
   byte min_code_bits;
-
+  
   max_color = 0;
   for (y = 0; y < height; y++) {
     byte *data = img[y];
     u_int16_t x;
-    for (x = width; x > 0; x--, data++)
+    for (x = width; x > 0 && max_color < 128; x--, data++)
       if (*data > max_color)
 	max_color = *data;
   }
   
   min_code_bits = 2;		/* min_code_bits of 1 isn't allowed */
+  i = 4;
   while (i < max_color + 1) {
     min_code_bits++;
     i *= 2;
