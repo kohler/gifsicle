@@ -510,8 +510,9 @@ Clp_AddType(Clp_Parser *clp, int type_id, int flags,
 static int
 parse_string(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
-  clp->val.s = (char *)arg;
-  return 1;
+    (void)complain, (void)thunk;
+    clp->val.s = (char *)arg;
+    return 1;
 }
 
 static int
@@ -548,44 +549,46 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 static int
 parse_double(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
-  char *val;
-  clp->val.d = strtod(arg, &val);
-  if (*arg != 0 && *val == 0)
-    return 1;
-  else if (complain)
-    return Clp_OptionError(clp, "`%O' expects a real number, not `%s'", arg);
-  else
-    return 0;
+    char *val;
+    (void)thunk;
+    clp->val.d = strtod(arg, &val);
+    if (*arg != 0 && *val == 0)
+	return 1;
+    else if (complain)
+	return Clp_OptionError(clp, "`%O' expects a real number, not `%s'", arg);
+    else
+	return 0;
 }
 
 static int
 parse_bool(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
-  int i;
-  char lcarg[6];
-  if (strlen(arg) > 5 || strchr(arg, '=') != 0)
-    goto error;
+    int i;
+    char lcarg[6];
+    (void)thunk;
+    if (strlen(arg) > 5 || strchr(arg, '=') != 0)
+	goto error;
   
-  for (i = 0; arg[i] != 0; i++)
-    lcarg[i] = tolower(arg[i]);
-  lcarg[i] = 0;
+    for (i = 0; arg[i] != 0; i++)
+	lcarg[i] = tolower(arg[i]);
+    lcarg[i] = 0;
   
-  if (argcmp("yes", lcarg, 1) > 0
-      || argcmp("true", lcarg, 1) > 0
-      || argcmp("1", lcarg, 1) > 0) {
-    clp->val.i = 1;
-    return 1;
-  } else if (argcmp("no", lcarg, 1) > 0
-	     || argcmp("false", lcarg, 1) > 0
-	     || argcmp("1", lcarg, 1) > 0) {
-    clp->val.i = 0;
-    return 1;
-  }
+    if (argcmp("yes", lcarg, 1) > 0
+	|| argcmp("true", lcarg, 1) > 0
+	|| argcmp("1", lcarg, 1) > 0) {
+	clp->val.i = 1;
+	return 1;
+    } else if (argcmp("no", lcarg, 1) > 0
+	       || argcmp("false", lcarg, 1) > 0
+	       || argcmp("1", lcarg, 1) > 0) {
+	clp->val.i = 0;
+	return 1;
+    }
   
- error:
-  if (complain)
-    Clp_OptionError(clp, "`%O' expects a true-or-false value, not `%s'", arg);
-  return 0;
+  error:
+    if (complain)
+	Clp_OptionError(clp, "`%O' expects a true-or-false value, not `%s'", arg);
+    return 0;
 }
 
 
@@ -615,7 +618,7 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain) {
-    char *complaint = (ambiguous ? "an ambiguous" : "not a valid");
+    const char *complaint = (ambiguous ? "an ambiguous" : "not a valid");
     if (!ambiguous) {
       ambiguous = sl->nitems_invalid_report;
       for (index = 0; index < ambiguous; index++)
