@@ -1149,10 +1149,10 @@ copy_crop(Gt_Crop *oc)
  **/
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
   Clp_Parser *clp =
-    Clp_NewParser(argc, argv, sizeof(options) / sizeof(options[0]), options);
+    Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
   
   Clp_AddStringListType
     (clp, LOOP_TYPE, Clp_AllowNumbers,

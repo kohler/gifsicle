@@ -1211,7 +1211,7 @@ loop(void)
 
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
   Gt_Viewer *viewer = 0;
   int viewer_given = 0;
@@ -1219,7 +1219,7 @@ main(int argc, char **argv)
   int first_frame = -1;
   
   Clp_Parser *clp =
-    Clp_NewParser(argc, argv,
+    Clp_NewParser(argc, (const char * const *)argv,
                   sizeof(options) / sizeof(options[0]), options);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   Clp_AddStringListType

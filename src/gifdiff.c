@@ -382,7 +382,7 @@ gifread_error(const char *message, int which_image, void *thunk)
 
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
   int how_many_inputs = 0;
   int status;
@@ -391,7 +391,7 @@ main(int argc, char **argv)
   Gif_Stream *gfs1, *gfs2;
   
   Clp_Parser *clp =
-    Clp_NewParser(argc, argv, sizeof(options) / sizeof(options[0]), options);
+    Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
   
   program_name = Clp_ProgramName(clp);
   brief = 0;
