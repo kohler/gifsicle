@@ -1,19 +1,19 @@
-Summary: Powerful program for manipulating GIF images and animations
+Summary:	Powerful program for manipulating GIF images and animations
 
-Name: gifsicle
-Version: 1.36
-Release: 1
-Source: http://www.lcdf.org/gifsicle/gifsicle-1.36.tar.gz
+Name:		gifsicle
+Version:	1.37
+Release:	1
+Source:		http://www.lcdf.org/gifsicle/gifsicle-1.37.tar.gz
 
-Icon: logo1.gif
-URL: http://www.lcdf.org/gifsicle/
+Icon:		logo1.gif
+URL:		http://www.lcdf.org/gifsicle/
 
-Group: Applications/Graphics
-Vendor: Little Cambridgeport Design Factory
-Packager: Eddie Kohler <eddietwo@lcs.mit.edu>
-Copyright: GPL
+Group:		Applications/Graphics
+Vendor:		Little Cambridgeport Design Factory
+Packager:	Eddie Kohler <kohler@icir.org>
+Copyright:	GPL
 
-BuildRoot: /tmp/gifsicle-build
+BuildRoot:	/tmp/gifsicle-build
 
 %description
 Gifsicle manipulates GIF image files on the
@@ -36,30 +36,24 @@ appearance.
 %setup
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure
+%configure
 make
 
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/usr/bin $RPM_BUILD_ROOT/usr/man/man1
-mkdir -p $RPM_BUILD_ROOT/usr/X11R6/bin $RPM_BUILD_ROOT/usr/X11R6/man/man1
-install -c -s gifsicle $RPM_BUILD_ROOT/usr/bin/gifsicle
-install -c -s gifview $RPM_BUILD_ROOT/usr/X11R6/bin/gifview
-install -c -s gifdiff $RPM_BUILD_ROOT/usr/bin/gifdiff
-install -c -m 644 gifsicle.1 $RPM_BUILD_ROOT/usr/man/man1/gifsicle.1
-install -c -m 644 gifview.1 $RPM_BUILD_ROOT/usr/X11R6/man/man1/gifview.1
-install -c -m 644 gifdiff.1 $RPM_BUILD_ROOT/usr/man/man1/gifdiff.1
+[ "$RPM_BUILD_ROOT" != "/" ] && [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT
+make DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
-rm -rf $RPM_BUILD_ROOT
+[ "$RPM_BUILD_ROOT" != "/" ] && [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
 
 %post
 
 %files
 %attr(-,root,root) %doc NEWS README
-%attr(0755,root,root) /usr/bin/gifsicle
-%attr(0755,root,root) /usr/bin/gifdiff
-%attr(0755,root,root) /usr/X11R6/bin/gifview
-%attr(0644,root,root) /usr/man/man1/gifsicle.1*
-%attr(0644,root,root) /usr/man/man1/gifdiff.1*
-%attr(0644,root,root) /usr/X11R6/man/man1/gifview.1*
+%attr(0755,root,root) %{_bindir}/gifsicle
+%attr(0755,root,root) %{_bindir}/gifdiff
+%attr(0755,root,root) %{_bindir}/gifview
+%attr(0644,root,root) %{_mandir}/man1/gifsicle.1*
+%attr(0644,root,root) %{_mandir}/man1/gifdiff.1*
+%attr(0644,root,root) %{_mandir}/man1/gifview.1*

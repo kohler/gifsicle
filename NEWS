@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.37   11.Feb.2003
+
+* Fix bug where combining `--rotate-X' and `-O' options would cause a
+  segmentation fault. Reported by Dan Lasley <Dan_Lasley@hilton.com>.
+
+* Rearrange source tree.
+
+
 Version 1.36   17.Nov.2002
 
 * Fix subscript-out-of-range error in main.c reported by Andrea Suatoni.

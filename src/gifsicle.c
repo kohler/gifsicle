@@ -801,7 +801,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
 
   compress_immediately = 1;
   if (!active_output_data.conserve_memory
-      && (active_output_data.scaling || active_output_data.optimizing > 0
+      && (active_output_data.scaling
+	  || active_output_data.optimizing > 0
 	  || colormap_change))
     compress_immediately = 0;
 
@@ -1665,7 +1666,7 @@ main(int argc, char **argv)
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2002 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2003 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

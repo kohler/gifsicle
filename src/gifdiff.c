@@ -407,7 +407,7 @@ main(int argc, char **argv)
       
      case VERSION_OPT:
       printf("gifdiff (LCDF Gifsicle) %s\n", VERSION);
-      printf("Copyright (C) 1998-2001 Eddie Kohler\n\
+      printf("Copyright (C) 1998-2003 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

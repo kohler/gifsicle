@@ -5,7 +5,7 @@ SUBDIRS = src
 
 man_MANS = gifsicle.1 @OTHERMANS@
 
-EXTRA_DIST = mminstance.spec \
+EXTRA_DIST = gifsicle.spec \
 	include/lcdf/clp.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
@@ -29,7 +29,7 @@ srclinks:
 
 versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
-	perl -pi -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" gifsicle.spec
+	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" gifsicle.spec
 	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" win32cfg.h
 
 rpm: dist
@@ -40,7 +40,7 @@ rpm: dist
 	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-gfs/macros' >> /tmp/rpm-gfs/rc ; \
 	echo '%_topdir /tmp/rpm-gfs' > /tmp/rpm-gfs/macros ; \
 	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-gfs/SOURCES ; \
-	rpm --rcfile /tmp/rpm-gfs/rc -bb gifsicle.spec ; \
+	rpmbuild --rcfile /tmp/rpm-gfs/rc -bb gifsicle.spec ; \
 	cp /tmp/rpm-gfs/RPMS/$$buildarch/*.rpm .
 	rm -rf /tmp/rpm-gfs
 
@@ -52,16 +52,16 @@ rpm-ungif: dist
 	echo 'macrofiles: /usr/lib/rpm/macros:/tmp/rpm-ugfs/macros' >> /tmp/rpm-ugfs/rc ; \
 	echo '%_topdir /tmp/rpm-ugfs' > /tmp/rpm-ugfs/macros ; \
 	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpm-ugfs/SOURCES ; \
-	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpm-ugfs/rc -bb gifsicle.spec ; \
+	GIFSICLE_UNGIF=yes rpmbuild --rcfile /tmp/rpm-ugfs/rc -bb gifsicle.spec ; \
 	cp /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm `echo /tmp/rpm-ugfs/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
 	rm -rf /tmp/rpm-ugfs
 
 dist-ungif: dist
-	$(TAR) xzf gifsicle-$(VERSION).tar.gz
-	@rm gifsicle-$(VERSION)/gifwrite.c
+	$(AMTAR) xzf gifsicle-$(VERSION).tar.gz
+	@rm gifsicle-$(VERSION)/src/gifwrite.c
 	rm -rf ungifsicle-$(VERSION)
 	mv gifsicle-$(VERSION) ungifsicle-$(VERSION)
-	GZIP=$(GZIP_ENV) $(TAR) chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
+	GZIP=$(GZIP_ENV) $(AMTAR) chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
 	rm -rf ungifsicle-$(VERSION)
 
 .PHONY: srclinks versionize rpm dist-ungif rpm-ungif

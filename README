@@ -1,4 +1,4 @@
-GIFSICLE 1.36
+GIFSICLE 1.37
 =============
 
 ABOUT GIFSICLE
@@ -74,7 +74,7 @@ MAKING GIFSICLE ON 32-BIT WINDOWS
    Emil Mikulic <darkmoon@connexus.net.au> has provided a Makefile for
 building gifsicle out of the box on 32-bit Windows. It has since been
 updated by Eddie Kohler and Steven Marthouse <comments@vrml3d.com>. Just
-unpack the distribution, change into that directory, and type
+unpack the distribution, change into its "src" directory, and type
 
 	nmake -f Makefile.w32
 
@@ -105,7 +105,7 @@ home page at
 
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-2002 Eddie Kohler.
+   All source code is Copyright (C) 1997-2003 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
