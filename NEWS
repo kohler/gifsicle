@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.9b2   9.Dec.1998
+
+* Fixed `--logical-screen' and `--no-logical-screen', which had no effect
+  in 1.9b1. In a stunning turn of events, this problem was reported by
+  Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at>.
+
+
 Version 1.9b1   5.Dec.1998
 
 * Added `--resize WxH' option, prompted by code from Christian Kumpf
