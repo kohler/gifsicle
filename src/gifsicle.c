@@ -444,7 +444,7 @@ input_stream(char *name)
   fclose(f);
   
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
-    error("%s: not a GIF", name);
+    error("%s is not a GIF", name);
     Gif_DeleteStream(gfs);
     if (verbosing) verbose_close('>');
     return;
@@ -454,7 +454,7 @@ input_stream(char *name)
   gfs->userflags = 97; /* to indicate no output done */
   
   if (gfs->errors)
-    error("%s is partially corrupted", name);
+    error("there were errors reading %s", name);
   
   /* Processing when we've got a new input frame */
   if (mode == BLANK_MODE)
@@ -1204,7 +1204,6 @@ main(int argc, char **argv)
      case CROP_OPT:
       if (clp->negated) goto no_crop;
       MARK_CH(frame, CH_CROP);
-      next_frame |= CH_CROP;
       {
 	Gt_Crop *crop = Gif_New(Gt_Crop);
 	/* Memory leak on crops, but this just is NOT a problem. */
