@@ -164,7 +164,7 @@ Gif_Unoptimize(Gif_Stream *gfs)
   u_int16_t background;
   Gif_Image *gfi;
   
-  if (gfs->nimages <= 1) return 1;
+  if (gfs->nimages < 1) return 1;
   for (i = 0; i < gfs->nimages; i++)
     if (gfs->images[i]->local)
       return 0;

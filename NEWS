@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.11.2   10.Mar.1999
+
+* `gifsicle -U' will now unoptimize 1-image GIFs as well as animations.
+
+
 Version 1.11.1   24.Jan.1999
 
 * Fixed core dump on corrupted GIF files (in particular, bad extensions).
