@@ -13,6 +13,7 @@
 /* Assume we have strtoul by default. */
 # define HAVE_STRTOUL 1
 #endif
+
 #include "clp.h"
 #include <stdlib.h>
 #include <string.h>
@@ -446,6 +447,7 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 #ifdef HAVE_STRTOUL
     clp->val.u = strtoul(arg, &val, 10);
 #else
+    /* don't bother trying to do it right */
     clp->val.u = strtol(arg, &val, 10);
 #endif
   } else
