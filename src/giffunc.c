@@ -257,9 +257,9 @@ Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
   
   /* Only use the default 640x480 screen size if we are being forced to create
      a new screen size or there's no screen size currently. */
-  if (screen_width == 0 && (force || gfs->screen_width == 0))
+  if (screen_width == 0 && (gfs->screen_width == 0 || force))
     screen_width = 640;
-  if (screen_height == 0 && (force || gfs->screen_height == 0))
+  if (screen_height == 0 && (gfs->screen_height == 0 || force))
     screen_height = 480;
   
   if (gfs->screen_width < screen_width || force)
