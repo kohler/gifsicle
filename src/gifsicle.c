@@ -181,16 +181,16 @@ static const char *output_option_types[] = {
 #define CONSERVE_MEMORY_OPT	361
 #define MULTIFILE_OPT		362
 
-#define LOOP_TYPE		(Clp_MaxDefaultType + 1)
-#define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
-#define DIMENSIONS_TYPE		(Clp_MaxDefaultType + 3)
-#define FRAME_SPEC_TYPE		(Clp_MaxDefaultType + 4)
-#define COLOR_TYPE		(Clp_MaxDefaultType + 5)
-#define POSITION_TYPE		(Clp_MaxDefaultType + 6)
-#define RECTANGLE_TYPE		(Clp_MaxDefaultType + 7)
-#define TWO_COLORS_TYPE		(Clp_MaxDefaultType + 8)
-#define COLORMAP_ALG_TYPE	(Clp_MaxDefaultType + 9)
-#define SCALE_FACTOR_TYPE	(Clp_MaxDefaultType + 10)
+#define LOOP_TYPE		(Clp_FirstUserType)
+#define DISPOSAL_TYPE		(Clp_FirstUserType + 1)
+#define DIMENSIONS_TYPE		(Clp_FirstUserType + 2)
+#define FRAME_SPEC_TYPE		(Clp_FirstUserType + 3)
+#define COLOR_TYPE		(Clp_FirstUserType + 4)
+#define POSITION_TYPE		(Clp_FirstUserType + 5)
+#define RECTANGLE_TYPE		(Clp_FirstUserType + 6)
+#define TWO_COLORS_TYPE		(Clp_FirstUserType + 7)
+#define COLORMAP_ALG_TYPE	(Clp_FirstUserType + 8)
+#define SCALE_FACTOR_TYPE	(Clp_FirstUserType + 9)
 
 Clp_Option options[] = {
   

@@ -174,7 +174,7 @@ static struct timeval preparation_time;
 #define BACKGROUND_OPT		310
 #define NEW_WINDOW_OPT		311
 
-#define WINDOW_TYPE		(Clp_MaxDefaultType + 1)
+#define WINDOW_TYPE		(Clp_FirstUserType)
 
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
