@@ -306,6 +306,7 @@ color_table(int size, Gif_Reader *grr)
 {
   Gif_Color *c;
   Gif_Color *ct = Gif_NewArray(Gif_Color, size);
+  if (!ct) return 0;
   
   GIF_DEBUG(("colormap(%d)", size));
   for (c = ct; size; size--, c++) {
@@ -337,8 +338,10 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
   
   if (packed & 0x80) { /* have a global color table */
     gfs->global = Gif_NewColormap();
+    if (!gfs->global) return 0;
     gfs->global->ncol = 1 << ((packed & 0x07) + 1);
     gfs->global->col = color_table(gfs->global->ncol, grr);
+    if (!gfs->global->col) return 0;
   }
   
   return 1;
@@ -360,8 +363,10 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi)
   
   if (packed & 0x80) { /* have a local color table */
     gfi->local = Gif_NewColormap();
+    if (!gfi->local) return 0;
     gfi->local->ncol = 1 << ((packed & 0x07) + 1);
     gfi->local->col = color_table(gfi->local->ncol, grr);
+    if (!gfi->local->col) return 0;
   }
   
   interlace = (packed & 0x40) != 0;
@@ -369,7 +374,8 @@ gif_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi)
   
   GIF_DEBUG(("%dx%d", gfi->width, gfi->height));
   gfi->imagedata = Gif_NewArray(byte, gfi->width * gfi->height);
-  Gif_MakeImg(gfi, gfi->imagedata, interlace);
+  if (!gfi->imagedata) return 0;
+  if (!Gif_MakeImg(gfi, gfi->imagedata, interlace)) return 0;
   
   gfc->width = gfi->width;
   gfc->height = gfi->height;
@@ -424,7 +430,8 @@ colormap_extension(Gif_Stream *gfs, Gif_Reader *grr)
   Gif_Color *c;
   byte stuff[GIF_MAX_BLOCK];
   int i, whichcolor, rgb;
-  
+
+  if (!gfcm) return 0;
   gfcm->identifier = last_name;
   last_name = 0;
   
@@ -480,6 +487,7 @@ suck_data(char *data, int *store_len, Gif_Reader *grr)
   
   while (len > 0) {
     Gif_ReArray(data, char, total_len + len + 1);
+    if (!data) return 0;
     gifgetblock((byte *)data, len, grr);
     
     total_len += len;
@@ -519,7 +527,7 @@ application_extension(Gif_Stream *gfs, Gif_Image *gfi, Gif_Reader *grr)
 }
 
 
-static void
+static int
 comment_extension(Gif_Image *gfi, Gif_Reader *grr)
 {
   int len;
@@ -528,8 +536,10 @@ comment_extension(Gif_Image *gfi, Gif_Reader *grr)
   if (m) {
     if (!gfcom)
       gfcom = gfi->comment = Gif_NewComment();
-    Gif_AddComment(gfcom, m, len);
+    if (!gfcom || !Gif_AddComment(gfcom, m, len))
+      return 0;
   }
+  return 1;
 }
 
 
@@ -540,6 +550,7 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
   Gif_Image *gfi;
   Gif_Image *newgfi;
   Gif_Context gfc;
+  int ok = 0;
   
   if (gifgetc(grr) != 'G' ||
       gifgetc(grr) != 'I' ||
@@ -549,115 +560,120 @@ gif_read(Gif_Reader *grr, int graphic_extension_long_scope)
   (void)gifgetc(grr);
   (void)gifgetc(grr);
   
-  MM_TRY {
+  gfs = Gif_NewStream();
+  gfi = Gif_NewImage();
+  
+  gfc.stream = gfs;
+  gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
+  gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
+  gfc.length = Gif_NewArray(UINT16, GIF_MAX_CODE + 1);
+
+  if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
+    goto done;
+  
+  GIF_DEBUG(("GIF"));
+  if (!logical_screen_descriptor(gfs, grr))
+    goto done;
+  GIF_DEBUG(("logscrdesc"));
+  
+  while (!gifeof(grr)) {
     
-    gfs = Gif_NewStream();
-    gfi = Gif_NewImage();
+    byte block = gifgetbyte(grr);
+    GIF_DEBUG(("block(%x)", block));
     
-    gfc.stream = gfs;
-    gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
-    gfc.suffix = Gif_NewArray(byte, GIF_MAX_CODE + 1);
-    gfc.length = Gif_NewArray(UINT16, GIF_MAX_CODE + 1);
-    
-    GIF_DEBUG(("GIF"));
-    logical_screen_descriptor(gfs, grr);
-    GIF_DEBUG(("logscrdesc"));
-    
-    while (!gifeof(grr)) {
+    switch (block) {
       
-      byte block = gifgetbyte(grr);
-      GIF_DEBUG(("block(%x)", block));
+     case ',': /* image block */
+      GIF_DEBUG(("imageread"));
       
+      gfi->identifier = last_name;
+      last_name = 0;
+      if (!gif_image(grr, &gfc, gfi) || !Gif_AddImage(gfs, gfi)) {
+	Gif_DeleteImage(gfi);
+	goto done;
+      }
+      
+      newgfi = Gif_NewImage();
+      if (!newgfi) goto done;
+      
+      if (graphic_extension_long_scope) {
+	newgfi->transparent = gfi->transparent;
+	newgfi->delay = gfi->delay;
+	newgfi->disposal = gfi->disposal;
+      }
+      gfi = newgfi;
+      break;
+      
+     case ';': /* terminator */
+      GIF_DEBUG(("fuck"));
+      ok = 1;
+      goto done;
+      
+     case '!': /* extension */
+      GIF_DEBUG(("ext"));
+      block = gifgetbyte(grr);
       switch (block) {
 	
-       case ',': /* image block */
-	GIF_DEBUG(("imageread"));
-
-	gif_image(grr, &gfc, gfi);
-	gfi->identifier = last_name;
-	last_name = 0;
-	Gif_AddImage(gfs, gfi);
-	
-	newgfi = Gif_NewImage();
-	
-	if (graphic_extension_long_scope) {
-	  newgfi->transparent = gfi->transparent;
-	  newgfi->delay = gfi->delay;
-	  newgfi->disposal = gfi->disposal;
-	}
-	gfi = newgfi;
+       case 0xF9:
+	graphic_control_extension(gfs, gfi, grr);
 	break;
 	
-       case ';': /* terminator */
-	GIF_DEBUG(("fuck"));
-	goto done;
+       case 0x43:
+	if (!colormap_extension(gfs, grr)) goto done;
+	break;
 	
-       case '!': /* extension */
-	GIF_DEBUG(("ext"));
-	block = gifgetbyte(grr);
-	switch (block) {
-	  
-	 case 0xF9:
-	  graphic_control_extension(gfs, gfi, grr);
-	  break;
-	  
-	 case 0x43:
-	  colormap_extension(gfs, grr);
-	  break;
-	  
-	 case 0xCE:
-	  last_name = suck_data(last_name, 0, grr);
-	  break;
-	  
-	 case 0xFE:
-	  comment_extension(gfi, grr);
-	  break;
-	  
-	 case 0xFF:
-	  application_extension(gfs, gfi, grr);
-	  break;
-	  
-	 default:
-	   {
-	     byte crap[GIF_MAX_BLOCK];
-	     byte len = gifgetbyte(grr);
-	     while (len > 0) {
-	       gifgetblock(crap, len, grr);
-	       len = gifgetbyte(grr);
-	     }
-	     gfs->odd_extensions++;
-	     break;
-	   }
-	  
-	}
+       case 0xCE:
+	last_name = suck_data(last_name, 0, grr);
+	break;
+	
+       case 0xFE:
+	if (!comment_extension(gfi, grr)) goto done;
+	break;
+	
+       case 0xFF:
+	application_extension(gfs, gfi, grr);
 	break;
 	
        default:
-	gfs->errors++;
-	break;
+	 {
+	   byte crap[GIF_MAX_BLOCK];
+	   byte len = gifgetbyte(grr);
+	   while (len > 0) {
+	     gifgetblock(crap, len, grr);
+	     len = gifgetbyte(grr);
+	   }
+	   gfs->odd_extensions++;
+	   break;
+	 }
 	
       }
+      break;
+      
+     default:
+      gfs->errors++;
+      break;
       
     }
     
-   done:
-    
-    /* Move comments after last image into stream. */
-    gfs->comment = gfi->comment;
-    gfi->comment = 0;
-    
-    Gif_DeleteImage(gfi);
-    Gif_DeleteArray(last_name);
-    Gif_DeleteArray(gfc.prefix);
-    Gif_DeleteArray(gfc.suffix);
-    Gif_DeleteArray(gfc.length);
-    MM_RETURN gfs;
-    
-  } MM_FAIL {
-    
-    MM_RETURN 0;
-    
-  } MM_ENDTRY;
+  }
+  
+ done:
+  
+  /* Move comments after last image into stream. */
+  gfs->comment = gfi->comment;
+  gfi->comment = 0;
+  
+  Gif_DeleteImage(gfi);
+  Gif_DeleteArray(last_name);
+  Gif_DeleteArray(gfc.prefix);
+  Gif_DeleteArray(gfc.suffix);
+  Gif_DeleteArray(gfc.length);
+  if (ok)
+    return gfs;
+  else {
+    Gif_DeleteStream(gfs);
+    return 0;
+  }
 }
 
 

@@ -17,6 +17,9 @@ extern "C" {
 
 #include <stdio.h>
 
+#define GIF_MAJOR_VERSION	@VERSION_MAJOR@
+#define GIF_MINOR_VERSION	@VERSION_MINOR@
+  
 #ifndef BYTE
 #define BYTE
 typedef unsigned char byte;
@@ -93,6 +96,26 @@ void			Gif_SetImageUserData(Gif_Image *, void *);
 
 void			Gif_Unoptimize(Gif_Stream *);
 
+
+char *			Gif_CopyString(char *);
+
+Gif_Stream *		Gif_NewStream(void);
+Gif_Image *		Gif_NewImage(void);
+Gif_Colormap *		Gif_NewColormap(void);
+Gif_Colormap *		Gif_NewFullColormap(int);
+Gif_Comment *		Gif_NewComment(void);
+
+int			Gif_AddImage(Gif_Stream *, Gif_Image *);
+int			Gif_AddColormap(Gif_Stream *, Gif_Colormap *);
+int			Gif_AddComment(Gif_Comment *, char *, int);
+
+void			Gif_DeleteImage(Gif_Image *);
+void			Gif_DeleteComment(Gif_Comment *);
+
+int			Gif_InterlaceLine(int y, int height);
+int			Gif_MakeImg(Gif_Image *, byte *, int data_interlaced);
+
+void			Gif_Error(char *);
 
 #ifdef __cplusplus
 }

@@ -101,14 +101,13 @@ char *
 Gif_CopyString(char *s)
 {
   int l;
-  char *f;
+  char *copy;
   if (!s) return 0;
-  
   l = strlen(s);
-  f = Gif_NewArray(char, l + 1);
-  if (!f) return 0;
-  memcpy(f, s, l + 1);
-  return f;
+  copy = Gif_NewArray(char, l + 1);
+  if (!copy) return 0;
+  memcpy(copy, s, l + 1);
+  return copy;
 }
 
 
@@ -121,7 +120,8 @@ Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi)
     Gif_ReArray(gfs->images, Gif_Image *, gfs->imagescap);
     if (!gfs->images) return 0;
   }
-  gfs->images[ gfs->nimages++ ] = gfi;
+  gfs->images[gfs->nimages] = gfi;
+  gfs->nimages++;
   gfi->refcount++;
   return 1;
 }
@@ -243,71 +243,79 @@ Gif_CopyStreamSkeleton(Gif_Stream *gfs)
 Gif_Colormap *
 Gif_CopyColormap(Gif_Colormap *src)
 {
+  int i;
+  Gif_Colormap *dest;
   if (!src) return 0;
   
-  MM_TRY {
-    int i;
-    Gif_Colormap *dest = Gif_NewFullColormap(src->ncol);
-    dest->identifier = Gif_CopyString(src->identifier);
-    
-    for (i = 0; i < src->ncol; i++) {
-      dest->col[i] = src->col[i];
-      dest->col[i].haspixel = 0;
-    }
-    
-    MM_RETURN dest;
-    
-  } MM_FAIL {
-    MM_RETURN 0;
-  } MM_ENDTRY;
+  dest = Gif_NewFullColormap(src->ncol);
+  if (!dest) return 0;
+  
+  dest->identifier = Gif_CopyString(src->identifier);
+  if (!dest->identifier && src->identifier) {
+    Gif_DeleteColormap(dest);
+    return 0;
+  }
+  
+  for (i = 0; i < src->ncol; i++) {
+    dest->col[i] = src->col[i];
+    dest->col[i].haspixel = 0;
+  }
+  
+  return dest;
 }
 
 
 Gif_Image *
 Gif_CopyImage(Gif_Image *src)
 {
+  Gif_Image *dest;
+  byte *data;
+  int i;
   if (!src) return 0;
   
-  MM_TRY {
-    Gif_Image *dest = Gif_NewImage();
-    byte *data;
-    int i;
-    
-    dest->identifier = Gif_CopyString(src->identifier);
-    if (src->comment) {
-      dest->comment = Gif_NewComment();
-      for (i = 0; i < src->comment->count; i++)
-	Gif_AddComment(dest->comment, src->comment->str[i],
-		       src->comment->len[i]);
-    }
-    
-    dest->local = Gif_CopyColormap(src->local);
-    dest->transparent = src->transparent;
-    
-    dest->delay = src->delay;
-    dest->disposal = src->disposal;
-    dest->left = src->left;
-    dest->top = src->top;
-    
-    dest->width = src->width;
-    dest->height = src->height;
-
-    dest->interlace = src->interlace;
-    dest->img = Gif_NewArray(byte *, dest->height + 1);
-    dest->imagedata = Gif_NewArray(byte, dest->width * dest->height);
-    for (i = 0, data = dest->imagedata; i < dest->height; i++) {
-      memcpy(data, src->img[i], dest->width);
-      dest->img[i] = data;
-      data += dest->width;
-    }
-    dest->img[dest->height] = 0;
-    
-    dest->userdata = src->userdata;
-    MM_RETURN dest;
-    
-  } MM_FAIL {
-    MM_RETURN 0;
-  } MM_ENDTRY;
+  dest = Gif_NewImage();
+  if (!dest) return 0;
+  
+  dest->identifier = Gif_CopyString(src->identifier);
+  if (!dest->identifier && src->identifier) goto failure;
+  if (src->comment) {
+    dest->comment = Gif_NewComment();
+    if (!dest->comment) goto failure;
+    for (i = 0; i < src->comment->count; i++)
+      if (!Gif_AddComment(dest->comment, src->comment->str[i],
+			  src->comment->len[i]))
+	goto failure;
+  }
+  
+  dest->local = Gif_CopyColormap(src->local);
+  if (!dest->local && src->local) goto failure;
+  dest->transparent = src->transparent;
+  
+  dest->delay = src->delay;
+  dest->disposal = src->disposal;
+  dest->left = src->left;
+  dest->top = src->top;
+  
+  dest->width = src->width;
+  dest->height = src->height;
+  
+  dest->interlace = src->interlace;
+  dest->img = Gif_NewArray(byte *, dest->height + 1);
+  dest->imagedata = Gif_NewArray(byte, dest->width * dest->height);
+  if (!dest->img || !dest->imagedata) goto failure;
+  for (i = 0, data = dest->imagedata; i < dest->height; i++) {
+    memcpy(data, src->img[i], dest->width);
+    dest->img[i] = data;
+    data += dest->width;
+  }
+  dest->img[dest->height] = 0;
+  
+  dest->userdata = src->userdata;
+  return dest;
+  
+ failure:
+  Gif_DeleteImage(dest);
+  return 0;
 }
 
 
@@ -393,7 +401,7 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
     if (gfs->images[i]->identifier &&
 	strcmp(gfs->images[i]->identifier, name) == 0)
       return gfs->images[i];
-
+  
   return 0;
 }
 
