@@ -131,11 +131,24 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   Gif_Color *col = gfcm->col;
   Gif_Colormap *new_cm = 0;
   char *command = (char *)thunk;
+#ifdef HAVE_MKSTEMP
+# ifdef P_tmpdir
+  char tmp_file[] = P_tmpdir "/gifsicle.XXXXXX";
+# else
+  char tmp_file[] = "/tmp/gifsicle.XXXXXX";
+# endif
+#else
   char *tmp_file = tmpnam(0);
+#endif
   char *new_command;
   
+#ifdef HAVE_MKSTEMP
+  if (mkstemp(tmp_file) < 0)
+    fatal_error("can't create temporary file!");
+#else
   if (!tmp_file)
     fatal_error("can't create temporary file!");
+#endif
   
   new_command = Gif_NewArray(char, strlen(command) + strlen(tmp_file) + 4);
   sprintf(new_command, "%s  >%s", command, tmp_file);
