@@ -1,18 +1,18 @@
 Gifsicle NEWS
 
-Version 1.13
+Version 1.13   16.Jun.1999
 
-* Added support for run-length-encoded GIFs to avoid patent problems.
-  Run-length-encoding idea based on code by Hutchinson Avenue Software
-  Corporation <http://www.hasc.com> found in Thomas Boutell's gd library
-  <http://www.boutell.com>.
+* Added optional support for run-length-encoded GIFs to avoid patent
+  problems. Run-length encoding idea based on code by Hutchinson Avenue
+  Software Corporation <http://www.hasc.com> found in Thomas Boutell's gd
+  library <http://www.boutell.com>.
 
 * `gifsicle --explode' now generates filenames of the form `file.000 ..
   file.100' rather than `file.0 .. file.100', so you can use shell globbing
   like `file.*' and automatically get the right order.
 
 * Added `--background' option to gifview, so you can set the color used for
-  transparent pixels.
+  transparent pixels. Suggested by Art Blair <apblair@students.wisc.edu>.
 
 * Gifdiff is built by default on Unix.
 

@@ -30,7 +30,7 @@
 /* Define this to write GIFs to stdout even when stdout is a terminal. */
 #undef OUTPUT_GIF_TO_TERMINAL
 
-/* Define if GIF compression is off. */
+/* Define if GIF LZW compression is off. */
 #undef GIF_UNGIF
 
 @TOP@

@@ -34,27 +34,27 @@ EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c \
 		logo.gif logo1.gif rpm.spec \
 		Makefile.w32 win32cfg.h
 
-clp.o: clp.h clp.c
+clp.o: clp.h clp.c config.h
 
-fmalloc.o: fmalloc.c
-dmalloc.o: dmalloc.h dmalloc.c
+fmalloc.o: fmalloc.c config.h
+dmalloc.o: dmalloc.h dmalloc.c config.h
 
-giffunc.o: gif.h giffunc.c
-gifread.o: gif.h gifread.c
-gifwrite.o: gif.h gifwrite.c
-ungifwrt.o: gif.h ungifwrt.c
-gifunopt.o: gif.h gifunopt.c
-gifx.o: gif.h gifx.h gifx.c
+giffunc.o: gif.h giffunc.c config.h
+gifread.o: gif.h gifread.c config.h
+gifwrite.o: gif.h gifwrite.c config.h
+ungifwrt.o: gif.h ungifwrt.c config.h
+gifunopt.o: gif.h gifunopt.c config.h
+gifx.o: gif.h gifx.h gifx.c config.h
 
-merge.o: gifsicle.h merge.c
-optimize.o: gifsicle.h optimize.c
-quantize.o: gifsicle.h quantize.c
-support.o: gifsicle.h support.c
-xform.o: gifsicle.h xform.c
-gifsicle.o: gifsicle.h gifsicle.c
+merge.o: gifsicle.h merge.c config.h
+optimize.o: gifsicle.h optimize.c config.h
+quantize.o: gifsicle.h quantize.c config.h
+support.o: gifsicle.h support.c config.h
+xform.o: gifsicle.h xform.c config.h
+gifsicle.o: gifsicle.h gifsicle.c config.h
 
-gifview.o: gifview.c
-gifdiff.o: gifdiff.c
+gifview.o: gifview.c config.h
+gifdiff.o: gifdiff.c config.h
 
 srclinks:
 	for i in clp.c clp.h fmalloc.c strerror.c ; do \
