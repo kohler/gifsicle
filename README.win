@@ -1,0 +1,49 @@
+Here's some help for those of you who want to compile Gifsicle under 32-bit
+Windows. Thanks to Emil Mikulic <darkmoon@connexus.net.au> for doing the
+work.
+
+
+1. Set up `gif.h'.
+
+   Normally this work is done by the `./configure' script, but since you're
+   on Windows, that won't work.
+
+   * Copy gif.h.in to gif.h
+
+   * Edit gif.h and replace the line `@INTEGER_TYPES@' with the following
+     four lines:
+
+typedef unsigned __int16 u_int16_t;
+typedef unsigned __int32 u_int32_t;
+typedef signed __int16 int16_t;
+typedef signed __int32 int32_t;
+
+   * Edit gif.h and replace the line `@GIF_MEMORY_DEFINES@' with the
+     following four lines:
+
+#define malloc(s)             fail_die_malloc((s),__FILE__,__LINE__)
+#define realloc(p,s)          fail_die_realloc((p),(s),__FILE__,__LINE__)
+void *fail_die_malloc(int, const char *, int);
+void *fail_die_realloc(void *, int, const char *, int);
+
+
+2. Set up your project.
+
+   A project for gifsicle will need the following source files:
+
+	clp.c  fmalloc.c  giffunc.c  gifread.c  gifunopt.c  gifwrite.c
+	merge.c  optimize.c  quantize.c  support.c  gifsicle.c
+
+   * You will also need to define the RANDOM symbol to `rand'. (Note:
+     RANDOM is only used in quantize.c.)
+
+
+3. Build and install!
+
+
+I am not supporting the Windows port. If these instructions are incorrect,
+please figure out how to fix them and write me with the details. If you're
+willing to engineer a Windows makefile, even better.
+
+Eddie Kohler
+eddietwo@lcs.mit.edu
