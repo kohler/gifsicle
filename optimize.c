@@ -671,7 +671,7 @@ create_out_global_map(Gif_Stream *gfs)
   /* Colormap Canonicalization
      
      Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at> would like
-     gifsicle to `canonicalize' colormaps, meaning that you should be able the
+     gifsicle to `canonicalize' colormaps, meaning that you might want the
      colormap to have a predictable arrangement after piping it through
      gifsicle. This is a nice place to do that. Basically, sort the colormap
      on RGB order first (so that colors with equal rank have a predictable
@@ -875,7 +875,7 @@ prepare_colormap(Gif_Image *gfi, byte *need)
     map = prepare_colormap_map(gfi, gfi->local, need);
     
     /* The global colormap has already been canonicalized; we should
-       canonicalize the local colormaps as well. */
+       canonicalize the local colormaps as well. Do that here */
     local_col = gfi->local->col;
     for (i = 0; i < gfi->local->ncol; i++)
       local_col[i].pixel = i;
