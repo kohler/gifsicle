@@ -2,14 +2,17 @@ Gifsicle NEWS
 
 Version 1.13
 
-* `gifsicle --explode' now generates filenames of the form `file.001 ..
-  file.100' rather than `file.1 .. file.100', so you can use shell globbing
-  like `file.*' and automatically get correct sequencing.
+* Added support for run-length-encoded GIFs to avoid patent problems.
+  Run-length-encoding idea based on code by Hutchinson Avenue Software
+  Corporation <http://www.hasc.com> found in Thomas Boutell's gd library
+  <http://www.boutell.com>.
+
+* `gifsicle --explode' now generates filenames of the form `file.000 ..
+  file.100' rather than `file.0 .. file.100', so you can use shell globbing
+  like `file.*' and automatically get the right order.
 
 * Added `--background' option to gifview, so you can set the color used for
   transparent pixels.
-
-* Added support for run-length-encoded GIFs to avoid patent problems.
 
 * Gifdiff is built by default on Unix.
 

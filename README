@@ -36,17 +36,16 @@ in GIFs, which means that GIF-manipulating software cannot be truly free.
 Some people in the know have said that decompression is not covered by the
 LZW patents (I have my doubts). That leaves compression. Independently,
 Toshio Kuratomi <badger@prtr-13.ucsc.edu> and Hutchison Avenue Software
-Corporation (http://www.hasc.com/, <info@hasc.com>) dazzlingly cut the
-Gordian knot by writing GIFs without LZW compression. These GIFs are
-slightly larger, but perfectly readable by normal GIF viewers, and they
-avoid the Unisys patents.
+Corporation (http://www.hasc.com/, <info@hasc.com>) cut the Gordian knot by
+writing GIFs without LZW compression. These GIFs are larger, but perfectly
+readable by normal GIF viewers, and they avoid the Unisys patents.
 
    Gifsicle can be configured to write run-length-encoded GIFs, rather than
 LZW-compressed GIFs, making it completely free software (if you believe
 that decompression isn't patented). Turn this on by giving `./configure'
 the `--enable-ungif' switch. The disadvantage: your GIF outputs will be
 larger, often by a factor of 2 or more. You can tell which gifsicle you are
-running by typing `gifsicle --version': if it says `(ungif)', gifsicle is
+running by typing `gifsicle --version'. If it says `(ungif)', gifsicle is
 writing run-length-encoded GIFs.
 
    This gifsicle package may have been distributed without the file that
@@ -150,6 +149,3 @@ Many bug reports and constructive whining about the optimizer.
 
 Emil Mikulic, <darkmoon@connexus.net.au>
 Win32 port help.
-
-Christian Kumpf, <kumpf@igd.fhg.de>
-Idea and some code for `--use-colormap=gray'.
