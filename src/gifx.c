@@ -385,12 +385,12 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   /* Create the pixmap */
   pixmap =
     XCreatePixmap(gfx->display, gfx->drawable, width, height, gfx->depth);
-  if (pixmap) {
-    GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
-    XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
+  if (!gfx->image_gc)
+    gfx->image_gc = XCreateGC(gfx->display, pixmap, 0, 0);
+  
+  if (pixmap && gfx->image_gc)
+    XPutImage(gfx->display, pixmap, gfx->image_gc, ximage, 0, 0, 0, 0,
 	      width, height);
-    XFreeGC(gfx->display, gc);
-  }
   
   Gif_DeleteArray(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
@@ -509,12 +509,12 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
   /* Create the pixmap */
   pixmap =
     XCreatePixmap(gfx->display, gfx->drawable, width, height, 1);
-  if (pixmap) {
-    GC gc = XCreateGC(gfx->display, pixmap, 0, 0);
-    XPutImage(gfx->display, pixmap, gc, ximage, 0, 0, 0, 0,
+  if (!gfx->mask_gc)
+    gfx->mask_gc = XCreateGC(gfx->display, pixmap, 0, 0);
+  
+  if (pixmap && gfx->mask_gc)
+    XPutImage(gfx->display, pixmap, gfx->mask_gc, ximage, 0, 0, 0, 0,
 	      width, height);
-    XFreeGC(gfx->display, gc);
-  }
   
   Gif_DeleteArray(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
@@ -590,6 +590,9 @@ Gif_NewXContextFromVisual(Display *display, int screen_number,
 
   gfx->free_deleted_colormap_pixels = 0;
   gfx->xcolormap = 0;
+
+  gfx->image_gc = None;
+  gfx->mask_gc = None;
   
   gfx->transparent_pixel = 0UL;
   gfx->foreground_pixel = 1UL;
@@ -617,6 +620,10 @@ Gif_DeleteXContext(Gif_XContext *gfx)
   if (--gfx->refcount > 0) return;
   while (gfx->xcolormap)
     delete_xcolormap(gfx->xcolormap);
+  if (gfx->image_gc)
+    XFreeGC(gfx->display, gfx->image_gc);
+  if (gfx->mask_gc)
+    XFreeGC(gfx->display, gfx->mask_gc);
   Gif_DeleteArray(gfx->closest);
   Gif_Delete(gfx);
   Gif_RemoveDeletionHook(GIF_T_COLORMAP, delete_colormap_hook, gfx);

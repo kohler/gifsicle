@@ -88,7 +88,6 @@ file_byte_getter(Gif_Reader *grr)
 static void
 file_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
 {
-  GIF_DEBUG(("b%d", s));
   fread(p, s, 1, grr->f);
 }
 
@@ -191,6 +190,7 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
   gfc->decodepos = 0;
   
   min_code_size = gifgetbyte(grr);
+  GIF_DEBUG(("min_code_size(%d)", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
     gfc->stream->errors++;
     min_code_size = GIF_MAX_CODE_BITS - 1;
@@ -233,6 +233,7 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
 	if (buf == bufmax) {
 	  /* Read in the next data block. */
 	  i = gifgetbyte(grr);
+	  GIF_DEBUG(("image_block(%d)", i));
 	  if (i == 0) goto zero_length_block;
 	  buf = buffer;
 	  bufmax = buffer + i;
@@ -313,14 +314,16 @@ image_data(Gif_Context *gfc, Gif_Reader *grr)
   
   /* read blocks until zero-length reached. */
   i = gifgetbyte(grr);
+  GIF_DEBUG(("after_image(%d)", i));
   while (i > 0) {
     gifgetblock(buffer, i, grr);
     i = gifgetbyte(grr);
+    GIF_DEBUG(("after_image(%d)", i));
   }
   
   /* zero-length block reached. */
  zero_length_block:
-  
+
   if (gfc->image + gfc->decodepos != gfc->maximage)
     /* Not enough data, or too much data, was read. */
     gfc->stream->errors++;
@@ -376,24 +379,20 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
 static int
 read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
-  byte buffer[GIF_MAX_BLOCK];
-  int i;
-  
-  if (grr->is_record) {
+  if (grr->is_record && 0) {
     byte *first = grr->v;
-    byte *last;
-
-    /* min code size */
-    gifgetbyte(grr);
+    int pos;
     
-    i = gifgetbyte(grr);
-    while (i > 0) {
-      gifgetblock(buffer, i, grr);
-      i = gifgetbyte(grr);
+    /* scan over image */
+    pos = 1;			/* skip min code size */
+    while (pos < grr->w) {
+      int amt = grr->v[pos];
+      pos += amt + 1;
+      if (amt == 0) break;
     }
-    last = grr->v;
+    if (pos > grr->w) pos = grr->w;
     
-    gfi->compressed_len = last - first;
+    gfi->compressed_len = pos;
     if (read_flags & GIF_READ_CONST_RECORD) {
       gfi->compressed = first;
       gfi->free_compressed = 0;
@@ -403,6 +402,10 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
       if (!gfi->compressed) return 0;
       memcpy(gfi->compressed, first, gfi->compressed_len);
     }
+    
+    /* move reader over that image */
+    grr->v += pos;
+    grr->w -= pos;
     
   } else {
     /* non-record; have to read it block by block. */
@@ -752,8 +755,8 @@ gif_read(Gif_Reader *grr, int read_flags)
       goto done;
       
      case '!': /* extension */
-      GIF_DEBUG(("ext"));
       block = gifgetbyte(grr);
+      GIF_DEBUG(("ext(0x%02X)", block));
       switch (block) {
 	
        case 0xF9:

@@ -114,8 +114,10 @@ codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
 static void
 print_output_code(Gif_Context *gfc, Gif_Code code, Gif_Code eoi_code)
 {
-  if (gfc->prefix[code] != eoi_code){fprintf(stderr,"P%x",gfc->prefix[code]);
-  print_output_code(gfc, gfc->prefix[code], eoi_code);}
+  if (gfc->prefix[code] != eoi_code) {
+    fprintf(stderr, "P%X", gfc->prefix[code]);
+    print_output_code(gfc, gfc->prefix[code], eoi_code);
+  }
   fprintf(stderr, "%X ", gfc->suffix[code]);
 }
 
@@ -148,7 +150,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   Gif_Code *prefixes = gfc->prefix;
   byte *suffixes = gfc->suffix;
   Gif_Code *codes = gfc->code;
-
+  
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
   clear_code = 1 << min_code_bits;
@@ -254,7 +256,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
       suffixes[hash] = suffix;
       codes[hash] = next_code;
       next_code++;
-
+      
       output_code = work_code;
       work_code = suffix;	/* code for a pixel == the pixel value */
       
@@ -289,7 +291,7 @@ image_data(byte **img, u_int16_t width, u_int16_t height, byte interlaced,
   byte min_code_bits;
   
   max_color = 0;
-  for (y = 0; y < height; y++) {
+  for (y = 0; y < height && max_color < 128; y++) {
     byte *data = img[y];
     u_int16_t x;
     for (x = width; x > 0 && max_color < 128; x--, data++)
