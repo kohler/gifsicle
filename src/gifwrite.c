@@ -9,9 +9,10 @@
    warranty, express or implied. This file is distributed in the public
    domain.
    
-   *The LZW compression method used by GIFs is patented. Unisys, the patent
-   holder, allows the compression algorithm to be used without a license in
-   software distributed at no cost to the user. */
+   *There is a patent on the LZW compression method used by GIFs, and included
+   in gifwrite.c. Unisys, the patent holder, allows the compression algorithm
+   to be used without a license in software distributed at no cost to the
+   user. The decompression algorithm is not patented. */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
