@@ -59,7 +59,7 @@ typedef signed __int32 int32_t;
 #define PACKAGE "gifsicle"
 
 /* Version number of package */
-#define VERSION "1.35 (Windows)"
+#define VERSION "1.36 (Windows)"
 
 
 #ifdef __cplusplus

@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(gifsicle.h)
-AM_INIT_AUTOMAKE(gifsicle, 1.35)
+AM_INIT_AUTOMAKE(gifsicle, 1.36)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
@@ -122,7 +122,7 @@ AC_DEFINE_UNQUOTED(RANDOM, ${random_func})
 AC_REPLACE_FUNCS(strerror)
 AC_CHECK_FUNCS(strtoul mkstemp)
 
-AC_CHECK_HEADERS(sys/select.h inttypes.h)
+AC_CHECK_HEADERS(sys/select.h inttypes.h unistd.h)
 
 dnl
 dnl Integer typedefs
