@@ -91,7 +91,7 @@ color_change_transformer(Gif_Colormap *gfcm, void *thunk)
       if (!change->old_color.haspixel)
 	have = GIF_COLOREQ(&gfcm->col[i], &change->old_color);
       else
-	have = change->old_color.pixel == i;
+	have = (change->old_color.pixel == (uint32_t)i);
       
       if (have) {
 	gfcm->col[i] = change->new_color;

@@ -1174,7 +1174,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
  **/
 
 static int
-initialize_optimizer(Gif_Stream *gfs, int optimize_level)
+initialize_optimizer(Gif_Stream *gfs)
 {
   int i, screen_size;
   
@@ -1277,7 +1277,7 @@ finalize_optimizer(Gif_Stream *gfs)
 void
 optimize_fragments(Gif_Stream *gfs, int optimize_level, int huge_stream)
 {
-  if (!initialize_optimizer(gfs, optimize_level))
+  if (!initialize_optimizer(gfs))
     return;
 
   create_subimages(gfs, optimize_level, !huge_stream);

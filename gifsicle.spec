@@ -1,9 +1,9 @@
 Summary: Powerful program for manipulating GIF images and animations
 
 Name: gifsicle
-Version: 1.30
+Version: 1.31
 Release: 1
-Source: http://www.lcdf.org/gifsicle/gifsicle-1.30.tar.gz
+Source: http://www.lcdf.org/gifsicle/gifsicle-1.31.tar.gz
 
 Icon: logo1.gif
 URL: http://www.lcdf.org/gifsicle/

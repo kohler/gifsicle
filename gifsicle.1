@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.30
+.ds V 1.31
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -38,7 +38,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "9 Aug 1999" "Version \*V"
+.TH GIFSICLE 1 "11 Feb 2002" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 .SH SYNOPSIS
@@ -47,13 +47,8 @@ gifsicle \- manipulates GIF images and animations
 '
 .SH DESCRIPTION
 .B gifsicle
-is a powerful command-line program for manipulating GIF image files.
-Extensive options let you control what exactly it does.
-.PP
-This man page assumes that you know what GIFs and GIF animations are. For a
-tutorial, you might try some of the resources listed on-line at
-webreference\%.com:
-http://www.webreference.com/authoring/graphics/animation\|.html
+is a powerful command-line program for creating, editing, manipulating, and
+getting information about GIF images and animations.
 '
 .SH INTRODUCTION
 '
@@ -65,7 +60,7 @@ GIF on standard output. That means these two commands do the same thing:
 % \fBgifsicle < in.gif > out.gif\fR
 % \fBgifsicle < in.gif | gifsicle | gifsicle > out.gif\fR
 .Ee
-Well, that's not very interesting! Most times you'll tell
+Not too interesting. Most times you'll tell
 .B gifsicle
 to alter its inputs by giving it command line options. The
 .OP \-i
@@ -74,10 +69,9 @@ option, for example, tells it to interlace its input files:
 % \fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
-This style doesn't work very well if you want to modify GIF files in
-place. For that, you should use the
+To modify GIF files in place, you should use the
 .OP \-\-batch
-option: with
+option. With
 .OP \-\-batch ,
 .B gifsicle
 will modify the files you specify instead of writing a new file to the
@@ -95,15 +89,14 @@ will combine to create a ``flipbook'' animation:
 .Es
 % \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
-Options like
+Use options like
 .OP \-\-delay ", " \-\-loopcount ", and " \-\-optimize
-will help you tune your animations; see their descriptions for more
-details.
+to tune your animations; see their descriptions for more details.
 .PP
-The next sections index
+The bulk of this manual page indexes
 .BR gifsicle 's
-options and describe them in gory detail. New users may want to skip to the
-Examples section at the end.
+options and describes them in gory detail. New users may want to skip to
+the Examples section at the end.
 '
 .SH CONCEPT INDEX
 '
@@ -190,8 +183,8 @@ instead.
 
 Mode options tell
 .B gifsicle
-what kind of output to generate. There can be at most one mode option,
-which must precede any GIF inputs.
+what kind of output to generate. There can be at most one, and it must
+precede any GIF inputs.
 .TP 5
 .OP \-\-merge ", " \-m
 '
@@ -224,7 +217,7 @@ but write named frames to files `xxx.\fIname\fR' instead of
 .\" -----------------------------------------------------------------
 .SS General Options
 
-General options control what information
+General options control the information
 .B gifsicle
 prints and where it writes its output. The info options and
 .OP \-\-verbose
@@ -269,12 +262,12 @@ Print usage information and exit.
 Print a human-readable description of each input GIF to the standard
 output, or whatever file you specify with
 .OP \-o .
-This option suppresses normal output. (If you give two
+This option suppresses normal output. If you give two
 .OP \-\-info
 or
 .OP \-I
-options, the description will be printed on standard error and output will
-occur as usual.)
+options, however, the description will be printed on standard error and
+output will occur as usual.
 '
 .Sp
 .TP
@@ -297,7 +290,7 @@ error.
 .TP
 .OP \-\-no\-warnings ", " \-w
 '
-Suppresses all warning messages.
+Suppress all warning messages.
 '
 .Sp
 .TP
@@ -320,8 +313,8 @@ if you are processing large GIFs on a computer without very much memory.
 A frame selection tells
 .B gifsicle
 which frames to use from the current input file. They are useful only for
-animations, as non-animated GIFs only have one frame. Here are the legal
-forms for frame specifications.
+animations, as non-animated GIFs only have one frame. Here are the
+acceptable forms for frame specifications.
 .Sp
 .PD 0
 .TP 13
@@ -373,7 +366,7 @@ output GIFs.
 
 Frame change options insert new frames into an animation or replace or
 delete frames that already exist. Some things\*Efor example, changing one
-frame in an animation\*Eare difficult to express with frame selection, but
+frame in an animation\*Eare difficult to express with frame selections, but
 easy with frame changes.
 '
 .TP 5
@@ -492,15 +485,19 @@ corner of this rectangle is
 .RI ( x1 , y1 );
 you can give either the lower-right corner,
 .RI ( x2 , y2 ),
-or the width and height of the rectangle. If
-.IR width " or " height
-is negative, 
-.B gifsicle
-will make the image's width or height smaller by that amount. For example,
-.OP \-\-crop " 2,2+-4x-4"
-will shave 2 pixels off each side of the input image. Cropping takes place
-on the raw input image, before any rotation, flipping, resizing, or
-positioning.
+or the width and height of the rectangle. In the
+.IR x1 , y1 + width x height
+form,
+.I width
+and
+.I height
+can be zero or negative. A zero dimension means the cropping area goes to
+the edge of the image; a negative dimension brings the cropping area that
+many pixels back from the image edge. For example,
+.OP \-\-crop " 2,2+-2x-2"
+will shave 2 pixels off each side of the input image. (Note: This behavior
+is different from versions 1.30 and before.) Cropping takes place on the
+raw input image, before any rotation, flipping, resizing, or positioning.
 '
 .Sp
 .TP
@@ -654,7 +651,8 @@ affect all the images following, and apply only to input GIF extensions.
 '
 Set the next frame's name to
 .IR text .
-This name is stored as an extension in the output GIF. 
+This name is stored as an extension in the output GIF (extension number
+0xCE, followed by the characters of the frame name).
 .Sp
 .OP \-\-no\-names
 and
@@ -716,6 +714,13 @@ to loop endlessly. The default is
 .BR forever .
 .OP \-\-no\-loopcount
 turns off looping.
+.Sp
+Set the loop count to one more than the number of times you want the
+animation to run. An animation with
+.OP \-\-no\-loopcount
+will show every frame once;
+.OP \-\-loopcount =1
+will loop once, thus showing every frame twice; and so forth.
 '
 .Sp
 .TP
@@ -1057,13 +1062,19 @@ implementations (for example, Java's); see the
 option.
 .PP
 Please email suggestions, additions, patches and bugs to
-eddietwo@lcs.mit.edu.
+kohler@icir.org.
+'
+.SH "SEE ALSO"
+'
+For a tutorial on GIF images and animations, you might try some of the
+resources listed on-line at webreference\%.com:
+http://www.webreference.com/authoring/graphics/animation\|.html
 '
 .SH AUTHORS
 .na
-Eddie Kohler <eddietwo@lcs.mit.edu>
+Eddie Kohler <kohler@icir.org>
 .br
-http://www.pdos.lcs.mit.edu/~eddietwo/
+http://www.icir.org/kohler/
 .br
 He wrote it.
 .PP
@@ -1079,7 +1090,7 @@ http://www.danbbs.dk/~dino/
 .br
 Adaptive tree method for GIF writing.
 .PP
-http://www.lcdf.org/~eddietwo/gifsicle/
+http://www.lcdf.org/gifsicle/
 .br
 The 
 .B gifsicle

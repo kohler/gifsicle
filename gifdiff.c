@@ -101,7 +101,7 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
 }
 
 static void
-apply_image_disposal(int is_second, Gif_Stream *gfs, Gif_Image *gfi,
+apply_image_disposal(int is_second, Gif_Image *gfi,
 		     uint16_t background)
 {
   int x, y, width = gfi->width;
@@ -265,8 +265,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
       different("frame #%d delays differ: <%s >%s", imageno, buf1, buf2);
     }
     
-    apply_image_disposal(0, s1, gfi1, background1);
-    apply_image_disposal(1, s2, gfi2, background2);
+    apply_image_disposal(0, gfi1, background1);
+    apply_image_disposal(1, gfi2, background2);
   }
 
   /* That's it! */

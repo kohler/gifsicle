@@ -713,7 +713,8 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
   if (*arg == '#') {
     int len = strlen(++arg);
-    if (!len || len % 3 != 0 || strspn(arg, "0123456789ABCDEFabcdef") != len) {
+    if (len == 0 || len % 3 != 0
+	|| (int)strspn(arg, "0123456789ABCDEFabcdef") != len) {
       if (complain)
 	Clp_OptionError(clp, "invalid color `%s' (want `#RGB' or `#RRGGBB')",
 			input_arg);
@@ -1054,7 +1055,7 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
      -> find the associated color */
   if (background->haspixel == 2) {
     Gif_Stream *gfs = merger[0]->stream;
-    if (gfs->global && background->pixel < gfs->global->ncol) {
+    if (gfs->global && background->pixel < (uint32_t)gfs->global->ncol) {
       *background = gfs->global->col[ background->pixel ];
       background->haspixel = 1;
     } else {
@@ -1122,7 +1123,7 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
   if (gfi && gfi->local) gfcm = gfi->local;
   
   if (color->haspixel == 2) {	/* have pixel value, not color */
-    if (color->pixel < gfcm->ncol)
+    if (color->pixel < (uint32_t)gfcm->ncol)
       return color->pixel;
     else {
       if (color_context) error("%s color out of range", color_context);
@@ -1239,8 +1240,8 @@ analyze_crop(int nmerger, Gt_Crop *crop)
   
   crop->x = crop->spec_x + l;
   crop->y = crop->spec_y + t;
-  crop->w = crop->spec_w <= 0 ? (r - l) + crop->spec_w : crop->spec_w;
-  crop->h = crop->spec_h <= 0 ? (b - t) + crop->spec_h : crop->spec_h;
+  crop->w = crop->spec_w <= 0 ? (r - crop->x) + crop->spec_w : crop->spec_w;
+  crop->h = crop->spec_h <= 0 ? (b - crop->y) + crop->spec_h : crop->spec_h;
   crop->left_offset = crop->x;
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0

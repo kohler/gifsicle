@@ -1,5 +1,16 @@
 Gifsicle NEWS
 
+Version 1.31
+
+* Changed behavior of `--crop X,Y+WIDTHxHEIGHT' option when WIDTH or HEIGHT
+  is negative. Previously, zero or negative WIDTH and HEIGHT referred to
+  the image's entire width or height. Thus, the option `--crop 10,0+0x0'
+  would always lead to an error, because the crop left position (10) plus
+  the crop width (the image width) was 10 pixels beyond the image edge. The
+  new behavior measures zero or negative WIDTH and HEIGHT relative to the
+  image's bottom-right corner.
+
+
 Version 1.30   27.Jul.2001
 
 * Fixed bug in ungif code: Writing a large ungif could corrupt memory,
