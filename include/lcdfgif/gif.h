@@ -273,6 +273,8 @@ typedef u_int16_t Gif_Code;
 # define Gif_New(t)		((t *)xmalloc(sizeof(t)))
 # define Gif_NewArray(t, n)	((t *)xmalloc(sizeof(t) * (n)))
 # define Gif_ReArray(p, t, n)	((p)=((t*)xrealloc((void*)(p),sizeof(t)*(n))))
+#endif
+#ifndef Gif_DeleteFunc
 # define Gif_DeleteFunc		(&xfree)
 # define Gif_DeleteArrayFunc	(&xfree)
 #endif
