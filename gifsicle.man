@@ -487,8 +487,6 @@ Extension options add non-visual information to the output GIF. This
 includes names, comments, and generic extensions.
 '
 .Sp
-'
-.Sp
 .PD 0
 .TP 5
 .OA \-x app\-name " " extension
