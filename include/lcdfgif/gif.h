@@ -22,9 +22,9 @@ extern "C" {
 /* NOTE: You should define the types u_int16_t and u_int32_t before #including
    this file, probably by #including <sys/types.h>. */
   
-#define GIF_MAJOR_VERSION	0
-#define GIF_MINOR_VERSION	9999
-#define GIF_VERSION		"0.9999"
+#define GIF_MAJOR_VERSION	1
+#define GIF_MINOR_VERSION	0
+#define GIF_VERSION		"1.0"
 
 #ifndef BYTE
 #define BYTE
@@ -106,7 +106,8 @@ struct Gif_Image {
   byte *compressed;
   void (*free_compressed)(void *);
   
-  void *userdata;
+  void *user_data;
+  void (*free_user_data)(void *);
   int refcount;
   
 };

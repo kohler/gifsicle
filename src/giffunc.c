@@ -61,7 +61,8 @@ Gif_NewImage(void)
   gfi->compressed_len = 0;
   gfi->compressed = 0;
   gfi->free_compressed = 0;
-  gfi->userdata = 0;
+  gfi->user_data = 0;
+  gfi->free_user_data = 0;
   gfi->refcount = 0;
   return gfi;
 }
@@ -377,7 +378,6 @@ Gif_CopyImage(Gif_Image *src)
     dest->compressed_len = src->compressed_len;
   }
   
-  dest->userdata = src->userdata;
   return dest;
   
  failure:
@@ -448,6 +448,8 @@ Gif_DeleteImage(Gif_Image *gfi)
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
   Gif_Delete(gfi);
+  if (gfi->user_data && gfi->free_user_data)
+    (*gfi->free_user_data)(gfi->user_data);
 }
 
 

@@ -62,12 +62,11 @@ Pixmap		Gif_XImageColormap(Gif_XContext *, Gif_Stream *,
 				Gif_Colormap *, Gif_Image *);
 Pixmap		Gif_XSubImage(Gif_XContext *, Gif_Stream *, Gif_Image *,
 				int l, int t, int w, int h);
-Pixmap		Gif_XSubImageColormap(Gif_XContext *, Gif_Stream *,
-				Gif_Colormap *, Gif_Image *,
-				int l, int t, int w, int h);
+Pixmap		Gif_XSubImageColormap(Gif_XContext *, Gif_Image *,
+				Gif_Colormap *, int l, int t, int w, int h);
 
 Pixmap		Gif_XMask(Gif_XContext *, Gif_Stream *, Gif_Image *);
-Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Stream *, Gif_Image *,
+Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Image *,
 				int l, int t, int w, int h);
 
 int		Gif_XAllocateColors(Gif_XContext *, Gif_Colormap *);

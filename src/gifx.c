@@ -264,8 +264,7 @@ Gif_XClaimStreamColors(Gif_XContext *gfx, Gif_Stream *gfs, int *np_store)
 #define BYTESIZE 8
 
 Pixmap
-Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
-		      Gif_Colormap *gfcm, Gif_Image *gfi,
+Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 		      int left, int top, int width, int height)
 {
   Pixmap pixmap = None;
@@ -281,7 +280,6 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   unsigned long *pixels;
   
   /* Find the correct image and colormap */
-  if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
 
   /* Make sure the image is uncompressed */
@@ -414,7 +412,7 @@ Gif_XImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   if (!gfi) return None;
   gfcm = gfi->local;
   if (!gfcm) gfcm = gfs->global;
-  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+  return Gif_XSubImageColormap(gfx, gfi, gfcm,
 			       0, 0, gfi->width, gfi->height);
 }
 
@@ -425,7 +423,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Colormap *gfcm,
 {
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
-  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+  return Gif_XSubImageColormap(gfx, gfi, gfcm,
 			       0, 0, gfi->width, gfi->height);
 }
 
@@ -439,13 +437,13 @@ Gif_XSubImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
   if (!gfi) return None;
   gfcm = gfi->local;
   if (!gfcm) gfcm = gfs->global;
-  return Gif_XSubImageColormap(gfx, gfs, gfcm, gfi,
+  return Gif_XSubImageColormap(gfx, gfi, gfcm,
 			       left, top, width, height);
 }
 
 
 Pixmap
-Gif_XSubMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
+Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
 	     int left, int top, int width, int height)
 {
   Pixmap pixmap = None;
@@ -458,7 +456,6 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
   int release_uncompressed = 0;
   
   /* Find the correct image */
-  if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
   
   /* Check subimage dimensions */
@@ -535,7 +532,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
-  return Gif_XSubMask(gfx, gfs, gfi, 0, 0, gfi->width, gfi->height);
+  return Gif_XSubMask(gfx, gfi, 0, 0, gfi->width, gfi->height);
 }
 
 
