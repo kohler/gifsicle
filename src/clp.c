@@ -38,7 +38,7 @@ extern "C" {
 /* Option types for Clp_SetOptionChar */
 #define Clp_DoubledLong		(Clp_LongImplicit * 2)
 
-#define Clp_AnyArgument (Clp_Mandatory | Clp_Optional)
+#define Clp_AnyArgument		(Clp_Mandatory | Clp_Optional)
 
 #define MAX_AMBIGUOUS_VALUES	4
 
@@ -405,12 +405,14 @@ calculate_long_min_match(int nopt, Clp_Option *opt, int which,
 			 int flags, int flags_value)
 {
     int j, lmm = 1;
+    int preferred = (opt[which].flags & Clp_PreferredMatch);
   
     for (j = 0; j < nopt; j++)
 	if (opt[j].long_name
 	    && (opt[j].flags & flags) == flags_value
 	    && opt[which].option_id != opt[j].option_id
-	    && strncmp(opt[which].long_name, opt[j].long_name, lmm) == 0)
+	    && strncmp(opt[which].long_name, opt[j].long_name, lmm) == 0
+	    && (!preferred || strncmp(opt[which].long_name, opt[j].long_name, strlen(opt[which].long_name)) != 0))
 	    lmm = min_different_chars(opt[which].long_name, opt[j].long_name);
   
     return lmm;

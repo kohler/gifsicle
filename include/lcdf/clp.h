@@ -31,17 +31,18 @@ extern "C" {
 #define Clp_ArgUnsigned		5
 #define Clp_ArgDouble		6
 
-#define Clp_MaxDefaultType	Clp_ArgDouble
+#define Clp_FirstUserType	10
 
 /* Argument type flags */
-#define Clp_DisallowOptions	(1<<0)
+#define Clp_DisallowOptions	(1<<0)	/* Argument won't resemble an option */
 
 /* Flags for individual Clp_Options */
-#define Clp_Mandatory		(1<<0)
-#define Clp_Optional		(1<<1)
-#define Clp_Negate		(1<<2)
-#define Clp_AllowDash		(1<<3)
-#define Clp_OnlyNegated		(1<<4)
+#define Clp_Mandatory		(1<<0)	/* Has mandatory argument */
+#define Clp_Optional		(1<<1)	/* Has optional argument */
+#define Clp_Negate		(1<<2)	/* Allow --no-OPT */
+#define Clp_OnlyNegated		(1<<3)	/* Allow --no-OPT, but not --OPT */
+#define Clp_PreferredMatch	(1<<4)	/* Prefer --OPT to --OPTwhatever when
+					   matching option prefixes */
 
 /* Option types for Clp_SetOptionChar */
 /*	Clp_NotOption		0 */
