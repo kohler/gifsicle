@@ -1,0 +1,70 @@
+GIFSICLE 0.9
+============
+
+ABOUT GIFSICLE
+--------------
+   Gifsicle twaddles GIF image files in a variety of ways. It may be
+better than many of the freely available GIF twaddlers on the market;
+for one thing, it has more options.
+
+   It supports merging several GIFs into a GIF animation; exploding an
+animation into its component frames; changing individual frames in an
+animation; turning interlacing on and off; adding transparency; adding
+delays, disposals, and the Netscape loop extension to animations;
+adding and removing comments; and optimizing animations for space,
+among other things. Extensive command-line options control which, if
+any, of these occur.
+
+   Please see the man page, `gifsicle.man', for more information.
+
+   THIS IS A PRELIMINARY RELEASE. There are undoubtedly bugs and
+problems. Gifsicle comes with NO WARRANTY, express or implied,
+including, but not limited to, the implied warranties of
+merchantability and fitness for a particular purpose.
+
+GIFSICLE HOME PAGE
+------------------
+   For latest distributions, bug reports, and other breaking info, see
+the Gifsicle home page at
+
+	http://www.pdos.lcs.mit.edu/~eddietwo/gifsicle/
+
+MAKING GIFSICLE
+---------------
+   You need an ANSI C compiler, such as gcc.
+
+   Just type `./configure', then `make'. `make install' will build and
+install gifsicle and its manual page.
+
+   `./configure' accepts the usual options. See `INSTALL' for more
+details.
+
+   If you have X11, you can additionally build a simple program,
+`gifview', which shows the frames of its input GIFs in an X window.
+Click on the window to move to the next frame. Gifview is an alpha
+program and is not built by default. To build gifview, give
+`./configure' the `--enable-gifview' option.
+
+BUGS, SUGGESTIONS, ETC.
+-----------------------
+   Please write me if you have trouble building or running gifsicle,
+or if you have suggestions or (preferably) patches.
+
+	Eddie Kohler
+	eddietwo@lcs.mit.edu
+	http://www.pdos.lcs.mit.edu/~eddietwo/
+
+COPYRIGHT
+---------
+   All source code is Copyright (C) 1997 Eddie Kohler.
+
+   Permission is granted to copy, distribute, or alter gifsicle, in
+whole or in part, as long as the above notice is kept intact, with the
+following restrictions. Commercial developers and distributors, i.e.
+those who will profit monetarily from copying or distributing this
+code, must contact me and obtain permission before doing so. Further,
+those who copy or distribute gifsicle, in whole or in part, without
+providing source code or notice of where the source code can be
+obtained, must contact me and obtain permission before doing so.
+
+   (Not that any of this would ever happen, but what the hell!)

@@ -1,0 +1,35 @@
+Gifsicle NEWS
+
+Version 1.1.1
+
+* Added `--crop' option.
+
+* Changed usage behavior on bad command lines.
+
+* Fixed bug in CLP which segmentation-faulted on `-' arguments.
+
+Version 1.0
+
+* Added `--output/-o' option to specify output filename.
+
+* Slight behavior change: Now, if you --replace a frame
+  (say frame #2), its delay value will be preserved in the
+  replacement frame, unless you give an explicit delay.
+  (Before, the replacement frame's delay would be used,
+  which was probably 0.) 
+
+Version 0.91
+
+* Bug fix: `--optimize' didn't handle the bottom row of
+  an image's changed area correctly. This could lead to
+  incorrect animations.
+  Specific change: merge.c line 744: was y < fbt, now y <= fbt.
+
+* Added `-S' as synonym for `--logical-screen'. 
+
+Version 0.9
+
+* The first release.
+
+* The document http://www.pdos.lcs.mit.edu/~eddietwo/gifsicle/changes.html has
+  a possibly more up-to-date list of changes. 
