@@ -93,6 +93,7 @@ srclinks:
 versionize:
 	perl -pi~ -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.man gifview.man
 	perl -pi~ -e "s/^\\.ds V.*/.ds V $(GIFDIFFVERSION)/;" gifdiff.man
+	perl -pi~ -e "s/^Version: .*/Version: $(VERSION)/;" rpm.spec
 
 #####
 # Cleaning and distribution
