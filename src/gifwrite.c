@@ -2,10 +2,12 @@
    Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
-   The GIF library is free software*. It is distributed under the GNU Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
-   as long as this notice is kept intact and this source code is made
-   available. There is no warranty, express or implied.
+   The GIF library is free software*. With the exception of this file, the GIF
+   library is distributed under the GNU General Public License, version 2 or
+   later; you can copy, distribute, or alter it at will, as long as this
+   notice is kept intact and this source code is made available. There is no
+   warranty, express or implied. This file is distributed in the public
+   domain.
    
    *The LZW compression method used by GIFs is patented. Unisys, the patent
    holder, allows the compression algorithm to be used without a license in
@@ -81,6 +83,8 @@ typedef struct Gif_Writer {
   u_int32_t pos;
   u_int32_t cap;
   int flags;
+  int global_size;
+  int local_size;
   void (*byte_putter)(byte, struct Gif_Writer *);
   void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
   
@@ -338,10 +342,10 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 
   if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
     /* calculate m_c_b based on colormap */
-    if (gfi->local && gfi->local->ncol > 0)
-      colors_used = gfi->local->ncol;
-    else if (gfs->global && gfs->global->ncol > 0)
-      colors_used = gfs->global->ncol;
+    if (grr->local_size > 0)
+      colors_used = grr->local_size;
+    else if (grr->global_size > 0)
+      colors_used = grr->global_size;
     
   } else if (gfi->compressed) {
     /* take m_c_b from compressed image */
@@ -374,7 +378,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
   if ((grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
-    if (Gif_UncompressImage(gfi))
+    if (Gif_UncompressImage(gfi))      
       Gif_FullCompressImage(gfs, gfi, grr->flags);
   }
   
@@ -407,6 +411,8 @@ write_image_data(Gif_Image *gfi, byte min_code_bits,
 }
 
 
+static int get_color_table_size(Gif_Stream *, Gif_Image *, Gif_Writer *);
+
 int
 Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 {
@@ -429,6 +435,8 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
   grr.flags = flags;
+  grr.global_size = get_color_table_size(gfs, 0, &grr);
+  grr.local_size = get_color_table_size(gfs, gfi, &grr);
   
   if (!gfc.nodes || !gfc.links || !grr.v)
     goto done;
@@ -450,19 +458,46 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 }
 
 
-static void
-write_color_table(Gif_Color *c, int ncol, Gif_Writer *grr)
+static int
+get_color_table_size(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
-  int totalcol, i;
+  Gif_Colormap *gfcm = (gfi ? gfi->local : gfs->global);
+  int ncol, totalcol, i;
+
+  if (!gfcm || gfcm->ncol <= 0)
+    return 0;
+
   /* Make sure ncol is reasonable */
-  if (ncol <= 0) ncol = 0;
-  if (ncol > 256) ncol = 256;
-  
+  ncol = gfcm->ncol;
+
+  /* Possibly bump up 'ncol' based on 'transparent' values, if
+     careful_min_code_bits */
+  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+    if (gfi && gfi->transparent >= ncol)
+      ncol = gfi->transparent + 1;
+    else if (!gfi)
+      for (i = 0; i < gfs->nimages; i++)
+	if (gfs->images[i]->transparent >= ncol)
+	  ncol = gfs->images[i]->transparent + 1;
+  }
+
   /* Make sure the colormap is a power of two entries! */
   /* GIF format doesn't allow a colormap with only 1 entry. */
-  for (totalcol = 2; totalcol < ncol; totalcol *= 2) ;
+  if (ncol > 256)
+    ncol = 256;
+  for (totalcol = 2; totalcol < ncol; totalcol *= 2)
+    /* nada */;
   
-  for (i = 0; i < ncol; i++, c++) {
+  return totalcol;
+}
+
+static void
+write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
+{
+  Gif_Color *c = gfcm->col;
+  int i, ncol = gfcm->ncol;
+  
+  for (i = 0; i < ncol && i < totalcol; i++, c++) {
     gifputbyte(c->red, grr);
     gifputbyte(c->green, grr);
     gifputbyte(c->blue, grr);
@@ -481,6 +516,7 @@ static int
 write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte min_code_bits, packed = 0;
+  grr->local_size = get_color_table_size(gfs, gfi, grr);
   
   gifputbyte(',', grr);
   gifputunsigned(gfi->left, grr);
@@ -488,18 +524,18 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   gifputunsigned(gfi->width, grr);
   gifputunsigned(gfi->height, grr);
   
-  if (gfi->local && gfi->local->ncol > 0) {
+  if (grr->local_size > 0) {
     int size = 2;
     packed |= 0x80;
-    while (size < gfi->local->ncol && size < 256)
+    while (size < grr->local_size)
       size *= 2, packed++;
   }
   
   if (gfi->interlace) packed |= 0x40;
   gifputbyte(packed, grr);
   
-  if (gfi->local && gfi->local->ncol > 0)
-    write_color_table(gfi->local->col, gfi->local->ncol, grr);
+  if (grr->local_size > 0)
+    write_color_table(gfi->local, grr->local_size, grr);
 
   /* calculate min_code_bits here (because calculation may involve
      recompression, if GIF_WRITE_CAREFUL_MIN_CODE_BITS is true) */
@@ -529,15 +565,16 @@ static void
 write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 {
   byte packed = 0x70;		/* high resolution colors */
+  grr->global_size = get_color_table_size(gfs, 0, grr);
 
   Gif_CalculateScreenSize(gfs, 0);
   gifputunsigned(gfs->screen_width, grr);
   gifputunsigned(gfs->screen_height, grr);
   
-  if (gfs->global) {
+  if (grr->global_size > 0) {
     u_int16_t size = 2;
     packed |= 0x80;
-    while (size < gfs->global->ncol && size < 256)
+    while (size < grr->global_size && size < 256)
       size *= 2, packed++;
   }
   
@@ -545,8 +582,8 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   gifputbyte(gfs->background, grr);
   gifputbyte(0, grr);		/* no aspect ratio information */
   
-  if (gfs->global)
-    write_color_table(gfs->global->col, gfs->global->ncol, grr);
+  if (grr->global_size > 0)
+    write_color_table(gfs->global, grr->global_size, grr);
 }
 
 

@@ -2,14 +2,14 @@
    Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
    
-   The GIF library is free software*. It is distributed under the GNU Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
-   as long as this notice is kept intact and this source code is made
+   The GIF library is free software*. It is distributed under the GNU General
+   Public License, version 2 or later; you can copy, distribute, or alter it
+   at will, as long as this notice is kept intact and this source code is made
    available. There is no warranty, express or implied.
    
-   * The LZW compression method used by GIFs (and contained in gifwrite.c) is
-   patented. Unisys, the patent holder, allows the compression algorithm to
-   be used without a license in software distributed at no cost to the user. */
+   *The LZW compression method used by GIFs is patented. Unisys, the patent
+   holder, allows the compression algorithm to be used without a license in
+   software distributed at no cost to the user. */
 
 #ifndef GIF_H /* -*- mode: c -*- */
 #define GIF_H
@@ -23,8 +23,8 @@ extern "C" {
    this file, probably by #including <sys/types.h>. */
   
 #define GIF_MAJOR_VERSION	1
-#define GIF_MINOR_VERSION	1
-#define GIF_VERSION		"1.1"
+#define GIF_MINOR_VERSION	2
+#define GIF_VERSION		"1.2"
 
 #ifndef BYTE
 #define BYTE
@@ -232,10 +232,10 @@ struct Gif_Record {
   u_int32_t length;
 };
 
-#define GIF_READ_COMPRESSED		(1)
-#define GIF_READ_UNCOMPRESSED		(2)
-#define GIF_READ_CONST_RECORD		(4)
-#define GIF_WRITE_CAREFUL_MIN_CODE_SIZE	(1)
+#define GIF_READ_COMPRESSED		1
+#define GIF_READ_UNCOMPRESSED		2
+#define GIF_READ_CONST_RECORD		4
+#define GIF_WRITE_CAREFUL_MIN_CODE_SIZE	1
 
 Gif_Stream *	Gif_ReadFile(FILE *);
 Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
