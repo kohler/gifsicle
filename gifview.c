@@ -251,7 +251,7 @@ choose_visual(Gt_Viewer *viewer)
   int nv, i;
   XVisualInfo *v, *best_v = 0;
   Gt_Viewer *trav;
-  
+
   /* Look for an existing Gt_Viewer with the same display and screen number */
   for (trav = viewers; trav; trav = trav->next)
     if (trav != viewer && trav->display == display
@@ -260,6 +260,7 @@ choose_visual(Gt_Viewer *viewer)
       viewer->depth = trav->depth;
       viewer->colormap = trav->colormap;
       viewer->gfx = trav->gfx;
+      viewer->gfx->refcount++;
       return;
     }
   
@@ -298,9 +299,10 @@ choose_visual(Gt_Viewer *viewer)
       viewer->colormap = DefaultColormap(display, screen_number);
     
   }
-
+  
   viewer->gfx = Gif_NewXContextFromVisual
     (display, screen_number, viewer->visual, viewer->depth, viewer->colormap);
+  viewer->gfx->refcount++;
   
   if (v) XFree(v);
 }
@@ -354,6 +356,7 @@ delete_viewer(Gt_Viewer *viewer)
     Gif_DeleteStream(viewer->anim_gfs);
   Gif_DeleteArray(viewer->im);
   Gif_DeleteArray(viewer->im_number);
+  Gif_DeleteXContext(viewer->gfx);
   Gif_Delete(viewer);
 }
 
