@@ -1,5 +1,6 @@
+/* -*- c-basic-offset: 2 -*- */
 /* gifview.c - gifview's main loop.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2002 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifview, in the gifsicle package.
 
    Gifview is free software. It is distributed under the GNU Public License,
@@ -131,6 +132,7 @@ typedef struct Gt_Viewer {
   int animating;
   int unoptimizing;
   int scheduled;
+  int preparing;
   struct Gt_Viewer *anim_next;
   struct timeval timer;
   int anim_loop;
@@ -155,6 +157,8 @@ static int animating = 0;
 static int unoptimizing = 0;
 static int install_colormap = 0;
 static int interactive = 1;
+
+static struct timeval preparation_time;
 
 
 #define DISPLAY_OPT		300
@@ -460,6 +464,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   viewer->animating = 0;
   viewer->unoptimizing = unoptimizing;
   viewer->scheduled = 0;
+  viewer->preparing = 0;
   viewer->anim_next = 0;
   viewer->anim_loop = 0;
   viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
@@ -572,23 +577,14 @@ unschedule(Gt_Viewer *viewer)
   viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
 }
 
-
 void
-schedule_next_frame(Gt_Viewer *viewer)
+schedule(Gt_Viewer *viewer)
 {
-  struct timeval interval;
   Gt_Viewer *prev, *trav;
-  int delay = viewer->im[viewer->im_pos]->delay;
-
-  if (viewer->timer.tv_sec == 0 && viewer->timer.tv_usec == 0)
-    xwGETTIME(viewer->timer);
-  interval.tv_sec = delay / 100;
-  interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
-  xwADDTIME(viewer->timer, viewer->timer, interval);
-
+  
   if (viewer->scheduled)
     unschedule(viewer);
-  
+
   prev = 0;
   for (trav = animations; trav; prev = trav, trav = trav->anim_next)
     if (xwTIMEGEQ(trav->timer, viewer->timer))
@@ -600,7 +596,33 @@ schedule_next_frame(Gt_Viewer *viewer)
     viewer->anim_next = animations;
     animations = viewer;
   }
+  
   viewer->scheduled = 1;
+}
+
+void
+schedule_next_frame(Gt_Viewer *viewer)
+{
+  struct timeval interval;
+  int delay = viewer->im[viewer->im_pos]->delay;
+  int next_pos = viewer->im_pos + 1;
+  if (next_pos == viewer->nim)
+    next_pos = 0;
+
+  if (viewer->timer.tv_sec == 0 && viewer->timer.tv_usec == 0)
+    xwGETTIME(viewer->timer);
+  
+  interval.tv_sec = delay / 100;
+  interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
+  xwADDTIME(viewer->timer, viewer->timer, interval);
+
+  /* 1.Aug.2002 - leave some time to prepare the frame if necessary */
+  if (!viewer->unoptimized_pixmaps[next_pos]) {
+    xwSUBTIME(viewer->timer, viewer->timer, preparation_time);
+    viewer->preparing = 1;
+  }
+
+  schedule(viewer);
 }
 
 
@@ -802,7 +824,7 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
 static Pixmap
 unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
 {
-  /* create a new unoptimized frame; maybe kill some of the old ones */
+  /* create a new unoptimized frame if necessary */
   if (!viewer->unoptimized_pixmaps[frame]) {
     Gif_Stream *gfs = viewer->gfs;
     Pixmap last = None, last_last = None;
@@ -814,43 +836,60 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
     viewer->unoptimized_pixmaps[frame] =
       Gif_XNextImage(viewer->gfx, last_last, last, gfs, frame);
 
-    if (viewer->free_pixmaps && frame > 1 && frame % SAVE_FRAMES == 1) {
-      int kill = frame - 1 - SAVE_FRAMES;
-      assert(kill >= 0);
-      for (; kill < frame - 1; kill++)
-	if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0) {
-	  XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
-	  viewer->unoptimized_pixmaps[kill] = None;
-	}
-    }
-
     if (slow) {
       set_viewer_name(viewer, frame);
       XFlush(viewer->display);
     }
   }
+
+  /* maybe kill some old frames */
+  if (viewer->free_pixmaps && frame % SAVE_FRAMES == 1) {
+    int kill, block_first = frame - 1, block_last = frame + SAVE_FRAMES - 1;
+    for (kill = 1; kill < viewer->nim; kill++)
+      if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0
+	  && (kill < block_first || kill >= block_last)) {
+	XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
+	viewer->unoptimized_pixmaps[kill] = None;
+      }
+  }
   
   return viewer->unoptimized_pixmaps[frame];
 }
 
-static void
-kill_unoptimized_frames(Gt_Viewer *viewer, int new_frame)
+void
+prepare_frame(Gt_Viewer *viewer, int frame)
 {
-  int nimages = viewer->nim;
-  int kill = nimages;
-  if (!viewer->free_pixmaps)
+  Display *display = viewer->display;
+  Window window = viewer->window;
+  int changed_cursor = 0;
+  
+  if (viewer->being_deleted || !viewer->animating)
     return;
-  
-  if (new_frame == 0)
-    kill = 3;
-  else if (new_frame < viewer->im_pos)
-    kill = new_frame + 1;
-  
-  for (; kill < nimages; kill++)
-    if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0) {
-      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
-      viewer->unoptimized_pixmaps[kill] = None;
+
+  if (frame < 0 || frame > viewer->nim - 1)
+    frame = 0;
+
+  /* Change cursor if we need to wait. */
+  if ((viewer->animating || viewer->unoptimizing)
+      && !viewer->unoptimized_pixmaps[frame]) {
+    if (frame > viewer->im_pos + 10 || frame < viewer->im_pos) {
+      changed_cursor = 1;
+      XDefineCursor(display, window, viewer->wait_cursor);
+      XFlush(display);
     }
+  }
+  
+  /* Prepare the frame */
+  (void) unoptimized_frame(viewer, frame, changed_cursor);
+
+  /* Restore cursor */
+  if (changed_cursor)
+    XDefineCursor(display, window, viewer->arrow_cursor);
+
+  /* schedule actual view of window */
+  xwADDTIME(viewer->timer, viewer->timer, preparation_time);
+  viewer->preparing = 0;
+  schedule(viewer);
 }
 
 void
@@ -910,7 +949,7 @@ view_frame(Gt_Viewer *viewer, int frame)
       window = viewer->window;
     }
     XSetWindowBackgroundPixmap(display, window, viewer->pixmap);
-    if (old_pixmap || viewer->use_window) /* clear if using existing window */
+    if (old_pixmap || viewer->use_window) /* clear existing window */
       XClearWindow(display, window);
     /* Only change size after changing pixmap. */
     if ((viewer->width != width || viewer->height != height)
@@ -923,24 +962,23 @@ view_frame(Gt_Viewer *viewer, int frame)
 	 CWWidth | CWHeight, &winch);
     }
 
+    /* Get rid of old pixmaps */
+    if (!viewer->was_unoptimized && old_pixmap)
+      XFreePixmap(display, old_pixmap);
+    viewer->was_unoptimized = viewer->animating || viewer->unoptimizing;
+
     /* Restore cursor */
     if (changed_cursor)
       XDefineCursor(display, window, viewer->arrow_cursor);
-    
-    /* Get rid of old pixmaps */
-    if (viewer->was_unoptimized)
-      kill_unoptimized_frames(viewer, frame);
-    else if (old_pixmap)
-      XFreePixmap(display, old_pixmap);
-    viewer->was_unoptimized = viewer->animating || viewer->unoptimizing;
     
     /* Do we need a new name? */
     if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
 	|| old_pixmap == None)
       need_set_name = 1;
-    
-    viewer->im_pos = frame;
   }
+  
+  viewer->im_pos = frame;
+  viewer->preparing = 0;
   
   if (need_set_name)
     set_viewer_name(viewer, -1);
@@ -1078,13 +1116,15 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
 void
 loop(void)
 {
-  struct timeval now;
+  struct timeval now, stop_loop, stop_delta;
   fd_set xfds;
   XEvent e;
   int pending;
   Gt_Viewer *v;
   Display *display = viewers->display;
   int x_socket = ConnectionNumber(display);
+  stop_delta.tv_sec = 0;
+  stop_delta.tv_usec = 200000;
   
   xwGETTIME(now);
   FD_ZERO(&xfds);
@@ -1095,14 +1135,21 @@ loop(void)
     /* 13.Feb.2001 - Use the 'pending' counter to avoid a tight loop
        if all the frames in an animation have delay 0. Reported by
        Franc,ois Petitjean. */
-    pending = 0;
-    while (animations && xwTIMEGEQ(now, animations->timer) && pending < 25) {
+    /* 1.Aug.2002 - Switch to running the loop for max 0.2s. */
+    xwADDTIME(stop_loop, now, stop_delta);
+    while (animations && xwTIMEGEQ(now, animations->timer)
+	   && xwTIMEGEQ(stop_loop, now)) {
       v = animations;
       animations = v->anim_next;
       v->scheduled = 0;
-      view_frame(v, v->im_pos + 1);
+      if (v->preparing)
+	prepare_frame(v, v->im_pos + 1);
+      else {
+	if (xwTIMEGEQ(now, v->timer))
+	  v->timer = now;
+	view_frame(v, v->im_pos + 1);
+      }
       xwGETTIME(now);
-      pending++;
     }
     
     pending = XPending(display);
@@ -1182,6 +1229,8 @@ main(int argc, char **argv)
   program_name = cur_resource_name = Clp_ProgramName(clp);
   
   xwGETTIMEOFDAY(&genesis_time);
+  preparation_time.tv_sec = 0;
+  preparation_time.tv_usec = 200000;
   
   while (1) {
     int opt = Clp_Next(clp);

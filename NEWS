@@ -1,5 +1,14 @@
 Gifsicle NEWS
 
+Version 1.33   1.Aug.2002
+
+* Be more careful about time while animating. In particular, prepare frames
+  before they are needed, so that they can be displayed exactly when
+  required. Problem reported by Walter Harms <WHarms@bfs.de>.
+
+* More warning fixes.
+
+
 Version 1.32   5.Jul.2002
 
 * Add `--multifile' option handling concatenated GIF files. This is useful
