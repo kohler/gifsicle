@@ -75,11 +75,12 @@ histogram(Gif_Stream *gfs, int *nhist_store)
      marked by haspixel == 255. */
   hist[0].haspixel = 255;
   hist[0].pixel = 0;
+  hist[0].red = 0;
   nhist++;
   
   /* Make sure the background color is in the histogram if it's not
      transparent. (We may remove it later.) */
-  if (gfs->background != gfs->images[0]->transparent && gfs->global
+  if (gfs->images[0]->transparent < 0 && gfs->global
       && gfs->background < gfs->global->ncol) {
     hist[1] = gfs->global->col[ gfs->background ];
     hist[1].haspixel = 1;
@@ -105,9 +106,6 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     if (transparent >= 0 && transparent < ncol) {
       col[transparent].haspixel = 1;
       col[transparent].pixel = 0;
-      hist[0].red = col[transparent].red;
-      hist[0].green = col[transparent].green;
-      hist[0].blue = col[transparent].blue;
     }
     
     /* sweep over the image data, counting pixels */
@@ -115,7 +113,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
       byte *data = gfi->img[y];
       for (x = 0; x < gfi->width; x++, data++) {
 	byte value = *data;
-	if (value > ncol) value = ncol;
+	if (value >= ncol) value = ncol - 1;
 	if (!col[value].haspixel)
 	  add_histogram_color(&col[value], &hist, &nhist, &hist_cap);
 	hist[ col[value].pixel ].pixel++;
@@ -765,18 +763,28 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, byte *all_new_data,
 
 /* return value 1 means run the image_changer again */
 static int
-try_assign_transparency(Gif_Image *gfi, byte *new_data,
+try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, byte *new_data,
 			Gif_Colormap *new_cm, u_int32_t *histogram)
 {
   u_int32_t min_used;
   int i, j;
   int transparent = gfi->transparent;
   int new_transparent = -1;
+  Gif_Color transp_value;
   
   if (transparent < 0)
     return 0;
+
+  if (old_cm)
+    transp_value = old_cm->col[transparent];
   
-  /* look for an unused pixel in the existing colormap */
+  /* look for an unused pixel in the existing colormap; prefer the same color
+     we had */
+  for (i = 0; i < new_cm->ncol; i++)
+    if (histogram[i] == 0 && GIF_COLOREQ(&transp_value, &new_cm->col[i])) {
+      new_transparent = i;
+      goto found;
+    }
   for (i = 0; i < new_cm->ncol; i++)
     if (histogram[i] == 0) {
       new_transparent = i;
@@ -787,9 +795,7 @@ try_assign_transparency(Gif_Image *gfi, byte *new_data,
   if (new_cm->ncol < 256) {
     assert(new_cm->ncol < new_cm->capacity);
     new_transparent = new_cm->ncol;
-    new_cm->col[new_transparent].red = 0;
-    new_cm->col[new_transparent].green = 0;
-    new_cm->col[new_transparent].blue = 0;
+    new_cm->col[new_transparent] = transp_value;
     new_cm->ncol++;
     goto found;
   }
@@ -823,7 +829,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 		colormap_image_func image_changer)
 { 
   color_hash_item **hash = new_color_hash();
-  int background_transparent = gfs->background == gfs->images[0]->transparent;
+  int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
   int imagei, j;
   int compress_new_cm = 1;
@@ -846,7 +852,8 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       do {
 	for (j = 0; j < 256; j++) histogram[j] = 0;
 	image_changer(gfi, new_data, gfcm, new_cm, hash, histogram);
-      } while (try_assign_transparency(gfi, new_data, new_cm, histogram));
+      } while (try_assign_transparency(gfi, gfcm, new_data, new_cm,
+				       histogram));
       
       Gif_ReleaseUncompressedImage(gfi);
       Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);

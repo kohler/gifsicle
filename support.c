@@ -1295,7 +1295,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     fr->stream = 0;
   }
   /** END MERGE LOOP **/
-  
+
+  /* Cropping the whole output? Clear the logical screen */
+  if (merger[0]->crop && merger[0]->crop == merger[nmerger-1]->crop)
+    dest->screen_width = dest->screen_height = 0;
   /* Set the logical screen from the user's preferences */
   if (output_data->screen_width >= 0)
     dest->screen_width = output_data->screen_width;
