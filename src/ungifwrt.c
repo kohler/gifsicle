@@ -174,8 +174,6 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
       
       for (c = 0; c < clear_code; c++)
 	rle_next[c] = clear_code;
-      for (c = clear_code; c < GIF_MAX_CODE; c++)
-	rle_next[c] = clear_code;
       
     } else if (next_code > CUR_BUMP_CODE) {
       /* bump up compression size */
@@ -199,7 +197,7 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
       output_code = suffix = *imageline;
       if (output_code >= clear_code)
 	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
-	output_code = 0;
+	output_code = suffix = 0;
       goto next_pixel;
       
       while (height != 0 && *imageline == suffix
@@ -554,7 +552,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
     write_color_table(gfi->local, grr->local_size, grr);
 
   /* calculate min_code_bits here (because calculation may involve
-     recompression, if GIF_WRITE_CAREFUL_MIN_CODE_BITS is true) */
+     recompression, if GIF_WRITE_CAREFUL_MIN_CODE_SIZE is true) */
   min_code_bits = calculate_min_code_bits(gfs, gfi, grr);
   
   /* use existing compressed data if it exists. This will tend to whip
