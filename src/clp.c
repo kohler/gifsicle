@@ -589,14 +589,12 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (sl->allow_int) {
-    char *x;
-    clp->val.i = strtol(arg, &x, 10);
-    if (*arg != 0 && *x == 0)
+    if (parse_int(clp, arg, 0, 0))
       return 1;
   }
   
   if (complain) {
-    char *complaint = (ambiguous ? "ambiguous" : "invalid");
+    char *complaint = (ambiguous ? "an ambiguous" : "not a valid");
     if (!ambiguous) {
       ambiguous = sl->nitems_invalid_report;
       for (index = 0; index < ambiguous; index++)
@@ -604,7 +602,7 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     }
     return ambiguity_error
       (clp, ambiguous, ambiguous_values, sl->items, "",
-       "`%s' is an %s argument to `%O'", arg, complaint);
+       "`%s' is %s argument to `%O'", arg, complaint);
   } else
     return 0;
 }
@@ -623,7 +621,7 @@ finish_string_list(Clp_Parser *clp, int type_id, int flags,
   clsl->nitems = nitems;
   
   if (nitems < MAX_AMBIGUOUS_VALUES && nitems < itemscap && clsl->allow_int) {
-    items[nitems].long_name = "or any integer";
+    items[nitems].long_name = "any integer";
     clsl->nitems_invalid_report = nitems + 1;
   } else if (nitems > MAX_AMBIGUOUS_VALUES + 1)
     clsl->nitems_invalid_report = MAX_AMBIGUOUS_VALUES + 1;

@@ -43,7 +43,7 @@ understands multi-image GIFs, which can be displayed either as slideshows
 or as animations.
 '
 .SH INTERACTION
-.B gifsicle
+.B gifview
 windows recognize several keystrokes and button commands. Many of them are
 only useful for multi-image GIFs.
 .TP 12
@@ -161,9 +161,16 @@ option can be given per window (that is, per input GIF file).
 .OA \-\-window window
 '
 Display the next GIF input in an existing X window, instead of making a new
-top-level window. With this option, you can use
+top-level window. This way, you can use
 .B gifview
-to display animated GIFs in a window you created with another program.
+to display animated GIFs in a window you created with another program. The
+.I window
+argument should be an integer
+.RB ( gifview
+will use that window ID)
+or `root'
+.RB ( gifview
+will use the root window).
 '
 .Sp
 .TP 5

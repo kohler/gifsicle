@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.16.1   10.Sep.1999
+
+* Gifview can put a GIF (or an animated GIF) on the root window; use
+  `gifview -w root'. Requested by Roland Blais <roland@greatbasin.com>.
+
+
 Version 1.16   31.Aug.1999
 
 * Optimization improvement: More colormap manipulation. Version 1.16

@@ -101,6 +101,7 @@ typedef struct Gt_Viewer {
   int top_level;
   
   Window window;
+  int use_window;
   int width;
   int height;
   int resizable;
@@ -161,6 +162,8 @@ static int interactive = 1;
 #define INTERACTIVE_OPT		309
 #define BACKGROUND_OPT		310
 
+#define WINDOW_TYPE		(Clp_MaxDefaultType + 1)
+
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
   { "background", 'b', BACKGROUND_OPT, Clp_ArgString, 0 },
@@ -173,7 +176,7 @@ Clp_Option options[] = {
   { "name", 0, NAME_OPT, Clp_ArgString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
-  { "window", 'w', WINDOW_OPT, Clp_ArgInt, 0 },
+  { "window", 'w', WINDOW_OPT, WINDOW_TYPE, 0 },
 };
 
 
@@ -349,6 +352,12 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
   
   if (use_window) {
     XWindowAttributes attr;
+
+    if (use_window == -1) {	/* means use root window */
+      viewer->screen_number = DefaultScreen(display);
+      use_window = RootWindow(display, viewer->screen_number);
+    }
+    
     XGetWindowAttributes(display, use_window, &attr);
     
     viewer->screen_number = -1;
@@ -365,15 +374,23 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
       (display, viewer->screen_number, viewer->visual, viewer->depth,
        viewer->colormap);
     viewer->gfx->refcount++;
-    
+
+    /* use root window, if that's what we were given; otherwise, create a
+       child of the window we were given */
+    viewer->window = (use_window == attr.root ? use_window : None);
     viewer->parent = use_window;
+    viewer->use_window = (use_window == attr.root ? 1 : 0);
     viewer->top_level = 0;
+    viewer->resizable = 0;
     
   } else {
     viewer->screen_number = DefaultScreen(display);
     choose_visual(viewer);
+    viewer->window = None;
     viewer->parent = RootWindow(display, viewer->screen_number);
+    viewer->use_window = 0;
     viewer->top_level = 1;
+    viewer->resizable = 1;
   }
   
   /* assign background color */
@@ -400,8 +417,6 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
     }
   }
   
-  viewer->window = None;
-  viewer->resizable = 1;
   viewer->being_deleted = 0;
   viewer->gfs = gfs;
   viewer->name = name;
@@ -630,7 +645,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   }
   
   /* Open the display and create the window */
-  {
+  if (!viewer->window) {
     XSetWindowAttributes x_set_attr;
     unsigned long x_set_attr_mask;
     x_set_attr.colormap = viewer->colormap;
@@ -692,7 +707,7 @@ pre_delete_viewer(Gt_Viewer *viewer)
   
   if (viewer->scheduled) unschedule(viewer);
   
-  if (viewer->window)
+  if (viewer->window && !viewer->use_window)
     XDestroyWindow(viewer->display, viewer->window);
   else
     delete_viewer(viewer);
@@ -816,7 +831,7 @@ view_frame(Gt_Viewer *viewer, int frame)
       window = viewer->window;
     }
     XSetWindowBackgroundPixmap(display, window, viewer->pixmap);
-    if (old_pixmap)
+    if (old_pixmap || viewer->use_window) /* clear if using existing window */
       XClearWindow(display, window);
     /* Only change size after changing pixmap. */
     if ((viewer->width != width || viewer->height != height)
@@ -845,7 +860,7 @@ view_frame(Gt_Viewer *viewer, int frame)
   if (need_set_name)
     set_viewer_name(viewer);
   
-  if (!old_pixmap)
+  if (!old_pixmap && !viewer->use_window)
     /* first image; map the window */
     XMapRaised(display, window);
   else if (viewer->animating)
@@ -1104,6 +1119,10 @@ main(int argc, char **argv)
     Clp_NewParser(argc, argv,
                   sizeof(options) / sizeof(options[0]), options);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
+  Clp_AddStringListType
+    (clp, WINDOW_TYPE, Clp_AllowNumbers,
+     "root", -1,
+     0);
   program_name = cur_resource_name = Clp_ProgramName(clp);
   
   xwGETTIMEOFDAY(&genesis_time);
