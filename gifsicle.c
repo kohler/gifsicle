@@ -420,7 +420,7 @@ input_stream(char *name)
   } else
     f = fopen(name, "rb");
   if (!f) {
-    error("%s: %s.", name, strerror(errno));
+    error("%s: %s", name, strerror(errno));
     return;
   }
   
@@ -676,7 +676,7 @@ write_stream(char *output_name, Gif_Stream *gfs)
     fclose(f);
     any_output_successful = 1;
   } else
-    error("%s: %s.", output_name, strerror(errno));
+    error("%s: %s", output_name, strerror(errno));
 }
 
 static void

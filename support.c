@@ -783,7 +783,7 @@ read_colormap_file(char *name, FILE *f)
     else
       f = fopen(name, "rb");
     if (!f) {
-      error("%s: %s.", name, strerror(errno));
+      error("%s: %s", name, strerror(errno));
       return 0;
     }
   }

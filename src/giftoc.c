@@ -174,7 +174,7 @@ or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
     f = fopen(file_name, "rb");
     
     if (!f) {
-      fprintf(stderr, "%s: %s.\n", file_name, strerror(errno));
+      fprintf(stderr, "%s: %s\n", file_name, strerror(errno));
       goto done;
     }
     

@@ -141,7 +141,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   sprintf(new_command, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
   if (!f)
-    fatal_error("can't run color transformation command: %s.", strerror(errno));
+    fatal_error("can't run color transformation command: %s", strerror(errno));
   Gif_DeleteArray(new_command);
   
   for (i = 0; i < gfcm->ncol; i++)
@@ -150,7 +150,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   errno = 0;
   status = pclose(f);
   if (status < 0) {
-    error("color transformation error: %s.", strerror(errno));
+    error("color transformation error: %s", strerror(errno));
     goto done;
   } else if (status > 0) {
     error("color transformation command failed");
