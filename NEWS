@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.9   10.Dec.1998
+
+* `--no-background' is now the same as `--background=0' (set the background
+  to pixel 0) instead of `--same-background'.
+
+
 Version 1.9b3   10.Dec.1998
 
 * Fixed a serious bug in merge.c introduced in 1.8: Merging several images

@@ -1150,9 +1150,10 @@ main(int argc, char **argv)
       
      case BACKGROUND_OPT:
       MARK_CH(output, CH_BACKGROUND);
-      if (clp->negated)
-	def_output_data.background.haspixel = 0;
-      else {
+      if (clp->negated) {
+	def_output_data.background.haspixel = 2;
+	def_output_data.background.pixel = 0;
+      } else {
 	def_output_data.background = parsed_color;
 	def_output_data.background.haspixel = parsed_color.haspixel ? 2 : 1;
       }
