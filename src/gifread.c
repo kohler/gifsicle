@@ -174,23 +174,23 @@ read_image_block(Gif_Reader *grr, byte *buffer, int *bit_pos_store,
 {
   int bit_position = *bit_pos_store;
   int bit_length = *bit_len_store;
-  int i;
+  byte block_len;
   
   while (bit_position + bits_needed > bit_length) {
     /* Read in the next data block. */
     if (bit_position >= 8) {
       /* Need to shift down the upper, unused part of `buffer' */
-      i = bit_position / 8;
+      int i = bit_position / 8;
       buffer[0] = buffer[i];
       buffer[1] = buffer[i+1];
       bit_position -= i * 8;
       bit_length -= i * 8;
     }
-    i = gifgetbyte(grr);
-    GIF_DEBUG(("image_block(%d)", i));
-    if (i == 0) return 0;
-    gifgetblock(buffer + bit_length / 8, i, grr);
-    bit_length += i * 8;
+    block_len = gifgetbyte(grr);
+    GIF_DEBUG(("image_block(%d)", block_len));
+    if (block_len == 0) return 0;
+    gifgetblock(buffer + bit_length / 8, block_len, grr);
+    bit_length += block_len * 8;
   }
   
   *bit_pos_store = bit_position;

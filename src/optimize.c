@@ -132,8 +132,7 @@ permuting_sorter_down(const void *v1, const void *v2)
 }
 
 static u_int16_t *
-sort_permutation(u_int16_t *perm, u_int16_t size, int32_t *values,
-		 int is_down)
+sort_permutation(u_int16_t *perm, int size, int32_t *values, int is_down)
 {
   permuting_sort_values = values;
   if (is_down)

@@ -160,8 +160,8 @@ typedef struct {
 
 struct Gif_Colormap {
   
-  u_int16_t ncol;
-  u_int16_t capacity;
+  int ncol;
+  int capacity;
   u_int32_t userflags;
   int refcount;
   Gif_Color *col;

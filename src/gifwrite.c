@@ -287,8 +287,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 
 static int
 write_image_data(byte **img, u_int16_t width, u_int16_t height,
-		 byte interlaced, u_int16_t num_colors,
-		 Gif_Context *gfc, Gif_Writer *grr)
+		 byte interlaced, Gif_Context *gfc, Gif_Writer *grr)
 {
   int i;
   u_int16_t x, y, max_color;
@@ -332,10 +331,9 @@ int
 Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
 {
   int ok = 0;
-  int ncolor;
   Gif_Writer grr;
   Gif_Context gfc;
-
+  
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
   
@@ -352,15 +350,8 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   if (!gfc.prefix || !gfc.suffix || !gfc.code || !grr.v)
     goto done;
   
-  ncolor = -1;
-  if (gfi->local)
-    ncolor = gfi->local->ncol;
-  else if (gfs->global)
-    ncolor = gfs->global->ncol;
-  if (ncolor < 0 || ncolor > 256) ncolor = 256;
-  
   ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-			(u_int16_t)ncolor, &gfc, &grr);
+			&gfc, &grr);
   
  done:
   if (!ok) {
@@ -378,22 +369,25 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
 
 
 static void
-write_color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
+write_color_table(Gif_Color *c, int ncol, Gif_Writer *grr)
 {
-  /* GIF format doesn't allow a colormap with only 1 entry. */
-  int extra = 2, i;
-  if (size > 256) size = 256;
-  /* Make sure the colormap is a power of two entries! */
-  while (extra < size) extra *= 2;
+  int totalcol, i;
+  /* Make sure ncol is reasonable */
+  if (ncol <= 0) ncol = 0;
+  if (ncol > 256) ncol = 256;
   
-  for (i = 0; i < size; i++, c++) {
+  /* Make sure the colormap is a power of two entries! */
+  /* GIF format doesn't allow a colormap with only 1 entry. */
+  for (totalcol = 2; totalcol < ncol; totalcol *= 2) ;
+  
+  for (i = 0; i < ncol; i++, c++) {
     gifputbyte(c->red, grr);
     gifputbyte(c->green, grr);
     gifputbyte(c->blue, grr);
   }
   
   /* Pad out colormap with black. */
-  for (; i < extra; i++) {
+  for (; i < totalcol; i++) {
     gifputbyte(0, grr);
     gifputbyte(0, grr);
     gifputbyte(0, grr);
@@ -405,8 +399,6 @@ static int
 write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte packed = 0;
-  u_int16_t ncolor = 256;
-  u_int16_t size = 2;
   
   gifputbyte(',', grr);
   gifputunsigned(gfi->left, grr);
@@ -414,18 +406,17 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   gifputunsigned(gfi->width, grr);
   gifputunsigned(gfi->height, grr);
   
-  if (gfi->local) {
-    ncolor = gfi->local->ncol;
+  if (gfi->local && gfi->local->ncol > 0) {
+    int size = 2;
     packed |= 0x80;
-    while (size < ncolor && size < 256)
+    while (size < gfi->local->ncol && size < 256)
       size *= 2, packed++;
-  } else
-    ncolor = gfs->global->ncol;
+  }
   
   if (gfi->interlace) packed |= 0x40;
   gifputbyte(packed, grr);
   
-  if (gfi->local)
+  if (gfi->local && gfi->local->ncol > 0)
     write_color_table(gfi->local->col, gfi->local->ncol, grr);
   
   /* use existing compressed data if it exists. This will tend to whip
@@ -443,7 +434,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
     
   } else
     write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-		     ncolor, gfc, grr);
+		     gfc, grr);
   
   return 1;
 }

@@ -44,11 +44,12 @@ extern "C" {
 # define Gif_DeleteFunc		(&debug_free)
 # define Gif_DeleteArrayFunc	(&debug_free)
 #else
+# include <stddef.h>
 # define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
 # define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
 # define xfree			free
-void *fail_die_malloc(int, const char *, int);
-void *fail_die_realloc(void *, int, const char *, int);
+void *fail_die_malloc(size_t, const char *, int);
+void *fail_die_realloc(void *, size_t, const char *, int);
 #endif
 
 /* Prototype strerror() if we don't have it. */
