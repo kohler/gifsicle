@@ -113,8 +113,8 @@ typedef struct Gt_Viewer {
   int being_deleted;
   
   Gif_Stream *gfs;
-  char *name;
-  
+  const char *name;
+
   Gif_Image **im;
   int nim;
   
@@ -139,9 +139,9 @@ typedef struct Gt_Viewer {
 
 const char *program_name = "gifview";
 
-static char *cur_display_name = 0;
+static const char *cur_display_name = 0;
 static Display *cur_display = 0;
-static char *cur_geometry_spec = 0;
+static const char *cur_geometry_spec = 0;
 static Cursor cur_arrow_cursor = 0;
 static Cursor cur_wait_cursor = 0;
 static const char *cur_resource_name;
@@ -347,7 +347,8 @@ choose_visual(Gt_Viewer *viewer)
 
 
 Gt_Viewer *
-new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
+new_viewer(Display *display, Window use_window, Gif_Stream *gfs,
+	   const char *name)
 {
   Gt_Viewer *viewer;
   int i;
@@ -483,7 +484,7 @@ delete_viewer(Gt_Viewer *viewer)
 
 
 static Gt_Viewer *
-next_viewer(Gif_Stream *gfs, char *name)
+next_viewer(Gif_Stream *gfs, const char *name)
 {
   Gt_Viewer *viewer = new_viewer(cur_display, cur_use_window, gfs, name);
   if (cur_use_window)
@@ -492,7 +493,7 @@ next_viewer(Gif_Stream *gfs, char *name)
 }
 
 static Gt_Viewer *
-get_input_stream(char *name)
+get_input_stream(const char *name)
 {
   FILE *f;
   Gif_Stream *gfs = 0;
@@ -950,14 +951,14 @@ view_frame(Gt_Viewer *viewer, int frame)
  **/
 
 int
-frame_argument(Gt_Viewer *viewer, char *arg)
+frame_argument(Gt_Viewer *viewer, const char *arg)
 {
-  char *c = arg;
+  const char *c = arg;
   int n1 = 0;
   
   /* Get a number range (#x, #x-y, #x-, or #-y). First, read x. */
   if (isdigit(c[0]))
-    n1 = strtol(arg, &c, 10);
+    n1 = strtol(arg, (char **)&c, 10);
   
   /* It really was a number range only if c is now at the end of the
      argument. */

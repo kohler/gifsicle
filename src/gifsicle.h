@@ -25,7 +25,7 @@ typedef struct Gt_Frame {
   Gif_Image *image;
   int use;
   
-  char *name;
+  const char *name;
   int no_name;
   Gif_Comment *comment;
   int no_comments;
@@ -93,7 +93,7 @@ struct Gt_ColorTransform {
 
 typedef struct {
   
-  char *output_name;
+  const char *output_name;
   
   int screen_width;
   int screen_height;
@@ -129,11 +129,11 @@ extern int no_warnings;
 extern int gif_read_flags;
 extern int gif_write_flags;
 
-void fatal_error(char *message, ...) NORETURN;
-void warning(char *message, ...);
-void warncontext(char *message, ...);
-void error(char *message, ...);
-void clp_error_handler(char *clp_message);
+void fatal_error(const char *message, ...) NORETURN;
+void warning(const char *message, ...);
+void warncontext(const char *message, ...);
+void error(const char *message, ...);
+void clp_error_handler(const char *clp_message);
 void usage(void);
 void short_usage(void);
 
@@ -152,7 +152,8 @@ void stream_info(FILE *, Gif_Stream *, const char *,
 		 int colormaps, int extensions);
 void image_info(FILE *, Gif_Stream *, Gif_Image *, int colormaps);
 
-char *explode_filename(char *filename, int number, char *name, int max_nimg);
+char *explode_filename(const char *filename, int number,
+		       const char *name, int max_nimg);
 
 /*****
  * merging images
@@ -174,7 +175,7 @@ void	optimize_fragments(Gif_Stream *, int optimizeness, int huge_stream);
 /*****
  * image/colormap transformations
  **/
-Gif_Colormap *read_colormap_file(char *, FILE *);
+Gif_Colormap *read_colormap_file(const char *, FILE *);
 void	apply_color_transforms(Gt_ColorTransform *, Gif_Stream *);
 
 typedef void (*color_transform_func)(Gif_Colormap *, void *);
@@ -245,9 +246,9 @@ int		parse_rectangle(Clp_Parser *, const char *, int, void *);
 int		parse_two_colors(Clp_Parser *, const char *, int, void *);
 
 extern Gif_Stream *input;
-extern char *input_name;
+extern const char *input_name;
 
-void		input_stream(char *);
+void		input_stream(const char *);
 void		input_done(void);
 void		output_frames(void);
 

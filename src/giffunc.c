@@ -115,7 +115,7 @@ Gif_NewComment(void)
 
 
 Gif_Extension *
-Gif_NewExtension(int kind, char *app_name)
+Gif_NewExtension(int kind, const char *app_name)
 {
   Gif_Extension *gfex = Gif_New(Gif_Extension);
   if (!gfex) return 0;
@@ -135,7 +135,7 @@ Gif_NewExtension(int kind, char *app_name)
 
 
 char *
-Gif_CopyString(char *s)
+Gif_CopyString(const char *s)
 {
   int l;
   char *copy;
@@ -196,7 +196,7 @@ Gif_AddCommentTake(Gif_Comment *gfcom, char *x, int xlen)
 
 
 int
-Gif_AddComment(Gif_Comment *gfcom, char *x, int xlen)
+Gif_AddComment(Gif_Comment *gfcom, const char *x, int xlen)
 {
   char *new_x;
   if (xlen < 0) xlen = strlen(x);

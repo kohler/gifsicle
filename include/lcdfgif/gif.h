@@ -200,7 +200,7 @@ struct Gif_Comment {
 Gif_Comment *	Gif_NewComment(void);
 void		Gif_DeleteComment(Gif_Comment *);
 int		Gif_AddCommentTake(Gif_Comment *, char *, int);
-int		Gif_AddComment(Gif_Comment *, char *, int);
+int		Gif_AddComment(Gif_Comment *, const char *, int);
 
 
 /** GIF_EXTENSION **/
@@ -220,7 +220,7 @@ struct Gif_Extension {
 };
 
 
-Gif_Extension *	Gif_NewExtension(int, char *);
+Gif_Extension *	Gif_NewExtension(int, const char *);
 void		Gif_DeleteExtension(Gif_Extension *);
 int		Gif_AddExtension(Gif_Stream *, Gif_Extension *, int);
 Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
@@ -256,7 +256,7 @@ int 		Gif_FullWriteFile(Gif_Stream *, int flags, FILE *);
 /** HOOKS AND MISCELLANEOUS **/
 
 int		Gif_InterlaceLine(int y, int height);
-char *		Gif_CopyString(char *);
+char *		Gif_CopyString(const char *);
 
 #define GIF_T_STREAM			(0)
 #define GIF_T_IMAGE			(1)

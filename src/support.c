@@ -23,7 +23,7 @@ int no_warnings = 0;
 
 
 static void
-verror(int seriousness, char *message, va_list val)
+verror(int seriousness, const char *message, va_list val)
 {
   char pattern[BUFSIZ];
   char buffer[BUFSIZ];
@@ -55,7 +55,7 @@ verror(int seriousness, char *message, va_list val)
 }
 
 void
-fatal_error(char *message, ...)
+fatal_error(const char *message, ...)
 {
   va_list val;
   va_start(val, message);
@@ -65,7 +65,7 @@ fatal_error(char *message, ...)
 }
 
 void
-error(char *message, ...)
+error(const char *message, ...)
 {
   va_list val;
   va_start(val, message);
@@ -74,7 +74,7 @@ error(char *message, ...)
 }
 
 void
-warning(char *message, ...)
+warning(const char *message, ...)
 {
   va_list val;
   va_start(val, message);
@@ -83,7 +83,7 @@ warning(char *message, ...)
 }
 
 void
-warncontext(char *message, ...)
+warncontext(const char *message, ...)
 {
   va_list val;
   va_start(val, message);
@@ -92,7 +92,7 @@ warncontext(char *message, ...)
 }
 
 void
-clp_error_handler(char *message)
+clp_error_handler(const char *message)
 {
   verbose_endline();
   fputs(message, stderr);
@@ -445,7 +445,7 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
 
 
 char *
-explode_filename(char *filename, int number, char *name, int max_nimages)
+explode_filename(const char *filename, int number, const char *name, int max_nimages)
 {
   static char *s;
   int l = strlen(filename);
@@ -490,6 +490,7 @@ int
 parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *c;
+  (void)thunk;
   
   frame_spec_1 = 0;
   frame_spec_2 = -1;
@@ -571,6 +572,7 @@ int
 parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
+  (void)thunk;
 
   if (*arg == '_' && arg[1] == 'x') {
     dimensions_x = 0;
@@ -597,6 +599,7 @@ int
 parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
+  (void)thunk;
   
   position_x = strtol(arg, &val, 10);
   if (*val == ',') {
@@ -615,6 +618,7 @@ int
 parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
+  (void)thunk;
   
   parsed_scale_factor_x = strtod(arg, &val);
   if (*val == 'x') {
@@ -637,8 +641,9 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   const char *input_arg = arg;
   char *val;
-  
   int x = position_x = strtol(arg, &val, 10);
+  (void)thunk;
+  
   if (*val == ',') {
     int y = position_y = strtol(val + 1, &val, 10);
     if (*val == '-' && parse_position(clp, val + 1, 0, 0)) {
@@ -704,6 +709,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   const char *input_arg = arg;
   char *str;
   int red, green, blue;
+  (void)thunk;
   
   if (*arg == '#') {
     int len = strlen(++arg);
@@ -787,7 +793,7 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
  **/
 
 static Gif_Colormap *
-read_text_colormap(FILE *f, char *name)
+read_text_colormap(FILE *f, const char *name)
 {
   char buf[BUFSIZ];
   Gif_Colormap *cm = Gif_NewFullColormap(0, 256);
@@ -842,7 +848,7 @@ read_text_colormap(FILE *f, char *name)
 }
 
 Gif_Colormap *
-read_colormap_file(char *name, FILE *f)
+read_colormap_file(const char *name, FILE *f)
 {
   Gif_Colormap *cm = 0;
   int c;
@@ -1174,8 +1180,7 @@ handle_screen(Gif_Stream *dest, uint16_t width, uint16_t height)
 }
 
 static void
-handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
-		       Gt_Frame *fr, int first_image)
+handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr)
 {
   Gif_Stream *gfs = fr->stream;
   
@@ -1385,7 +1390,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     
     /* Flipping and rotating, and also setting the screen size */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-      handle_flip_and_screen(dest, desti, fr, i == 0);
+      handle_flip_and_screen(dest, desti, fr);
     else
       handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
     

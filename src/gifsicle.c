@@ -31,7 +31,7 @@ int first_input_frame = 0;
 Gt_Frameset *nested_frames = 0;
 
 Gif_Stream *input = 0;
-char *input_name = 0;
+const char *input_name = 0;
 static int unoptimizing = 0;
 
 int gif_read_flags = 0;
@@ -463,7 +463,7 @@ gifread_error(const char *message, int which_image, void *thunk)
 }
 
 void
-input_stream(char *name)
+input_stream(const char *name)
 {
   FILE *f;
   Gif_Stream *gfs;
@@ -529,8 +529,8 @@ input_stream(char *name)
       active_output_data.output_name = input_name;
     else if (mode == EXPLODING) {
       /* Explode into current directory. */
-      char *explode_name = (input_name ? input_name : "#stdin#");
-      char *slash = strrchr(explode_name, PATHNAME_SEPARATOR);
+      const char *explode_name = (input_name ? input_name : "#stdin#");
+      const char *slash = strrchr(explode_name, PATHNAME_SEPARATOR);
       if (slash)
 	active_output_data.output_name = slash + 1;
       else
@@ -611,7 +611,7 @@ input_done(void)
  **/
 
 static void
-set_new_fixed_colormap(char *name)
+set_new_fixed_colormap(const char *name)
 {
   int i;
   if (name && strcmp(name, "web") == 0) {
@@ -711,7 +711,7 @@ do_colormap_change(Gif_Stream *gfs)
  **/
 
 static void
-write_stream(char *output_name, Gif_Stream *gfs)
+write_stream(const char *output_name, Gif_Stream *gfs)
 {
   FILE *f;
   
@@ -743,7 +743,7 @@ write_stream(char *output_name, Gif_Stream *gfs)
 }
 
 static void
-merge_and_write_frames(char *outfile, int f1, int f2)
+merge_and_write_frames(const char *outfile, int f1, int f2)
 {
   Gif_Stream *out;
   int compress_immediately;
@@ -834,7 +834,7 @@ output_frames(void)
      It's not like any other option, but seems right: it fits the natural
      order -- input, then output. */
   int i;
-  char *outfile = active_output_data.output_name;
+  const char *outfile = active_output_data.output_name;
   active_output_data.output_name = 0;
   
   /* Output information only now. */
@@ -868,7 +868,7 @@ output_frames(void)
 	 int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
 	 char *explodename;
 	 
-	 char *imagename = 0;
+	 const char *imagename = 0;
 	 if (fr->explode_by_name)
 	   imagename = fr->name ? fr->name : fr->image->identifier;
 	 
@@ -900,7 +900,7 @@ output_frames(void)
  **/
 
 int
-frame_argument(Clp_Parser *clp, char *arg)
+frame_argument(Clp_Parser *clp, const char *arg)
 {
   /* Returns 0 iff you should try a file named `arg'. */
   int val = parse_frame_spec(clp, arg, -1, 0);
@@ -920,8 +920,8 @@ static int
 handle_extension(Clp_Parser *clp, int is_app)
 {
   Gif_Extension *gfex;
-  char *extension_type = clp->arg;
-  char *extension_body = Clp_Shift(clp, 1);
+  const char *extension_type = clp->arg;
+  const char *extension_body = Clp_Shift(clp, 1);
   if (!extension_body) {
     Clp_OptionError(clp, "%O requires two arguments");
     return 0;
@@ -933,7 +933,7 @@ handle_extension(Clp_Parser *clp, int is_app)
   else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
     gfex = Gif_NewExtension(extension_type[0], 0);
   else {
-    long l = strtol(extension_type, &extension_type, 0);
+    long l = strtol(extension_type, (char **)&extension_type, 0);
     if (*extension_type != 0 || l < 0 || l >= 256)
       fatal_error("bad extension type: must be a number between 0 and 255");
     gfex = Gif_NewExtension(l, 0);
@@ -1501,7 +1501,7 @@ main(int argc, char **argv)
 	  (output_transforms, &pipe_color_transformer);
       else
 	output_transforms = append_color_transform
-	  (output_transforms, &pipe_color_transformer, clp->arg);
+	  (output_transforms, &pipe_color_transformer, (void *)clp->arg);
       break;
       
      case COLORMAP_OPT:
