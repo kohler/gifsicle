@@ -1,9 +1,13 @@
 Gifsicle NEWS
 
-Version 1.16
+Version 1.16   31.Aug.1999
 
-* Optimization improvement: More colormap manipulation. Version 1.16 is
-  smaller than 1.15 in the large majority of cases (but not all).
+* Optimization improvement: More colormap manipulation. Version 1.16
+  produces smaller GIFs than 1.15 in the large majority of cases (but not
+  all).
+
+* Fixed memory corruption bug in quantization. Found and fixed by Steven
+  Marthouse <comments@vrml3d.com>.
 
 
 Version 1.15   20.Aug.1999

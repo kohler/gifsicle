@@ -60,12 +60,14 @@ add_histogram_color(Gif_Color *color, Gif_Histogram *hist, unsigned long count)
       color->pixel = i;
       return;
     }
-  
+
   if (hist->n > ((hist->cap * 7) >> 3)) {
     Gif_Histogram new_hist;
     init_histogram(&new_hist, hist);
     delete_histogram(hist);
     *hist = new_hist;
+    hc = hist->c;		/* 31.Aug.1999 - bug fix from Steven Marthouse
+				   <comments@vrml3d.com> */
   }
 
   hist->n++;
