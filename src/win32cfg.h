@@ -3,10 +3,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Package and version. */
-#define PACKAGE "gifsicle"
-#define VERSION "1.32 (Windows)"
-
 /* Define when using the debugging malloc library. */
 /* #undef DMALLOC */
 
@@ -27,6 +23,9 @@ typedef signed __int32 int32_t;
 
 /* Define this to write GIFs to stdout even when stdout is a terminal. */
 /* #undef OUTPUT_GIF_TO_TERMINAL */
+
+/* Define if GIF LZW compression is off. */
+/* #undef GIF_UNGIF */
 
 /* Windows doesn't have popen, but it does have _popen. */
 #define popen _popen
@@ -50,8 +49,18 @@ typedef signed __int32 int32_t;
 /* Define if you have the strtoul function.  */
 #define HAVE_STRTOUL 1
 
+/* Define if you have the <inttypes.h> header file.  */
+/* #undef HAVE_INTTYPES_H */
+
 /* Define if you have the <sys/select.h> header file.  */
 /* #undef HAVE_SYS_SELECT_H */
+
+/* Name of package */
+#define PACKAGE "gifsicle"
+
+/* Version number of package */
+#define VERSION "1.32 (Windows)"
+
 
 #ifdef __cplusplus
 extern "C" {

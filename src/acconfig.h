@@ -2,10 +2,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Package and version. */
-#define PACKAGE "gifsicle"
-#define VERSION "97"
-
 /* Define when using the debugging malloc library. */
 #undef DMALLOC
 
