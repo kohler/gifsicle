@@ -70,23 +70,23 @@ versionize:
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
-	mkdir -p /tmp/rpmb/SOURCES /tmp/rpmb/RPMS/$$buildarch \
-	/tmp/rpmb/BUILD ; \
-	echo 'topdir: /tmp/rpmb' > /tmp/rpmb/rc ; \
-	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmb/SOURCES ; \
-	rpm --rcfile /tmp/rpmb/rc -bb rpm.spec ; \
-	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm .
-	rm -rf /tmp/rpmb
+	mkdir -p /tmp/rpmg/SOURCES /tmp/rpmg/RPMS/$$buildarch \
+	/tmp/rpmg/BUILD ; \
+	echo 'topdir: /tmp/rpmg' > /tmp/rpmg/rc ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmg/SOURCES ; \
+	rpm --rcfile /tmp/rpmg/rc -bb rpm.spec ; \
+	cp /tmp/rpmg/RPMS/$$buildarch/*.rpm .
+	rm -rf /tmp/rpmg
 
 rpm-ungif: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
-	mkdir -p /tmp/rpmb/SOURCES /tmp/rpmb/RPMS/$$buildarch \
-	/tmp/rpmb/BUILD ; \
-	echo 'topdir: /tmp/rpmb' > /tmp/rpmb/rc ; \
-	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmb/SOURCES ; \
-	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpmb/rc -bb rpm.spec ; \
-	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm `echo /tmp/rpmb/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
-	rm -rf /tmp/rpmb
+	mkdir -p /tmp/rpmug/SOURCES /tmp/rpmug/RPMS/$$buildarch \
+	/tmp/rpmug/BUILD ; \
+	echo 'topdir: /tmp/rpmug' > /tmp/rpmug/rc ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmug/SOURCES ; \
+	GIFSICLE_UNGIF=yes rpm --rcfile /tmp/rpmug/rc -bb rpm.spec ; \
+	cp /tmp/rpmug/RPMS/$$buildarch/*.rpm `echo /tmp/rpmug/RPMS/$$buildarch/*.rpm | sed 's/.*gifsicle/ungifsicle/'`
+	rm -rf /tmp/rpmug
 
 dist-ungif: dist
 	tar xzf gifsicle-$(VERSION).tar.gz
