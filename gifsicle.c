@@ -1006,7 +1006,7 @@ main(int argc, char **argv)
   initialize_def_frame();
   
 #ifdef DMALLOC
-  dmalloc_verbose(fopen("fudge", "w"));
+  dmalloc_verbose("fudge");
 #endif
   
   /* Yep, I'm an idiot.

@@ -180,7 +180,10 @@ dmalloc_report(void)
 
 
 void
-dmalloc_verbose(FILE *f)
+dmalloc_verbose(const char *out_name)
 {
-  verbose_out = f;
+  if (out_name)
+    verbose_out = fopen(out_name, "w");
+  else
+    verbose_out = stdout;
 }

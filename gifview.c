@@ -592,6 +592,8 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   classh.res_class = "Gifview";
   XSetWMProperties(display, window, &window_name, &icon_name,
 		   NULL, 0, sizeh, NULL, &classh);
+  XFree(window_name.value);
+  XFree(icon_name.value);
   
   if (!wm_delete_window_atom) {
     wm_delete_window_atom = XInternAtom(display, "WM_DELETE_WINDOW", False);
