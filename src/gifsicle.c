@@ -1164,7 +1164,7 @@ main(int argc, char **argv)
      "asis", GIF_DISPOSAL_ASIS,
      "background", GIF_DISPOSAL_BACKGROUND,
      "bg", GIF_DISPOSAL_BACKGROUND,
-     "previous", GIF_DISPOSAL_ASIS,
+     "previous", GIF_DISPOSAL_PREVIOUS,
      0);
   Clp_AddStringListType
     (clp, COLORMAP_ALG_TYPE, 0,

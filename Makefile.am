@@ -6,7 +6,7 @@ SUBDIRS = src
 man_MANS = gifsicle.1 @OTHERMANS@
 
 EXTRA_DIST = gifsicle.spec \
-	include/lcdf/clp.h \
+	include/lcdf/clp.h include/lcdf/inttypes.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
 
@@ -18,7 +18,7 @@ srclinks:
 	test -d $(srcdir)/include || mkdir $(srcdir)/include
 	test -d $(srcdir)/include/lcdf || mkdir $(srcdir)/include/lcdf
 	test -d $(srcdir)/include/lcdfgif || mkdir $(srcdir)/include/lcdfgif
-	for i in clp ; do \
+	for i in clp inttypes ; do \
 	ln -sf ../../../liblcdf/include/lcdf/$$i.h include/lcdf/$$i.h ; done
 	for i in gif gifx ; do \
 	ln -sf ../../../liblcdf/include/lcdfgif/$$i.h include/lcdfgif/$$i.h ; done
