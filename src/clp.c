@@ -22,10 +22,6 @@
 #if !defined(HAVE_STRTOUL) && !defined(HAVE_CONFIG_H)
 # define HAVE_STRTOUL 1
 #endif
-/* By default, assume we don't have inline. */
-#if !defined(inline) && !defined(__cplusplus) && !defined(HAVE_CONFIG_H)
-# define inline
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -1143,18 +1139,17 @@ grow_build_string(Clp_BuildString *bs, int want)
   bs->pos = bs->text + ipos;
 }
 
-static inline void
-ensure_build_string(Clp_BuildString *bs, int space)
-{
-  if ((bs->pos - bs->text) + space >= bs->capacity)
-    grow_build_string(bs, (bs->pos - bs->text) + space);
-}
+#define ENSURE_BUILD_STRING(bs, space) \
+  do {									\
+    if (((bs)->pos - (bs)->text) + (space) >= (bs)->capacity)		\
+      grow_build_string((bs), ((bs)->pos - (bs)->text) + (space));	\
+  } while (0)
 
 static void
 append_build_string(Clp_BuildString *bs, const char *s, int l)
 {
   if (l < 0) l = strlen(s);
-  ensure_build_string(bs, l);
+  ENSURE_BUILD_STRING(bs, l);
   memcpy(bs->pos, s, l);
   bs->pos += l;
 }
@@ -1193,7 +1188,7 @@ Clp_VaOptionError(Clp_Parser *clp, Clp_BuildString *bs,
      
      case 'c': {
        int c = va_arg(val, int);
-       ensure_build_string(bs, 4);
+       ENSURE_BUILD_STRING(bs, 4);
        if (c >= 32 && c <= 126)
 	 *bs->pos++ = c;
        else if (c < 32) {
@@ -1208,7 +1203,7 @@ Clp_VaOptionError(Clp_Parser *clp, Clp_BuildString *bs,
      
      case 'd': {
        int d = va_arg(val, int);
-       ensure_build_string(bs, 32);
+       ENSURE_BUILD_STRING(bs, 32);
        sprintf(bs->pos, "%d", d);
        bs->pos = strchr(bs->pos, 0);
        break;
@@ -1220,7 +1215,7 @@ Clp_VaOptionError(Clp_Parser *clp, Clp_BuildString *bs,
 	 append_build_string(bs, "(no current option!)", -1);
        else if (cli->current_short) {
 	 append_build_string(bs, cli->option_chars, -1);
-	 ensure_build_string(bs, 1);
+	 ENSURE_BUILD_STRING(bs, 1);
 	 *bs->pos++ = opt->short_name;
        } else if (cli->negated_by_no) {
 	 append_build_string(bs, cli->option_chars, -1);
@@ -1234,12 +1229,12 @@ Clp_VaOptionError(Clp_Parser *clp, Clp_BuildString *bs,
      }
      
      case '%':
-      ensure_build_string(bs, 1);
+      ENSURE_BUILD_STRING(bs, 1);
       *bs->pos++ = '%';
       break;
       
      default:
-      ensure_build_string(bs, 2);
+      ENSURE_BUILD_STRING(bs, 2);
       *bs->pos++ = '%';
       *bs->pos++ = *percent;
       break;
