@@ -3,7 +3,7 @@ Gifsicle NEWS
 Version 1.14.2   16.Aug.1999
 
 * Fixed memory bug in Gif_DeleteImage (I freed a block of memory, then
-  accessed it). I am a moron!!
+  accessed it). I am a moron!! This bug affected Version 1.14.1 only.
 
 
 Version 1.14.1   9.Aug.1999
