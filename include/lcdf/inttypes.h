@@ -30,4 +30,5 @@ typedef unsigned long uintptr_t;
 # endif
 #endif
 
+/* Note: Windows compilers call these types '[un]signed __int8', etc. */
 #endif
