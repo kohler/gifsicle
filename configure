@@ -531,7 +531,7 @@ fi
 
 
 
-VERSION=1.3.3
+VERSION=1.3.4
 
 GIFDIFFVERSION=1.0
 
@@ -1879,7 +1879,7 @@ INSTALLERS=`echo $PROGRAMS | sed 's/\([a-z][a-z]*\)/install-\1/g'`
 #
 
 if test "$use_dmalloc"; then
-  MEMORY_PREPROCESSOR='#include "dmalloc.h"\
+  GIF_MEMORY_DEFINES='#include "dmalloc.h"\
 #define Gif_DeleteFunc		(&debug_free)\
 #define Gif_DeleteArrayFunc	(&debug_free)'
   cat >> confdefs.h <<\EOF
@@ -1888,7 +1888,7 @@ EOF
 
   MALLOC_O='dmalloc.o'
 else
-  MEMORY_PREPROCESSOR='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
+  GIF_MEMORY_DEFINES='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
 #define realloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)\
 void *fail_die_malloc(int, const char *, int);\
 void *fail_die_realloc(void *, int, const char *, int);'
@@ -2248,7 +2248,7 @@ s%@X_EXTRA_LIBS@%$X_EXTRA_LIBS%g
 s%@PROGRAMS@%$PROGRAMS%g
 s%@INSTALLERS@%$INSTALLERS%g
 s%@GETTIMEOFDAY@%$GETTIMEOFDAY%g
-s%@MEMORY_PREPROCESSOR@%$MEMORY_PREPROCESSOR%g
+s%@GIF_MEMORY_DEFINES@%$GIF_MEMORY_DEFINES%g
 s%@MALLOC_O@%$MALLOC_O%g
 s%@RANDOM_FUNC@%$RANDOM_FUNC%g
 s%@INTEGER_TYPES@%$INTEGER_TYPES%g

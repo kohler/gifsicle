@@ -94,7 +94,7 @@ srclinks:
 versionize:
 	perl -pi~ -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.man gifview.man
 	perl -pi~ -e "s/^\\.ds V.*/.ds V $(GIFDIFFVERSION)/;" gifdiff.man
-	perl -pi~ -e "s/^Version: .*/Version: $(VERSION)/; s/gifsicle-[\d.]+\.tar\.gz/gifsicle-$(VERSION).tar.gz/;" rpm.spec
+	perl -pi~ -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\d.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" rpm.spec
 
 #####
 # Cleaning and distribution
@@ -106,7 +106,7 @@ distclean: mostlyclean
 	rm -f Makefile gif.h config.status config.log config.cache
 realclean: distclean
 
-dist:
+$(PACKAGE)-$(VERSION).tar.gz:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
 	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
@@ -115,6 +115,23 @@ dist:
 	gifsicle.h merge.c support.c quantize.c optimize.c gifsicle.c \
 	gifx.h gifx.c gifview.c gifsicle.man gifview.man \
 	gifdiff.c gifdiff.man \
+	logo.gif logo1.gif rpm.spec \
 	$(PACKAGE)-$(VERSION)
 	gtar czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
 	rm -r $(PACKAGE)-$(VERSION)
+dist:
+	@rm -f $(PACKAGE)-$(VERSION).tar.gz
+	@make $(PACKAGE)-$(VERSION).tar.gz
+
+rpm: $(PACKAGE)-$(VERSION).tar.gz
+	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
+	mkdir -p /tmp/rpmb/SOURCES /tmp/rpmb/RPMS/$$buildarch \
+	/tmp/rpmb/BUILD ; \
+	echo 'topdir: /tmp/rpmb' > /tmp/rpmb/rc ; \
+	cp logo1.gif $(PACKAGE)-$(VERSION).tar.gz /tmp/rpmb/SOURCES ; \
+	rpm --rcfile /tmp/rpmb/rc -bb rpm.spec ; \
+	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm .
+	rm -rf /tmp/rpmb
+
+.PHONY: all install install-gifsicle install-gifview install-gifdiff \
+	srclinks versionize dist rpm clean mostlyclean distclean realclean

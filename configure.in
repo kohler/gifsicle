@@ -1,6 +1,6 @@
 AC_INIT(gifsicle.h)
 
-VERSION=1.3.3
+VERSION=1.3.4
 AC_SUBST(VERSION)
 GIFDIFFVERSION=1.0
 AC_SUBST(GIFDIFFVERSION)
@@ -87,19 +87,19 @@ AC_SUBST(GETTIMEOFDAY)dnl
 #
 
 if test "$use_dmalloc"; then
-  MEMORY_PREPROCESSOR='#include "dmalloc.h"\
+  GIF_MEMORY_DEFINES='#include "dmalloc.h"\
 #define Gif_DeleteFunc		(&debug_free)\
 #define Gif_DeleteArrayFunc	(&debug_free)'
   AC_DEFINE(DMALLOC)
   MALLOC_O='dmalloc.o'
 else
-  MEMORY_PREPROCESSOR='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
+  GIF_MEMORY_DEFINES='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
 #define realloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)\
 void *fail_die_malloc(int, const char *, int);\
 void *fail_die_realloc(void *, int, const char *, int);'
   MALLOC_O='fmalloc.o'
 fi
-AC_SUBST(MEMORY_PREPROCESSOR)dnl
+AC_SUBST(GIF_MEMORY_DEFINES)dnl
 AC_SUBST(MALLOC_O)dnl
 
 #
