@@ -188,7 +188,7 @@ show_frame(int imagenumber, char *imagename)
   
   if (!gfx) {
     gfx = Gif_NewXContext(display, window);
-    gfx->transparentvalue = 3;
+    gfx->transparent_value = 3;
   }
   pixmap = Gif_XImage(gfx, input, gfi);
   
