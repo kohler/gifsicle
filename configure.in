@@ -64,6 +64,8 @@ ac_cv_gettimeofday=0,
 ac_cv_gettimeofday=2)],
 ac_cv_gettimeofday=1)])
   AC_DEFINE_UNQUOTED(GETTIMEOFDAY_PROTO, $ac_cv_gettimeofday)
+else
+  AC_DEFINE_UNQUOTED(X_DISPLAY_MISSING, 1)
 fi
 
 if test "$build_gifdiff"; then
@@ -94,10 +96,11 @@ AC_CHECK_FUNC(random, random_func=random, random_func=rand)
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func})
 
 dnl
-dnl strerror()?
+dnl strerror()? strtoul()?
 dnl
 
 AC_REPLACE_FUNCS(strerror)
+AC_CHECK_FUNCS(strtoul)
 
 dnl
 dnl Integer typedefs

@@ -4,7 +4,7 @@
 
 /* Package and version */
 #define PACKAGE "gifsicle"
-#define VERSION "1.9.2"
+#define VERSION "97"
 
 /* Are we using the debugging malloc library? */
 #undef DMALLOC
@@ -23,6 +23,12 @@
 #undef u_int16_t
 #undef u_int32_t
 #undef int32_t
+
+/* Pathname separator character ('/' on Unix) */
+#define PATHNAME_SEPARATOR '/'
+
+/* Define this to write GIFs to stdout even when stdout is a terminal */
+#undef OUTPUT_GIF_TO_TERMINAL
 
 @TOP@
 @BOTTOM@

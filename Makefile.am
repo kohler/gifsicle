@@ -27,10 +27,10 @@ gifdiff_SOURCES = clp.h clp.c \
 
 INCLUDES = $(X_CFLAGS)
 
-EXTRA_DIST = README.win \
-		dmalloc.c dmalloc.h fmalloc.c strerror.c \
+EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c \
 		gifsicle.1 gifview.1 gifdiff.1 \
-		logo.gif logo1.gif rpm.spec
+		logo.gif logo1.gif rpm.spec \
+		Makefile.w32 win32cfg.h
 
 clp.o: clp.c clp.h
 
@@ -57,8 +57,9 @@ srclinks:
 	ln -sf ~/src/giflib/$$i $$i ; done
 
 versionize:
-	perl -pi~ -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
-	perl -pi~ -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" rpm.spec
+	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
+	perl -pi -e "s/^Version: .*/Version: $(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" rpm.spec
+	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" win32cfg.h
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \

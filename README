@@ -32,8 +32,8 @@ unless you're testing GIF-manipulating software.) See its man page,
 including, but not limited to, the implied warranties of merchantability
 and fitness for a particular purpose.
 
-MAKING GIFSICLE
----------------
+MAKING GIFSICLE ON UNIX
+-----------------------
    You need an ANSI C compiler, such as gcc.
 
    Just type `./configure', then `make'. `make install' will build and
@@ -44,6 +44,14 @@ details.
 
    To build gifview also, give `./configure' the `--enable-gifview' option.
 To build gifdiff, give the `--enable-gifdiff' option.
+
+MAKING GIFSICLE ON 32-BIT WINDOWS
+---------------------------------
+   Emil Mikulic <darkmoon@connexus.net.au> has provided a Makefile for
+building gifsicle out of the box on 32-bit Windows. Just unpack the
+distribution, change into that directory, and type `nmake -f Makefile.w32'.
+Note that gifview and gifdiff will not be built. See the `Makefile.w32'
+file for more information.
 
 CHANGES
 -------

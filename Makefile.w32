@@ -1,0 +1,24 @@
+# Win32 Makefile by Emil Mikulic <darkmoon@connexus.net.au>
+
+# This makefile will work under Win32 (95/98/NT/whatever)
+# It should work out-of-the-box with Visual C++ 5
+# No guarantees about other compilers
+#
+# C:\GIFSICLE> nmake -f Makefile.w32
+
+# If you have a problem mail me at the address above.
+
+CC = cl
+CFLAGS = -O2 -GA -MD
+
+SOURCE =        clp.c fmalloc.c giffunc.c gifread.c gifunopt.c gifwrite.c \
+                merge.c optimize.c quantize.c support.c xform.c \
+                gifsicle.c
+
+gifsicle.exe: $(SOURCE)
+        copy win32cfg.h config.h
+        $(CC) $(CFLAGS) /ogifsicle.exe $(SOURCE)
+
+clean:
+        del *.obj
+        del *.exe

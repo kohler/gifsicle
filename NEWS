@@ -2,8 +2,13 @@ Gifsicle NEWS
 
 Version 1.9.2
 
+* Gifsicle compiles out of the box on Windows! Port maintained by Emil
+  Mikulic <darkmoon@connexus.net.au>.
+
 * Moved to config.h-based configuration to simplify GIF library and Windows
   port.
+
+* Some CLP improvements.
 
 
 Version 1.9.1   16.Dec.1998

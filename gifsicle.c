@@ -7,7 +7,7 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
-#include "config.h"
+#include <config.h>
 #include "gifsicle.h"
 #include <string.h>
 #include <stdio.h>
@@ -15,6 +15,12 @@
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
+
+/* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
+#if defined(_MSDOS) || defined(_WIN32)
+# include <fcntl.h>
+# include <io.h>
+#endif
 
 
 Gt_Frame def_frame;
@@ -406,6 +412,9 @@ input_stream(char *name)
   files_given++;
   
   if (name == 0 || strcmp(name, "-") == 0) {
+#if defined(_MSDOS) || defined(_WIN32)
+    _setmode(_fileno(stdin), _O_BINARY);
+#endif
     f = stdin;
     name = "<stdin>";
   } else
@@ -452,7 +461,7 @@ input_stream(char *name)
     else if (mode == EXPLODING) {
       /* Explode into current directory. Use name instead of input_name: it's
          #stdin# if required. */
-      char *slash = strrchr(name, '/');
+      char *slash = strrchr(name, PATHNAME_SEPARATOR);
       if (slash)
 	active_output_data.output_name = slash + 1;
       else
@@ -644,20 +653,22 @@ static void
 write_stream(char *output_name, Gif_Stream *gfs)
 {
   FILE *f;
-#ifndef NO_TTY_CHECK
-  extern int isatty(int);
-#endif
   
   if (output_name)
     f = fopen(output_name, "wb");
   else {
-#ifndef NO_TTY_CHECK
+#ifndef OUTPUT_GIF_TO_TERMINAL
+    extern int isatty(int);
     if (isatty(fileno(stdout))) {
       error("not writing to <stdout>: it's a terminal");
       return;
     }
 #endif
+#if defined(_MSDOS) || defined(_WIN32)
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
     f = stdout;
+    output_name = "<stdout>";
   }
   
   if (f) {
@@ -665,7 +676,7 @@ write_stream(char *output_name, Gif_Stream *gfs)
     fclose(f);
     any_output_successful = 1;
   } else
-    error("%s: %s.", output_name ? output_name : "<stdout>", strerror(errno));
+    error("%s: %s.", output_name, strerror(errno));
 }
 
 static void

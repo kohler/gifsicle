@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.9.1
+.ds V 1.9.2
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -399,16 +399,16 @@ The
 arguments are frame selections (see above). These arguments always refer to
 frames from the
 .I original
-input GIF. So, if `in.gif' has 11 frames and `other.gif' has one, this
+input GIF. So, if `in.gif' has 3 frames and `other.gif' has one, this
 command
 .Sp
 .RS 5
 \fBgifsicle\fR in.gif
-.OP \-\-delete " #0\-5 " \-\-replace " #10 other.gif"
+.OP \-\-delete " #0 " \-\-replace " #2 other.gif"
 .RE
 .Sp
-will work as expected, producing an output animation with 5 frames:
-`in.gif' frames 6 through 9, then `other.gif'.
+will produce an output animation with 2 frames: `in.gif' frame 1, then
+`other.gif'.
 .PP
 The
 .I other-GIFs
@@ -832,10 +832,9 @@ should be a shell command that reads from standard input and writes to
 standard output. Each colormap in the output GIF will be translated into
 text colormap format (see
 .OP \-\-use\-colormap
-below) and piped to the command. The output that
-.IR command
-generates (which should also be in text colormap format) will be used as
-the colormap instead.
+below) and piped to the command. The output that command generates (which
+should also be in text colormap format) will be used as the colormap
+instead.
 '
 .Sp
 .TP
