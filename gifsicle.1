@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.23
+.ds V 1.24
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -843,14 +843,33 @@ animation artifacts, so it is off by default.
 '
 Resize the output GIF to
 .IR width x height .
-If
+Either
 .I width
-is an underscore `_', then the output GIF is scaled to
+or
 .I height
-pixels tall without changing its aspect ratio (and analogously if
-.I height
-is an underscore). Resizing happens after all input frames have been
-combined and before optimization.
+may be an underscore `_'. If the argument is
+.IR width x_,
+then the output GIF is scaled to
+.I width
+pixels wide without changing its aspect ratio. An analogous operation is
+performed for
+.RI _x height .
+Resizing happens after all input frames have been combined and before
+optimization.
+'
+.Sp
+.TP
+.OA \-\-resize\-width width
+'
+Same as
+.OA \-\-resize width x_.
+'
+.Sp
+.TP
+.OA \-\-resize\-height height
+'
+Same as
+.OA \-\-resize "" _x height .
 '
 .Sp
 .TP

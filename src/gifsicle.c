@@ -1,5 +1,5 @@
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -173,6 +173,8 @@ static const char *output_option_types[] = {
 #define SCALE_OPT		355
 #define NO_WARNINGS_OPT		356
 #define WARNINGS_OPT		357
+#define RESIZE_WIDTH_OPT	358
+#define RESIZE_HEIGHT_OPT	359
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -243,6 +245,11 @@ Clp_Option options[] = {
   
   { "replace", 0, REPLACE_OPT, FRAME_SPEC_TYPE, 0 },
   { "resize", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-width", 0, RESIZE_WIDTH_OPT, Clp_ArgUnsigned, Clp_Negate },
+  { "resize-height", 0, RESIZE_HEIGHT_OPT, Clp_ArgUnsigned, Clp_Negate },
+  { "resiz", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resi", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "res", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
@@ -1507,12 +1514,40 @@ main(int argc, char **argv)
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error("one of `--resize' width or height must be positive");
+	error("one of W and H must be positive in `--resize WxH'");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
 	def_output_data.resize_width = dimensions_x;
 	def_output_data.resize_height = dimensions_y;
+      }
+      break;
+      
+     case RESIZE_WIDTH_OPT:
+      MARK_CH(output, CH_RESIZE);
+      if (clp->negated)
+	def_output_data.scaling = 0;
+      else if (clp->val.u == 0) {
+	error("`--resize-width' argument must be positive");
+	def_output_data.scaling = 0;
+      } else {
+	def_output_data.scaling = 1; /* use resize dimensions */
+	def_output_data.resize_width = clp->val.u;
+	def_output_data.resize_height = 0;
+      }
+      break;
+      
+     case RESIZE_HEIGHT_OPT:
+      MARK_CH(output, CH_RESIZE);
+      if (clp->negated)
+	def_output_data.scaling = 0;
+      else if (clp->val.u == 0) {
+	error("`--resize-height' argument must be positive");
+	def_output_data.scaling = 0;
+      } else {
+	def_output_data.scaling = 1; /* use resize dimensions */
+	def_output_data.resize_width = 0;
+	def_output_data.resize_height = clp->val.u;
       }
       break;
       
@@ -1546,7 +1581,7 @@ main(int argc, char **argv)
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2000 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2001 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

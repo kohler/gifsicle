@@ -1,5 +1,18 @@
 Gifsicle NEWS
 
+Version 1.24   11.Feb.2001
+
+* Delete `unoptimized_pixmaps' array when deleting a viewer in gifview.
+  Reported by Franc,ois Petitjean <francois.petitjean@bureauveritas.com>.
+
+* Added `--resize-width' and `--resize-height' options.
+
+* Why is it that Frenchmen are always telling me to delete the Clp_Parser
+  immediately before calling exit()? Don't they realize that exit() frees
+  application memory just as well as free()? Are things different in
+  France? More French, perhaps?
+
+
 Version 1.23   12.Dec.2000
 
 * In Houston on a layover because of stupid Continental Airlines: allow

@@ -1,5 +1,5 @@
 /* support.c - Support functions for gifsicle.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -183,6 +183,8 @@ Whole-GIF options: Also --no-OPTION.\n\
       --color-method METHOD     Set method for choosing reduced colors.\n\
   -f, --dither                  Dither image after changing colormap.\n\
       --resize WxH              Resizes the output GIF to WxH.\n\
+      --resize-width W          Resizes to width W and proportional height.\n\
+      --resize-height H         Resizes to height H and proportional width.\n\
       --scale XFACTOR[xYFACTOR] Scales the output GIF by XFACTORxYFACTOR.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
       --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
