@@ -497,7 +497,7 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   int base = 10;
-  if (arg[0] == '0' && arg[1] == 'x') {
+  if (arg[0] == '0' && (arg[1] == 'x' || arg[1] == 'X')) {
     base = 16;
     arg += 2;
   }
