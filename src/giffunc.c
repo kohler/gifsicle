@@ -447,9 +447,9 @@ Gif_DeleteImage(Gif_Image *gfi)
   Gif_DeleteArray(gfi->img);
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
-  Gif_Delete(gfi);
   if (gfi->user_data && gfi->free_user_data)
     (*gfi->free_user_data)(gfi->user_data);
+  Gif_Delete(gfi);
 }
 
 
