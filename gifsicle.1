@@ -412,12 +412,9 @@ frames from the
 .I original
 input GIF. So, if `a.gif' has 3 frames and `b.gif' has one, this
 command
-.Sp
-.RS 5
-\fBgifsicle\fR a.gif
-.OP \-\-delete " '#0' " \-\-replace " '#2' b.gif"
-.RE
-.Sp
+.Es
+\fBgifsicle\fR a.gif \fB\-\-delete\fR '#0' \fB\-\-replace\fR '#2' b.gif
+.Ee
 will produce an output animation with 2 frames: `a.gif' frame 1, then
 `b.gif'.
 .PP
@@ -429,20 +426,14 @@ The
 .I other-GIFs
 last until the next frame change option, so this command replaces the
 first frame of `in.gif' with the merge of `a.gif' and `b.gif':
-.Sp
-.RS 5
-\fBgifsicle\fR \-b in.gif
-.OP \-\-replace " '#0' a.gif b.gif"
-.RE
-.Sp
+.Es
+\fBgifsicle\fR \-b in.gif \fB\-\-replace\fR '#0' a.gif b.gif
+.Ee
 This command, however, replaces the first frame of `in.gif' with
 `a.gif' and then processes `b.gif' separately:
-.Sp
-.RS 5
-\fBgifsicle\fR \-b in.gif 
-.OP \-\-replace " '#0' a.gif " \-\-done " b.gif"
-.RE
-.PP
+.Es
+\fBgifsicle\fR \-b in.gif \fB\-\-replace\fR '#0' a.gif \fB\-\-done\fR b.gif
+.Ee
 Warning: You shouldn't use both frame selections and frame changes on
 the same input GIF.
 '
