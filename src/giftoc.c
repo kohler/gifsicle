@@ -171,7 +171,7 @@ or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
   }
   
   if (!is_static)
-    printf("#include \"config.h\"\n#include \"gif.h\"\n\n");
+    printf("#include \"config.h\"\n#include <lcdfgif/gif.h>\n\n");
   
   for (; argc > 0; argc--, argv++) {
     FILE *f;
