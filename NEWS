@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.28   13.May.2001
+
+* `--colors' option still didn't work; it produced bad images. Again,
+  thanks to Dale Wiles <dwiles@buffalo.veridian.com> for reporting the bug.
+
+* Added explicit `--conserve-memory' option.
+
+
 Version 1.27   10.May.2001
 
 * Fixed `--colors' option, which caused segmentation faults. Thanks to Dale

@@ -114,6 +114,8 @@ typedef struct {
   double scale_x;
   double scale_y;
 
+  int conserve_memory;
+
 } Gt_OutputData;
 
 

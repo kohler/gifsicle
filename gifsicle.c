@@ -79,10 +79,11 @@ static int next_frame = 0;
 #define CH_EXTENSION		8
 #define CH_FLIP			9
 #define CH_ROTATE		10
+#define CH_MEMORY		11
 static const char *frame_option_types[] = {
   "interlace", "disposal", "delay", "transparency",
   "comment", "name", "position", "crop",
-  "extension", "flip", "rotation"
+  "extension", "flip", "rotation", "memory conservation"
 };
 
 /* input option types */
@@ -176,6 +177,7 @@ static const char *output_option_types[] = {
 #define RESIZE_WIDTH_OPT	358
 #define RESIZE_HEIGHT_OPT	359
 #define CROP_TRANSPARENCY_OPT	360
+#define CONSERVE_MEMORY_OPT	361
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -206,6 +208,7 @@ Clp_Option options[] = {
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "comment", 'c', COMMENT_OPT, Clp_ArgString, 0 },
   { "no-comments", 'c', NO_COMMENTS_OPT, 0, Clp_OnlyNegated },
+  { "conserve-memory", 0, CONSERVE_MEMORY_OPT, 0, Clp_Negate },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
   { "crop-transparency", 0, CROP_TRANSPARENCY_OPT, 0, Clp_Negate },
   
@@ -592,15 +595,6 @@ input_done(void)
   if (!input) return;
   
   if (verbosing) verbose_close('>');
-  /*if (infoing) {
-    int i;
-    if (input->userflags == 97)
-      stream_info(infoing, input, input_name,
-		  colormap_infoing, extension_infoing);
-    for (i = first_input_frame; i < frames->count; i++)
-      if (FRAME(frames, i).stream == input && FRAME(frames, i).use)
-	image_info(infoing, input, FRAME(frames, i).image, colormap_infoing);
-  }*/
   
   Gif_DeleteStream(input);
   input = 0;
@@ -760,15 +754,13 @@ merge_and_write_frames(char *outfile, int f1, int f2)
 
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
-
-  if (colormap_change)
-    compress_immediately = -1;
-  else if (active_output_data.scaling || active_output_data.optimizing > 0)
-    compress_immediately = 0;
-  else
-    compress_immediately = 1;
-
   warn_local_colormaps = !colormap_change;
+
+  compress_immediately = 1;
+  if (!active_output_data.conserve_memory
+      && (active_output_data.scaling || active_output_data.optimizing > 0
+	  || colormap_change))
+    compress_immediately = 0;
 
   out = merge_frame_interval(frames, f1, f2, &active_output_data,
 			     compress_immediately, &huge_stream);
@@ -1008,6 +1000,8 @@ initialize_def_frame(void)
   
   def_output_data.optimizing = 0;
   def_output_data.scaling = 0;
+
+  def_output_data.conserve_memory = 0;
   
   active_output_data = def_output_data;
 }
@@ -1053,6 +1047,8 @@ combine_output_options(void)
     active_output_data.scale_x = def_output_data.scale_x;
     active_output_data.scale_y = def_output_data.scale_y;
   }
+
+  COMBINE_ONE_OUTPUT_OPTION(CH_MEMORY, conserve_memory);
   
   def_output_data.colormap_fixed = 0;
   def_output_data.output_name = 0;
@@ -1606,7 +1602,12 @@ main(int argc, char **argv)
      case WARNINGS_OPT:
       no_warnings = clp->negated;
       break;
-      
+
+     case CONSERVE_MEMORY_OPT:
+      MARK_CH(output, CH_MEMORY);
+      def_output_data.conserve_memory = !clp->negated;
+      break;
+
      case VERSION_OPT:
 #ifdef GIF_UNGIF
       printf("LCDF Gifsicle %s (ungif)\n", VERSION);

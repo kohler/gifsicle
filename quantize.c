@@ -121,11 +121,11 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     Gif_Color *col;
     int ncol;
     int transparent = gfi->transparent;
-    int unoptimized = (gfi->img != 0);
+    int only_compressed = (gfi->img == 0);
     if (!gfcm) continue;
 
     /* unoptimize the image if necessary */
-    if (!unoptimized)
+    if (only_compressed)
       Gif_UncompressImage(gfi);
 
     /* sweep over the image data, counting pixels */
@@ -158,7 +158,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
       nbackground += gfi->width * gfi->height;
 
     /* unoptimize the image if necessary */
-    if (!unoptimized)
+    if (only_compressed)
       Gif_ReleaseUncompressedImage(gfi);
   }
   
@@ -944,7 +944,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    int unoptimized = (gfi->img != 0);
+    int only_compressed = (gfi->img == 0);
 
     if (gfcm) {
       /* If there was an old colormap, change the image data */
@@ -953,7 +953,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       unmark_colors(new_cm);
       unmark_colors(gfcm);
 
-      if (!unoptimized)
+      if (only_compressed)
 	Gif_UncompressImage(gfi);
       
       do {
@@ -963,8 +963,16 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 				       histogram));
 
       Gif_ReleaseUncompressedImage(gfi);
+      /* version 1.28 bug fix: release any compressed version or it'll cause
+         bad images */
+      Gif_ReleaseCompressedImage(gfi);
       Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
-      
+
+      if (only_compressed) {
+	Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+	Gif_ReleaseUncompressedImage(gfi);
+      }
+
       /* update count of used colors */
       for (j = 0; j < 256; j++)
 	new_col[j].pixel += histogram[j];
@@ -1039,12 +1047,22 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
     gfs->background = map[gfs->background];
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_Image *gfi = gfs->images[imagei];
+      int only_compressed = (gfi->img == 0);
       u_int32_t size;
-      byte *data = gfi->image_data;
+      byte *data;
+      if (only_compressed)
+	Gif_UncompressImage(gfi);
+      
+      data = gfi->image_data;
       for (size = gfi->width * gfi->height; size > 0; size--, data++)
 	*data = map[*data];
       if (gfi->transparent >= 0)
 	gfi->transparent = map[gfi->transparent];
+
+      if (only_compressed) {
+	Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+	Gif_ReleaseUncompressedImage(gfi);
+      }
     }
   }
   

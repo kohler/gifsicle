@@ -431,7 +431,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
   if (was_compressed) {
     Gif_FullCompressImage(gfs, gfi, gif_write_flags);
-    Gif_ReleaseCompressedImage(gfi);
+    Gif_ReleaseUncompressedImage(gfi);
   }
 }
 

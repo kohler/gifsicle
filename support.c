@@ -136,6 +136,7 @@ General options: Also --no-OPTION for info and verbose.\n\
       --version                 Print version number and exit.\n\
   -o, --output FILE             Write output to FILE.\n\
   -w, --no-warnings             Don't report warnings.\n\
+      --conserve-memory         Conserve memory at the expense of speed.\n\
 \n", program_name);
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
@@ -1274,11 +1275,11 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     int s;
     for (i = s = 0; i < nmerger; i++)
       s += ((merger[i]->image->width * merger[i]->image->height) / 1024) + 1;
-    *huge_stream = (s > 20 * 1024); /* 20 MB */
-    if (*huge_stream && compress_immediately < 0)
-      warning("working on a huge stream -- this may take a while, or fail");
-    else if (*huge_stream)
+    *huge_stream = (s > 200 * 1024); /* 200 MB */
+    if (*huge_stream && !compress_immediately) {
+      warning("huge GIF, conserving memory (processing may take a while)");
       compress_immediately = 1;
+    }
   }
   
   /* merge stream-specific info and clear colormaps */
@@ -1419,7 +1420,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->disposal = fr->disposal;
 
     /* compress immediately if possible to save on memory */
-    if (compress_immediately && desti->img) {
+    if (compress_immediately > 0 && desti->img) {
       Gif_FullCompressImage(dest, desti, gif_write_flags);
       Gif_ReleaseUncompressedImage(desti);
     }
