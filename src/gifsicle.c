@@ -910,8 +910,8 @@ handle_extension(Clp_Parser *clp, int is_app)
     Clp_OptionError(clp, "%O requires two arguments");
     return 0;
   }
-  
-  MARK_CH(frame, CH_EXTENSION);
+
+  UNCHECKED_MARK_CH(frame, CH_EXTENSION);
   if (is_app)
     gfex = Gif_NewExtension(255, extension_type);
   else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
@@ -1322,7 +1322,6 @@ main(int argc, char **argv)
       /* extensions options */
       
      case NO_EXTENSIONS_OPT:
-      MARK_CH(frame, CH_EXTENSION);
       def_frame.no_extensions = 1;
       break;
       
