@@ -146,6 +146,7 @@ static Cursor cur_arrow_cursor = 0;
 static Cursor cur_wait_cursor = 0;
 static const char *cur_resource_name;
 static Window cur_use_window = None;
+static int cur_use_window_new = 0;
 static const char *cur_background_color = "black";
 
 static Gt_Viewer *viewers;
@@ -167,6 +168,7 @@ static int interactive = 1;
 #define INSTALL_COLORMAP_OPT	308
 #define INTERACTIVE_OPT		309
 #define BACKGROUND_OPT		310
+#define NEW_WINDOW_OPT		311
 
 #define WINDOW_TYPE		(Clp_MaxDefaultType + 1)
 
@@ -183,6 +185,7 @@ Clp_Option options[] = {
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
   { "window", 'w', WINDOW_OPT, WINDOW_TYPE, 0 },
+  { "new-window", 0, NEW_WINDOW_OPT, WINDOW_TYPE, 0 },
 };
 
 
@@ -245,6 +248,7 @@ Options are:\n\
       --name NAME               Set application resource name to NAME.\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
+      --new-window WINDOW       Show GIF in new child of existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
   --bg, --background COLOR      Use COLOR for transparent pixels.\n\
   +e, --no-interactive          Ignore buttons and keystrokes.\n\
@@ -347,8 +351,7 @@ choose_visual(Gt_Viewer *viewer)
 
 
 Gt_Viewer *
-new_viewer(Display *display, Window use_window, Gif_Stream *gfs,
-	   const char *name)
+new_viewer(Display *display, Gif_Stream *gfs, const char *name)
 {
   Gt_Viewer *viewer;
   int i;
@@ -357,15 +360,15 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs,
   viewer = Gif_New(Gt_Viewer);
   viewer->display = display;
   
-  if (use_window) {
+  if (cur_use_window) {
     XWindowAttributes attr;
 
-    if (use_window == -1) {	/* means use root window */
+    if (cur_use_window == (Window)(-1)) {	/* means use root window */
       viewer->screen_number = DefaultScreen(display);
-      use_window = RootWindow(display, viewer->screen_number);
+      cur_use_window = RootWindow(display, viewer->screen_number);
     }
     
-    XGetWindowAttributes(display, use_window, &attr);
+    XGetWindowAttributes(display, cur_use_window, &attr);
     
     viewer->screen_number = -1;
     for (i = 0; i < ScreenCount(display); i++)
@@ -382,11 +385,17 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs,
        viewer->colormap);
     viewer->gfx->refcount++;
 
-    /* use root window, if that's what we were given; otherwise, create a
-       child of the window we were given */
-    viewer->window = (use_window == attr.root ? use_window : None);
-    viewer->parent = use_window;
-    viewer->use_window = (use_window == attr.root ? 1 : 0);
+    /* Before -- use root window, if that's what we were given; otherwise,
+       create a child of the window we were given */
+    /* 13.Nov.2001 - don't make a child of the window we were given! */
+    if (cur_use_window_new) {
+      viewer->window = None;
+      viewer->use_window = 0;
+    } else {
+      viewer->window = cur_use_window;
+      viewer->use_window = 1;
+    }
+    viewer->parent = cur_use_window;
     viewer->top_level = 0;
     viewer->resizable = 0;
     
@@ -486,9 +495,8 @@ delete_viewer(Gt_Viewer *viewer)
 static Gt_Viewer *
 next_viewer(Gif_Stream *gfs, const char *name)
 {
-  Gt_Viewer *viewer = new_viewer(cur_display, cur_use_window, gfs, name);
-  if (cur_use_window)
-    cur_use_window = None;
+  Gt_Viewer *viewer = new_viewer(cur_display, gfs, name);
+  cur_use_window = None;
   return viewer;
 }
 
@@ -1213,6 +1221,12 @@ main(int argc, char **argv)
       
      case WINDOW_OPT:
       cur_use_window = clp->val.u;
+      cur_use_window_new = 0;
+      break;
+      
+     case NEW_WINDOW_OPT:
+      cur_use_window = clp->val.u;
+      cur_use_window_new = 1;
       break;
       
      case INTERACTIVE_OPT:
