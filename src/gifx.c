@@ -24,7 +24,7 @@ extern "C" {
 #define SAFELS(a,b) ((b) < 0 ? (a) >> -(b) : (a) << (b))
 
 static void
-loadclosest(Gif_XContext *gfx)
+load_closest(Gif_XContext *gfx)
 {
   XColor *color;
   u_int16_t ncolor;
@@ -68,7 +68,7 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
   u_int32_t distance = 0x4000000;
   int i;
   
-  loadclosest(gfx);
+  load_closest(gfx);
   
   for (i = 0, closer = gfx->closest; i < gfx->nclosest; i++, closer++) {
     int redd = c->red - closer->red;
@@ -134,10 +134,8 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   byte *xdata;
   byte **img;
   
-  int i, j;
-  byte bitsperpixel;
-  int bitsperpixelmask;
-  int bytesperline;
+  int i, j, k;
+  int bytes_per_line;
   
   unsigned long savedtransparent = 0;
   u_int16_t nct;
@@ -175,37 +173,58 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs,
   xdata = Gif_NewArray(byte, ximage->bytes_per_line * gfi->height);
   ximage->data = (char *)xdata;
   
-  bitsperpixel = ximage->bits_per_pixel;
-  bitsperpixelmask = (1 << bitsperpixel) - 1;
-  bytesperline = ximage->bytes_per_line;
-  
   img = gfi->img;
+  bytes_per_line = ximage->bytes_per_line;
   
   /* The main loop */
-  for (j = 0; j < gfi->height; j++) {
-    int imshift = 0;
-    unsigned long impixel = 0;
-    byte *writer = xdata + bytesperline * j;
+  if (ximage->bits_per_pixel % 8 == 0) {
+    /* Optimize for cases where a pixel is exactly one or more bytes */
+    int bytes_per_pixel = ximage->bits_per_pixel / 8;
     
-    for (i = 0; i < gfi->width; i++) {
-      
-      unsigned long pixel;
-      if (img[j][i] < nct)
-	pixel = ct[ img[j][i] ].pixel & bitsperpixelmask;
-      else
-	pixel = ct[0].pixel & bitsperpixelmask;
-      
-      impixel |= SAFELS(pixel, imshift);
-      while (imshift + bitsperpixel >= BYTESIZE) {
-	*writer++ = impixel;
-	imshift -= BYTESIZE;
-	impixel = SAFELS(pixel, imshift);
+    for (j = 0; j < gfi->height; j++) {
+      byte *writer = xdata + bytes_per_line * j;
+      for (i = 0; i < gfi->width; i++) {
+	u_int32_t pixel;
+	if (img[j][i] < nct)
+	  pixel = ct[ img[j][i] ].pixel;
+	else
+	  pixel = ct[0].pixel;
+	for (k = 0; k < bytes_per_pixel; k++) {
+	  *writer++ = pixel;
+	  pixel >>= 8;
+	}
       }
-      imshift += bitsperpixel;
     }
     
-    if (imshift)
-      *writer++ = impixel;
+  } else {
+    /* Other bits-per-pixel */
+    int bits_per_pixel = ximage->bits_per_pixel;
+    u_int32_t bits_per_pixel_mask = (1UL << bits_per_pixel) - 1;
+    
+    for (j = 0; j < gfi->height; j++) {
+      int imshift = 0;
+      u_int32_t impixel = 0;
+      byte *writer = xdata + bytes_per_line * j;
+      
+      for (i = 0; i < gfi->width; i++) {
+	u_int32_t pixel;
+	if (img[j][i] < nct)
+	  pixel = ct[ img[j][i] ].pixel;
+	else
+	  pixel = ct[0].pixel;
+	
+	impixel |= SAFELS(pixel & bits_per_pixel_mask, imshift);
+	while (imshift + bits_per_pixel >= BYTESIZE) {
+	  *writer++ = impixel;
+	  imshift -= BYTESIZE;
+	  impixel = SAFELS(pixel, imshift);
+	}
+	imshift += bits_per_pixel;
+      }
+      
+      if (imshift)
+	*writer++ = impixel;
+    }
   }
   
   /* Restore saved transparent pixel value */
@@ -255,7 +274,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   
   int i, j;
   int transparent;
-  int bytesperline;
+  int bytes_per_line;
   
   /* Find the correct image */
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
@@ -272,7 +291,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   xdata = Gif_NewArray(byte, ximage->bytes_per_line * gfi->height);
   ximage->data = (char *)xdata;
-  bytesperline = ximage->bytes_per_line;
+  bytes_per_line = ximage->bytes_per_line;
   
   img = gfi->img;
   transparent = gfi->transparent;
@@ -281,7 +300,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   for (j = 0; j < gfi->height; j++) {
     int imshift = 0;
     unsigned long impixel = 0;
-    byte *writer = xdata + bytesperline * j;
+    byte *writer = xdata + bytes_per_line * j;
     
     for (i = 0; i < gfi->width; i++) {
       if (img[j][i] == transparent)
@@ -339,24 +358,6 @@ Gif_NewXContext(Display *display, Window window)
   gfx->colormap = attr.colormap;
   gfx->ncolormap = gfx->visual->map_entries;
   gfx->depth = attr.depth;
-  
-#if 0
-  {
-    int vclass;
-#if defined(__cplusplus) || defined(c_plusplus)
-    vclass = gfx->visual->c_class;
-#else
-    vclass = gfx->visual->class;
-#endif
-    
-    if (gfx->depth == 1)
-      gfx->colormodel = GIF_COLORMODEL_MONO;
-    else if (vclass == StaticGray || vclass == GrayScale)
-      gfx->colormodel = GIF_COLORMODEL_GRAY;
-    else
-      gfx->colormodel = GIF_COLORMODEL_COLOR;
-  }
-#endif
   
   gfx->closest = 0;
   gfx->nclosest = 0;
