@@ -62,8 +62,8 @@ support.obj: ..\config.h gifsicle.h support.c
 xform.obj: ..\config.h gifsicle.h xform.c
 gifsicle.obj: ..\config.h gifsicle.h gifsicle.c
 
-..\config.h: ..\win32cfg.h
-	copy ..\win32cfg.h ..\config.h
+..\config.h: win32cfg.h
+	copy win32cfg.h ..\config.h
 
 clean:
 	del *.obj

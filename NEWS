@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.39   11.Jul.2003
+
+* Fix Makefile.w32 (oops).
+
+
 Version 1.38   26.Jun.2003
 
 * Include Makefile.w32 (oops).
