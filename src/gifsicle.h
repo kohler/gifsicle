@@ -30,7 +30,7 @@ typedef struct Gt_Frame {
   Gif_Comment *comment;
   int no_comments;
   
-  Gif_Color transparent;
+  Gif_Color transparent;	/* also background */
   int interlacing;
   int left;
   int top;

@@ -1089,17 +1089,16 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 	    || (i > 0 && (gfi->left != 0 || gfi->top != 0
 			  || gfi->width != gfs->screen_width
 			  || gfi->height != gfs->screen_height))) {
-	    Gif_Stream *ogfs = merger[i]->stream;
-	    int original_bg_transparent = (merger[i]->transparent.haspixel < 255 && (merger[i]->transparent.haspixel > 0 || merger[i]->image->transparent >= 0));
+	    int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
 	    if (original_bg_transparent != background.haspixel)
 		conflict = 1;
 	    else if (original_bg_transparent)
 		want_transparent = 1;
-	    else if (ogfs->global && ogfs->background < ogfs->global->ncol) {
-		if (background.haspixel && !GIF_COLOREQ(&background, &ogfs->global->col[ogfs->background]))
+	    else if (merger[i]->transparent.haspixel) {
+		if (background.haspixel && !GIF_COLOREQ(&background, &merger[i]->transparent))
 		    conflict = 1;
 		else {
-		    background = ogfs->global->col[ogfs->background];
+		    background = merger[i]->transparent;
 		    background.haspixel = 1;
 		}
 	    }
@@ -1424,6 +1423,15 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     }
     
    merge_frame_done:
+    /* 6/17/02 store information about image's background */
+    if (fr->stream->images[0]->transparent >= 0)
+	fr->transparent.haspixel = 2;
+    else if (fr->stream->global && fr->stream->background < fr->stream->global->ncol) {
+	fr->transparent = fr->stream->global->col[fr->stream->background];
+	fr->transparent.haspixel = 1;
+    } else
+	fr->transparent.haspixel = 0;
+
     /* Destroy the copied, cropped image if necessary */
     if (fr->crop)
       Gif_DeleteImage(srci);
