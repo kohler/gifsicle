@@ -121,8 +121,13 @@ histogram(Gif_Stream *gfs, int *nhist_store)
     Gif_Color *col;
     int ncol;
     int transparent = gfi->transparent;
+    int unoptimized = (gfi->img != 0);
     if (!gfcm) continue;
-    
+
+    /* unoptimize the image if necessary */
+    if (!unoptimized)
+      Gif_UncompressImage(gfi);
+
     /* sweep over the image data, counting pixels */
     for (x = 0; x < 256; x++)
       count[x] = 0;
@@ -151,6 +156,10 @@ histogram(Gif_Stream *gfs, int *nhist_store)
        background's pixel count */
     if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
       nbackground += gfi->width * gfi->height;
+
+    /* unoptimize the image if necessary */
+    if (!unoptimized)
+      Gif_ReleaseUncompressedImage(gfi);
   }
   
   /* account for background by adding it to `ntransparent' or the histogram */
@@ -935,6 +944,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+    int unoptimized = (gfi->img != 0);
 
     if (gfcm) {
       /* If there was an old colormap, change the image data */
@@ -942,13 +952,16 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       u_int32_t histogram[256];
       unmark_colors(new_cm);
       unmark_colors(gfcm);
+
+      if (!unoptimized)
+	Gif_UncompressImage(gfi);
       
       do {
 	for (j = 0; j < 256; j++) histogram[j] = 0;
 	image_changer(gfi, new_data, gfcm, new_cm, hash, histogram);
       } while (try_assign_transparency(gfi, gfcm, new_data, new_cm, &new_ncol,
 				       histogram));
-      
+
       Gif_ReleaseUncompressedImage(gfi);
       Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
       
