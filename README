@@ -1,4 +1,4 @@
-GIFSICLE 1.14.1
+GIFSICLE 1.14.2
 ===============
 
 ABOUT GIFSICLE
@@ -107,13 +107,12 @@ COPYRIGHT/LICENSE
 -----------------
    All source code is Copyright (C) 1997-9 Eddie Kohler.
 
-   IF YOU PLAN TO USE GIFSICLE TO CREATE OR MODIFY GIF IMAGES, BUT NOT TO
-REDISTRIBUTE ITS CODE, DON'T WORRY ABOUT THE REST OF THIS SECTION. Anyone
-can use Gifsicle however they wish; the license applies only to those who
-plan to copy, distribute, or alter its code. If you plan to use Gifsicle
-for an organizational or commercial Web site, I would appreciate a link to
-the Gifsicle home page on any `About This Server' page, but it's not
-required.
+   IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
+WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
+wish; the license applies only to those who plan to copy, distribute, or
+alter its code. If you use Gifsicle for an organizational or commercial Web
+site, I would appreciate a link to the Gifsicle home page on any `About
+This Server' page, but it's not required.
 
    This code, with the exception of the GIF compression code in gifwrite.c,
 is distributed under the GNU General Public License, Version 2, or, at your

@@ -78,7 +78,7 @@ rpm: dist
 	cp /tmp/rpmb/RPMS/$$buildarch/*.rpm .
 	rm -rf /tmp/rpmb
 
-rpm-ungif: rpm
+rpm-ungif: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
 	mkdir -p /tmp/rpmb/SOURCES /tmp/rpmb/RPMS/$$buildarch \
 	/tmp/rpmb/BUILD ; \
