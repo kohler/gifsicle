@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.25   13.Feb.2001
+
+* Fixed gifview bug: If every frame in an animation had a small or
+  zero delay, then gifview would previously enter a infinite loop and
+  become noninteractive. Reported by Franc,ois Petitjean
+  <francois.petitjean@bureauveritas.com>.
+
+
 Version 1.24   11.Feb.2001
 
 * Delete `unoptimized_pixmaps' array when deleting a viewer in gifview.

@@ -1083,12 +1083,17 @@ loop(void)
   while (viewers) {
     
     /* Check for any animations */
-    while (animations && xwTIMEGEQ(now, animations->timer)) {
+    /* 13.Feb.2001 - Use the 'pending' counter to avoid a tight loop
+       if all the frames in an animation have delay 0. Reported by
+       Franc,ois Petitjean. */
+    pending = 0;
+    while (animations && xwTIMEGEQ(now, animations->timer) && pending < 25) {
       v = animations;
       animations = v->anim_next;
       v->scheduled = 0;
       view_frame(v, v->im_pos + 1);
       xwGETTIME(now);
+      pending++;
     }
     
     pending = XPending(display);
