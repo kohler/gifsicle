@@ -1,12 +1,11 @@
-# Win32 Makefile by Emil Mikulic <darkmoon@connexus.net.au>
+# Win32 Makefile originally by Emil Mikulic <darkmoon@connexus.net.au>
+# Updates by Eddie Kohler <eddietwo@lcs.mit.edu> and
+# Steven Marthouse <comments@vrml3d.com>
 
-# This makefile will work under Win32 (95/98/NT/whatever)
-# It should work out-of-the-box with Visual C++ 5
-# No guarantees about other compilers
+# This makefile will work under Win32 (95/98/NT/whatever).
+# It should work out-of-the-box with Visual C++ 5.
 #
 # C:\GIFSICLE> nmake -f Makefile.w32
-
-# If you have a problem mail me at the address above.
 
 # *** MAKING UNGIFSICLE ***
 # If `GIFWRITE_OBJ' is defined to `gifwrite.obj', Gifsicle will use
@@ -17,25 +16,34 @@
 # `ungifwrt.obj' by commenting the first line below and uncommenting the
 # second.
 GIFWRITE_OBJ = gifwrite.obj
-# GIFWRITE_OBJ = ungifwrt.obj
+#GIFWRITE_OBJ = ungifwrt.obj
+
+# *** SUPPORTING WILDCARD EXPANSION ***
+# Define `SETARGV_OBJ' to the filename for the `setargv.obj' object file.
+# The definition included here works for Microsoft compilers; you will
+# probably need to change it if you're using a different compiler. You can
+# define it to the empty string, in which case Gifsicle will compile fine,
+# but you won't be able to use wildcards in file name arguments.
+SETARGV_OBJ = $(MSDEVDIR)\lib\setargv.obj
 
 CC = cl
 CFLAGS = -I. -DHAVE_CONFIG_H -DWIN32 -D_CONSOLE /W3 /ML -O2
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
-       $(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
-       xform.obj gifsicle.obj
+	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
+	xform.obj gifsicle.obj $(SETARGV_OBJ)
 
-GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj
+GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj \
+	$(SETARGV_OBJ)
 
 .c.obj:
-        $(CC) $(CFLAGS) /c $<
+	$(CC) $(CFLAGS) /c $<
 
 gifsicle.exe: $(GIFSICLE_OBJS)
-        $(CC) $(CFLAGS) /ogifsicle.exe $(GIFSICLE_OBJS)
+	$(CC) $(CFLAGS) /ogifsicle.exe $(GIFSICLE_OBJS)
 
 gifdiff.exe: $(GIFDIFF_OBJS)
-        $(CC) $(CFLAGS) /ogifdiff.exe $(GIFDIFF_OBJS)
+	$(CC) $(CFLAGS) /ogifdiff.exe $(GIFDIFF_OBJS)
 
 clp.obj: config.h clp.h clp.c
 
@@ -57,5 +65,5 @@ config.h: win32cfg.h
 	copy win32cfg.h config.h
 
 clean:
-        del *.obj
-        del *.exe
+	del *.obj
+	del *.exe

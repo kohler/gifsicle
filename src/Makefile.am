@@ -58,10 +58,10 @@ gifdiff.o: gifdiff.c config.h
 
 srclinks:
 	for i in clp.c clp.h fmalloc.c strerror.c ; do \
-	ln -sf ~/src/edlib/$$i $$i ; done
+	ln -sf $(HOME)/src/edlib/$$i $$i ; done
 	for i in gif.h giffunc.c gifread.c gifwrite.c ungifwrt.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \
-	ln -sf ~/src/giflib/$$i $$i ; done
+	ln -sf $(HOME)/src/giflib/$$i $$i ; done
 
 versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" gifsicle.1 gifview.1 gifdiff.1
