@@ -565,8 +565,9 @@ hash_color(byte red, byte green, byte blue,
       /* If the new colormap is 100% grayscale, then use distance in luminance
 	 space instead of distance in RGB space. The weights for the R,G,B
 	 components in luminance space are 0.299,0.587,0.114. We calculate a
-	 gray value for the input color first and compare that against
-	 the available grays in the colormap. Thanks to XXX.
+	 gray value for the input color first and compare that against the
+	 available grays in the colormap. Thanks to Christian Kumpf,
+	 <kumpf@igd.fhg.de>, for providing a patch.
 	 
 	 Note on the calculation of `gray': Using the factors 306, 601, and
 	 117 (proportional to 0.299,0.587,0.114) we get a scaled gray value

@@ -118,5 +118,5 @@ Many bug reports and constructive whining about the optimizer.
 Emil Mikulic, <darkmoon@connexus.net.au>
 Win32 port help.
 
-XXX
+Christian Kumpf, <kumpf@igd.fhg.de>
 Idea and some code for `--use-colormap=gray'.

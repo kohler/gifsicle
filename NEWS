@@ -3,7 +3,7 @@ Gifsicle NEWS
 Version 1.7   28.Nov.1998
 
 * Added `--use-colormap=gray' and `--use-colormap=bw'. Idea and some code
-  thanks to XXX.
+  thanks to Christian Kumpf <kumpf@igd.fhg.de>.
 
 * Added `--transform-colormap', which allows you to plug programs into
   gifsicle that arbitrarily change GIF files' colormaps.
