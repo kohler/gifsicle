@@ -53,7 +53,7 @@ struct Clp_Internal {
   void (*error_hook)(void);
   
   int is_short;
-  int whole_negated;
+  int whole_negated;		/* true if negated by an option character */
   int could_be_short;
   
   int option_processing;
@@ -389,11 +389,12 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     clp->val.i = strtol(arg, &val, 10);
   if (*arg != 0 && *val == 0)
     return 1;
-  else if (complain && thunk != 0)
-    return Clp_OptionError(clp, "`%O's argument must be a nonnegative integer");
-  else if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be an integer");
-  else
+  else if (complain) {
+    const char *message = thunk != 0
+      ? "`%O' expects a nonnegative integer, not `%s'"
+      : "`%O' expects an integer, not `%s'";
+    return Clp_OptionError(clp, message, arg);
+  } else
     return 0;
 }
 
@@ -405,7 +406,7 @@ parse_double(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (*arg != 0 && *val == 0)
     return 1;
   else if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be a real number");
+    return Clp_OptionError(clp, "`%O' expects a real number, not `%s'", arg);
   else
     return 0;
 }
@@ -422,7 +423,8 @@ parse_bool(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     clp->val.i = 0;
     return 1;
   } else if (complain)
-    return Clp_OptionError(clp, "`%O's argument must be yes or no");
+    return Clp_OptionError(clp, "`%O' expects `yes' or `no', not `%s'",
+			   arg);
   else
     return 0;
 }
@@ -463,7 +465,7 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     }
     return ambiguity_error
       (clp, ambiguous, ambiguous_values, sl->items, "",
-       "`%s' is %s as an argument to `%O'", arg, complaint);
+       "`%s' is an %s argument to `%O'", arg, complaint);
   } else
     return 0;
 }
@@ -678,7 +680,9 @@ next_argument(Clp_Parser *clp, int want_argument)
   char *text;
   int option_class;
 
-  /* clear could_be_short */
+  /* clear relevant flags */
+  clp->hadarg = 0;
+  clp->arg = 0;
   cli->could_be_short = 0;
   
   /* if we're in a string of short options, move up one char in the string */
@@ -687,9 +691,12 @@ next_argument(Clp_Parser *clp, int want_argument)
     if (cli->text[0] == 0)
       cli->is_short = 0;
     else if (want_argument > 0) {
-      /* handle -[option]argument case */
+      /* handle -O[=]argument case */
       clp->hadarg = 1;
-      clp->arg = cli->text + 1;
+      if (cli->text[0] == '=')
+	clp->arg = cli->text + 1;
+      else
+	clp->arg = cli->text;
       cli->is_short = 0;
       return 0;
     }
@@ -892,8 +899,6 @@ Clp_Next(Clp_Parser *clp)
   int complain;
   
   /** Set up clp **/
-  clp->hadarg = 0;
-  clp->arg = 0;
   cli->current_option = 0;
   
   /** Get the next argument or option **/
@@ -962,14 +967,7 @@ Clp_Next(Clp_Parser *clp)
   complain = (clp->hadarg != 0) || TEST(opt, Clp_Mandatory);
   Clp_SaveParser(clp, &clpsave);
   
-  if (cli->is_short && cli->text[1] != 0) {
-    /* The -[option]argument case:
-       Assume that the rest of the current string is the argument. */
-    clp->hadarg = 1;
-    clp->arg = cli->text + 1;
-    cli->is_short = 0;
-    
-  } else if (TEST(opt, Clp_Mandatory) && !clp->hadarg) {
+  if (TEST(opt, Clp_Mandatory) && !clp->hadarg) {
     /* Mandatory argument case */
     /* Allow arguments to options to start with a dash, but only if the
        argument type allows it by not setting Clp_DisallowOptions */
@@ -984,7 +982,11 @@ Clp_Next(Clp_Parser *clp)
 	Clp_OptionError(clp, "`%O' requires an argument");
       return Clp_BadOption;
     }
-  }
+    
+  } else if (cli->is_short && !clp->hadarg && cli->text[1] != 0)
+    /* The -[option]argument case:
+       Assume that the rest of the current string is the argument. */
+    next_argument(clp, 1);
   
   /** Parse the argument **/
   if (clp->hadarg) {
@@ -1010,8 +1012,6 @@ Clp_Shift(Clp_Parser *clp, int allow_dashes)
 {
   Clp_ParserState clpsave;
   Clp_SaveParser(clp, &clpsave);
-  clp->hadarg = 0;
-  clp->arg = 0;
   next_argument(clp, allow_dashes ? 2 : 1);
   if (!clp->hadarg)
     Clp_RestoreParser(clp, &clpsave);
