@@ -650,8 +650,8 @@ view_frame(Gt_Viewer *viewer, int frame)
 	       && viewer->width > 0) {
       /* If viewer->width < 0, user gave geometry; don't change window size */
       XWindowChanges winch;
-      winch.width = width;
-      winch.height = height;
+      winch.width = viewer->width = width;
+      winch.height = viewer->height = height;
       XReconfigureWMWindow
 	(display, window, viewer->screen_number,
 	 CWWidth | CWHeight, &winch);
