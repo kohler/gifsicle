@@ -507,13 +507,13 @@ input_stream(char *name)
     if (mode == BATCHING)
       active_output_data.output_name = input_name;
     else if (mode == EXPLODING) {
-      /* Explode into current directory. Use name instead of input_name: it's
-         #stdin# if required. */
-      char *slash = strrchr(name, PATHNAME_SEPARATOR);
+      /* Explode into current directory. */
+      char *explode_name = (input_name ? input_name : "#stdin#");
+      char *slash = strrchr(explode_name, PATHNAME_SEPARATOR);
       if (slash)
 	active_output_data.output_name = slash + 1;
       else
-	active_output_data.output_name = name;
+	active_output_data.output_name = explode_name;
     }
   }
   
@@ -547,6 +547,8 @@ input_stream(char *name)
   
   old_def_frame = def_frame;
   first_input_frame = frames->count;
+  if (gfs->nimages > 1)
+    def_frame.position_is_offset = 1;
   for (i = 0; i < gfs->nimages; i++)
     add_frame(frames, -1, gfs, gfs->images[i]);
   def_frame = old_def_frame;
@@ -881,15 +883,21 @@ output_frames(void)
  * parsing arguments
  **/
 
-void
+int
 frame_argument(Clp_Parser *clp, char *arg)
 {
-  if (parse_frame_spec(clp, arg, 1, 0) > 0) {
+  /* Returns 0 iff you should try a file named `arg'. */
+  int val = parse_frame_spec(clp, arg, -1, 0);
+  if (val == -97)
+    return 0;
+  else if (val > 0) {
     int i;
     for (i = frame_spec_1; i <= frame_spec_2; i++)
       show_frame(i, frame_spec_name != 0);
     if (next_output) combine_output_options();
-  }
+    return 1;
+  } else
+    return 1;
 }
 
 static int
@@ -945,6 +953,7 @@ initialize_def_frame(void)
   def_frame.transparent.haspixel = 0;
   def_frame.left = -1;
   def_frame.top = -1;
+  def_frame.position_is_offset = 0;
   
   def_frame.crop = 0;
   
@@ -1546,9 +1555,7 @@ particular purpose.\n");
       /* NONOPTIONS */
       
      case Clp_NotOption:
-      if (clp->arg[0] == '#')
-	frame_argument(clp, clp->arg);
-      else {
+      if (clp->arg[0] != '#' || !frame_argument(clp, clp->arg)) {
 	input_done();
 	input_stream(clp->arg);
       }

@@ -171,7 +171,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   }
   
   /* put hash histogram colors into linear histogram */
-  for (x = 0; x < hist.n; x++)
+  for (x = 0; x < hist.cap; x++)
     if (hist.c[x].haspixel)
       linear[i++] = hist.c[x];
 

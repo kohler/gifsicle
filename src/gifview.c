@@ -104,24 +104,27 @@ typedef struct Gt_Viewer {
   int width;
   int height;
   int resizable;
-  Pixmap pixmap;
   int being_deleted;
   
   Gif_Stream *gfs;
   char *name;
   
-  Gif_Stream *anim_gfs;
-  int can_animate;
-  
   Gif_Image **im;
   int *im_number;
   int nim;
   int im_cap;
+  
+  Pixmap pixmap;
   int im_pos;
+  int was_unoptimized;
+  
+  Pixmap *unoptimized_pixmaps;
   
   struct Gt_Viewer *next;
   
+  int can_animate;
   int animating;
+  int unoptimizing;
   int scheduled;
   struct Gt_Viewer *anim_next;
   struct timeval timer;
@@ -245,7 +248,8 @@ Keystrokes:\n\
   [Space] Go to next frame.             [B] Go to previous frame.\n\
   [R]/[<] Go to first frame.            [>] Go to last frame.\n\
   [ESC] Stop animation.                 [S]/[A] Toggle animation.\n\
-  [Backspace]/[W] Delete window.        [Q] Quit.\n\
+  [U] Toggle unoptimization.            [Backspace]/[W] Delete window.\n\
+  [Q] Quit.\n\
 \n\
 Left mouse button goes to next frame, right mouse button deletes window.\n\
 \n\
@@ -337,6 +341,7 @@ Gt_Viewer *
 new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
 {
   Gt_Viewer *viewer;
+  int i;
   
   /* Make the Gt_Viewer structure */
   viewer = Gif_New(Gt_Viewer);
@@ -344,7 +349,6 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
   
   if (use_window) {
     XWindowAttributes attr;
-    int i;
     XGetWindowAttributes(display, use_window, &attr);
     
     viewer->screen_number = -1;
@@ -399,18 +403,22 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
   viewer->window = None;
   viewer->resizable = 1;
   viewer->being_deleted = 0;
-  viewer->pixmap = None;
   viewer->gfs = gfs;
   viewer->name = name;
-  viewer->anim_gfs = 0;
   viewer->im_cap = Gif_ImageCount(gfs);
   viewer->im = Gif_NewArray(Gif_Image *, viewer->im_cap);
   viewer->im_number = Gif_NewArray(int, viewer->im_cap);
   viewer->nim = 0;
+  viewer->pixmap = None;
   viewer->im_pos = -1;
+  viewer->was_unoptimized = 0;
+  viewer->unoptimized_pixmaps = Gif_NewArray(Pixmap, viewer->im_cap);
+  for (i = 0; i < viewer->im_cap; i++)
+    viewer->unoptimized_pixmaps[i] = None;
   viewer->next = viewers;
   viewers = viewer;
   viewer->animating = 0;
+  viewer->unoptimizing = unoptimizing;
   viewer->scheduled = 0;
   viewer->anim_next = 0;
   viewer->anim_loop = 0;
@@ -423,7 +431,12 @@ void
 delete_viewer(Gt_Viewer *viewer)
 {
   Gt_Viewer *prev = 0, *trav;
-  if (viewer->pixmap) XFreePixmap(viewer->display, viewer->pixmap);
+  int i;
+  if (viewer->pixmap && !viewer->was_unoptimized)
+    XFreePixmap(viewer->display, viewer->pixmap);
+  for (i = 0; i < viewer->im_cap; i++)
+    if (viewer->unoptimized_pixmaps[i])
+      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[i]);
   
   for (trav = viewers; trav != viewer; prev = trav, trav = trav->next)
     ;
@@ -431,8 +444,6 @@ delete_viewer(Gt_Viewer *viewer)
   else viewers = viewer->next;
   
   Gif_DeleteStream(viewer->gfs);
-  if (viewer->anim_gfs != viewer->gfs)
-    Gif_DeleteStream(viewer->anim_gfs);
   Gif_DeleteArray(viewer->im);
   Gif_DeleteArray(viewer->im_number);
   Gif_DeleteXContext(viewer->gfx);
@@ -474,14 +485,9 @@ get_input_stream(char *name)
     }
   }
   
-  if (unoptimizing)
-    Gif_Unoptimize(gfs);
-  
   viewer = new_viewer(cur_display, cur_use_window, gfs, name);
   if (cur_use_window)
     cur_use_window = None;
-  if (unoptimizing)
-    viewer->anim_gfs = gfs;
   return viewer;
 }
 
@@ -494,19 +500,11 @@ void
 switch_animating(Gt_Viewer *viewer, int animating)
 {
   int i;
-  Gif_Stream *gfs;
-  
+  Gif_Stream *gfs = viewer->gfs;
   if (animating == viewer->animating || !viewer->can_animate)
     return;
-  
-  if (animating && !viewer->anim_gfs) {
-    viewer->anim_gfs = Gif_CopyStreamImages(viewer->gfs);
-    Gif_Unoptimize(viewer->anim_gfs);
-  }
-  gfs = animating ? viewer->anim_gfs : viewer->gfs;
   for (i = 0; i < gfs->nimages; i++)
     viewer->im[i] = gfs->images[i];
-  
   viewer->animating = animating;
 }
 
@@ -750,6 +748,27 @@ set_viewer_name(Gt_Viewer *viewer)
 }
 
 
+static Pixmap
+unoptimized_frame(Gt_Viewer *viewer, int frame)
+{
+  /* Never frees viewer->pixmap. */
+  int i;
+  
+  if (!viewer->unoptimized_pixmaps[frame]) {
+    for (i = 0; i < frame; i++)
+      if (!viewer->unoptimized_pixmaps[i])
+	unoptimized_frame(viewer, i);
+    
+    viewer->unoptimized_pixmaps[frame] =
+      Gif_XNextImage(viewer->gfx,
+		     (frame < 2 ? None : viewer->unoptimized_pixmaps[frame-2]),
+		     (frame < 1 ? None : viewer->unoptimized_pixmaps[frame-1]),
+		     viewer->gfs, frame);
+  }
+
+  return viewer->unoptimized_pixmaps[frame];
+}
+
 void
 view_frame(Gt_Viewer *viewer, int frame)
 {
@@ -778,33 +797,27 @@ view_frame(Gt_Viewer *viewer, int frame)
   
   if (frame != viewer->im_pos) {
     Gif_Image *gfi = viewer->im[frame];
-    int width = Gif_ImageWidth(gfi);
-    int height = Gif_ImageHeight(gfi);
+    int width, height;
     
-    viewer->im_pos = frame;
+    /* 5/26/98 Do some noodling around to try and use memory most effectively.
+       If animating, keep the uncompressed frame; otherwise, throw it away. */
+    if (viewer->animating || viewer->unoptimizing)
+      viewer->pixmap = unoptimized_frame(viewer, frame);
+    else
+      viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
     
+    /* put the image on the window */
+    if (viewer->animating || viewer->unoptimizing)
+      width = viewer->gfs->screen_width, height = viewer->gfs->screen_height;
+    else
+      width = Gif_ImageWidth(gfi), height = Gif_ImageHeight(gfi);
     if (!window) {
       create_viewer_window(viewer, width, height);
       window = viewer->window;
     }
-    
-    if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
-	|| old_pixmap == None)
-      need_set_name = 1;
-    
-    /* 5/26/98 Do some noodling around to try and use memory most effectively.
-       If animating, keep the uncompressed frame; otherwise, throw it away. */
-    Gif_UncompressImage(gfi);
-    viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
-    if (!viewer->animating && gfi->compressed)
-      Gif_ReleaseUncompressedImage(gfi);
-    
     XSetWindowBackgroundPixmap(display, window, viewer->pixmap);
-    if (old_pixmap) {
+    if (old_pixmap)
       XClearWindow(display, window);
-      XFreePixmap(display, old_pixmap);
-    }
-
     /* Only change size after changing pixmap. */
     if ((viewer->width != width || viewer->height != height)
 	&& viewer->resizable) {
@@ -815,6 +828,18 @@ view_frame(Gt_Viewer *viewer, int frame)
 	(display, window, viewer->screen_number,
 	 CWWidth | CWHeight, &winch);
     }
+    
+    /* Get rid of old pixmaps */
+    if (old_pixmap && !viewer->was_unoptimized)
+      XFreePixmap(display, old_pixmap);
+    viewer->was_unoptimized = viewer->animating || viewer->unoptimizing;
+    
+    /* Do we need a new name? */
+    if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
+	|| old_pixmap == None)
+      need_set_name = 1;
+    
+    viewer->im_pos = frame;
   }
   
   if (need_set_name)
@@ -953,6 +978,16 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
       unschedule(viewer);
     
     set_viewer_name(viewer);
+    
+  } else if (key == XK_U || key == XK_u) {
+    /* U: toggle unoptimizing */
+    int pos = viewer->im_pos;
+    viewer->unoptimizing = !viewer->unoptimizing;
+    if (!viewer->animating) {
+      viewer->im_pos = -1;
+      view_frame(viewer, pos);
+      set_viewer_name(viewer);
+    }
     
   } else if (key == XK_R || key == XK_r
 	     || (nbuf == 1 && buf[0] == '<')) {

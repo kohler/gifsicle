@@ -1,5 +1,35 @@
 Gifsicle NEWS
 
+Version 1.15   20.Aug.1999
+
+* Bug fix: no more assertion failures when combining images that require
+  local colormaps.
+
+* Fixed serious quantization bug introduced in 1.14: when reducing the
+  number of colors, gifsicle would ignore a random portion of the colors in
+  the old colormap.
+
+* Optimization bug fix: two adjacent identical frames will no longer crash
+  the optimizer. Bug introduced in 1.14. That's two for two: two "speed
+  improvements" in 1.14, two bugs introduced!
+
+* Bug fix: Exploding the standard input results in files named
+  `#stdin#.NNN', as the documentation claims, not `<stdin>.NNN'.
+
+* If a position option like `-p 0,5' is followed by a multi-frame GIF
+  (without frame specifications), then the position option places the
+  animation as a whole, not each of its individual frames.
+
+* An unrecognized nonnumeric frame specification is now treated as a file
+  name, so you can say `gifsicle #stdin#.000', for example.
+
+* Gifview improvements: Now even images with local color tables can be
+  "unoptimized" or animated.
+
+* `--replace' now preserves the replaced frame's disposal as well as its
+  delay.
+
+
 Version 1.14.2   16.Aug.1999
 
 * Fixed memory bug in Gif_DeleteImage (I freed a block of memory, then

@@ -315,6 +315,10 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
     rt = x;
   }
 
+  /* 19.Aug.1999 - handle case when there's no difference between frames */
+  if (tp > bt)
+    tp = bt = lf = rt = 0;
+  
   bounds->left = lf;
   bounds->top = tp;
   bounds->width = rt + 1 - lf;

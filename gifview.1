@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.14.2
+.ds V 1.15
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -66,6 +66,9 @@ Stop the animation.
 .BR s " or " a
 Toggle between animation and slideshow mode.
 .TP
+.BR u
+Toggle between normal and unoptimized mode.
+.TP
 Backspace
 '
 Delete this window.
@@ -111,7 +114,7 @@ or
 .TP 5
 .OP \-\-unoptimize ", " \-U
 '
-Unoptimize multi-image GIFs before display, creating a complete
+Display multi-image GIFs as ``unoptimized'', which shows a faithful
 representation of what a user will see at each frame of an animation. See
 .BR gifsicle (1)
 for a more detailed description of unoptimization. This option has a
@@ -119,8 +122,7 @@ converse,
 .QO \-\-no\-unoptimize
 or
 .QO +U .
-GIFs are always displayed unoptimized in animation mode. Some complex GIFs
-cannot be unoptimized.
+GIFs are always displayed unoptimized in animation mode.
 '
 .Sp
 .TP 5

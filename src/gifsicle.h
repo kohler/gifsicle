@@ -50,6 +50,7 @@ typedef struct Gt_Frame {
   unsigned flip_vertical: 1;
   unsigned colormap_info: 1;
   unsigned extensions_info: 1;
+  unsigned position_is_offset: 1;
   unsigned rotation;
   
   const char *input_filename;

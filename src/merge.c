@@ -72,6 +72,8 @@ mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
   /* 1.Aug.1999 - DO NOT clear transparent index if gfi->transparent isn't
      within bounds! Some smart GIF optimizers will write a small colormap, not
      including the transparent color. */
+  /* 19.Aug.1999 - Don't need to set col[gfi->transparent].haspixel to 2 even
+     if it's not within bounds! */
 }
 
 
@@ -168,7 +170,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
   dest->ncol = ndestcol;
   dest->userflags = dest_userflags;
   return 1;
-
+  
   /* failure: a local colormap is required */
  local_colormap_required:
   if (warn_local_colormaps == 1) {
@@ -248,9 +250,9 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
   imagecm = islocal ? srci->local : src->global;
   if (!imagecm)
     fatal_error("no global or local colormap for source image");
-  imagecol = imagecm->col;
   
   mark_used_colors(srci, imagecm);
+  imagecol = imagecm->col;	/* may be changed by mark_used_colors */
   
   /* map[old_pixel_value] == new_pixel_value */
   for (i = 0; i < 256; i++)
@@ -274,7 +276,9 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
       if (imagecol[i].haspixel) {
 	map[i] = ncol;
 	if (ncol != i) trivial_map = 0;
-	used[ncol] = 1;
+	/* 19.Aug.1999- BUGFIX! color is only used if it was opaque */
+	if (imagecol[i].haspixel == 1)
+	  used[ncol] = 1;
 	localcm->col[ ncol++ ] = imagecol[i];
       }
     localcm->ncol = ncol;

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.14.2
+.ds V 1.15
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -551,6 +551,11 @@ Set the following frames' positions to
 .OP \-\-no\-position
 means
 .OP \-\-position " 0,0."
+Normally,
+.OA \-\-position x\fR,\fIy
+places every succeeding frame exactly at \fIx\fR,\fIy\fR. However, if an
+entire animation is input, \fIx\fR,\fIy\fR is treated as the position for
+the animation.
 '
 .Sp
 .TP

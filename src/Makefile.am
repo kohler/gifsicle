@@ -19,7 +19,7 @@ gifsicle_SOURCES = clp.h clp.c \
 		gifsicle.c
 
 gifview_SOURCES = clp.h clp.c \
-		gif.h giffunc.c gifread.c gifunopt.c gifx.h gifx.c \
+		gif.h giffunc.c gifread.c gifx.h gifx.c \
 		gifview.c
 
 gifdiff_SOURCES = clp.h clp.c \

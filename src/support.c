@@ -533,7 +533,11 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
       frame_spec_name = (char *)arg;
       frame_spec_1 = frame_spec_2 = Gif_ImageNumber(input, gfi);
       return 1;
-    } else if (complain)
+    } else if (complain < 0)	/* -1 is special value meaning `don't complain
+                                   about frame NAMES, but do complain about
+                                   frame numbers.' */
+      return -97;		/* Return -97 on bad frame name. */
+    else if (complain)
       return Clp_OptionError(clp, "no frame named `#%s'", arg);
     else
       return 0;
@@ -982,10 +986,12 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
     
     if (nest && nest->count > 0) {
       if (FRAME(fset, i).use < 0 && nest->count == 1) {
-	/* use < 0 means use the frame's delay and name (if not explicitly
-	   overridden), but not the frame itself. */
+	/* use < 0 means use the frame's delay, disposal and name (if not
+	   explicitly overridden), but not the frame itself. */
 	if (FRAME(nest, 0).delay < 0)
 	  FRAME(nest, 0).delay = FRAME(fset, i).image->delay;
+	if (FRAME(nest, 0).disposal < 0)
+	  FRAME(nest, 0).disposal = FRAME(fset, i).image->disposal;
 	if (FRAME(nest, 0).name == 0 && FRAME(nest, 0).no_name == 0)
 	  FRAME(nest, 0).name =
 	    Gif_CopyString(FRAME(fset, i).image->identifier);
@@ -1319,9 +1325,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (fr->interlacing >= 0)
       desti->interlace = fr->interlacing;
     if (fr->left >= 0)
-      desti->left = fr->left;
+      desti->left = fr->left + (fr->position_is_offset ? desti->left : 0);
     if (fr->top >= 0)
-      desti->top = fr->top;
+      desti->top = fr->top + (fr->position_is_offset ? desti->top : 0);
     
     if (fr->delay >= 0)
       desti->delay = fr->delay;
