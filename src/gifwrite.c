@@ -13,7 +13,7 @@
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
-#elif !defined(__cplusplus)
+#elif !defined(__cplusplus) && !defined(inline)
 /* Assume we don't have inline by default */
 # define inline
 #endif
@@ -43,7 +43,7 @@ typedef struct Gif_Writer {
   u_int32_t pos;
   u_int32_t cap;
   void (*byte_putter)(byte, struct Gif_Writer *);
-  void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
+  void (*block_putter)(byte *, int, struct Gif_Writer *);
   
 } Gif_Writer;
 
@@ -66,7 +66,7 @@ file_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-file_block_putter(byte *block, u_int16_t size, Gif_Writer *grr)
+file_block_putter(byte *block, int size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
 }
@@ -86,7 +86,7 @@ memory_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
+memory_block_putter(byte *data, int len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
@@ -161,7 +161,7 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   
   cur_code_bits = min_code_bits + 1;
   /* bump_code, next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d)", clear_code, eoi_code));
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
   
   work_code = output_code = clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, bump_code,
@@ -172,7 +172,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   buf = buffer;
   xleft = width;
   imageline = img[0];
-  
   
   while (1) {
     
@@ -186,7 +185,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
       leftover = (leftover >> 8) & 0x00FFFFFF;
       bits_left_over -= 8;
       if (buf == buffer + WRITE_BUFFER_SIZE) {
-	GIF_DEBUG(("chunk"));
 	gifputbyte(WRITE_BUFFER_SIZE, grr);
 	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
 	buf = buffer;
@@ -422,17 +420,9 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
      but modify the uncompressed data anyway. That sucks. */
-  if (gfi->compressed) {
-    byte *compressed = gfi->compressed;
-    u_int32_t len = gfi->compressed_len;
-    while (len > 0x1000) {
-      gifputblock(compressed, 0x1000, grr);
-      len -= 0x1000;
-      compressed += 0x1000;
-    }
-    if (len > 0) gifputblock(compressed, len, grr);
-    
-  } else
+  if (gfi->compressed)
+    gifputblock(gfi->compressed, gfi->compressed_len, grr);
+  else
     write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
 		     gfc, grr);
   

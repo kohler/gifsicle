@@ -16,6 +16,7 @@
 #endif
 #include "gif.h"
 #include <stdlib.h>
+#include <stdarg.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -727,9 +728,6 @@ Gif_CreateUncompressedImage(Gif_Image *gfi)
 }
 
 
-#ifdef GIF_DEBUGGING
-#include <stdarg.h>
-
 void
 Gif_Debug(char *x, ...)
 {
@@ -739,9 +737,6 @@ Gif_Debug(char *x, ...)
   fputc('\n', stderr);
   va_end(val);
 }
-
-#endif
-
 
 #ifdef __cplusplus
 }

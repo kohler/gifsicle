@@ -41,7 +41,7 @@ struct Gif_XContext {
   
   int free_deleted_colormap_pixels;
   Gif_XColormap *xcolormap;
-
+  
   GC image_gc;
   GC mask_gc;
   

@@ -57,17 +57,6 @@ typedef struct Gif_Reader {
 } Gif_Reader;
 
 
-void
-Gif_Debug(char *format, ...)
-{
-  va_list val;
-  va_start(val, format);
-  vfprintf(stderr, format, val);
-  va_end(val);
-  fputc(' ', stderr);
-}
-
-
 #define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
 #define gifgetbyte(grr) ((*grr->byte_getter)(grr))
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
@@ -276,6 +265,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     code = (Gif_Code)((accum >> (bit_position % 8)) & codemask);
     bit_position += bits_needed;
     
+    GIF_DEBUG(("code(%d)", code));
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
     if (code == clear_code) {
@@ -317,7 +307,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
        suffix when we called one_code, but we do now. */
     if (code == next_code)
       gfc->image[gfc->decodepos - 1] = gfc->suffix[next_code];
-
+    
     /* Increment next_code except for the `clear_code' special case (that's
        when we're reading at the end of a GIF) */
     if (next_code != clear_code) {
