@@ -24,9 +24,6 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
-#ifndef FD_SET
-#include <sys/select.h>
-#endif
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
