@@ -211,6 +211,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   int min_code_size;
   int bits_needed;
   Gif_Code codemask;
+
+  u_int32_t ncodes = 0;
   
   gfc->decodepos = 0;
   
@@ -267,6 +269,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     bit_position += bits_needed;
     
     GIF_DEBUG(("code(%d)", code));
+    ncodes++;
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
     if (code == clear_code) {
@@ -532,7 +535,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
   if (read_flags & GIF_READ_COMPRESSED) {
     if (!read_compressed_image(gfi, grr, read_flags))
       return 0;
-    if (read_flags & GIF_READ_UNCOMPRESSED) {
+    if (read_flags & GIF_READ_UNCOMPRESSED || 1) {
       Gif_Reader new_grr;
       make_data_reader(&new_grr, gfi->compressed, gfi->compressed_len);
       if (!uncompress_image(gfc, gfi, &new_grr))

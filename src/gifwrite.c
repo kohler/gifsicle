@@ -25,13 +25,51 @@ extern "C" {
 #endif
 
 #define WRITE_BUFFER_SIZE	255
-#define HASH_SIZE		(2 << GIF_MAX_CODE_BITS)
+#define NODES_SIZE		GIF_MAX_CODE
+#define LINKS_SIZE		GIF_MAX_CODE
+
+/* 1.Aug.1999 - Removed code hashing in favor of an adaptive tree strategy
+   based on Whirlgif-3.04, written by Hans Dinsen-Hansen <dino@danbbs.dk>. Mr.
+   Dinsen-Hansen brought the adaptive tree strategy to my attention and
+   convinced me at length that it was better than hashing. In fact, he was
+   right: it runs a lot faster and is deterministic.
+   
+   Each code is represented by a Node. The Nodes form a tree with variable
+   fan-out -- up to `clear_code' children per Node. There are two kinds of
+   Node, TABLE and LINKS. In a TABLE node, the children are stored in a table
+   indexed by suffix -- thus, it's very efficient to determine a given child.
+   In a LINKS node, the existent children are stored in a linked list. This is
+   slightly slower to access. When a LINKS node gets more than
+   `MAX_LINKS_TYPE-1' children, it is converted to a TABLE node. (This is why
+   it's an adaptive tree.)
+   
+   Problems with this implementation: MAX_LINKS_TYPE is fixed, so GIFs with
+   very small numbers of colors (2, 4, 8) won't get the speed benefits of
+   TABLE nodes. */
+
+#define TABLE_TYPE		0
+#define LINKS_TYPE		1
+#define MAX_LINKS_TYPE		5
+typedef struct Gif_Node {
+  
+  Gif_Code code;
+  byte type;
+  byte suffix;
+  struct Gif_Node *sibling;
+  union {
+    struct Gif_Node *s;
+    struct Gif_Node **m;
+  } child;
+  
+} Gif_Node;
+
 
 typedef struct Gif_Context {
   
-  Gif_Code *prefix;
-  byte *suffix;
-  Gif_Code *code;
+  Gif_Node *nodes;
+  int nodes_pos;
+  Gif_Node **links;
+  int links_pos;
   
 } Gif_Context;
 
@@ -100,29 +138,24 @@ memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 }
 
 
-static u_int32_t
-codehash(Gif_Context *gfc, Gif_Code prefix, byte suffix, Gif_Code eoi_code)
-{
-  u_int32_t hashish1 = (prefix << 9 ^ prefix << 2 ^ suffix) % HASH_SIZE;
-  u_int32_t hashish2 = ((prefix | suffix << 7) % HASH_SIZE) | 1;
-  Gif_Code *prefixes = gfc->prefix;
-  byte *suffixes = gfc->suffix;
-  
-  while ((prefixes[hashish1] != prefix || suffixes[hashish1] != suffix)
-	 && prefixes[hashish1] != eoi_code)
-    hashish1 = (hashish1 + hashish2) % HASH_SIZE;
-  
-  return hashish1;
-}
-
 static void
-print_output_code(Gif_Context *gfc, Gif_Code code, Gif_Code eoi_code)
+change_node_to_table(Gif_Context *gfc, Gif_Node *work_node,
+		     Gif_Node *next_node, Gif_Code clear_code)
 {
-  if (gfc->prefix[code] != eoi_code) {
-    fprintf(stderr, "P%X", gfc->prefix[code]);
-    print_output_code(gfc, gfc->prefix[code], eoi_code);
-  }
-  fprintf(stderr, "%X ", gfc->suffix[code]);
+  /* change links node to table node */
+  Gif_Code c;
+  Gif_Node **table = &gfc->links[gfc->links_pos];
+  Gif_Node *n;
+  gfc->links_pos += clear_code;
+  
+  for (c = 0; c < clear_code; c++)
+    table[c] = 0;
+  table[next_node->suffix] = next_node;
+  for (n = work_node->child.s; n; n = n->sibling)
+    table[n->suffix] = n;
+  
+  work_node->type = TABLE_TYPE;
+  work_node->child.m = table;
 }
 
 
@@ -139,21 +172,16 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   u_int32_t leftover;
   byte bits_left_over;
   
-  Gif_Code work_code;
+  Gif_Node *work_node;
+  Gif_Node *next_node;
   Gif_Code next_code;
   Gif_Code output_code;
   Gif_Code clear_code;
   Gif_Code eoi_code;
-  Gif_Code bump_code;
+#define CUR_BUMP_CODE (1 << cur_code_bits)
   byte suffix;
   
-  u_int32_t hash;
-  
   byte cur_code_bits;
-  
-  Gif_Code *prefixes = gfc->prefix;
-  byte *suffixes = gfc->suffix;
-  Gif_Code *codes = gfc->code;
   
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
@@ -161,12 +189,13 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
   eoi_code = clear_code + 1;
   
   cur_code_bits = min_code_bits + 1;
-  /* bump_code, next_code set by first runthrough of output clear_code */
+  /* next_code set by first runthrough of output clear_code */
   GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
   
-  work_code = output_code = clear_code;
-  /* Because output_code is clear_code, we'll initialize next_code, bump_code,
-     et al. below. */
+  work_node = 0;
+  output_code = clear_code;
+  /* Because output_code is clear_code, we'll initialize next_code, et al.
+     below. */
   
   bits_left_over = 0;
   leftover = 0;
@@ -193,31 +222,29 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     }
     
     if (output_code == clear_code) {
+      /* Clear data and prepare gfc */
       Gif_Code c;
       
       cur_code_bits = min_code_bits + 1;
       next_code = eoi_code + 1;
-      bump_code = clear_code << 1;
       
-      for (hash = 0; hash < HASH_SIZE; hash++)
-	prefixes[hash] = eoi_code;
+      /* The first clear_code nodes are reserved for single-pixel codes */
+      gfc->nodes_pos = clear_code;
+      gfc->links_pos = 0;
       for (c = 0; c < clear_code; c++) {
-	hash = codehash(gfc, clear_code, c, eoi_code);
-	prefixes[hash] = clear_code;
-	suffixes[hash] = c;
-	codes[hash] = c;
+	gfc->nodes[c].code = c;
+	gfc->nodes[c].type = LINKS_TYPE;
+	gfc->nodes[c].suffix = c;
+	gfc->nodes[c].child.s = 0;
       }
       
-    } else if (next_code > bump_code) {
-      
+    } else if (next_code > CUR_BUMP_CODE) {
       /* bump up compression size */
       if (cur_code_bits == GIF_MAX_CODE_BITS) {
 	output_code = clear_code;
 	continue;
-      } else {
+      } else
 	cur_code_bits++;
-	bump_code <<= 1;
-      }
       
     } else if (output_code == eoi_code)
       break;
@@ -226,12 +253,21 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     /*****
      * Find the next code to output. */
     
-    /* If height is 0 -- no more pixels to write -- we output work_code next
+    /* If height is 0 -- no more pixels to write -- we output work_node next
        time around. */
     while (height != 0) {
       suffix = *imageline;
-      if (suffix >= clear_code) suffix = 0;
-      hash = codehash(gfc, work_code, suffix, eoi_code);
+      /* if (suffix >= clear_code) suffix = 0; -- can never happen, because
+	 of how we determine min_code_bits in write_image_data */
+      if (!work_node)
+	next_node = &gfc->nodes[suffix];
+      else if (work_node->type == TABLE_TYPE)
+	next_node = work_node->child.m[suffix];
+      else
+	for (next_node = work_node->child.s; next_node;
+	     next_node = next_node->sibling)
+	  if (next_node->suffix == suffix)
+	    break;
       
       imageline++;
       xleft--;
@@ -242,24 +278,41 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 	imageline = img[0];
       }
       
-      if (prefixes[hash] == eoi_code) {
-	/* We need to add something to the table. Output the current code. */
-	prefixes[hash] = work_code;
-	suffixes[hash] = suffix;
-	codes[hash] = next_code;
+      if (!next_node) {
+	/* We need to output the current code and add a new one to our
+	   dictionary. First reserve a node for the added code. It's
+	   LINKS_TYPE at first. */
+	next_node = &gfc->nodes[gfc->nodes_pos];
+	gfc->nodes_pos++;
+	next_node->code = next_code;
 	next_code++;
+	next_node->type = LINKS_TYPE;
+	next_node->suffix = suffix;
+	next_node->child.s = 0;
 	
-	output_code = work_code;
-	work_code = suffix;
+	/* link next_node into work_node's set of children */
+	if (work_node->type == TABLE_TYPE)
+	  work_node->child.m[suffix] = next_node;
+	else if (work_node->type < MAX_LINKS_TYPE
+		 || gfc->links_pos + clear_code > LINKS_SIZE) {
+	  next_node->sibling = work_node->child.s;
+	  work_node->child.s = next_node;
+	  work_node->type++;
+	} else
+	  change_node_to_table(gfc, work_node, next_node, clear_code);
+	
+	/* Output the current code. */
+	output_code = work_node->code;
+	work_node = &gfc->nodes[suffix];
 	goto found_output_code;
       }
       
-      work_code = codes[hash];
+      work_node = next_node;
     }
     
     /* Ran out of data if we get here. */
-    output_code = work_code;
-    work_code = eoi_code;
+    output_code = (work_node ? work_node->code : eoi_code);
+    work_node = 0;
     
    found_output_code: ;
   }
@@ -329,9 +382,8 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
   
-  gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
-  gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
-  gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
+  gfc.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
+  gfc.links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
   
   grr.v = Gif_NewArray(byte, 1024);
   grr.pos = 0;
@@ -339,7 +391,7 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
   
-  if (!gfc.prefix || !gfc.suffix || !gfc.code || !grr.v)
+  if (!gfc.nodes || !gfc.links || !grr.v)
     goto done;
   
   ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
@@ -353,9 +405,8 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   gfi->compressed = grr.v;
   gfi->compressed_len = grr.pos;
   gfi->free_compressed = Gif_DeleteArrayFunc;
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.code);
+  Gif_DeleteArray(gfc.nodes);
+  Gif_DeleteArray(gfc.links);
   return grr.v != 0;
 }
 
@@ -563,10 +614,9 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   Gif_Extension *gfex = gfs->extensions;
   Gif_Context gfc;
   
-  gfc.prefix = Gif_NewArray(Gif_Code, HASH_SIZE);
-  gfc.suffix = Gif_NewArray(byte, HASH_SIZE);
-  gfc.code = Gif_NewArray(Gif_Code, HASH_SIZE);
-  if (!gfc.prefix || !gfc.suffix || !gfc.code)
+  gfc.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
+  gfc.links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
+  if (!gfc.nodes || !gfc.links)
     goto done;
   
   {
@@ -617,9 +667,8 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   ok = 1;
   
  done:
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.code);
+  Gif_DeleteArray(gfc.nodes);
+  Gif_DeleteArray(gfc.links);
   return ok;
 }
 
