@@ -96,13 +96,14 @@ typedef struct Gt_Viewer {
   int depth;
   Colormap colormap;
   Gif_XContext *gfx;
-
+  
   Window parent;
   int top_level;
   
   Window window;
   int width;
   int height;
+  int resizable;
   Pixmap pixmap;
   int being_deleted;
   
@@ -135,6 +136,7 @@ static Display *cur_display = 0;
 static char *cur_geometry_spec = 0;
 static const char *cur_resource_name;
 static Window cur_use_window = None;
+static const char *cur_background_color = "black";
 
 static Gt_Viewer *viewers;
 static Gt_Viewer *animations;
@@ -154,9 +156,12 @@ static int interactive = 1;
 #define WINDOW_OPT		307
 #define INSTALL_COLORMAP_OPT	308
 #define INTERACTIVE_OPT		309
+#define BACKGROUND_OPT		310
 
 Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
+  { "background", 'b', BACKGROUND_OPT, Clp_ArgString, 0 },
+  { "bg", 0, BACKGROUND_OPT, Clp_ArgString, 0 },
   { "display", 'd', DISPLAY_OPT, Clp_ArgStringNotOption, 0 },
   { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, 0 },
   { "install-colormap", 'i', INSTALL_COLORMAP_OPT, 0, Clp_Negate },
@@ -229,6 +234,7 @@ Options are:\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
+  --bg, --background COLOR      Use COLOR for transparent pixels.\n\
   +e, --no-interactive          Ignore buttons and keystrokes.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
@@ -366,7 +372,32 @@ new_viewer(Display *display, Window use_window, Gif_Stream *gfs, char *name)
     viewer->top_level = 1;
   }
   
+  /* assign background color */
+  if (cur_background_color) {
+    XColor color;
+    if (!XParseColor(viewer->display, viewer->colormap, cur_background_color,
+		     &color)) {
+      error("invalid background color `%s'", cur_background_color);
+      cur_background_color = 0;
+    } else if (!XAllocColor(viewer->display, viewer->colormap, &color))
+      warning("can't allocate background color");
+    else {
+      unsigned long pixel = color.pixel;
+      Gif_XContext *gfx = viewer->gfx;
+      if (pixel != gfx->transparent_pixel && gfx->refcount > 1) {
+	/* copy X context */
+	viewer->gfx = Gif_NewXContextFromVisual
+	  (gfx->display, gfx->screen_number, gfx->visual, gfx->depth,
+	   gfx->colormap);
+	viewer->gfx->refcount++;
+	gfx->refcount--;
+      }
+      viewer->gfx->transparent_pixel = pixel;
+    }
+  }
+  
   viewer->window = None;
+  viewer->resizable = 1;
   viewer->being_deleted = 0;
   viewer->pixmap = None;
   viewer->gfs = gfs;
@@ -447,7 +478,8 @@ get_input_stream(char *name)
     Gif_Unoptimize(gfs);
   
   viewer = new_viewer(cur_display, cur_use_window, gfs, name);
-  cur_use_window = None;
+  if (cur_use_window)
+    cur_use_window = None;
   if (unoptimizing)
     viewer->anim_gfs = gfs;
   return viewer;
@@ -617,15 +649,12 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
        viewer->depth, InputOutput, viewer->visual,
        x_set_attr_mask, &x_set_attr);
   }
-  
+
+  /* If user gave us geometry, don't change the size later */
   if (sizeh->flags & USSize)
-    /* Setting sizes to -1 says user gave us geometry, don't change the size
-       later */
-    viewer->width = viewer->height = -1;
-  else {
-    viewer->width = w;
-    viewer->height = h;
-  }
+    viewer->resizable = 0;
+  viewer->width = w;
+  viewer->height = h;
   
   /* Set the window's title and class (for window manager resources) */
   if (viewer->top_level) {
@@ -778,8 +807,7 @@ view_frame(Gt_Viewer *viewer, int frame)
 
     /* Only change size after changing pixmap. */
     if ((viewer->width != width || viewer->height != height)
-	&& viewer->width > 0) {
-      /* If viewer->width < 0, user gave geometry; don't change window size */
+	&& viewer->resizable) {
       XWindowChanges winch;
       winch.width = viewer->width = width;
       winch.height = viewer->height = height;
@@ -944,6 +972,10 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     switch_animating(viewer, 0);
     unschedule(viewer);
     set_viewer_name(viewer);
+    
+  } else if (key == XK_Z || key == XK_z) {
+    /* Z: trigger resizability */
+    viewer->resizable = !viewer->resizable;
   }
 }
 
@@ -1064,10 +1096,14 @@ main(int argc, char **argv)
       unoptimizing = clp->negated ? 0 : 1;
       break;
       
+     case BACKGROUND_OPT:
+      cur_background_color = clp->arg;
+      break;
+      
      case ANIMATE_OPT:
       animating = clp->negated ? 0 : 1;
       break;
-
+      
      case INSTALL_COLORMAP_OPT:
       install_colormap = clp->negated ? 0 : 1;
       break;
@@ -1075,7 +1111,7 @@ main(int argc, char **argv)
      case WINDOW_OPT:
       cur_use_window = clp->val.u;
       break;
-
+      
      case INTERACTIVE_OPT:
       interactive = clp->negated ? 0 : 1;
       break;
