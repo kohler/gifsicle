@@ -53,7 +53,7 @@ GIF_MEMORY_DEFINES =
 INTEGER_TYPES =
 
 srclinks:
-	for i in clp.c clp.h ; do \
+	for i in clp.c clp.h strerror.c ; do \
 	ln -sf ~/src/edlib/$$i $$i ; done
 	for i in gif.h.in giffunc.c gifread.c gifwrite.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \

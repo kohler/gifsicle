@@ -923,9 +923,10 @@ loop(void)
     
     pending = XPending(display);
     if (!pending) {
+      int retval;
       FD_SET(x_socket, &xfds);
-      select(x_socket + 1, &xfds, 0, 0, timeout_ptr);
-      pending = FD_ISSET(x_socket, &xfds);
+      retval = select(x_socket + 1, &xfds, 0, 0, timeout_ptr);
+      pending = (retval <= 0 ? 0 : FD_ISSET(x_socket, &xfds));
     }
     
     if (pending)
