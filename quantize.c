@@ -139,7 +139,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
 	else
 	  add_histogram_color(&col[x], &hist, count[x]);
       }
-    if (transparent >= 0 && transparent < ncol) {
+    if (transparent >= 0) {
       if (ntransparent == 0) transparent_color = col[transparent];
       ntransparent += count[transparent];
     }

@@ -69,6 +69,9 @@ Pixmap		Gif_XMask(Gif_XContext *, Gif_Stream *, Gif_Image *);
 Pixmap		Gif_XSubMask(Gif_XContext *, Gif_Image *,
 				int l, int t, int w, int h);
 
+Pixmap		Gif_XNextImage(Gif_XContext *, Pixmap last_last, Pixmap last,
+			       Gif_Stream *, int n);
+
 int		Gif_XAllocateColors(Gif_XContext *, Gif_Colormap *);
 void		Gif_XDeallocateColors(Gif_XContext *, Gif_Colormap *);
 unsigned long *	Gif_XClaimStreamColors(Gif_XContext *, Gif_Stream *, int *);
