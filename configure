@@ -523,7 +523,7 @@ fi
 
 
 
-VERSION=1.2b5
+VERSION=1.2b6
 
 
 # Extract the first word of "gcc", so it can be a program name with args.
@@ -1760,11 +1760,11 @@ fi
 
 fi
 
-  BUILD_GIFVIEW="gifview"
+  PROGRAMS="gifsicle gifview"
 else
-  BUILD_GIFVIEW=""
+  PROGRAMS="gifsicle"
 fi
-
+INSTALLERS=`echo $PROGRAMS | sed 's/\([a-z][a-z]*\)/install-\1/g'`
 
 echo $ac_n "checking for integer typedefs in sys/types.h""... $ac_c" 1>&6
 echo "configure:1771: checking for integer typedefs in sys/types.h" >&5
@@ -2031,7 +2031,8 @@ s%@X_CFLAGS@%$X_CFLAGS%g
 s%@X_PRE_LIBS@%$X_PRE_LIBS%g
 s%@X_LIBS@%$X_LIBS%g
 s%@X_EXTRA_LIBS@%$X_EXTRA_LIBS%g
-s%@BUILD_GIFVIEW@%$BUILD_GIFVIEW%g
+s%@PROGRAMS@%$PROGRAMS%g
+s%@INSTALLERS@%$INSTALLERS%g
 s%@INTEGER_TYPES@%$INTEGER_TYPES%g
 
 CEOF

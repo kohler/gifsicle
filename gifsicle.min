@@ -155,6 +155,19 @@ is a synonym for
 '
 .Sp
 .TP 5
+.OP \-\-extension\-info
+'
+Same as
+.OP \%\-\-info ,
+but additionally prints any unrecognized GIF extensions in a
+.BR hexdump (1)-like
+format.
+.OP \%\-\-einfo
+is a synonym for
+.OP \%\-\-extension\-info .
+'
+.Sp
+.TP 5
 .OP \-\-help ", " \-h
 '
 Prints usage information and exits.
@@ -729,14 +742,14 @@ GIF files.
 .PP
 To print information about the first and fourth frames of `anim.gif':
 .Es
-% \fBgifsicle -I #0 #3 < anim.gif\fR
+% \fBgifsicle \-I #0 #3 < anim.gif\fR
 .br
 (information printed)
 .Ee
 To make black the transparent color in all the GIFs in the current
 directory, also printing information about each:
 .Es
-% \fBgifsicle -bII --trans #000000 *.gif\fR
+% \fBgifsicle \-bII \-\-trans #000000 *.gif\fR
 .br
 (information printed)
 .Ee
@@ -748,7 +761,7 @@ the GIFs would not have changed on disk.
 .PP
 To change `anim.gif's colors to a 64-color subset of the Web-safe palette:
 .Es
-% \fBgifsicle -b --colors=64 --use-col=web anim.gif\fR
+% \fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
 .Ee
 '
 .SH BUGS

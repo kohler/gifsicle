@@ -20,11 +20,13 @@ fi)
 
 if test "$build_gifview"; then
   AC_PATH_XTRA
-  BUILD_GIFVIEW="gifview"
+  PROGRAMS="gifsicle gifview"
 else
-  BUILD_GIFVIEW=""
+  PROGRAMS="gifsicle"
 fi
-AC_SUBST(BUILD_GIFVIEW)
+INSTALLERS=[`echo $PROGRAMS | sed 's/\([a-z][a-z]*\)/install-\1/g'`]
+AC_SUBST(PROGRAMS)dnl
+AC_SUBST(INSTALLERS)dnl
 
 AC_CACHE_CHECK(for integer typedefs in sys/types.h, ac_cv_sys_types_int,
 [AC_EGREP_HEADER(u_int32_t, sys/types.h,

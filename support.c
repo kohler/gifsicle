@@ -79,7 +79,8 @@ Mode options: at most one, before any filenames.\n\
 General options: Also --no-opt/+o for info and verbose.\n\
   --info, -I                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
-  --color-info, --cinfo         --info plus colormap information.\n\
+  --color-info, --cinfo         --info plus colormap details.\n\
+  --extension-info, --einfo     --info plus extension details.\n\
   --verbose, -v                 Prints progress information.\n\
   --help, -h                    Print this message and exit.\n\
   --version                     Print version number and exit.\n\
@@ -158,12 +159,39 @@ verbose_endline(void)
 
 
 static void
+safe_puts(const char *s, u_int32_t len, FILE *f)
+{
+  const char *last_safe = s;
+  for (; len > 0; len--, s++)
+    if (*s < ' ' || *s >= 0x7F || *s == '\\') {
+      if (last_safe != s)
+	fwrite(last_safe, 1, s - last_safe, f);
+      last_safe = s + 1;
+      switch (*s) {
+       case '\a': fputs("\\a", f); break;
+       case '\b': fputs("\\b", f); break;
+       case '\f': fputs("\\f", f); break;
+       case '\n': fputs("\\n", f); break;
+       case '\r': fputs("\\r", f); break;
+       case '\t': fputs("\\t", f); break;
+       case '\v': fputs("\\v", f); break;
+       case '\\': fputs("\\\\", f); break;
+       case 0:	  if (len > 1) fputs("\\000", f); break;
+       default:	  fprintf(f, "\\%03o", *s); break;
+      }
+    }
+  if (last_safe != s)
+    fwrite(last_safe, 1, s - last_safe, f);
+}
+
+
+static void
 comment_info(Gif_Comment *gfcom, char *prefix)
 {
   int i;
   for (i = 0; i < gfcom->count; i++) {
     fputs(prefix, stderr);
-    fwrite(gfcom->str[i], 1, gfcom->len[i], stderr);
+    safe_puts(gfcom->str[i], gfcom->len[i], stderr);
     fputc('\n', stderr);
   }
 }
@@ -190,11 +218,61 @@ colormap_info(Gif_Colormap *gfcm, char *prefix)
 }
 
 
+static void
+extension_info(Gif_Stream *gfs, Gif_Extension *gfex, int count)
+{
+  byte *data = gfex->data;
+  u_int32_t pos = 0;
+  u_int32_t len = gfex->length;
+  
+  fprintf(stderr, "  extension %d: ", count);
+  if (gfex->kind == 255) {
+    fprintf(stderr, "app `");
+    safe_puts(gfex->application, strlen(gfex->application), stderr);
+    fprintf(stderr, "'");
+  } else {
+    if (gfex->kind >= 32 && gfex->kind < 127)
+      fprintf(stderr, "`%c' (0x%02X)", gfex->kind, gfex->kind);
+    else
+      fprintf(stderr, "0x%02X", gfex->kind);
+  }
+  if (gfex->position >= gfs->nimages)
+    fprintf(stderr, " at end\n");
+  else
+    fprintf(stderr, " before #%d\n", gfex->position);
+  
+  /* Now, hexl the data. */
+  while (len > 0) {
+    int row = 16;
+    int i;
+    if (row > len) row = len;
+    fprintf(stderr, "    %08x: ", pos);
+    
+    for (i = 0; i < row; i += 2) {
+      if (i + 1 >= row)
+	fprintf(stderr, "%02x   ", data[i]);
+      else
+	fprintf(stderr, "%02x%02x ", data[i], data[i+1]);
+    }
+    for (; i < 16; i += 2)
+      fputs("     ", stderr);
+    
+    putc(' ', stderr);
+    for (i = 0; i < row; i++, data++)
+      putc((*data >= ' ' && *data < 127 ? *data : '.'), stderr);
+    putc('\n', stderr);
+    
+    pos += row;
+    len -= row;
+  }
+}
+
+
 void
-stream_info(Gif_Stream *gfs, char *filename, int colormaps)
+stream_info(Gif_Stream *gfs, char *filename, int colormaps, int extensions)
 {
   Gif_Extension *gfex;
-  int nextensions;
+  int n;
   
   if (!gfs) return;
   gfs->userflags = 0; /* clear userflags to indicate stream info produced */
@@ -213,16 +291,17 @@ stream_info(Gif_Stream *gfs, char *filename, int colormaps)
   
   if (gfs->comment)
     comment_info(gfs->comment, "  end comment ");
- 
+  
   if (gfs->loopcount == 0)
     fprintf(stderr, "  loop forever\n");
   else if (gfs->loopcount > 0)
     fprintf(stderr, "  loop count %u\n", (unsigned)gfs->loopcount);
-
-  for (nextensions = 0, gfex = gfs->extensions; gfex; gfex = gfex->next)
-    nextensions++;
-  if (nextensions)
-    fprintf(stderr, "  extensions %d\n", nextensions);
+  
+  for (n = 0, gfex = gfs->extensions; gfex; gfex = gfex->next, n++)
+    if (extensions)
+      extension_info(gfs, gfex, n);
+  if (n && !extensions)
+    fprintf(stderr, "  extensions %d\n", n);
 }
 
 
@@ -250,9 +329,8 @@ image_info(Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
     fprintf(stderr, " interlaced");
   
   if (gfi->transparent >= 0)
-    fprintf(stderr, " transparent %d\n", gfi->transparent);
-  else
-    fprintf(stderr, "\n");
+    fprintf(stderr, " transparent %d", gfi->transparent);
+  fprintf(stderr, "\n");
   
   if (gfi->comment)
     comment_info(gfi->comment, "    comment ");

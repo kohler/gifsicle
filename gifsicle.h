@@ -109,7 +109,7 @@ void verbose_endline(void);
  * info &c
  **/
 
-void stream_info(Gif_Stream *, char *, int colormaps);
+void stream_info(Gif_Stream *, char *, int colormaps, int extensions);
 void image_info(Gif_Stream *, Gif_Image *, int colormaps);
 
 char *explode_filename(char *filename, int number, char *name);

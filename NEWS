@@ -4,6 +4,11 @@ Version 1.2b6
 
 * License clarification in README.
 
+* GIF comments are now printed out more carefully in --info: binary characters
+  appear as backslash escapes. (Literal backslashes are printed as `\\'.)
+
+* New --extension-info/--einfo option.
+
 
 Version 1.2b5	12.May.1998
 

@@ -53,6 +53,7 @@ static int nested_mode = 0;
 
 static int infoing = 0;
 static int colormap_infoing = 0;
+static int extension_infoing = 0;
 static int outputing = 1;
 static int verbosing = 0;
 
@@ -96,6 +97,7 @@ static int verbosing = 0;
 #define USE_COLORMAP_OPT	338
 #define NO_EXTENSIONS_OPT	339
 #define SAME_EXTENSIONS_OPT	340
+#define EXTENSION_INFO_OPT	341
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -126,8 +128,10 @@ Clp_Option options[] = {
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, 0 },
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
-  { "explode", 'e', 'e', 0, Clp_LongMinMatch, 1 }, /****/
+  { "einfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
+  { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
+  { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   { "help", 'h', HELP_OPT, 0, 0 },
   { "info", 'I', INFO_OPT, 0, Clp_Negate },
   { "insert-before", 0, INSERT_OPT, FRAME_SPEC_TYPE, 0 },
@@ -395,7 +399,7 @@ input_stream(char *name)
   if (color_changes)
     apply_color_changes(gfs, color_changes);
   if (infoing)
-    stream_info(gfs, name, colormap_infoing);
+    stream_info(gfs, name, colormap_infoing, extension_infoing);
   gfs->refcount++;
 }
 
@@ -409,7 +413,7 @@ input_done(void)
   if (infoing) {
     int i;
     if (input->userflags == 97)	/* no stream info produced yet */
-      stream_info(input, input_name, colormap_infoing);
+      stream_info(input, input_name, colormap_infoing, extension_infoing);
     for (i = first_input_frame; i < frames->count; i++)
       if (FRAME(frames, i).stream == input && FRAME(frames, i).use)
 	image_info(input, FRAME(frames, i).image, colormap_infoing);
@@ -723,6 +727,18 @@ main(int argc, char **argv)
 	colormap_infoing = 0;
       else {
 	colormap_infoing = 1;
+	if (!infoing) {
+	  infoing = 1;
+	  outputing = 0;
+	}
+      }
+      break;
+      
+     case EXTENSION_INFO_OPT:
+      if (clp->negated)
+	extension_infoing = 0;
+      else {
+	extension_infoing = 1;
 	if (!infoing) {
 	  infoing = 1;
 	  outputing = 0;
