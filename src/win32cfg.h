@@ -1,41 +1,43 @@
-/* Hand-edited file based on config.h */
-/* config.h was generated automatically from config.h.in by configure */
-/* config.h.in was generated automatically from configure.in by autoheader */
+/* Hand-edited file based on config.h.in */
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Package and version */
+/* Package and version. */
 #define PACKAGE "gifsicle"
 #define VERSION "1.11 (Windows)"
 
-/* Are we using the debugging malloc library? */
+/* Define when using the debugging malloc library. */
 /* #undef DMALLOC */
 
-/* What form of random() to use? */
+/* Define to a function that returns a random number. */
 #define RANDOM rand
 
-/* How many arguments does gettimeofday() take? (gifview only) */
+/* Define to the number of arguments to gettimeofday. (gifview only) */
 /* #undef GETTIMEOFDAY_PROTO */
 
-/* Get the [u_]int*_t typedefs */
+/* Get the [u_]int*_t typedefs. */
 typedef unsigned __int16 u_int16_t;
 typedef unsigned __int32 u_int32_t;
 typedef signed __int16 int16_t;
 typedef signed __int32 int32_t;
 
-/* Pathname separator character ('/' on Unix) */
+/* Pathname separator character ('/' on Unix). */
 #define PATHNAME_SEPARATOR '\\'
 
-/* Define this to write GIFs to stdout even when stdout is a terminal */
+/* Define this to write GIFs to stdout even when stdout is a terminal. */
 /* #undef OUTPUT_GIF_TO_TERMINAL */
 
-/* Windows doesn't have popen, but it does have _popen */
+/* Windows doesn't have popen, but it does have _popen. */
 #define popen _popen
 #define pclose _pclose
 
 
 /* Define to empty if the keyword does not work.  */
 /* #undef const */
+
+/* Define as __inline if that's what the C compiler calls it.  */
+/* #undef inline */
 
 /* Define if the X Window System is missing or not being used.  */
 #define X_DISPLAY_MISSING 1
@@ -54,7 +56,7 @@ extern "C" {
 #endif
 
 /* Use either the clean-failing malloc library in fmalloc.c, or the debugging
-   malloc library in dmalloc.c */
+   malloc library in dmalloc.c. */
 #ifdef DMALLOC
 # include "dmalloc.h"
 # define Gif_DeleteFunc		(&debug_free)
@@ -68,12 +70,14 @@ void *fail_die_malloc(size_t, const char *, int);
 void *fail_die_realloc(void *, size_t, const char *, int);
 #endif
 
-/* Prototype strerror() if we don't have it. */
+/* Prototype strerror if we don't have it. */
 #ifndef HAVE_STRERROR
 char *strerror(int errno);
 #endif
 
 #ifdef __cplusplus
 }
+/* Get rid of a possible inline macro under C++. */
+# undef inline
 #endif
 #endif

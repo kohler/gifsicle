@@ -2,20 +2,20 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* Package and version */
+/* Package and version. */
 #define PACKAGE "gifsicle"
 #define VERSION "97"
 
-/* Are we using the debugging malloc library? */
+/* Define when using the debugging malloc library. */
 #undef DMALLOC
 
-/* What form of random() to use? */
+/* Define to a function that returns a random number. */
 #undef RANDOM
 
-/* How many arguments does gettimeofday() take? (gifview only) */
+/* Define to the number of arguments to gettimeofday. (gifview only) */
 #undef GETTIMEOFDAY_PROTO
 
-/* Get the [u_]int*_t typedefs */
+/* Get the [u_]int*_t typedefs. */
 #undef NEED_SYS_TYPES_H
 #ifdef NEED_SYS_TYPES_H
 # include <sys/types.h>
@@ -24,10 +24,10 @@
 #undef u_int32_t
 #undef int32_t
 
-/* Pathname separator character ('/' on Unix) */
+/* Pathname separator character ('/' on Unix). */
 #define PATHNAME_SEPARATOR '/'
 
-/* Define this to write GIFs to stdout even when stdout is a terminal */
+/* Define this to write GIFs to stdout even when stdout is a terminal. */
 #undef OUTPUT_GIF_TO_TERMINAL
 
 @TOP@
@@ -38,7 +38,7 @@ extern "C" {
 #endif
 
 /* Use either the clean-failing malloc library in fmalloc.c, or the debugging
-   malloc library in dmalloc.c */
+   malloc library in dmalloc.c. */
 #ifdef DMALLOC
 # include "dmalloc.h"
 # define Gif_DeleteFunc		(&debug_free)
@@ -52,14 +52,14 @@ void *fail_die_malloc(size_t, const char *, int);
 void *fail_die_realloc(void *, size_t, const char *, int);
 #endif
 
-/* Prototype strerror() if we don't have it. */
+/* Prototype strerror if we don't have it. */
 #ifndef HAVE_STRERROR
 char *strerror(int errno);
 #endif
 
 #ifdef __cplusplus
 }
-/* Get rid of inline macro under C++ */
+/* Get rid of a possible inline macro under C++. */
 # undef inline
 #endif
 #endif

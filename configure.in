@@ -90,7 +90,7 @@ fi
 AC_SUBST(MALLOC_O)dnl
 
 dnl
-dnl random() or rand()? strerror()? strtoul()? sys/select.h?
+dnl random or rand, strerror, strtoul, sys/select.h
 dnl
 
 AC_CHECK_FUNC(random, random_func=random, random_func=rand)

@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.11
+Version 1.11   22.Jan.1999
 
 * Added `--scale XFACTORxYFACTOR' to complement `--resize'.
 
