@@ -5,24 +5,24 @@ bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
 EXTRA_PROGRAMS = gifview gifdiff
 man_MANS = gifsicle.1 @OTHERMANS@
 
-LDADD = @MALLOC_O@ @STRERROR_O@
+LDADD = @MALLOC_O@ @LIBOBJS@
 gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
-gifsicle_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
-gifview_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
-gifdiff_DEPENDENCIES = @MALLOC_O@ @STRERROR_O@
+gifsicle_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
+gifview_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
+gifdiff_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
 
-gifsicle_SOURCES = clp.c clp.h \
-		giffunc.c gifread.c gifunopt.c gifwrite.c \
-		merge.c optimize.c quantize.c support.c xform.c \
-		gifsicle.c gifsicle.h
+gifsicle_SOURCES = clp.h clp.c \
+		gif.h giffunc.c gifread.c gifunopt.c gifwrite.c \
+		gifsicle.h merge.c optimize.c quantize.c support.c xform.c \
+		gifsicle.c
 
-gifview_SOURCES = clp.c clp.h \
-		giffunc.c gifread.c gifunopt.c gifx.c gifx.h \
+gifview_SOURCES = clp.h clp.c \
+		gif.h giffunc.c gifread.c gifunopt.c gifx.h gifx.c \
 		gifview.c
 
-gifdiff_SOURCES = clp.c clp.h \
-		giffunc.c gifread.c \
+gifdiff_SOURCES = clp.h clp.c \
+		gif.h giffunc.c gifread.c \
 		gifdiff.c
 
 INCLUDES = $(X_CFLAGS)
@@ -49,13 +49,10 @@ optimize.o: optimize.c gifsicle.h
 gifview.o: gifview.c
 gifdiff.o: gifdiff.c
 
-GIF_MEMORY_DEFINES =
-INTEGER_TYPES =
-
 srclinks:
 	for i in clp.c clp.h strerror.c ; do \
 	ln -sf ~/src/edlib/$$i $$i ; done
-	for i in gif.h.in giffunc.c gifread.c gifwrite.c gifunopt.c \
+	for i in gif.h giffunc.c gifread.c gifwrite.c gifunopt.c \
 	gifx.h gifx.c giftoc.c ; do \
 	ln -sf ~/src/giflib/$$i $$i ; done
 

@@ -7,6 +7,7 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
+#include "config.h"
 #include "gif.h"
 #include "clp.h"
 #include <stdarg.h>
@@ -282,11 +283,9 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 void
 short_usage(void)
 {
-  fprintf(stderr, "Usage: %s [options] GIF-file-1 GIF-file-2\n\
-Type %s --help for more information.\n",
+  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
-
 
 void
 usage(void)
@@ -378,8 +377,10 @@ particular purpose.\n");
       break;
       
      case Clp_NotOption:
-      if (how_many_inputs == 2)
-	fatal_error("too many file arguments");
+      if (how_many_inputs == 2) {
+	error("too many file arguments");
+	goto bad_option;
+      }
       inputp = (how_many_inputs == 0 ? &filename1 : &filename2);
       how_many_inputs++;
       if (strcmp(clp->arg, "-") == 0)
@@ -387,7 +388,8 @@ particular purpose.\n");
       else
 	*inputp = clp->arg;
       break;
-      
+
+     bad_option:
      case Clp_BadOption:
       short_usage();
       exit(1);

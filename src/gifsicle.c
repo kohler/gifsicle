@@ -7,6 +7,7 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
+#include "config.h"
 #include "gifsicle.h"
 #include <string.h>
 #include <stdio.h>
@@ -185,13 +186,12 @@ Clp_Option options[] = {
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "colors", 'k', COLORMAP_OPT, Clp_ArgInt,
-    Clp_Negate | Clp_LongMinMatch, 3 }, /****/
+  { "colors", 'k', COLORMAP_OPT, Clp_ArgInt, Clp_Negate },
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
-  { "comment", 'c', COMMENT_OPT, Clp_ArgString, Clp_Negate },
+  { "comment", 'c', COMMENT_OPT, Clp_ArgString, 0 },
+  { "no-comments", 'c', NO_COMMENTS_OPT, 0, Clp_OnlyNegated },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "no-comments", 0, NO_COMMENTS_OPT, 0, Clp_LongMinMatch, 6 }, /****/
   
   { "delay", 'd', 'd', Clp_ArgInt, Clp_Negate },
   { "delete", 0, DELETE_OPT, 0, 0 },
@@ -199,15 +199,15 @@ Clp_Option options[] = {
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
   
-  { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
+  { "explode", 'e', 'e', 0, 0 },
   { "explode-by-name", 'E', 'E', 0, 0 },
-  { "extension", 0, EXTENSION_OPT, Clp_ArgString, Clp_LongMinMatch, 3 }, /***/
+  { "extension", 0, EXTENSION_OPT, Clp_ArgString, 0 },
+  { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, 0 },
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
-  { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
   { "flip-horizontal", 0, FLIP_HORIZ_OPT, 0, Clp_Negate },
   { "flip-vertical", 0, FLIP_VERT_OPT, 0, Clp_Negate },
-  { "no-flip", 0, NO_FLIP_OPT, 0, Clp_LongMinMatch, 4 }, /****/
+  { "no-flip", 0, NO_FLIP_OPT, 0, 0 },
   
   { "help", 'h', HELP_OPT, 0, 0 },
   
@@ -221,9 +221,9 @@ Clp_Option options[] = {
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   
-  { "name", 'n', NAME_OPT, Clp_ArgString, Clp_Negate },
+  { "name", 'n', NAME_OPT, Clp_ArgString, 0 },
+  { "no-names", 'n', NO_NAME_OPT, 0, Clp_OnlyNegated },
   { "netscape-workaround", 0, NETSCAPE_WORK_OPT, 0, Clp_Negate },
-  { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
   { "output", 'o', OUTPUT_OPT, Clp_ArgStringNotOption, 0 },
@@ -235,7 +235,7 @@ Clp_Option options[] = {
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
-  { "no-rotate", 0, NO_ROTATE_OPT, 0, Clp_LongMinMatch, 4 }, /****/
+  { "no-rotate", 0, NO_ROTATE_OPT, 0, 0 },
   
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
@@ -977,6 +977,7 @@ main(int argc, char **argv)
   Clp_AddType(clp, RECTANGLE_TYPE, 0, parse_rectangle, 0);
   Clp_AddType(clp, TWO_COLORS_TYPE, Clp_DisallowOptions, parse_two_colors, 0);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
+  Clp_SetErrorHandler(clp, clp_error_handler);
   
   program_name = Clp_ProgramName(clp);
   
@@ -1287,7 +1288,7 @@ main(int argc, char **argv)
       if (clp->negated)
 	def_output_data.loopcount = -1;
       else
-	def_output_data.loopcount = clp->hadarg ? clp->val.i : 0;
+	def_output_data.loopcount = (clp->have_arg ? clp->val.i : 0);
       break;
       
      case SAME_LOOPCOUNT_OPT:
@@ -1299,10 +1300,8 @@ main(int argc, char **argv)
       MARK_CH(output, CH_OPTIMIZE);
       if (clp->negated)
 	def_output_data.optimizing = 0;
-      else if (clp->hadarg)
-	def_output_data.optimizing = clp->val.i;
       else
-	def_output_data.optimizing = 1;
+	def_output_data.optimizing = (clp->have_arg ? clp->val.i : 1);
       break;
       
      case UNOPTIMIZE_OPT:
@@ -1456,5 +1455,5 @@ particular purpose.\n");
 #ifdef DMALLOC
   dmalloc_report();
 #endif
-  return (any_output_successful ? 0 : 1);
+  return (any_output_successful || !outputing ? 0 : 1);
 }

@@ -124,6 +124,7 @@ extern int verbosing;
 void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);
 void error(char *message, ...);
+void clp_error_handler(char *clp_message);
 void usage(void);
 void short_usage(void);
 

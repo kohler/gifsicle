@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.9.2
+
+* Moved to config.h-based configuration to simplify GIF library and Windows
+  port.
+
+
 Version 1.9.1   16.Dec.1998
 
 * If a reduced-colormap image needs a special transparent color, gifsicle

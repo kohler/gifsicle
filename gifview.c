@@ -7,6 +7,7 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
+#include "config.h"
 #include "gifx.h"
 #include "clp.h"
 #include <X11/Xlib.h>
@@ -64,14 +65,14 @@
 #define xwTIMELEQ0(a) ((a).tv_sec < 0 || ((a).tv_sec == 0 && (a).tv_usec <= 0))
 
 #ifdef X_GETTIMEOFDAY
-#define xwGETTIMEOFDAY(a) X_GETTIMEOFDAY(a)
-#elif SYSV_GETTIMEOFDAY
-#define xwGETTIMEOFDAY(a) gettimeofday((a))
-#else
-#ifdef NO_GETTIMEOFDAY_PROTO
+# define xwGETTIMEOFDAY(a) X_GETTIMEOFDAY(a)
+#elif GETTIMEOFDAY_PROTO == 0
 EXTERN int gettimeofday(struct timeval *, struct timezone *);
-#endif
-#define xwGETTIMEOFDAY(a) gettimeofday((a), 0)
+# define xwGETTIMEOFDAY(a) gettimeofday((a), 0)
+#elif GETTIMEOFDAY_PROTO == 1
+# define xwGETTIMEOFDAY(a) gettimeofday((a))
+#else
+# define xwGETTIMEOFDAY(a) gettimeofday((a), 0)
 #endif
 
 #define xwGETTIME(a) do { xwGETTIMEOFDAY(&(a)); xwSUBTIME((a), (a), genesis_time); } while (0)
@@ -192,9 +193,7 @@ warning(char *message, ...)
 void
 short_usage(void)
 {
-  fprintf(stderr, "\
-Usage: %s [--display DISPLAY] [options] [filenames and frames] ...\n\
-Type %s --help for more information.\n",
+  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -1042,7 +1041,6 @@ particular purpose.\n");
       goto done;
       
      case Clp_BadOption:
-      short_usage();
       any_errors = 1;
       break;
       
@@ -1055,7 +1053,10 @@ particular purpose.\n");
  done:
   
   if (!viewer_given) {
-    if (any_errors) exit(1);
+    if (any_errors) {
+      short_usage();
+      exit(1);
+    }
     viewer = get_input_stream(0);
   }
   if (viewer) input_stream_done(viewer);

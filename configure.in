@@ -1,13 +1,11 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(gifsicle.h)
-AM_INIT_AUTOMAKE(gifsicle, 1.9.1)
+AM_INIT_AUTOMAKE(gifsicle, 1.9.2)
+AM_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
 AC_PROG_CPP
 AC_C_CONST
-
-AC_PROG_INSTALL
-AC_ARG_PROGRAM
 
 build_gifview=
 AC_ARG_ENABLE(gifview,
@@ -65,11 +63,7 @@ if test "$build_gifview"; then
 ac_cv_gettimeofday=0,
 ac_cv_gettimeofday=2)],
 ac_cv_gettimeofday=1)])
-  if test $ac_cv_gettimeofday = 1 ;
-  then GETTIMEOFDAY='-DSYSV_GETTIMEOFDAY'
-  elif test $ac_cv_gettimeofday = 0 ;
-  then GETTIMEOFDAY='-DNO_GETTIMEOFDAY_PROTO'
-  fi
+  AC_DEFINE_UNQUOTED(GETTIMEOFDAY_PROTO, $ac_cv_gettimeofday)
 fi
 
 if test "$build_gifdiff"; then
@@ -79,26 +73,17 @@ fi
 
 AC_SUBST(OTHERPROGRAMS)dnl
 AC_SUBST(OTHERMANS)dnl
-AC_SUBST(GETTIMEOFDAY)dnl
 
 dnl
 dnl Set up malloc library
 dnl
 
 if test "$use_dmalloc"; then
-  GIF_MEMORY_DEFINES='#include "dmalloc.h"\
-#define Gif_DeleteFunc		(&debug_free)\
-#define Gif_DeleteArrayFunc	(&debug_free)'
   AC_DEFINE(DMALLOC)
   MALLOC_O='dmalloc.o'
 else
-  GIF_MEMORY_DEFINES='#define malloc(s)		fail_die_malloc((s),__FILE__,__LINE__)\
-#define realloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)\
-void *fail_die_malloc(int, const char *, int);\
-void *fail_die_realloc(void *, int, const char *, int);'
   MALLOC_O='fmalloc.o'
 fi
-AC_SUBST(GIF_MEMORY_DEFINES)dnl
 AC_SUBST(MALLOC_O)dnl
 
 dnl
@@ -112,8 +97,7 @@ dnl
 dnl strerror()?
 dnl
 
-AC_CHECK_FUNC(strerror, STRERROR_O='', STRERROR_O='strerror.o')
-AC_SUBST(STRERROR_O)dnl
+AC_REPLACE_FUNCS(strerror)
 
 dnl
 dnl Integer typedefs
@@ -159,23 +143,20 @@ fi
 
 if test "$ac_cv_int_types" = no ;
 then
-  INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
-typedef unsigned $ac_cv_int32 u_int32_t;\\
-typedef $ac_cv_int32 int32_t;"
-
+  AC_DEFINE(u_int16_t, unsigned $ac_cv_int16)
+  AC_DEFINE(u_int32_t, unsigned $ac_cv_int32)
+  AC_DEFINE(int32_t, $ac_cv_int32)
 elif test "$ac_cv_int_types" = close ;
 then
-  INTEGER_TYPES="#include <sys/types.h>\\
-typedef uint16_t u_int16_t;\\
-typedef uint32_t u_int32_t;"
-
+  AC_DEFINE(NEED_SYS_TYPES_H)
+  AC_DEFINE(u_int16_t, uint16_t)
+  AC_DEFINE(u_int32_t, uint32_t)
 else
-  INTEGER_TYPES="#include <sys/types.h>"
+  AC_DEFINE(NEED_SYS_TYPES_H)
 fi
-AC_SUBST(INTEGER_TYPES)dnl
 
 dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile gif.h)
+AC_OUTPUT(Makefile)

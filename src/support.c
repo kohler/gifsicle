@@ -7,6 +7,7 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
+#include "config.h"
 #include "gifsicle.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -74,12 +75,18 @@ warning(char *message, ...)
   va_end(val);
 }
 
+void
+clp_error_handler(char *message)
+{
+  verbose_endline();
+  fputs(message, stderr);
+}
+
 
 void
 short_usage(void)
 {
-  fprintf(stderr, "Usage: %s [options, frames, and filenames] ...\n\
-Type %s --help for more information.\n",
+  fprintf(stderr, "%s: Try `%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
