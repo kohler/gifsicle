@@ -741,11 +741,15 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
     Gt_Frameset *nest = FRAME(fset, i).nest;
     
     if (nest && nest->count > 0) {
-      if (FRAME(fset, i).use < 0 && FRAME(nest, nest->count - 1).delay < 0)
-	/* use < 0 means use the frame's delay (if not explicitly overridden),
-	   but not the frame itself. */
-	FRAME(nest, nest->count - 1).delay = FRAME(fset, i).image->delay;
-      
+      if (FRAME(fset, i).use < 0 && nest->count == 1) {
+	/* use < 0 means use the frame's delay and name (if not explicitly
+	   overridden), but not the frame itself. */
+	if (FRAME(nest, 0).delay < 0)
+	  FRAME(nest, 0).delay = FRAME(fset, i).image->delay;
+	if (FRAME(nest, 0).name == 0 && FRAME(nest, 0).no_name == 0)
+	  FRAME(nest, 0).name =
+	    Gif_CopyString(FRAME(fset, i).image->identifier);
+      }
       merger_flatten(nest, 0, nest->count - 1);
     }
     

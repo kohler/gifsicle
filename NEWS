@@ -9,6 +9,11 @@ Version 1.2b6
 
 * New --extension-info/--einfo option.
 
+* Removed spurious warning about local colormaps when a --colors option is in
+  effect.
+
+* Replacing a named frame with another image now keeps the name by default.
+
 
 Version 1.2b5	12.May.1998
 

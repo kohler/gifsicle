@@ -516,8 +516,6 @@ do_frames_output(char *outfile, int f1, int f2)
     Gif_DeleteStream(out);
   }
 
-  /* Reset warn_local_colormaps after each GIF is output. */
-  warn_local_colormaps = new_colormap_size || new_colormap_fixed;
   if (verbosing) verbose_close(']');
 }
 
@@ -966,7 +964,7 @@ main(int argc, char **argv)
 	  new_colormap_size = 0;
 	}
       }
-      warn_local_colormaps = new_colormap_size || new_colormap_fixed;
+      warn_local_colormaps = !(new_colormap_size || new_colormap_fixed);
       break;
       
      case USE_COLORMAP_OPT:
@@ -975,7 +973,7 @@ main(int argc, char **argv)
 	new_colormap_fixed = 0;
       else
 	set_new_fixed_colormap(clp->arg);
-      warn_local_colormaps = new_colormap_size || new_colormap_fixed;
+      warn_local_colormaps = !(new_colormap_size || new_colormap_fixed);
       break;
       
      case COLORMAP_ALGORITHM_OPT:
