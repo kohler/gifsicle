@@ -580,7 +580,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level)
       get_used_colors(subimage, use_transparency);
     }
     
-    gfi->userdata = subimage;
+    gfi->user_data = subimage;
     last_gfi = gfi;
     
     /* Apply optimized disposal to last_data and unoptimized disposal to
@@ -632,7 +632,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
   
   /* choose appropriate penalties for each image */
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
-    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->userdata;
+    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
     optdata->global_penalty = 1;
     for (i = 1; i < optdata->required_color_count; i *= 2)
       optdata->global_penalty *= 3;
@@ -642,7 +642,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
   for (i = 0; i < all_ncol; i++)
     penalty[i] = 0;
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
-    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->userdata;
+    Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
     byte *need = optdata->needed_colors;
     int this_penalty = optdata->global_penalty;
     for (i = 0; i < all_ncol; i++)
@@ -672,7 +672,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
        penalty values for its other colors shouldn't be considered */
     penalties_changed = 0;
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
-      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->userdata;
+      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
       byte *need = optdata->needed_colors;
       int this_penalty = optdata->global_penalty;
       
@@ -759,7 +759,7 @@ create_out_global_map(Gif_Stream *gfs)
       rank[i] = 0;
     
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
-      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->userdata;
+      Gif_OptData *optdata = (Gif_OptData *)gfs->images[imagei]->user_data;
       byte *need = optdata->needed_colors;
       /* ignore images that will require a local colormap */
       if (!optdata->global_penalty)
@@ -1162,7 +1162,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
   
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *cur_gfi = gfs->images[image_index];
-    Gif_OptData *optdata = (Gif_OptData *)cur_gfi->userdata;
+    Gif_OptData *optdata = (Gif_OptData *)cur_gfi->user_data;
     
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -1202,7 +1202,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     }
     
     delete_opt_data(optdata);
-    cur_gfi->userdata = 0;
+    cur_gfi->user_data = 0;
     
     /* Set up last_data and this_data. last_data must contain this_data + new
        disposal. this_data must contain this_data + old disposal. */
