@@ -1,5 +1,5 @@
 /* gif.h - Interface to the GIF library.
-   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
    
    The GIF library is free software*. It is distributed under the GNU General

@@ -1,5 +1,5 @@
 /* gifwrite.c - Functions to write GIFs.
-   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
    The GIF library is free software*. With the exception of this file, the GIF
