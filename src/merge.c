@@ -27,7 +27,6 @@ unmark_colors(Gif_Colormap *gfcm)
       gfcm->col[i].haspixel = 0;
 }
 
-
 void
 unmark_colors_2(Gif_Colormap *gfcm)
 {
@@ -70,8 +69,9 @@ mark_used_colors(Gif_Image *gfi, Gif_Colormap *gfcm)
   /* Mark the transparent color specially */
   if (gfi->transparent >= 0 && gfi->transparent < ncol)
     col[gfi->transparent].haspixel = 2;
-  else
-    gfi->transparent = -1;
+  /* 1.Aug.1999 - DO NOT clear transparent index if gfi->transparent isn't
+     within bounds! Some smart GIF optimizers will write a small colormap, not
+     including the transparent color. */
 }
 
 
@@ -292,12 +292,19 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
 	if (!used[i])
 	  found_transparent = i;
     
-    if (found_transparent < 0) {
+    /* 1.Aug.1999 - Allow for the case that the transparent index is bigger
+       than the number of colors we've created thus far. */
+    if (found_transparent < 0 || found_transparent >= destcm->ncol) {
       Gif_Color *c;
-      found_transparent = destcm->ncol++;
+      found_transparent = destcm->ncol;
+      /* 1.Aug.1999 - Don't update destcm->ncol -- we want the output colormap
+         to be as small as possible. */
       c = &destcm->col[found_transparent];
-      *c = imagecol[srci->transparent];
-      assert(c->haspixel == 2);
+      if (srci->transparent < imagecm->ncol)
+	*c = imagecol[srci->transparent];
+      else
+	c->haspixel = 2;
+      assert(c->haspixel == 2 && found_transparent < 256);
     }
     
     map[srci->transparent] = found_transparent;

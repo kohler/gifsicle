@@ -223,8 +223,9 @@ apply_frame(u_int16_t *dst, Gif_Image *gfi, int replace)
   /* make sure transparency maps to TRANSP */
   for (i = 0; i < colormap->ncol; i++)
     map[i] = colormap->col[i].pixel;
+  /* out-of-bounds colors map to 0, for the sake of argument */
   for (i = colormap->ncol; i < 256; i++)
-    map[i] = TRANSP;
+    map[i] = colormap->col[0].pixel;
   if (gfi->transparent >= 0 && gfi->transparent < 256)
     map[gfi->transparent] = TRANSP;
   else
@@ -699,7 +700,7 @@ choose_256_colors(Gif_Stream *gfs, u_int16_t *global_all)
    
    all_colormap->col[P].pixel >= 256 ==> P is not in the global colormap.
    
-   Otherwise, all_colormap->col[P].pixel == some J so that
+   Otherwise, all_colormap->col[P].pixel == the J so that
    GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]). */
 
 static void
@@ -725,7 +726,7 @@ create_out_global_map(Gif_Stream *gfs)
       global_all[i] = i + 1;
     /* Depend on each image's global_penalty being != 0 by default */
   }
-
+  
   /* Colormap Canonicalization
      
      Markus F.X.J. Oberhumer <k3040e4@c210.edvz.uni-linz.ac.at> would like
@@ -878,16 +879,15 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, byte *need)
 	break;
       }
     
-    /* otherwise, add another slot to `into'; it's pure transparent. Use the
-       color we put into all_colormap->col[TRANSP] earlier. If there's no room
-       for it, then give up */
+    /* otherwise, [1.Aug.1999] use a fake slot for the purely transparent
+       color. Don't actually enter the transparent color into the colormap --
+       we might be able to output a smaller colormap! If there's no room for
+       it, give up */
     if (transparent < 0) {
-      if (is_global && all_col[TRANSP].pixel < NOT_IN_OUT_GLOBAL)
-	transparent = all_col[TRANSP].pixel;
-      else if (ncol < 256) {
+      if (ncol < 256) {
 	transparent = ncol;
-	col[ncol++] = all_col[TRANSP];
-	if (is_global) all_col[TRANSP].pixel = transparent;
+	/* 1.Aug.1999 - don't increase ncol */
+	col[ncol] = all_col[TRANSP];
       } else
 	goto error;
     }
@@ -961,10 +961,15 @@ prepare_colormap(Gif_Image *gfi, byte *need)
     
     for (i = 0; i < gfi->local->ncol; i++)
       permutation[local_col[i].pixel] = i;
+    /* 1.Aug.1999 - we might not have added space for gfi->transparent */
+    if (gfi->transparent >= gfi->local->ncol)
+      permutation[gfi->transparent] = gfi->transparent;
+    
     for (i = 0; i < all_colormap->ncol; i++)
       map[i] = permutation[map[i]];
+
     if (gfi->transparent >= 0)
-      gfi->transparent = map[TRANSP] = permutation[gfi->transparent];
+      gfi->transparent = map[TRANSP];
   }
   
   return map;

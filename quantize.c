@@ -19,7 +19,7 @@ typedef struct Gif_Histogram {
 
 static void add_histogram_color(Gif_Color *, Gif_Histogram *, unsigned long);
 
-static int
+static void
 init_histogram(Gif_Histogram *new_hist, Gif_Histogram *old_hist)
 {
   int new_cap = (old_hist ? old_hist->cap * 2 : 1024);
