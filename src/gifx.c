@@ -662,8 +662,10 @@ delete_xcolormap(Gif_XColormap *gfxc)
   }
   if (gfx->free_deleted_colormap_pixels)
     deallocate_colors(gfxc);
-  if (prev) prev->next = gfxc->next;
-  else gfx->xcolormap = gfxc->next;
+  if (prev)
+    prev->next = gfxc->next;
+  else
+    gfx->xcolormap = gfxc->next;
   Gif_DeleteArray(gfxc->pixels);
   Gif_Delete(gfxc);
 }
@@ -674,6 +676,7 @@ delete_colormap_hook(int dummy, void *colormap_x, void *callback_x)
   Gif_Colormap *gfcm = (Gif_Colormap *)colormap_x;
   Gif_XContext *gfx = (Gif_XContext *)callback_x;
   Gif_XColormap *gfxc;
+  (void) dummy;
   for (gfxc = gfx->xcolormap; gfxc; gfxc = gfxc->next)
     if (gfxc->colormap == gfcm) {
       delete_xcolormap(gfxc);
