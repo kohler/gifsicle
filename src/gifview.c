@@ -252,7 +252,7 @@ choose_visual(Gt_Viewer *viewer)
   int nv, i;
   XVisualInfo *v, *best_v = 0;
   Gt_Viewer *trav;
-
+  
   /* Look for an existing Gt_Viewer with the same display and screen number */
   for (trav = viewers; trav; trav = trav->next)
     if (trav != viewer && trav->display == display
