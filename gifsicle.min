@@ -24,7 +24,7 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "27 Apr 1998" "Version 1.1.2"
+.TH GIFSICLE 1 "27 Apr 1998" "Version @VERSION@"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 '
