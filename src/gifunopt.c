@@ -1,5 +1,5 @@
 /* gifunopt.c - Unoptimization function for the GIF library.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
    The GIF library is free software*. It is distributed under the GNU Public
