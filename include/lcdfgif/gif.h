@@ -21,8 +21,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 
-#define GIF_MAJOR_VERSION	@GIF_MAJOR_VERSION@
-#define GIF_MINOR_VERSION	@GIF_MINOR_VERSION@
+#define GIF_MAJOR_VERSION	0
+#define GIF_MINOR_VERSION	9
 
 #ifndef BYTE
 #define BYTE
@@ -30,8 +30,8 @@ typedef unsigned char		byte;
 #endif
 #ifndef __BIT_TYPES_DEFINED__
 #define __BIT_TYPES_DEFINED__
-typedef unsigned @INT16@		u_int16_t;
-typedef unsigned @INT32@		u_int32_t;
+typedef unsigned short		u_int16_t;
+typedef unsigned int		u_int32_t;
 #endif
 
 typedef struct Gif_Stream	Gif_Stream;
