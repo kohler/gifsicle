@@ -1053,6 +1053,14 @@ To make a dithered black-and-white version of `anim.gif':
 .Es
 % \fBgifsicle \-\-dither \-\-use\-col=bw anim.gif > anim-bw.gif\fR
 .Ee
+.PP
+To overlay one GIF atop another\*Eproducing a one-frame output GIF that
+looks like the superposition of the two inputs\*Euse
+.B gifsicle
+twice:
+.Es
+% \fBgifsicle bottom.gif top.gif | gifsicle -U '#1' > result.gif\fR
+.Ee
 '
 .SH BUGS
 '
