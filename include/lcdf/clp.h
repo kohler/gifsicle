@@ -32,20 +32,20 @@ extern "C" {
 #define Clp_Mandatory		(1<<0)
 #define Clp_Optional		(1<<1)
 #define Clp_Negate		(1<<2)
-#define Clp_LongMinMatch	(1<<3)
-#define Clp_AllowDash		(1<<4)
+#define Clp_AllowDash		(1<<3)
+#define Clp_OnlyNegated		(1<<4)
 
 /* Option types for Clp_SetOptionChar */
 /*	Clp_NotOption		0 */
-#define Clp_Short		1
-#define Clp_Long		2
-#define Clp_ShortNegated	4
-#define Clp_LongNegated		8
-#define Clp_LongImplicit	16
+#define Clp_Short		(1<<0)
+#define Clp_Long		(1<<1)
+#define Clp_ShortNegated	(1<<2)
+#define Clp_LongNegated		(1<<3)
+#define Clp_LongImplicit	(1<<4)
 
 /* Flags for Clp_AddStringListType */
 #define Clp_AllowNumbers	(1<<0)
-  
+
 /* Return values from Clp_Next */
 #define Clp_NotOption		0
 #define Clp_Done		-1
@@ -59,6 +59,7 @@ typedef struct Clp_Internal Clp_Internal;
 typedef struct Clp_ParserState Clp_ParserState;
 
 typedef int (*Clp_ArgParseFunc)(Clp_Parser *, const char *, int, void *);
+typedef void (*Clp_ErrorHandler)(char *);
 
 
 struct Clp_Option {
@@ -71,18 +72,18 @@ struct Clp_Option {
   int arg_type;
   int flags;
   
+  /* remaining fields are calculated automatically */
   int long_min_match;
+  int negated_long_min_match;
   
 };
 
 
 struct Clp_Parser {
   
-  Clp_Internal *internal;
-  
   int negated;
   
-  int hadarg;
+  int have_arg;
   char *arg;
   
   union {
@@ -93,14 +94,16 @@ struct Clp_Parser {
     void *pv;
   } val;
   
+  Clp_Internal *internal;
+  
 };
 
 
-Clp_Parser *	Clp_NewParser(int ac, char **av, int, Clp_Option *);
+Clp_Parser *	Clp_NewParser(int argc, char * const argv[],
+			      int nopt, Clp_Option *opt);
 
-void		Clp_SetOptionProcessing(Clp_Parser *, int option_processing);
-void		Clp_SetErrorHook(Clp_Parser *, void (*hook)(void));
-void		Clp_SetOptionChar(Clp_Parser *, int c, int option_type);
+Clp_ErrorHandler Clp_SetErrorHandler(Clp_Parser *, Clp_ErrorHandler);
+int		Clp_SetOptionChar(Clp_Parser *, int c, int option_type);
 
 int		Clp_AddType
 			(Clp_Parser *, int type_id, int flags,
@@ -111,16 +114,17 @@ int		Clp_AddStringListTypeVec
 			(Clp_Parser *, int type_id, int flags,
 			 int n, char **str, int *val);
 
-const char *	Clp_ProgramName(Clp_Parser *);
+char *		Clp_ProgramName(Clp_Parser *);
 
 int		Clp_Next(Clp_Parser *);
 char *		Clp_Shift(Clp_Parser *, int allow_dashes);
+int		Clp_SetOptionProcessing(Clp_Parser *, int option_processing);
 
 Clp_ParserState *Clp_NewParserState(void);
 void		Clp_DeleteParserState(Clp_ParserState *);
 void		Clp_SaveParser(Clp_Parser *, Clp_ParserState *);
 void		Clp_RestoreParser(Clp_Parser *, Clp_ParserState *);
-  
+
 int		Clp_OptionError(Clp_Parser *, const char *, ...);
 
 #ifdef __cplusplus
