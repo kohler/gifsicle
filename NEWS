@@ -2,9 +2,14 @@ Gifsicle NEWS
 
 Version 1.13
 
-* `--explode' now generates filenames of the form `file.001 .. file.100'
-  rather than `file.1 .. file.100', so you can use shell globbing and still
-  get correct sequencing.
+* `gifsicle --explode' now generates filenames of the form `file.001 ..
+  file.100' rather than `file.1 .. file.100', so you can use shell globbing
+  like `file.*' and automatically get correct sequencing.
+
+* Added `--background' option to gifview, so you can set the color used for
+  transparent pixels.
+
+* Gifdiff is built by default on Unix.
 
 
 Version 1.12   25.Mar.1999

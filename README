@@ -1,4 +1,4 @@
-GIFSICLE 1.11
+GIFSICLE 1.13
 =============
 
 ABOUT GIFSICLE
@@ -22,10 +22,10 @@ animations on an X display. It can display multi-frame GIFs either as
 slideshows, displaying one frame at a time, or as real-time animations. See
 its man page, `gifview.1', for more information.
 
-   Gifdiff, another companion program (not built by default), checks two
-GIF files for identical visual appearance. This is probably not useful
-unless you're testing GIF-manipulating software. See its man page,
-`gifdiff.1', for more information.
+   Gifdiff, another companion program, checks two GIF files for identical
+visual appearance. This is probably not useful unless you're testing
+GIF-manipulating software. See its man page, `gifdiff.1', for more
+information.
 
    The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of merchantability
@@ -42,15 +42,15 @@ install gifsicle and its manual page (under /usr/local by default).
 details.
 
    To build without gifview (for example, if you don't have X11), give the
-`--disable-gifview' option. To build gifdiff, give the `--enable-gifdiff'
-option.
+`--disable-gifview' option. To build without gifdiff, give the
+`--disable-gifdiff' option.
 
 MAKING GIFSICLE ON 32-BIT WINDOWS
 ---------------------------------
    Emil Mikulic <darkmoon@connexus.net.au> has provided a Makefile for
 building gifsicle out of the box on 32-bit Windows. Just unpack the
 distribution, change into that directory, and type `nmake -f Makefile.w32'.
-Gifview and gifdiff will not be built. See the `Makefile.w32' file for more
+Gifview will not be built. See the `Makefile.w32' file for more
 information.
 
 CHANGES
