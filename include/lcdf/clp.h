@@ -17,11 +17,16 @@ extern "C" {
 /* Argument types */
 #define Clp_NoArg		0
 #define Clp_ArgString		1
-#define Clp_ArgInt		2
+#define Clp_ArgStringNotOption	2
 #define Clp_ArgBool		3
-#define Clp_ArgDouble		4
+#define Clp_ArgInt		4
+#define Clp_ArgUnsigned		5
+#define Clp_ArgDouble		6
 
 #define Clp_MaxDefaultType	Clp_ArgDouble
+
+/* Argument type flags */
+#define Clp_DisallowOptions	(1<<0)
 
 /* Flags for individual Clp_Options */
 #define Clp_Mandatory		(1<<0)
@@ -53,7 +58,7 @@ typedef struct Clp_Parser Clp_Parser;
 typedef struct Clp_Internal Clp_Internal;
 typedef struct Clp_ParserState Clp_ParserState;
 
-typedef int (*Clp_ArgParseFunc)(Clp_Parser *, const char *, void *, int);
+typedef int (*Clp_ArgParseFunc)(Clp_Parser *, const char *, int, void *);
 
 
 struct Clp_Option {
@@ -82,6 +87,7 @@ struct Clp_Parser {
   
   union {
     int i;
+    unsigned u;
     double d;
     char *s;
     void *pv;
@@ -97,7 +103,7 @@ void		Clp_SetErrorHook(Clp_Parser *, void (*hook)(void));
 void		Clp_SetOptionChar(Clp_Parser *, int c, int option_type);
 
 int		Clp_AddType
-			(Clp_Parser *, int type_id,
+			(Clp_Parser *, int type_id, int flags,
 			 Clp_ArgParseFunc func, void *user_data);
 int		Clp_AddStringListType
 			(Clp_Parser *, int type_id, int flags, ...);
@@ -108,7 +114,7 @@ int		Clp_AddStringListTypeVec
 const char *	Clp_ProgramName(Clp_Parser *);
 
 int		Clp_Next(Clp_Parser *);
-char *		Clp_GetNextArgument(Clp_Parser *);
+char *		Clp_Shift(Clp_Parser *, int allow_dashes);
 
 Clp_ParserState *Clp_NewParserState(void);
 void		Clp_DeleteParserState(Clp_ParserState *);
