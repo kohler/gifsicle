@@ -14,21 +14,23 @@ VPATH		= @srcdir@
 srcdir		= @srcdir@
 bindir		= @bindir@
 mandir		= @mandir@/man$(manext)
-# Number to put on the man page filename.
 manext		= 1
 
 CC		= @CC@ $(PROFILING)
 CCLINKER	= @CC@ $(PROFILING)
 CFLAGS		= @CFLAGS@
-CPPFLAGS	= @DEFS@
+CPPFLAGS	= @DEFS@ -I.
 X_CPPFLAGS	= @X_CFLAGS@
 PROFILING	= 
 LDFLAGS		= @LDFLAGS@
-X11LIB		= @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
+LIBS		= @LIBS@
+X11LIBS		= @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
 INSTALL		= @INSTALL@
 INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
+mkinstalldirs	= $(SHELL) $(srcdir)/mkinstalldirs
+PROG_TRANSFORM	= @program_transform_name@
 
 PROGRAMS	= @PROGRAMS@
 GIFVIEWOBJS	= gifread.o giffunc.o gifunopt.o gifx.o clp.o @MALLOC_O@ \
@@ -40,12 +42,12 @@ GIFDIFFOBJS	= gifread.o giffunc.o clp.o @MALLOC_O@ gifdiff.o
 all: $(PROGRAMS)
 
 gifsicle: $(GIFSICLEOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifsicle $(GIFSICLEOBJS) $(LDFLAGS)
+	$(CCLINKER) $(CFLAGS) -o gifsicle $(GIFSICLEOBJS) $(LDFLAGS) $(LIBS)
 gifsicle.o: gifsicle.c
 	$(CC) -DVERSION=\"$(VERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 gifview: $(GIFVIEWOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifview $(GIFVIEWOBJS) $(LDFLAGS) $(X11LIB)
+	$(CCLINKER) $(CFLAGS) -o gifview $(GIFVIEWOBJS) $(LDFLAGS) $(X11LIBS) $(LIBS)
 gifx.o: gifx.c
 	$(CC) $(X_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -c $<
 gifview.o: gifview.c
@@ -53,20 +55,29 @@ gifview.o: gifview.c
 	$(CPPFLAGS) @GETTIMEOFDAY@ $(CFLAGS) -c $<
 
 gifdiff: $(GIFDIFFOBJS)
-	$(CCLINKER) $(CFLAGS) -o gifdiff $(LDFLAGS) $(GIFDIFFOBJS)
+	$(CCLINKER) $(CFLAGS) -o gifdiff $(GIFDIFFOBJS) $(LDFLAGS) $(LIBS)
 gifdiff.o: gifdiff.c
 	$(CC) -DVERSION=\"$(VERSION)\" $(CPPFLAGS) $(CFLAGS) -c $<
 
 install: @INSTALLERS@
 install-gifsicle: gifsicle
-	$(INSTALL_PROGRAM) gifsicle $(bindir)/gifsicle
-	$(INSTALL_DATA) gifsicle.man $(mandir)/gifsicle.$(manext)
+	$(mkinstalldirs) $(bindir) $(mandir)
+	$(INSTALL_PROGRAM) gifsicle $(bindir)/`echo gifsicle|sed '$(PROG_TRANSFORM)'`
+	$(INSTALL_DATA) $(srcdir)/gifsicle.man $(mandir)/`echo gifsicle|sed '$(PROG_TRANSFORM)'`.$(manext)
 install-gifview: gifview
-	$(INSTALL_PROGRAM) gifview $(bindir)/gifview
-	$(INSTALL_DATA) gifview.man $(mandir)/gifview.$(manext)
+	@$(mkinstalldirs) $(bindir) $(mandir)
+	$(INSTALL_PROGRAM) gifview $(bindir)/`echo gifview|sed '$(PROG_TRANSFORM)'`
+	$(INSTALL_DATA) $(srcdir)/gifview.man $(mandir)/`echo gifview|sed '$(PROG_TRANSFORM)'`.$(manext)
 install-gifdiff: gifdiff
-	$(INSTALL_PROGRAM) gifdiff $(bindir)/gifdiff
-	$(INSTALL_DATA) gifdiff.man $(mandir)/gifdiff.$(manext)
+	@$(mkinstalldirs) $(bindir) $(mandir)
+	$(INSTALL_PROGRAM) gifdiff $(bindir)/`echo gifdiff|sed '$(PROG_TRANSFORM)'`
+	$(INSTALL_DATA) $(srcdir)/gifdiff.man $(mandir)/`echo gifdiff|sed '$(PROG_TRANSFORM)'`.$(manext)
+
+uninstall:
+	for i in $(PROGRAMS) ; do \
+	rm -f $(bindir)/`echo $$i|sed '$(PROG_TRANSFORM)'` ; \
+	rm -f $(mandir)/`echo $$i|sed '$(PROG_TRANSFORM)'`.$(manext) ; \
+	done
 
 clp.o: clp.c clp.h
 
@@ -107,7 +118,8 @@ realclean: distclean
 $(PACKAGE)-$(VERSION).tar.gz:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir -m 0777 $(PACKAGE)-$(VERSION)
-	cp INSTALL Makefile.in NEWS README configure configure.in install-sh \
+	cp INSTALL Makefile.in NEWS README configure configure.in \
+	install-sh mkinstalldirs \
 	gif.h.in gifread.c gifwrite.c giffunc.c gifunopt.c \
 	clp.c clp.h dmalloc.c dmalloc.h fmalloc.c \
 	gifsicle.h merge.c support.c quantize.c optimize.c gifsicle.c \
@@ -132,4 +144,5 @@ rpm: $(PACKAGE)-$(VERSION).tar.gz
 	rm -rf /tmp/rpmb
 
 .PHONY: all install install-gifsicle install-gifview install-gifdiff \
-	srclinks versionize dist rpm clean mostlyclean distclean realclean
+	uninstall srclinks versionize dist rpm \
+	clean mostlyclean distclean realclean

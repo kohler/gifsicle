@@ -7,6 +7,9 @@ Version 1.5   27.Sep.1998
 * Changes to support Win32 port thanks to Emil Mikulic
   <darkmoon@connexus.net.au>.
 
+* Added `make uninstall' target and enabled `./configure's program name
+  transformations.
+
 
 Version 1.4.1   16.Sep.1998
 
