@@ -1043,7 +1043,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
   Gif_Color dest_background;
-  int i, j;
+  int i;
   
   global->ncol = 0;
   dest->global = global;
