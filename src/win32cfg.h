@@ -6,7 +6,7 @@
 
 /* Package and version */
 #define PACKAGE "gifsicle"
-#define VERSION "1.10 (Windows)"
+#define VERSION "1.11 (Windows)"
 
 /* Are we using the debugging malloc library? */
 /* #undef DMALLOC */
@@ -42,6 +42,12 @@ typedef signed __int32 int32_t;
 
 /* Define if you have the strerror function.  */
 #define HAVE_STRERROR 1
+
+/* Define if you have the strtoul function.  */
+#define HAVE_STRTOUL 1
+
+/* Define if you have the <sys/select.h> header file.  */
+/* #undef HAVE_SYS_SELECT_H */
 
 #ifdef __cplusplus
 extern "C" {
