@@ -2,7 +2,8 @@ Gifsicle NEWS
 
 Version 1.9b1   5.Dec.1998
 
-* Added `--resize WxH' option.
+* Added `--resize WxH' option, prompted by code from Christian Kumpf
+  <kumpf@igd.fhg.de>.
 
 * Made `--change-color PIXELINDEX color' work, and `--change-color color
   PIXELINDEX' illegal.
