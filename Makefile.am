@@ -1,4 +1,5 @@
 ## Process this file with automake to produce Makefile.in
+AUTOMAKE_OPTIONS = no-dependencies foreign check-news
 
 bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
 EXTRA_PROGRAMS = gifview gifdiff
@@ -24,14 +25,12 @@ gifdiff_SOURCES = clp.c clp.h \
 		giffunc.c gifread.c \
 		gifdiff.c
 
+INCLUDES = $(X_CFLAGS)
+
 EXTRA_DIST = README.win \
 		dmalloc.c dmalloc.h fmalloc.c \
 		gifsicle.1 gifview.1 gifdiff.1 \
 		logo.gif logo1.gif rpm.spec
-
-AUTOMAKE_OPTIONS = no-dependencies foreign check-news
-GIF_MEMORY_DEFINES =
-INTEGER_TYPES =
 
 clp.o: clp.c clp.h
 
@@ -49,6 +48,9 @@ optimize.o: optimize.c gifsicle.h
 
 gifview.o: gifview.c
 gifdiff.o: gifdiff.c
+
+GIF_MEMORY_DEFINES =
+INTEGER_TYPES =
 
 srclinks:
 	for i in clp.c clp.h ; do \
