@@ -212,8 +212,10 @@ or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
     if (make_name)
       free(rec_name);
     free(file_name);
-    fclose(f);
+    if (f)
+	fclose(f);
   }
   
   exit(0);
+
 }
