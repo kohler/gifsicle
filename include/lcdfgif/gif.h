@@ -26,9 +26,9 @@ extern "C" {
 
 #ifndef BYTE
 #define BYTE
-typedef unsigned char		byte;
+typedef unsigned char byte;
 #endif
-@GIF_TYPES@
+@INTEGER_TYPES@
 
 typedef struct Gif_Stream	Gif_Stream;
 typedef struct Gif_Image	Gif_Image;
