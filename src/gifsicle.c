@@ -425,7 +425,7 @@ output_stream(char *output_name, Gif_Stream *gfs)
 
 
 static void
-adapt_palette(Gif_Stream *gfs)
+change_palette(Gif_Stream *gfs)
 {
   Gif_Color *col = 0;
   int ncol;
@@ -463,10 +463,10 @@ do_frames_output(char *outfile, int f1, int f2)
   
   out = merge_frame_interval(frames, f1, f2);
   if (out) {
+    if (adaptive_palette_size > 0)
+      change_palette(out);
     if (optimizing > 0)
       optimize_fragments(out, optimizing > 1);
-    if (adaptive_palette_size > 0)
-      adapt_palette(out);
     output_stream(outfile, out);
     Gif_DeleteStream(out);
   }

@@ -62,25 +62,58 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   int hist_cap = 256;
   int nhist = 0;
   int x, y, i;
-  
+
   unmark_colors(gfs->global);
   for (i = 0; i < gfs->nimages; i++)
     unmark_colors(gfs->images[i]->local);
   
+  /* Put all transparent pixels in histogram slot 0. Transparent pixels are
+     marked by haspixel == 255. */
+  hist[0].haspixel = 255;
+  hist[0].pixel = 0;
+  nhist++;
+
+  /* Count pixels. Be careful about values which are outside the range of the
+     colormap. */
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
     Gif_Color *col;
+    int ncol;
+    int transparent = gfi->transparent;
     if (!gfcm) continue;
+    
     col = gfcm->col;
+    ncol = gfcm->ncol;
+    
+    /* mark the transparent color as mapping to histogram slot 0 */
+    if (transparent >= 0 && transparent < ncol) {
+      col[transparent].haspixel = 1;
+      col[transparent].pixel = 0;
+    }
+    
+    /* sweep over the image data, counting pixels */
     for (y = 0; y < gfi->height; y++) {
       byte *data = gfi->img[y];
       for (x = 0; x < gfi->width; x++, data++) {
-	if (!col[*data].haspixel)
-	  add_histogram_color(&col[*data], &hist, &nhist, &hist_cap);
-	hist[ col[*data].pixel ].pixel++;
+	byte value = *data;
+	if (value > ncol) value = ncol;
+	if (!col[value].haspixel)
+	  add_histogram_color(&col[value], &hist, &nhist, &hist_cap);
+	hist[ col[value].pixel ].pixel++;
       }
     }
+    
+    /* unmark the transparent color */
+    if (transparent >= 0 && transparent < ncol)
+      col[transparent].haspixel = 0;
+  }
+  
+  /* get rid of the transparent slot if there was no transparency in the
+     image */
+  if (hist[0].pixel == 0) {
+    hist[0] = hist[nhist - 1];
+    nhist--;
   }
   
   *nhist_store = nhist;
@@ -125,6 +158,33 @@ blue_sort_compare(const void *va, const void *vb)
 }
 
 
+/* Transparency note: It seems hard to be maximally flexible about
+   transparency (like, if a frame doesn't use red, use red as its transparent
+   color; if another frame doesn't use blue, use blue as its transparent
+   color). So we just globally allocate one color slot exclusively for
+   transparency if there's any transparency in the image. */
+
+static int
+check_hist_transparency(Gif_Color *hist, int nhist)
+{
+  int i;
+  for (i = 0; i < nhist && hist[i].haspixel != 255; i++)
+    ;
+  if (i >= nhist)
+    return -1;
+  else {
+    Gif_Color temp = hist[i];
+    hist[i] = hist[nhist - 1];
+    hist[nhist - 1] = temp;
+    return nhist - 1;
+  }
+}
+
+
+/* ADAPTIVE_PALETTE FUNCTIONS return a palette (a vector of Gif_Colors). The
+   pixel fields are undefined; the haspixel fields are all 0. If there was
+   transparency in the image, the last color in the palette represents
+   transparency, and its haspixel field equals 255. */
 
 Gif_Color *
 adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
@@ -133,7 +193,7 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
   adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
   Gif_Color *adapt = Gif_NewArray(Gif_Color, adapt_size);
   int nadapt;
-  int i, j;
+  int i, j, transparent;
   
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
@@ -144,6 +204,10 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
     warning("trivial adaptive palette (only %d colors in source)", nhist);
     adapt_size = nhist;
   }
+
+  /* 0. remove any transparent color from consideration */
+  transparent = check_hist_transparency(hist, nhist);
+  if (transparent >= 0) nhist--, adapt_size--;
   
   /* 1. set up the first slot, containing all pixels. */
   {
@@ -231,8 +295,16 @@ adaptive_palette_median_cut(Gif_Color *hist, int nhist, int adapt_size,
     adapt[i].red = (byte)(red_total / slots[i].pixel);
     adapt[i].green = (byte)(green_total / slots[i].pixel);
     adapt[i].blue = (byte)(blue_total / slots[i].pixel);
+    adapt[i].haspixel = 0;
   }
-  
+
+  /* 4. if there was transparency, add it */
+  if (transparent >= 0) {
+    adapt[nadapt] = hist[transparent];
+    adapt[nadapt].haspixel = 255;
+    nadapt++;
+  }
+    
   Gif_DeleteArray(slots);
   *nadapt_store = nadapt;
   return adapt;
@@ -248,7 +320,7 @@ adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
   int *closest = Gif_NewArray(int, nhist);
   Gif_Color *adapt = Gif_NewArray(Gif_Color, adapt_size);
   int nadapt = 0;
-  int i, j;
+  int i, j, transparent;
   
   /* This code was uses XV's modified diversity algorithm, and was written
      with reference to XV's implementation by that algorithm by John Bradley
@@ -261,20 +333,24 @@ adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
     adapt_size = nhist;
   }
   
+  /* 0. remove any transparent color from consideration */
+  transparent = check_hist_transparency(hist, nhist);
+  if (transparent >= 0) nhist--, adapt_size--;
+  
   /* 1. initialize min_dist and sort the colors in order of popularity. */
   for (i = 0; i < nhist; i++)
     min_dist[i] = 0x7FFFFFFF;
   
   qsort(hist, nhist, sizeof(Gif_Color), popularity_sort_compare);
   
-  /* 2. choose colors one at a time. */
+  /* 2. choose colors one at a time */
   for (nadapt = 0; nadapt < adapt_size; nadapt++) {
     int chosen;
     
     /* 2.1. choose the color to be added */
     if (nadapt == 0 || (nadapt >= 10 && nadapt % 2 == 0)) {
       /* 2.1a. choose based on popularity from unchosen colors; we've sorted
-	 them, so just choose the first in the list. */
+	 them on popularity, so just choose the first in the list */
       for (chosen = 0; chosen < nhist; chosen++)
 	if (min_dist[chosen])
 	  break;
@@ -336,6 +412,14 @@ adaptive_palette_diversity(Gif_Color *hist, int nhist, int adapt_size,
       adapt[i].blue = (byte)(blue_total / pixel_total);
     } else
       adapt[i] = hist[match];
+    adapt[i].haspixel = 0;
+  }
+  
+  /* 4. if there was transparency, add it */
+  if (transparent >= 0) {
+    adapt[nadapt] = hist[transparent];
+    adapt[nadapt].haspixel = 255;
+    nadapt++;
   }
   
   Gif_DeleteArray(min_dist);
