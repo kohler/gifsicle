@@ -527,7 +527,7 @@ fi
 
 
 
-VERSION=1.3
+VERSION=1.3.1
 
 GIFDIFFVERSION=1.0
 
@@ -1866,9 +1866,9 @@ void *fail_die_realloc(void *, int, const char *, int);'
   MALLOC_O='fmalloc.o'
 fi
 
-echo $ac_n "checking for integer typedefs in sys/types.h""... $ac_c" 1>&6
-echo "configure:1871: checking for integer typedefs in sys/types.h" >&5
-if eval "test \"`echo '$''{'ac_cv_sys_types_int'+set}'`\" = set"; then
+echo $ac_n "checking for integer typedefs""... $ac_c" 1>&6
+echo "configure:1871: checking for integer typedefs" >&5
+if eval "test \"`echo '$''{'ac_cv_int_types'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
@@ -1879,26 +1879,36 @@ EOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   egrep "u_int32_t" >/dev/null 2>&1; then
   rm -rf conftest*
-  ac_cv_sys_types_int=yes
+  ac_cv_int_types=sys/types.h
 else
   rm -rf conftest*
-  ac_cv_sys_types_int=no
+  cat > conftest.$ac_ext <<EOF
+#line 1887 "configure"
+#include "confdefs.h"
+#include <sys/int_types.h>
+EOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  egrep "u_int32_t" >/dev/null 2>&1; then
+  rm -rf conftest*
+  ac_cv_int_types=sys/int_types.h
+else
+  rm -rf conftest*
+  ac_cv_int_types=no
+fi
+rm -f conftest*
+
 fi
 rm -f conftest*
 
 fi
 
-echo "$ac_t""$ac_cv_sys_types_int" 1>&6
+echo "$ac_t""$ac_cv_int_types" 1>&6
 
-if test "$ac_cv_sys_types_int" = yes ;
+if test "$ac_cv_int_types" = no ;
 then
-  # Found int typedefs in sys/types.h
-  INTEGER_TYPES='#include <sys/types.h>'
-  
-else
   # Define our own versions
   echo $ac_n "checking for a 16-bit value""... $ac_c" 1>&6
-echo "configure:1902: checking for a 16-bit value" >&5
+echo "configure:1912: checking for a 16-bit value" >&5
 if eval "test \"`echo '$''{'ac_cv_int16'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -1906,7 +1916,7 @@ else
   ac_cv_int16=short
 else
   cat > conftest.$ac_ext <<EOF
-#line 1910 "configure"
+#line 1920 "configure"
 #include "confdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1919,7 +1929,7 @@ int main(int argc, char **argv) {
   exit(0);
 }
 EOF
-if { (eval echo configure:1923: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+if { (eval echo configure:1933: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
 then
   ac_cv_int16=`cat conftestval`
 else
@@ -1936,7 +1946,7 @@ fi
 echo "$ac_t""$ac_cv_int16" 1>&6
 
   echo $ac_n "checking for a 32-bit value""... $ac_c" 1>&6
-echo "configure:1940: checking for a 32-bit value" >&5
+echo "configure:1950: checking for a 32-bit value" >&5
 if eval "test \"`echo '$''{'ac_cv_int32'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -1944,7 +1954,7 @@ else
   ac_cv_int32=int
 else
   cat > conftest.$ac_ext <<EOF
-#line 1948 "configure"
+#line 1958 "configure"
 #include "confdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1958,7 +1968,7 @@ int main(int argc, char **argv) {
   exit(0);
 }
 EOF
-if { (eval echo configure:1962: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+if { (eval echo configure:1972: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
 then
   ac_cv_int32=`cat conftestval`
 else
@@ -1977,6 +1987,10 @@ echo "$ac_t""$ac_cv_int32" 1>&6
   INTEGER_TYPES="typedef unsigned $ac_cv_int16 u_int16_t;\\
 typedef $ac_cv_int32 int32_t;\\
 typedef unsigned $ac_cv_int32 u_int32_t;"
+
+else
+  # Found int typedefs in a system header file
+  INTEGER_TYPES="#include <$ac_cv_int_types>"
 fi
 
 trap '' 1 2 15

@@ -7,8 +7,8 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
-#include <sys/time.h>
 #include "gifsicle.h"
+#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.3.1   4.Sep.1998
+
+* Fixed configuration bug on Ultrasparc.
+
+
 Version 1.3   3.Sep.1998
 
 * Added `--flip-*' and `--rotate-*' options.
