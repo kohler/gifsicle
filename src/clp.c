@@ -987,7 +987,6 @@ find_long(Clp_Parser *clp, char *arg)
   }
   
  worked:
-  cli->ambiguous = 0;
   len = argcmp(opt[value].long_name, arg, opt[value].long_min_match);
   if (arg[len] == '=') {
     clp->have_arg = 1;
@@ -1011,7 +1010,6 @@ find_short(Clp_Parser *clp, int short_name)
 	    : !TEST(&opt[i], Clp_OnlyNegated)))
       return &opt[i];
   
-  cli->ambiguous = 0;
   return 0;
 }
 
@@ -1045,6 +1043,7 @@ Clp_Next(Clp_Parser *clp)
   
   /** Set up clp **/
   cli->current_option = 0;
+  cli->ambiguous = 0;
   
   /** Get the next argument or option **/
   if (!next_argument(clp, cli->option_processing ? 0 : 2))
