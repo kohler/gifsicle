@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <errno.h>
 
 
 int is_static = 1;
@@ -111,6 +112,7 @@ main(int argc, char **argv)
 {
   int reckless = 0;
   int make_name = 0;
+  const char *directory = "";
   
   argc--, argv++;
   
@@ -123,7 +125,15 @@ main(int argc, char **argv)
       is_static = 0, argc--, argv++;
     else if (!strcmp(argv[0], "-makename"))
       make_name = 1, argc--, argv++;
-    else
+    else if (!strcmp(argv[0], "-dir") && argc > 1) {
+      directory = argv[1], argc -= 2, argv += 2;
+      /* make sure directory is slash-terminated */
+      if (directory[ strlen(directory) - 1 ] != '/' && directory[0]) {
+	char *ndirectory = (char *)malloc(strlen(directory) + 2);
+	sprintf(ndirectory, "%s/", directory);
+	directory = ndirectory;
+      }
+    } else
       break;
   }
   
@@ -131,8 +141,8 @@ main(int argc, char **argv)
       || argc < 1
       || (argv[0] && argv[0][0] == '-')) {
     fprintf(stderr, "\
-usage: giftoc [-reckless] [-extern] giffile gifname [giffile gifname...]\n\
-or:    giftoc -makename [-reckless] [-extern] giffile [giffile...]\n");
+usage: giftoc [-reckless] [-extern] [-dir DIR] FILE NAME [FILE NAME...]\n\
+or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
     exit(1);
   }
   
@@ -140,18 +150,23 @@ or:    giftoc -makename [-reckless] [-extern] giffile [giffile...]\n");
     printf("#include \"gif.h\"\n\n");
   
   for (; argc > 0; argc--, argv++) {
-    char *rec_name;
-    FILE *f = fopen(argv[0], "rb");
+    FILE *f;
+    char *rec_name = 0;
+    char *file_name = (char *)malloc(strlen(argv[0]) + strlen(directory) + 1);
+
+    strcpy(file_name, directory);
+    strcat(file_name, argv[0]);
+    f = fopen(file_name, "rb");
     
     if (!f) {
-      fprintf(stderr, "couldn't open %s for reading\n", argv[0]);
-      continue;
+      fprintf(stderr, "%s: %s.\n", file_name, strerror(errno));
+      goto done;
     }
     
     if (make_name) {
       char *sin, *sout;
-      sin = strrchr(argv[0], '/') + 1;
-      if (!sin) sin = argv[0];
+      sin = strrchr(file_name, '/') + 1;
+      if (!sin) sin = file_name;
       sout = rec_name = (char *)malloc(strlen(sin) + 2);
       if (isdigit(*sin)) *sout++ = 'N';
       for (; *sin; sin++, sout++)
@@ -169,8 +184,10 @@ or:    giftoc -makename [-reckless] [-extern] giffile [giffile...]\n");
     if (reckless) print_reckless(f, rec_name);
     else print_unreckless(f, rec_name);
     
+   done:
     if (make_name)
       free(rec_name);
+    free(file_name);
     fclose(f);
   }
   
