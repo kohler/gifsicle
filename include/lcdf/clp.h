@@ -59,12 +59,12 @@ typedef struct Clp_Internal Clp_Internal;
 typedef struct Clp_ParserState Clp_ParserState;
 
 typedef int (*Clp_ArgParseFunc)(Clp_Parser *, const char *, int, void *);
-typedef void (*Clp_ErrorHandler)(char *);
+typedef void (*Clp_ErrorHandler)(const char *);
 
 
 struct Clp_Option {
   
-  char *long_name;
+  const char *long_name;
   int short_name;
   
   int option_id;
@@ -80,13 +80,13 @@ struct Clp_Parser {
   int negated;
   
   int have_arg;
-  char *arg;
+  const char *arg;
   
   union {
     int i;
     unsigned u;
     double d;
-    char *s;
+    const char *s;
     void *pv;
   } val;
   
@@ -111,10 +111,10 @@ int		Clp_AddStringListTypeVec
 			(Clp_Parser *, int type_id, int flags,
 			 int n, char **str, int *val);
 
-char *		Clp_ProgramName(Clp_Parser *);
+const char *	Clp_ProgramName(Clp_Parser *);
 
 int		Clp_Next(Clp_Parser *);
-char *		Clp_Shift(Clp_Parser *, int allow_dashes);
+const char *	Clp_Shift(Clp_Parser *, int allow_dashes);
 int		Clp_SetOptionProcessing(Clp_Parser *, int option_processing);
 
 Clp_ParserState *Clp_NewParserState(void);
