@@ -128,7 +128,6 @@ Clp_Option options[] = {
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, 0 },
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
-  { "einfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   { "explode", 'e', 'e', 0, Clp_LongMinMatch, 3 }, /****/
   { "explode-by-name", 'E', 'E', 0, 0 },
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
@@ -167,6 +166,7 @@ Clp_Option options[] = {
   { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
   { "verbose", 'v', VERBOSE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
+  { "xinfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
 };
 
 
@@ -334,18 +334,16 @@ input_stream(char *name)
   next_input = 0;
   files_given++;
   
-  if (name && strcmp(name, "-") == 0)
-    name = 0;
-  if (!name)
+  if (name == 0 || strcmp(name, "-") == 0) {
     f = stdin;
-  else
+    name = "<stdin>";
+  } else
     f = fopen(name, "rb");
   if (!f) {
     error("can't open `%s' for reading", name);
     return;
   }
   
-  name = name ? name : "<stdin>";
   if (verbosing) verbose_open('<', name);
   gfs = Gif_FullReadFile(f, read_flags);
   fclose(f);

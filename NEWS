@@ -7,12 +7,16 @@ Version 1.2b6
 * GIF comments are now printed out more carefully in --info: binary characters
   appear as backslash escapes. (Literal backslashes are printed as `\\'.)
 
-* New --extension-info/--einfo option.
+* New --extension-info/--xinfo option.
 
 * Removed spurious warning about local colormaps when a --colors option is in
   effect.
 
 * Replacing a named frame with another image now keeps the name by default.
+
+* Many changes to gifview. Added --animate, --display, --geometry, --name,
+  --help options, keystrokes, multiple GIFs on the command line, and a manual
+  page.
 
 
 Version 1.2b5	12.May.1998

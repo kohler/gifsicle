@@ -47,7 +47,8 @@ gifview: $(GIFVIEWOBJS)
 gifx.o: gifx.c
 	$(CC) $(X_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -c $<
 gifview.o: gifview.c
-	$(CC) $(X_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) -DVERSION=\"$(VERSION)\" $(X_CPPFLAGS) \
+	$(CPPFLAGS) @GETTIMEOFDAY@ $(CFLAGS) -c $<
 
 install: @INSTALLERS@
 install-gifsicle: gifsicle

@@ -80,12 +80,12 @@ General options: Also --no-opt/+o for info and verbose.\n\
   --info, -I                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
   --color-info, --cinfo         --info plus colormap details.\n\
-  --extension-info, --einfo     --info plus extension details.\n\
+  --extension-info, --xinfo     --info plus extension details.\n\
   --verbose, -v                 Prints progress information.\n\
   --help, -h                    Print this message and exit.\n\
   --version                     Print version number and exit.\n\
   --output FILE, -o FILE        Write output to FILE.\n\
-Frame selections:               #num, #num1-num2, #num1-, #-num2, #name\n\
+Frame selections:               #num, #num1-num2, #num1-, #name\n\
 Frame change options:\n\
   --delete FRAMES               Delete FRAMES from input.\n\
   --insert-before FRAME GIFS    Insert GIFS before FRAMES in input.\n\

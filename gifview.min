@@ -24,13 +24,15 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "10 May 1998" "Version @VERSION@"
+.TH GIFVIEW 1 "10 May 1998" "Version @VERSION@"
 .SH NAME
-gifsicle \- manipulates GIF images and animations
+gifview \- displays GIF images and animations on the X window system
 '
 .SH SYNOPSIS
-.B gifsicle
-\%[options, frames, and filenames].\|.\|.
+.B gifview
+\%[\fB--display\fP \fIdisplay\fP]
+\%[options]
+\%[filenames and frames].\|.\|.
 '
 .SH DESCRIPTION
 .B gifsicle
