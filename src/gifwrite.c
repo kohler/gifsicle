@@ -283,18 +283,18 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 
 
 static int
-image_data(byte **img, u_int16_t width, u_int16_t height, byte interlaced,
-	   u_int16_t num_colors, Gif_Context *gfc, Gif_Writer *grr)
+write_image_data(byte **img, u_int16_t width, u_int16_t height,
+		 byte interlaced, u_int16_t num_colors,
+		 Gif_Context *gfc, Gif_Writer *grr)
 {
   int i;
-  u_int16_t y, max_color;
+  u_int16_t x, y, max_color;
   byte min_code_bits;
   
   max_color = 0;
   for (y = 0; y < height && max_color < 128; y++) {
     byte *data = img[y];
-    u_int16_t x;
-    for (x = width; x > 0 && max_color < 128; x--, data++)
+    for (x = width; x > 0; x--, data++)
       if (*data > max_color)
 	max_color = *data;
   }
@@ -356,8 +356,8 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
     ncolor = gfs->global->ncol;
   if (ncolor < 0 || ncolor > 256) ncolor = 256;
   
-  ok = image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-		  ncolor, &gfc, &grr);
+  ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
+			ncolor, &gfc, &grr);
   
  done:
   if (!ok) {
@@ -375,7 +375,7 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
 
 
 static void
-color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
+write_color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
 {
   /* GIF format doesn't allow a colormap with only 1 entry. */
   int extra = 2, i;
@@ -399,7 +399,7 @@ color_table(Gif_Color *c, u_int16_t size, Gif_Writer *grr)
 
 
 static int
-gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
+write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte packed = 0;
   u_int16_t ncolor = 256;
@@ -423,7 +423,7 @@ gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   gifputbyte(packed, grr);
   
   if (gfi->local)
-    color_table(gfi->local->col, gfi->local->ncol, grr);
+    write_color_table(gfi->local->col, gfi->local->ncol, grr);
   
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
@@ -439,15 +439,15 @@ gif_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
     if (len > 0) gifputblock(compressed, len, grr);
     
   } else
-    image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-	       ncolor, gfc, grr);
+    write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
+		     ncolor, gfc, grr);
   
   return 1;
 }
 
 
 static void
-logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
+write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 {
   byte packed = 0x70;		/* high resolution colors */
 
@@ -467,7 +467,7 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   gifputbyte(0, grr);		/* no aspect ratio information */
   
   if (gfs->global)
-    color_table(gfs->global->col, gfs->global->ncol, grr);
+    write_color_table(gfs->global->col, gfs->global->ncol, grr);
 }
 
 
@@ -480,7 +480,7 @@ logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
    */
 
 static void
-graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
+write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
 {
   byte packed = 0;
   gifputbyte('!', grr);
@@ -510,7 +510,7 @@ blast_data(byte *data, int len, Gif_Writer *grr)
 
 
 static void
-name_extension(char *id, Gif_Writer *grr)
+write_name_extension(char *id, Gif_Writer *grr)
 {
   gifputbyte('!', grr);
   gifputbyte(0xCE, grr);
@@ -519,7 +519,7 @@ name_extension(char *id, Gif_Writer *grr)
 
 
 static void
-comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
+write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 {
   int i;
   for (i = 0; i < gfcom->count; i++) {
@@ -531,7 +531,7 @@ comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 
 
 static void
-netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
+write_netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
 {
   gifputbyte('!', grr);
   gifputbyte(255, grr);
@@ -545,7 +545,7 @@ netscape_loop_extension(u_int16_t value, Gif_Writer *grr)
 
 
 static void
-generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
+write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 {
   u_int32_t pos = 0;
   if (gfex->kind < 0) return;	/* ignore our private extensions */
@@ -574,7 +574,7 @@ generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 
 
 static int
-gif_write(Gif_Stream *gfs, Gif_Writer *grr)
+write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 {
   int ok = 0;
   int i;
@@ -604,33 +604,33 @@ gif_write(Gif_Stream *gfs, Gif_Writer *grr)
       gifputblock((byte *)"GIF87a", 6, grr);
   }
   
-  logical_screen_descriptor(gfs, grr);
+  write_logical_screen_descriptor(gfs, grr);
   
   if (gfs->loopcount > -1)
-    netscape_loop_extension(gfs->loopcount, grr);
+    write_netscape_loop_extension(gfs->loopcount, grr);
   
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
     while (gfex && gfex->position == i) {
-      generic_extension(gfex, grr);
+      write_generic_extension(gfex, grr);
       gfex = gfex->next;
     }
     if (gfi->comment)
-      comment_extensions(gfi->comment, grr);
+      write_comment_extensions(gfi->comment, grr);
     if (gfi->identifier)
-      name_extension(gfi->identifier, grr);
+      write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
-      graphic_control_extension(gfi, grr);
-    if (!gif_image(gfs, gfi, &gfc, grr))
+      write_graphic_control_extension(gfi, grr);
+    if (!write_image(gfs, gfi, &gfc, grr))
       goto done;
   }
   
   while (gfex) {
-    generic_extension(gfex, grr);
+    write_generic_extension(gfex, grr);
     gfex = gfex->next;
   }
   if (gfs->comment)
-    comment_extensions(gfs->comment, grr);
+    write_comment_extensions(gfs->comment, grr);
   
   gifputbyte(';', grr);
   ok = 1;
@@ -650,7 +650,7 @@ Gif_WriteFile(Gif_Stream *gfs, FILE *f)
   grr.f = f;
   grr.byte_putter = file_byte_putter;
   grr.block_putter = file_block_putter;
-  return gif_write(gfs, &grr);
+  return write_gif(gfs, &grr);
 }
 
 
