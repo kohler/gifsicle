@@ -175,7 +175,7 @@ write_compressed_data(byte **img, uint16_t width, uint16_t height,
       for (c = 0; c < clear_code; c++)
 	rle_next[c] = clear_code;
       
-    } else if (next_code >= CUR_BUMP_CODE) {
+    } else if (next_code > CUR_BUMP_CODE) {
       /* bump up compression size */
       if (cur_code_bits == GIF_MAX_CODE_BITS) {
 	output_code = clear_code;
@@ -442,7 +442,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
     gfi->compressed = 0;
   }
   
-  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
+  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   
   grr.v = Gif_NewArray(byte, 1024);
   grr.pos = 0;
@@ -707,7 +707,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   Gif_Extension *gfex = gfs->extensions;
   Gif_Context gfc;
   
-  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
+  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE + 1);
   if (!gfc.rle_next)
     goto done;
   
