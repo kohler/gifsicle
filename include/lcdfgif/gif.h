@@ -243,7 +243,7 @@ void 		Gif_Debug(char *x, ...);
 #define		GIF_DEBUG(x)
 #endif
 
-@MEMORY_PREPROCESSOR@
+@GIF_MEMORY_DEFINES@
 #ifndef Gif_New
 #define Gif_New(t)		((t *)malloc(sizeof(t)))
 #define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
