@@ -1381,8 +1381,12 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
 
     /* Is it ok to use the old image's compressed version? */
+    /* 11.Feb.2003 -- It is NOT ok to use the old image's compressed version
+       if you are going to flip or rotate the image. Crash reported by Dan
+       Lasley <Dan_Lasley@hilton.com>. */
     same_compressed_ok = all_same_compressed_ok;
-    if (fr->interlacing >= 0 && fr->interlacing != srci->interlace)
+    if ((fr->interlacing >= 0 && fr->interlacing != srci->interlace)
+	|| fr->flip_horizontal || fr->flip_vertical || fr->rotation)
       same_compressed_ok = 0;
     
     desti = merge_image(dest, fr->stream, srci, same_compressed_ok);
