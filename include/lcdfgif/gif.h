@@ -265,15 +265,20 @@ typedef u_int16_t Gif_Code;
 #define GIF_MAX_BLOCK		255
 
 #ifndef Gif_New
-#define Gif_New(t)		((t *)malloc(sizeof(t)))
-#define Gif_NewArray(t, n)	((t *)malloc(sizeof(t) * (n)))
-#define Gif_ReArray(p, t, n)	((p) = ((t*)realloc((void*)(p),sizeof(t)*(n))))
-#define Gif_DeleteFunc		(&free)
-#define Gif_DeleteArrayFunc	(&free)
+# ifndef xmalloc
+#  define xmalloc		malloc
+#  define xrealloc		realloc
+#  define xfree			free
+# endif
+# define Gif_New(t)		((t *)xmalloc(sizeof(t)))
+# define Gif_NewArray(t, n)	((t *)xmalloc(sizeof(t) * (n)))
+# define Gif_ReArray(p, t, n)	((p)=((t*)xrealloc((void*)(p),sizeof(t)*(n))))
+# define Gif_DeleteFunc		(&xfree)
+# define Gif_DeleteArrayFunc	(&xfree)
 #endif
 #ifndef Gif_Delete
-#define Gif_Delete(p)		(*Gif_DeleteFunc)((void *)(p))
-#define Gif_DeleteArray(p)	(*Gif_DeleteArrayFunc)((void *)(p))
+# define Gif_Delete(p)		(*Gif_DeleteFunc)((void *)(p))
+# define Gif_DeleteArray(p)	(*Gif_DeleteArrayFunc)((void *)(p))
 #endif
 
 #ifdef __cplusplus

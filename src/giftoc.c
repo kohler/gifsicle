@@ -5,8 +5,18 @@
 #include <string.h>
 #include <errno.h>
 
-
 int is_static = 1;
+
+static void *
+fmalloc(int size)
+{
+  void *p = malloc(size);
+  if (!p) {
+    fputs("giftoc: Out of memory!\n", stderr);
+    exit(1);
+  }
+  return p;
+}
 
 void
 print_reckless(FILE *f, char *gifrecname)
@@ -87,7 +97,6 @@ print_reckless(FILE *f, char *gifrecname)
   printf("\",\n  %lu\n};\n", size); 
 }
 
-
 void
 print_unreckless(FILE *f, char *gifrecname)
 {
@@ -106,7 +115,6 @@ print_unreckless(FILE *f, char *gifrecname)
   printf("};\n%sGif_Record %s = { %s_data, %lu };\n",
 	 is_static ? "static " : "", gifrecname, gifrecname, size);
 }
-
 
 int
 main(int argc, char **argv)
@@ -130,7 +138,7 @@ main(int argc, char **argv)
       directory = argv[1], argc -= 2, argv += 2;
       /* make sure directory is slash-terminated */
       if (directory[ strlen(directory) - 1 ] != '/' && directory[0]) {
-	char *ndirectory = (char *)malloc(strlen(directory) + 2);
+	char *ndirectory = (char *)fmalloc(strlen(directory) + 2);
 	sprintf(ndirectory, "%s/", directory);
 	directory = ndirectory;
       }
@@ -148,12 +156,12 @@ or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
   }
   
   if (!is_static)
-    printf("#include \"gif.h\"\n\n");
+    printf("#include \"config.h\"\n#include \"gif.h\"\n\n");
   
   for (; argc > 0; argc--, argv++) {
     FILE *f;
     char *rec_name = 0;
-    char *file_name = (char *)malloc(strlen(argv[0]) + strlen(directory) + 1);
+    char *file_name = (char *)fmalloc(strlen(argv[0]) + strlen(directory) + 1);
     
     strcpy(file_name, directory);
     strcat(file_name, argv[0]);
@@ -168,7 +176,7 @@ or:    giftoc -makename [-reckless] [-extern] [-dir DIR] FILE [FILE...]\n");
       char *sin, *sout;
       sin = strrchr(file_name, '/') + 1;
       if (!sin) sin = file_name;
-      sout = rec_name = (char *)malloc(strlen(sin) + 2);
+      sout = rec_name = (char *)fmalloc(strlen(sin) + 2);
       if (isdigit(*sin)) *sout++ = 'N';
       for (; *sin; sin++, sout++)
 	if (isalnum(*sin))
