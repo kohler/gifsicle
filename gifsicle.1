@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.41
+.ds V 1.42
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -38,7 +38,15 @@
 .RE
 .PP
 ..
-.TH GIFSICLE 1 "11 Feb 2002" "Version \*V"
+.de Xs
+.RS 5
+.nf
+..
+.de Xe
+.fi
+.RE
+..
+.TH GIFSICLE 1 "8 Jan 2005" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 .SH SYNOPSIS
@@ -313,7 +321,7 @@ Accept concatenated GIF files (multiple GIF image files concatenated into
 one big file; each image file may, of course, contain multiple frames).
 This option is intended for scripts. For example, to merge an unknown
 number of GIF images into a single animation, run
-"\fBgifsicle\fR \-\-multifile \- > out.gif"
+"\fBgifsicle \-\-multifile \- > out.gif\fR"
 and write the GIF images, in sequence, to \fBgifsicle\fR's standard input.
 Any frame selections apply only to the last file in the concatenation.
 '
@@ -354,24 +362,22 @@ Select the frame named \fIname\fR.
 .PD
 .PP
 For example,
-.Es
-\fBgifsicle\fR happy.gif
-.Ee
+.Xs
+\fBgifsicle happy.gif\fR
+.Xe
 will use all of `happy.gif's frames, while
-.Es
-\fBgifsicle\fR happy.gif '#0'
-.Ee
+.Xs
+\fBgifsicle happy.gif '#0'\fR
+.Xe
 will only use the first. (Note the single quotes around the frame
 specification. The `#' character has special meaning for many shells, so
 you may need to quote it.)
 .PP
-What
-.B gifsicle
-does with the selected frames depends on the current mode. In merge
-mode, only the selected frames are merged into the output GIF. In
-batch mode, only the selected frames are modified; other frames remain
-unchanged. In explode mode, only the selected frames are exploded into
-output GIFs.
+The action performed with the selected frames depends on the current
+mode. In merge mode, only the selected frames are merged into the output
+GIF. In batch mode, only the selected frames are modified; other frames
+remain unchanged. In explode mode, only the selected frames are exploded
+into output GIFs.
 '
 .\" -----------------------------------------------------------------
 .SS Frame Change Options
@@ -425,9 +431,9 @@ frames from the
 .I original
 input GIF. So, if `a.gif' has 3 frames and `b.gif' has one, this
 command
-.Es
-\fBgifsicle\fR a.gif \fB\-\-delete\fR '#0' \fB\-\-replace\fR '#2' b.gif
-.Ee
+.Xs
+\fBgifsicle a.gif \-\-delete '#0' \-\-replace '#2' b.gif\fR
+.Xe
 will produce an output animation with 2 frames: `a.gif' frame 1, then
 `b.gif'.
 .PP
@@ -439,39 +445,50 @@ The
 .I other-GIFs
 last until the next frame change option, so this command replaces the
 first frame of `in.gif' with the merge of `a.gif' and `b.gif':
-.Es
-\fBgifsicle\fR \-b in.gif \fB\-\-replace\fR '#0' a.gif b.gif
-.Ee
+.Xs
+\fBgifsicle \-b in.gif \-\-replace '#0' a.gif b.gif\fR
+.Xe
+.PP
 This command, however, replaces the first frame of `in.gif' with
 `a.gif' and then processes `b.gif' separately:
-.Es
-\fBgifsicle\fR \-b in.gif \fB\-\-replace\fR '#0' a.gif \fB\-\-done\fR b.gif
-.Ee
+.Xs
+\fBgifsicle \-b in.gif \-\-replace '#0' a.gif \-\-done b.gif\fR
+.Xe
+.PP
 Warning: You shouldn't use both frame selections and frame changes on
 the same input GIF.
 '
 .\" -----------------------------------------------------------------
 .SS Image Options
 
-Image options modify input images (by changing their interlacing,
-transparency, and cropping, for example). Each image option stays in effect
-until the next image option in the same category. They have three forms:
+Image options modify input images\*Eby changing their interlacing,
+transparency, and cropping, for example. Image options have three forms:
 .QO \-\-X ,
 .QO \-\-no\-X ,
 and
 .QO \-\-same\-X .
-The default is
-.QO \-\-same\-X ,
-which means that \fBX\fR's value is copied from each input. The
-converse,
-.QO \-\-no\-X ,
-erases \fBX\fR; for instance,
-.OP \-\-no\-interlace
-turns interlacing off, while
-.OP \-\-no\-comments
-strips comments. Only the
+The
 .QO \-\-X
-form is generally described.
+form selects a value for the feature, the
+.QO \-\-no\-X
+form turns off the feature, and the
+.QO \-\-same\-X
+form means that the feature's value is copied from each input. The default
+is always
+.QO \-\-same\-X . 
+For example,
+.OP \-background= "'#0000FF'"
+sets the background color to blue,
+.OP \-\-no\-background
+turns the background color off (by setting it to 0), and
+.OP \-\-same\-background
+uses input images' existing background colors. You can give each option
+multiple times; for example,
+.Xs
+\fBgifsicle \-b \-O2 \-i a.gif \-\-same\-interlace b.gif c.gif\fR
+.Xe
+will make `a.gif' interlaced, but leave `b.gif' and `c.gif' interlaced only
+if they were already.
 '
 .Sp
 .PD 0
@@ -678,8 +695,17 @@ not ones added with
 .\" -----------------------------------------------------------------
 .SS Animation Options
 
-Animation options are image options applying only to GIF animations. Most
-of them act like image options, and have the same three forms (see above).
+Animation options apply to GIF animations, or to individual frames in GIF
+animations. As with image options, most animation options have three forms,
+.QO \-\-X ,
+.QO \-\-no\-X ,
+and
+.QO \-\-same\-X ,
+and you can give animation options multiple times; for example,
+.Xs
+\fBgifsicle \-b a.gif \-d50 '#0' '#1' \-d100 '#2' '#3'\fR
+.Xe
+sets the delays of frames 0 and 1 to 50, and frames 2 and 3 to 100.
 '
 .Sp
 .PD 0
@@ -1092,7 +1118,7 @@ implementations (for example, Java's); see the
 option.
 .PP
 Please email suggestions, additions, patches and bugs to
-kohler@icir.org.
+kohler@cs.ucla.edu.
 '
 .SH "SEE ALSO"
 '
@@ -1102,9 +1128,9 @@ http://www.webreference.com/authoring/graphics/animation\|.html
 '
 .SH AUTHORS
 .na
-Eddie Kohler <kohler@icir.org>
+Eddie Kohler <kohler@cs.ucla.edu>
 .br
-http://www.icir.org/kohler/
+http://www.cs.ucla.edu/~kohler/
 .br
 He wrote it.
 .PP

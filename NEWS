@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.42   8.Jan.2005
+
+* Improve manual page.
+
+
 Version 1.41   19.Aug.2004
 
 * Fix problems with 64-bit machines.  Thanks to Dan Stahlke for pointing
