@@ -70,6 +70,11 @@ support.o: support.c gifsicle.h gifint.h
 clp.o: clp.c clp.h
 mm.o: mm.c mm.h
 
+srclinks:
+	ln -s ../giflib/gif.h ../giflib/gifint.h ../giflib/giffunc.c \
+	../giflib/gifread.c ../giflib/gifwrite.c ../giflib/gifunopt.c \
+	../giflib/gifx.h ../giflib/gifx.c ../edlib/clp.c ../edlib/clp.h .
+
 #####
 # Cleaning and distribution
 
