@@ -55,6 +55,7 @@ struct Clp_Internal {
   int argc;
   
   unsigned char option_class[256];
+  int both_short_and_long;
   
   char option_chars[3];
   char *text;
@@ -173,11 +174,11 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
     if (opt[i].arg_type > 0 && !TEST(&opt[i], Clp_Optional))
       opt[i].flags |= Clp_Mandatory;
     
-    /* Nonexistent short options have character 257. We know this won't
+    /* Nonexistent short options have character 256. We know this won't
        equal any character in an argument, even if characters are signed */
-    if (opt[i].short_name <= 0)
-      opt[i].short_name = 257;
-
+    if (opt[i].short_name <= 0 || opt[i].short_name > 255)
+      opt[i].short_name = 256;
+    
     /* Options that start with `no-' should be changed to OnlyNegated */
     if (opt[i].long_name && strncmp(opt[i].long_name, "no-", 3) == 0) {
       opt[i].long_name += 3;
@@ -214,6 +215,7 @@ Clp_NewParser(int argc, char * const argv[], int nopt, Clp_Option *opt)
   for (i = 0; i < 256; i++)
     cli->option_class[i] = 0;
   cli->option_class['-'] = Clp_Short;
+  cli->both_short_and_long = 0;
   
   cli->is_short = 0;
   cli->whole_negated = 0;
@@ -319,6 +321,30 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
       cli->option_class[i] = option_type;
   else
     cli->option_class[c] = option_type;
+
+  /* If an option character can introduce either short or long options, then
+     we need to fix up the long_min_match values. We may have set the
+     long_min_match for option `--abcde' to 1, if no other option starts with
+     `a'. But if `-' can introduce either a short option or a long option, AND
+     a short option `-a' exists, then the long_min_match for `--abcde' must be
+     set to 2! */
+  if (!cli->both_short_and_long) {
+    int either_short = option_type & (Clp_Short | Clp_ShortNegated);
+    int either_long = option_type & (Clp_Long | Clp_LongNegated);
+    if (either_short && either_long) {
+      unsigned char have_short[257];
+      for (i = 0; i < 256; i++)
+	have_short[i] = 0;
+      for (i = 0; i < cli->nopt; i++)
+	have_short[cli->opt[i].short_name] = 1;
+      for (i = 0; i < cli->nopt; i++)
+	if (cli->opt[i].long_name && cli->opt[i].long_min_match == 1
+	    && have_short[ (unsigned char)cli->opt[i].long_name[0] ])
+	  cli->opt[i].long_min_match++;
+      cli->both_short_and_long = 1;
+    }
+  }
+  
   return 1;
 }
 
@@ -354,7 +380,7 @@ calculate_long_min_match(int nopt, Clp_Option *opt, int which,
 	&& opt[which].option_id != opt[j].option_id
 	&& strncmp(opt[which].long_name, opt[j].long_name, lmm) == 0)
       lmm = min_different_chars(opt[which].long_name, opt[j].long_name);
-
+  
   return lmm;
 }
 
@@ -387,8 +413,8 @@ argcmp(const char *ref, const char *arg, int min_match)
 }
 
 static int
-find_prefix_opt(const char *arg, int nopt, Clp_Option *opt, int negated,
-		int *ambiguous, int *ambiguous_values)
+find_prefix_opt(const char *arg, int nopt, Clp_Option *opt,
+		int *ambiguous, int *ambiguous_values, int negated)
      /* Looks for an unambiguous match of `arg' against one of the long
         options in `opt'. Returns positive if it finds one; otherwise, returns
         -1 and possibly changes `ambiguous' and `ambiguous_values' to keep
@@ -547,7 +573,7 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
   /* actually look for a string value */
   index = find_prefix_opt
-    (arg, sl->nitems, sl->items, 0, &ambiguous, ambiguous_values);
+    (arg, sl->nitems, sl->items, &ambiguous, ambiguous_values, 0);
   if (index >= 0) {
     clp->val.i = sl->items[index].option_id;
     return 1;
@@ -921,8 +947,8 @@ find_long(Clp_Parser *clp, char *arg)
   int first_negative_ambiguous;
   
   /* Look for a normal option. */
-  value = find_prefix_opt(arg, cli->nopt, opt, clp->negated,
-			  &cli->ambiguous, cli->ambiguous_values);
+  value = find_prefix_opt(arg, cli->nopt, opt, &cli->ambiguous,
+			  cli->ambiguous_values, clp->negated);
   if (value >= 0)
     goto worked;
   
@@ -933,8 +959,8 @@ find_long(Clp_Parser *clp, char *arg)
   while (arg[0] == 'n' && arg[1] == 'o' && arg[2] == '-') {
     arg += 3;
     clp->negated = !clp->negated;
-    value = find_prefix_opt(arg, cli->nopt, opt, clp->negated,
-			    &cli->ambiguous, cli->ambiguous_values);
+    value = find_prefix_opt(arg, cli->nopt, opt, &cli->ambiguous,
+			    cli->ambiguous_values, clp->negated);
     if (value >= 0)
       goto worked;
   }
@@ -1042,7 +1068,7 @@ Clp_Next(Clp_Parser *clp)
 		      cli->opt, cli->option_chars,
 		      "option `%s%s' is ambiguous",
 		      cli->option_chars, cli->text);
-    else if (cli->is_short)
+    else if (cli->is_short && !cli->could_be_short)
       Clp_OptionError(clp, "unrecognized option `%s%c'",
 		      cli->option_chars, cli->text[0]);
     else
