@@ -496,21 +496,28 @@ static int
 parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
+  int base = 10;
+  if (arg[0] == '0' && arg[1] == 'x') {
+    base = 16;
+    arg += 2;
+  }
+  
   if (thunk != 0) {		/* unsigned */
 #if HAVE_STRTOUL
-    clp->val.u = strtoul(arg, &val, 10);
+    clp->val.u = strtoul(arg, &val, base);
 #else
     /* don't bother trying to do it right */
-    clp->val.u = strtol(arg, &val, 10);
+    clp->val.u = strtol(arg, &val, base);
 #endif
   } else
-    clp->val.i = strtol(arg, &val, 10);
+    clp->val.i = strtol(arg, &val, base);
   if (*arg != 0 && *val == 0)
     return 1;
   else if (complain) {
     const char *message = thunk != 0
       ? "`%O' expects a nonnegative integer, not `%s'"
       : "`%O' expects an integer, not `%s'";
+    if (base == 16) arg -= 2;
     return Clp_OptionError(clp, message, arg);
   } else
     return 0;
