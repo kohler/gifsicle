@@ -339,6 +339,9 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   /* 0. remove any transparent color from consideration */
   transparent = check_hist_transparency(hist, nhist);
   if (transparent >= 0) nhist--, adapt_size--;
+  /* blending has bad effects when there are very few colors */
+  if (adapt_size < 4)
+    blend = 0;
   
   /* 1. initialize min_dist and sort the colors in order of popularity. */
   for (i = 0; i < nhist; i++)
@@ -591,7 +594,8 @@ colormap_image_posterize(Gif_Image *gfi, Gif_Colormap *old_cm,
 }
 
 
-#define DITHER_SCALE 1024
+#define DITHER_SCALE	1024
+#define DITHER_SCALE_M1	(DITHER_SCALE-1)
 
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
@@ -606,6 +610,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
   Gif_Color *col = old_cm->col;
   Gif_Color *new_col = new_cm->col;
   
+  /* This code was written with reference to ppmquant by Jef Poskanzer, part
+     of the pbmplus package. */
+  
   /* Initialize Floyd-Steinberg error vectors to small random values, so
      we don't get an artifact on the top row */
   r_err = Gif_NewArray(int32_t, width + 2);
@@ -615,9 +622,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
   g_err1 = Gif_NewArray(int32_t, width + 2);
   b_err1 = Gif_NewArray(int32_t, width + 2);
   for (i = 0; i < width + 2; i++) {
-    r_err[i] = random() % (980 * 2) - 980;
-    g_err[i] = random() % (980 * 2) - 980;
-    b_err[i] = random() % (980 * 2) - 980;
+    r_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+    g_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+    b_err[i] = random() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
   }
   
   /* Do the image! */
@@ -638,10 +645,10 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
     
     for (i = 0; i < width + 2; i++)
       r_err1[i] = g_err1[i] = b_err1[i] = 0;
-    
+
     /* Do a single row */
     while (x >= 0 && x < width) {
-      int e, eh, e_acc, use_r, use_g, use_b;
+      int e, use_r, use_g, use_b;
       
       /* the transparent color never gets adjusted */
       if (*data == transparent) {
@@ -659,25 +666,33 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, Gif_Colormap *old_cm,
       
       *data = hash_color(use_r, use_g, use_b, hash, new_cm);
       
-      /* calculate and propagate the error between desired and selected
-	 color */
-      e = (use_r - new_col[*data].red) * DITHER_SCALE;  e_acc = 0;
-      eh = (e*7) / 16;  r_err[x+d0] += eh;  e_acc += eh;
-      eh = (e*3) / 16;  r_err1[x+d1] += eh;  e_acc += eh;
-      eh = (e*5) / 16;  r_err1[x+d2] += eh;  e_acc += eh;
-      r_err1[x+d3] += e - e_acc;
+      /* calculate and propagate the error between desired and selected color.
+	 Assume that, with a large scale (1024), we don't need to worry about
+	 image artifacts caused by error accumulation (the fact that the
+	 error terms might not sum to the error). */
+      e = (use_r - new_col[*data].red) * DITHER_SCALE;
+      if (e) {
+	r_err [x+d0] += (e * 7) / 16;
+	r_err1[x+d1] += (e * 3) / 16;
+	r_err1[x+d2] += (e * 5) / 16;
+	r_err1[x+d3] += e / 16;
+      }
       
-      e = (use_g - new_col[*data].green) * DITHER_SCALE;  e_acc = 0;
-      eh = (e*7) / 16;  g_err[x+d0] += eh;  e_acc += eh;
-      eh = (e*3) / 16;  g_err1[x+d1] += eh;  e_acc += eh;
-      eh = (e*5) / 16;  g_err1[x+d2] += eh;  e_acc += eh;
-      g_err1[x+d3] += e - e_acc;
+      e = (use_g - new_col[*data].green) * DITHER_SCALE;
+      if (e) {
+	g_err [x+d0] += (e * 7) / 16;
+	g_err1[x+d1] += (e * 3) / 16;
+	g_err1[x+d2] += (e * 5) / 16;
+	g_err1[x+d3] += e / 16;
+      }
       
-      e = (use_b - new_col[*data].blue) * DITHER_SCALE;  e_acc = 0;
-      eh = (e*7) / 16;  b_err[x+d0] += eh;  e_acc += eh;
-      eh = (e*3) / 16;  b_err1[x+d1] += eh;  e_acc += eh;
-      eh = (e*5) / 16;  b_err1[x+d2] += eh;  e_acc += eh;
-      b_err1[x+d3] += e - e_acc;
+      e = (use_b - new_col[*data].blue) * DITHER_SCALE;
+      if (e) {
+	b_err [x+d0] += (e * 7) / 16;
+	b_err1[x+d1] += (e * 3) / 16;
+	b_err1[x+d2] += (e * 5) / 16;
+	b_err1[x+d3] += e / 16;
+      }
       
      next:
       if (dither_direction)

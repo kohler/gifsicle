@@ -1,5 +1,14 @@
 Gifsicle NEWS
 
+Version 1.2b2
+
+* Fixed bad dumb bug in gif.h: lack of parens around macro argument
+
+* Changed heuristic for diversity algorithm: never blend if there are 3 colors
+  or less
+
+* Some optimizations to Floyd-Steinberg code
+
 Version 1.2b1
 
 * Added colormap options: `--colors', `--color-method', `--dither', and
