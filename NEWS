@@ -5,7 +5,7 @@ Version 1.14.1   9.Aug.1999
 * Fixed configuration bug: you couldn't compile gifsicle from a different
   directory (it told you to try --enable-ungif).
 
-* Steven Marthouse <comments@vrml3d.com> helped fix to `Makefile.w32' to
+* Steven Marthouse <comments@vrml3d.com> helped fix `Makefile.w32' to
   enable wildcards in filenames under Windows. Requested by Mark Olesen
   <mark_olesen@hotmail.com>.
 
