@@ -1,4 +1,4 @@
-GIFSICLE 1.2b2
+GIFSICLE 1.2b6
 ==============
 
 ABOUT GIFSICLE
@@ -54,17 +54,37 @@ get on a (spam-free) Gifsicle mailing list.
 	eddietwo@lcs.mit.edu
 	http://www.pdos.lcs.mit.edu/~eddietwo/
 
-COPYRIGHT
----------
+COPYRIGHT/LICENSE
+-----------------
    All source code is Copyright (C) 1997-8 Eddie Kohler.
 
-   Permission is granted to copy, distribute, or alter gifsicle, in
-whole or in part, as long as the above notice is kept intact, with the
-following restrictions. Commercial developers and distributors, i.e.
-those who will profit monetarily from copying or distributing this
-code, must contact me and obtain permission before doing so. Further,
-those who copy or distribute gifsicle, in whole or in part, without
-providing source code or notice of where the source code can be
-obtained, must contact me and obtain permission before doing so.
+   IF YOU PLAN TO USE GIFSICLE TO CREATE OR MODIFY GIF IMAGES, BUT NOT TO
+REDISTRIBUTE ITS CODE, DON'T WORRY ABOUT THE REST OF THIS SECTION. Anyone
+can use Gifsicle however they wish; the license applies only to those who
+plan to copy, distribute, or alter its code. If you plan to use Gifsicle
+for an organizational or commercial Web site, I would appreciate a link to
+the Gifsicle home page on an `About This Server' page, if one exists, but
+it's not required.
 
-   (Not that any of this would ever happen, but what the hell!)
+   This code, with the exception of the GIF compression code in gifwrite.c,
+is distributed under the GNU General Public License, Version 2, or, at your
+discretion, any later version. The GNU General Public License is available
+via the Web at <http://www.gnu.org/copyleft/gpl.html>
+
+   The following alternative license may be used at your discretion.
+
+   Permission is granted to copy, distribute, or alter gifsicle, in whole
+or in part, as long as source code copyright notices are kept intact, with
+the following restrictions.
+
+   1. Unisys Corp. holds a patent on the Lempel-Ziv-Welch compression
+algorithm used by GIF images. When this first became an issue several years
+ago, Unisys put up a statement on their page stating that programs
+available at no cost to the user, like Gifsicle, could use LZW compression
+in the context of GIF images without obtaining a license. If you plan to
+distribute GIF writing code in a shareware or commercial product, you will
+need to worry about obtaining a license.
+
+   2. Developers or distributors who plan to use Gifsicle code, in whole or
+in part, in a product whose source code will not be made available to the
+end user, MUST contact the author and obtain permission before doing so.

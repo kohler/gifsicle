@@ -104,7 +104,7 @@ createwindow(int w, int h)
 
 
 void
-makewindow(Gif_Stream *gfs, Gif_Image *gfi)
+make_window(Gif_Stream *gfs, Gif_Image *gfi)
 {
   static int owidth = -1;
   static int oheight = -1;
@@ -171,7 +171,7 @@ show_frame(int imagenumber, char *imagename)
   Pixmap pixmap;
   
   static Gif_XContext *gfx = 0;
-  static Pixmap oldpixmap = None;
+  static Pixmap old_pixmap = None;
   
   if (!input) return;
   
@@ -184,7 +184,7 @@ show_frame(int imagenumber, char *imagename)
   }
   if (!gfi) return;
   
-  makewindow(input, gfi);
+  make_window(input, gfi);
   
   if (!gfx) {
     gfx = Gif_NewXContext(display, window);
@@ -193,11 +193,11 @@ show_frame(int imagenumber, char *imagename)
   pixmap = Gif_XImage(gfx, input, gfi);
   
   XSetWindowBackgroundPixmap(display, window, pixmap);
-  if (!oldpixmap) /* first image; map the window */
+  if (!old_pixmap) /* first image; map the window */
     XMapRaised(display, window);
   else {
     XClearWindow(display, window);
-    XFreePixmap(display, oldpixmap);
+    XFreePixmap(display, old_pixmap);
   }
   
   while (1) {
@@ -206,7 +206,8 @@ show_frame(int imagenumber, char *imagename)
     if (e.type == ButtonPress) break;
   }
   
-  oldpixmap = pixmap;
+  old_pixmap = pixmap;
+  frames_done = 1;
 }
 
 

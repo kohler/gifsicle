@@ -78,6 +78,8 @@ mark_colors(Gif_Colormap *gfcm, Gif_Image *gfi)
 #if 0
     /* Turn off transparency if existing transparency is invalid,
        or no actual transparent pixels exist. */
+    /* Don't actually want to do this for reasons I can't remember... why
+       didn't I comment when i #ifdefed it out? */
     if (!col[ gfi->transparent ].haspixel)
       gfi->transparent = -1;
 #endif
@@ -300,8 +302,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
     merge_comments(desti->comment, srci->comment);
   }
   
-  desti->imagedata = Gif_NewArray(byte, desti->width * desti->height);
-  Gif_MakeImg(desti, desti->imagedata, desti->interlace);
+  desti->image_data = Gif_NewArray(byte, desti->width * desti->height);
+  Gif_MakeImg(desti, desti->image_data, desti->interlace);
   
   {
     int i, j, trivial_map = 1;
@@ -331,47 +333,65 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci)
 }
 
 
-/********************************************************/
-
-
-/*****
+/********************************************************
  * Optimizing images
  **/
 
 
+/* shrink_difference_border: Make the difference border as small as possible
+   in the case that the transparent values from the last frame and this frame
+   are different. This requires slightly slower code. Called from
+   find_difference_border */
+
 static void
-find_difference_border(byte *lastdata, byte *thisdata,
-		       int screen_width, int screen_height,
-		       int *lf, int *rt, int *tp, int *bt)
+shrink_difference_border(byte *last_data, byte *this_data,
+			 int screen_width, int screen_height,
+			 int *lf, int *rt, int *tp, int *bt,
+			 int last_transparent, int this_transparent)
 {
-  int flf, frt, ftp, fbt, x, y;
+  int last_map[256], this_map[256];
+  int flf = *lf, frt = *rt, ftp = *tp, fbt = *bt, x, y;
+  frt--, fbt--;
   
-  for (ftp = 0; ftp < screen_height; ftp++)
-    if (memcmp(lastdata + screen_width * ftp, thisdata + screen_width * ftp,
-	       screen_width) != 0)
-      break;
-  for (fbt = screen_height - 1; fbt >= 0; fbt--)
-    if (memcmp(lastdata + screen_width * fbt, thisdata + screen_width * fbt,
-	       screen_width) != 0)
-      break;
-  
-  flf = screen_width;
-  frt = 0;
-  for (y = ftp; y <= fbt; y++) {
-    byte *ld = lastdata + screen_width * y;
-    byte *td = thisdata + screen_width * y;
-    
-    for (x = 0; x < screen_width; x++)
-      if (ld[x] != td[x]) {
-	if (x < flf) flf = x;
-	break;
-      }
-    for (x = screen_width - 1; x >= 0; x--)
-      if (ld[x] != td[x]) {
-	if (x > frt) frt = x;
-	break;
-      }
+  for (x = 0; x < 256; x++) {
+    last_map[x] = (x == last_transparent ? -1 : x);
+    this_map[x] = (x == this_transparent ? -1 : x);
   }
+
+  /* shrink each side in turn */
+  for (; ftp < fbt; ftp++) {
+    byte *ld = last_data + screen_width * ftp;
+    byte *td = this_data + screen_width * ftp;
+    for (x = flf; x <= frt; x++)
+      if (last_map[ld[x]] != this_map[td[x]])
+	goto top_stop;
+  }
+ top_stop:
+  
+  for (; fbt > ftp; fbt--) {
+    byte *ld = last_data + screen_width * fbt;
+    byte *td = this_data + screen_width * fbt;
+    for (x = flf; x <= frt; x++)
+      if (last_map[ld[x]] != this_map[td[x]])
+	goto bottom_stop;
+  }
+ bottom_stop:
+  
+  for (; flf < frt; flf++) {
+    u_int32_t off = ftp * screen_width + flf;
+    for (y = ftp; y <= fbt; y++, off += screen_width)
+      if (last_map[last_data[off]] != this_map[this_data[off]])
+	goto left_stop;
+  }
+ left_stop:
+  
+  for (; frt > flf; frt--) {
+    u_int32_t off = ftp * screen_width + frt;
+    for (y = ftp; y <= fbt; y++, off += screen_width)
+      if (last_map[last_data[off]] != this_map[this_data[off]])
+	goto right_stop;
+  }
+ right_stop:
   
   if (flf >= frt) flf = frt = 0;
   if (ftp >= fbt) ftp = fbt = 0;
@@ -384,65 +404,112 @@ find_difference_border(byte *lastdata, byte *thisdata,
 }
 
 
+/* find_difference_border: Find the smallest rectangular area containing all
+   the changes. Uses the helper shrink_difference_border for the slower
+   uncommon case (different transparent pixels). */
+
 static void
-optimize_evil_case(Gif_Stream *gfs, int whichimage, byte *lastdata,
-		   int *ls, int *rs, int *ts, int *bs)
+find_difference_border(byte *last_data, byte *this_data,
+		       int screen_width, int screen_height,
+		       int *lf, int *rt, int *tp, int *bt,
+		       int last_transparent, int this_transparent)
 {
-  int left = *ls, right = *rs, top = *ts, bottom = *bs;
-  int y;
-  Gif_Image *gfi = gfs->images[whichimage - 1];
-  byte *data;
+  int flf, frt, ftp, fbt, x, y;
   
-  if (gfi->left < left)
-    *ls = left = gfi->left;
-  if (gfi->top < top)
-    *ts = top = gfi->top;
-  if (gfi->left + gfi->width > right)
-    *rs = right = gfi->left + gfi->width;
-  if (gfi->top + gfi->height > bottom)
-    *bs = bottom = gfi->top + gfi->height;
+  for (ftp = 0; ftp < screen_height; ftp++)
+    if (memcmp(last_data + screen_width * ftp, this_data + screen_width * ftp,
+	       screen_width) != 0)
+      break;
+  for (fbt = screen_height - 1; fbt >= 0; fbt--)
+    if (memcmp(last_data + screen_width * fbt, this_data + screen_width * fbt,
+	       screen_width) != 0)
+      break;
   
-  gfi->left = left;
-  gfi->top = top;
-  gfi->width = right - left;
-  gfi->height = bottom - top;
-  gfi->disposal = 2;
-  
-  Gif_DeleteArray(gfi->imagedata);
-  gfi->imagedata = Gif_NewArray(byte, gfi->width * gfi->height);
-  data = gfi->imagedata;
-  Gif_MakeImg(gfi, data, 0);
-  
-  for (y = top; y < bottom; y++) {
-    byte *move = lastdata + gfs->screen_width * y + left;
-    memcpy(data, move, gfi->width);
-    memset(move, gfi->transparent, gfi->width);
-    data += gfi->width;
+  flf = screen_width;
+  frt = 0;
+  for (y = ftp; y <= fbt; y++) {
+    byte *ld = last_data + screen_width * y;
+    byte *td = this_data + screen_width * y;
+    for (x = 0; x < flf; x++)
+      if (ld[x] != td[x])
+	break;
+    flf = x;
+    
+    for (x = screen_width - 1; x > frt; x--)
+      if (ld[x] != td[x])
+	break;
+    frt = x;
   }
+  
+  if (flf >= frt) flf = frt = 0;
+  if (ftp >= fbt) ftp = fbt = 0;
+  
+  /* Don't allow a 0x0 image. */    
+  *lf = flf;
+  *rt = frt + 1;
+  *tp = ftp;
+  *bt = fbt + 1;
+  
+  if (last_transparent != 0 && this_transparent != 0
+      && last_transparent != this_transparent)
+    shrink_difference_border(last_data, this_data, screen_width, screen_height,
+			     lf, rt, tp, bt,
+			     last_transparent, this_transparent);
 }
 
 
 static int
-add_transparent(Gif_Stream *gfs, Gif_Image *gfi, int transparent)
+set_background_disposal(Gif_Stream *gfs, int imageno, byte *last_data,
+			int new_transparent)
 {
-  if (transparent > 0)
-    ;
+  Gif_Image *gfi = gfs->images[imageno - 1];
+  int bottom = gfi->top + gfi->height;
+  int y;
+
+  if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) return 0;
   
-  else if (gfs->global->ncol < 256) {
-    Gif_Color black;
-    black.red = black.green = black.blue = 0;
-    
-    transparent = gfs->global->ncol;
-    gfs->global->col[transparent] = black;
-    gfs->global->ncol++;
+  gfi->disposal = GIF_DISPOSAL_BACKGROUND;
+  for (y = gfi->top; y < bottom; y++) {
+    byte *move = last_data + gfs->screen_width * y + gfi->left;
+    memset(move, new_transparent, gfi->width);
   }
-  
-  gfi->transparent = transparent;
-  return transparent;
+  return 1;
 }
 
 
-void
+static int
+look_for_transparent(Gif_Stream *gfs,
+		     byte *this_data, byte *last_data,
+		     int left, int right, int top, int bottom)
+{
+  int screen_width = gfs->screen_width;
+  int ncol = gfs->global->ncol;
+  int bad[256];
+  int i, x, y;
+  
+  for (i = 0; i < 256; i++) bad[i] = 0;
+  
+  for (y = top; y < bottom; y++) {
+    byte *td = this_data + screen_width * y + left;
+    byte *ld = last_data + screen_width * y + left;
+    for (x = left; x < right; x++, td++, ld++)
+      if (*td != *ld)
+	bad[*td] = 1;
+  }
+  
+  for (i = 0; i < ncol; i++)
+    if (!bad[i])
+      return i;
+  /* If no unused pixel works for transparency, add a pixel if we can. */
+  if (ncol < 256) {
+    gfs->global->ncol++;
+    return ncol;
+  }
+  return -1;
+}
+
+
+static void
 copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
 			 int left, int right, int top, int bottom,
 			 int screen_width, int transparent)
@@ -535,109 +602,125 @@ copy_trans_fragment_data(byte *data, byte *thisdata, byte *lastdata,
 void
 optimize_fragments(Gif_Stream *gfs, int optimize_trans)
 {
+  static int bad_optimize_warned = 0;
   int x, y;
-  int whichimage;
+  int imageno;
   int size;
-  byte *lastdata;
-  byte *thisdata;
+  byte *last_data;
+  byte *this_data;
   int screen_width;
   int screen_height;
   int transparent;
+  int last_transparent;
   Gif_Image *gfi;
   
   if (gfs->nimages <= 1) return;
   
-  for (whichimage = 0; whichimage < gfs->nimages; whichimage++)
-    if (gfs->images[whichimage]->local) {
-      error("can't optimize GIF: some frames have local color tables");
-      return;
-    }
-  
-  transparent = -1;
-  for (whichimage = 0; whichimage < gfs->nimages; whichimage++)
-    if (gfs->images[whichimage]->transparent < 0)
-      transparent = add_transparent(gfs, gfs->images[whichimage], transparent);
-
   /* Call Gif_Unoptimize. Besides unoptimizing the image, it has the pleasant
      side effect of creating all-new contiguous image data for each image.
-     This new data is laid out uninterlaced -- i.e., imagedata[width*y + x] ==
+     This new data is laid out uninterlaced -- i.e., image_data[width*y + x] ==
      img[y][x]. We use this fact below. */
-  Gif_Unoptimize(gfs);
+  if (!Gif_Unoptimize(gfs)) {
+    warning("could not optimize output");
+    if (!bad_optimize_warned) {
+      bad_optimize_warned = 1;
+      warning("  (The reason was local color tables or odd transparency.");
+      warning("  Try running the GIF through `gifsicle --colors=256'.)");
+    }
+    return;
+  }
+  
   screen_width = gfs->screen_width;
   screen_height = gfs->screen_height;
+
+  /* Make space for possible new transparent pixels if necessary. */
+  gfs->global->col = Gif_ReArray(gfs->global->col, Gif_Color, 256);
+  if (!gfs->global->col) fatal_error("out of memory in optimizer");
   
   /* It's OK to just copy the image data in without worrying about
      interlacing (see above). */
   gfi = gfs->images[0];
   size = screen_width * screen_height;
-  lastdata = Gif_NewArray(byte, size);
-  memcpy(lastdata, gfi->imagedata, size);
+  last_data = Gif_NewArray(byte, size);
+  if (!last_data) fatal_error("out of memory in optimizer");
+  memcpy(last_data, gfi->image_data, size);
   
-  gfi->disposal = 1;
-  transparent = gfi->transparent;
+  gfi->disposal = GIF_DISPOSAL_ASIS;
+  last_transparent = gfi->transparent;
   
-  for (whichimage = 1; whichimage < gfs->nimages; whichimage++) {
+  for (imageno = 1; imageno < gfs->nimages; imageno++) {
     byte *data;
     int left, right, top, bottom;
     
-    gfi = gfs->images[whichimage];
-    thisdata = gfi->imagedata;
-    /* There was formerly code here to change old transparent pixels to new
-       ones (in the rare case that both image #i and image #i-1 have
-       transparency, but their transparent values differ). However, this could
-       SERIOUSLY BREAK some relatively rare images, so it's been removed. */
-    
-    find_difference_border(lastdata, thisdata, screen_width, screen_height,
-			   &left, &right, &top, &bottom);
-    
+    gfi = gfs->images[imageno];
+    this_data = gfi->image_data;
     transparent = gfi->transparent;
-    if (transparent >= 0) {
-      int lasttransparent = gfs->images[whichimage-1]->transparent;
+    
+    find_difference_border(last_data, this_data, screen_width, screen_height,
+			   &left, &right, &top, &bottom,
+			   last_transparent, transparent);
+    
+    /* If this image has transparency, see if we need to switch the last frame
+       to disposal=background (this must happen if a pixel now is (globally)
+       transparent but in the last frame it was opaque). */
+    
+    if (transparent >= 0)
       for (y = top; y < bottom; y++) {
-	byte *lastd = lastdata + screen_width * y + left;
-	byte *thisd = thisdata + screen_width * y + left;
+	byte *lastd = last_data + screen_width * y + left;
+	byte *thisd = this_data + screen_width * y + left;
 	for (x = left; x < right; x++, thisd++, lastd++)
-	  if (*thisd == transparent && *lastd != lasttransparent) {
-	    optimize_evil_case(gfs, whichimage, lastdata,
-			       &left, &right, &top, &bottom);
-	    goto makeit;
+	  if (*thisd == transparent && *lastd != last_transparent) {
+	    set_background_disposal(gfs, imageno, last_data, transparent);
+	    find_difference_border(last_data, this_data,
+				   screen_width, screen_height,
+				   &left, &right, &top, &bottom,
+				   last_transparent, transparent);
+	    goto found_border;
 	  }
       }
-    }
     
-   makeit:
+   found_border:
     
     gfi->left = left;
     gfi->top = top;
     gfi->width = right - left;
     gfi->height = bottom - top;
     gfi->interlace = 0;
-    gfi->disposal = 1;
+    gfi->disposal = GIF_DISPOSAL_ASIS;
     
-    gfi->imagedata = Gif_NewArray(byte, gfi->width * gfi->height);
-    data = gfi->imagedata;
+    gfi->image_data = Gif_NewArray(byte, gfi->width * gfi->height);
+    data = gfi->image_data;
+    if (!data) fatal_error("out of memory in optimizer");
     Gif_MakeImg(gfi, data, 0);
     
-    if (transparent >= 0 && optimize_trans)
-      copy_trans_fragment_data(data, thisdata, lastdata,
+    if (optimize_trans && transparent < 0)
+      gfi->transparent = transparent =
+	look_for_transparent(gfs, this_data, last_data,
+			     left, right, top, bottom);
+    
+    if (optimize_trans && transparent >= 0)
+      copy_trans_fragment_data(data, this_data, last_data,
 			       left, right, top, bottom,
 			       screen_width, transparent);
     
     else
       for (y = top; y < bottom; y++) {
-	byte *into = thisdata + screen_width * y + left;
+	byte *into = this_data + screen_width * y + left;
 	memcpy(data, into, gfi->width);
 	data += gfi->width;
       }
     
-    Gif_DeleteArray(lastdata);
-    lastdata = thisdata;
+    Gif_DeleteArray(last_data);
+    last_data = this_data;
+    last_transparent = transparent;
   }
   
-  Gif_DeleteArray(lastdata);
+  Gif_DeleteArray(last_data);
 }
 
 
+
+/********************************************************/
 
 /*****
  * crop image

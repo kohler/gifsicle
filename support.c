@@ -193,6 +193,9 @@ colormap_info(Gif_Colormap *gfcm, char *prefix)
 void
 stream_info(Gif_Stream *gfs, char *filename, int colormaps)
 {
+  Gif_Extension *gfex;
+  int nextensions;
+  
   if (!gfs) return;
   gfs->userflags = 0; /* clear userflags to indicate stream info produced */
   
@@ -215,6 +218,11 @@ stream_info(Gif_Stream *gfs, char *filename, int colormaps)
     fprintf(stderr, "  loop forever\n");
   else if (gfs->loopcount > 0)
     fprintf(stderr, "  loop count %u\n", (unsigned)gfs->loopcount);
+
+  for (nextensions = 0, gfex = gfs->extensions; gfex; gfex = gfex->next)
+    nextensions++;
+  if (nextensions)
+    fprintf(stderr, "  extensions %d\n", nextensions);
 }
 
 
@@ -611,6 +619,22 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
 }
 
 
+static Gif_Extension *
+copy_extension(Gif_Extension *src)
+{
+  Gif_Extension *dest = Gif_NewExtension(src->kind, src->application);
+  if (!dest) return 0;
+  dest->data = Gif_NewArray(byte, src->length);
+  dest->length = src->length;
+  if (!dest->data) {
+    Gif_DeleteExtension(dest);
+    return 0;
+  }
+  memcpy(dest->data, src->data, src->length);
+  return dest;
+}
+
+
 static Gt_Frame **merger = 0;
 static int nmerger = 0;
 static int mergercap = 0;
@@ -691,8 +715,18 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2)
   for (i = 0; i < nmerger; i++) {
     Gt_Frame *fr = merger[i];
     Gif_Image *desti;
+    Gif_Extension *gfex;
     int old_transparent = fr->image->transparent;
     int new_transparent = -2;
+    
+    /* First, check for extensions */
+    gfex = fr->stream->extensions;
+    while (gfex && gfex->position < i)
+      gfex = gfex->next;
+    while (!fr->no_extensions && gfex && gfex->position == i) {
+      Gif_AddExtension(dest, copy_extension(gfex), i);
+      gfex = gfex->next;
+    }
     
     /* Make a copy of the image and crop it if we're cropping */
     if (fr->crop) {

@@ -1,5 +1,44 @@
 Gifsicle NEWS
 
+Version 1.2b6
+
+* License clarification in README.
+
+Version 1.2b5
+
+* Longstanding bug fix in gifunopt.c: an interlaced replacement frame
+  caused strange behavior when later optimizing, as the underlying data
+  wasn't deinterlaced.
+
+* Further improvements in optimizer; specifically, -O2 works better now --
+  it uses actual image data to look for an unused pixel value when
+  there's no transparency specified.
+
+Version 1.2b4
+
+* Improved --optimize's performance on images where successive frames had
+  different transparent color indexes.
+
+Version 1.2b3
+
+* Fixed bugs in --unoptimize: it would try to unoptimize images with local
+  color tables and some transparency manipulations could cause a silent
+  failure (example: 2 colors; frame 0 = [*11], frame 1 = [*0*], where * is
+  a transparent pixel. Unoptimized, frame 1 should contain [*01] -- but this
+  can't be expressed with only 2 colors.)
+
+* Greatly improved --optimize's performance on some images by changing the
+  way frames were switched to --disposal=background. Problem noticed by
+  David Hedbor <david@hedbor.org>
+
+* Documentation improvements.
+
+* Unrecognized extensions are now passed through without change. The
+  --no-extensions option (currently undocumented) removes all
+  unrecognized extensions.
+
+* Bug fix in gifview: frame selections now prevent display of entire GIF.
+
 Version 1.2b2
 
 * Fixed bad dumb bug in gif.h: lack of parens around macro argument

@@ -48,6 +48,8 @@ typedef struct Gt_Frame {
   int loopcount;
   int screen_width;
   int screen_height;
+
+  int no_extensions;
   
 } Gt_Frame;
 

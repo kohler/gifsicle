@@ -94,6 +94,8 @@ static int verbosing = 0;
 #define COLORMAP_ALGORITHM_OPT	336
 #define DITHER_OPT		337
 #define USE_COLORMAP_OPT	338
+#define NO_EXTENSIONS_OPT	339
+#define SAME_EXTENSIONS_OPT	340
 
 #define LOOP_TYPE		(Clp_MaxDefaultType + 1)
 #define DISPOSAL_TYPE		(Clp_MaxDefaultType + 2)
@@ -135,8 +137,9 @@ Clp_Option options[] = {
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "name", 'n', NAME_OPT, Clp_ArgString, Clp_Negate },
-  { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
   { "netscape-workaround", 0, NETSCAPE_WORK_OPT, 0, Clp_Negate },
+  { "no-names", 0, NO_NAME_OPT, 0, Clp_LongMinMatch, 5 }, /****/
+  { "no-extensions", 0, NO_EXTENSIONS_OPT, 0, Clp_LongMinMatch, 5 }, /*****/
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
   { "output", 'o', OUTPUT_OPT, Clp_ArgString, 0 },
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
@@ -144,6 +147,7 @@ Clp_Option options[] = {
   { "same-clip", 0, SAME_CROP_OPT, 0, 0 },
   { "same-comments", 0, SAME_COMMENTS_OPT, 0, 0 },
   { "same-crop", 0, SAME_CROP_OPT, 0, 0 },
+  { "same-extensions", 0, SAME_EXTENSIONS_OPT, 0, 0 },
   { "same-interlace", 0, SAME_INTERLACE_OPT, 0, 0 },
   { "same-logical-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-loopcount", 0, SAME_LOOPCOUNT_OPT, 0, 0 },
@@ -193,6 +197,8 @@ initialize_def_frame(void)
   def_frame.loopcount = -2;
   def_frame.screen_width = -1;
   def_frame.screen_height = -1;
+
+  def_frame.no_extensions = 0;
 }
 
 
@@ -310,9 +316,12 @@ show_frame(int imagenumber, int usename)
 void
 input_stream(char *name)
 {
+  static int bad_unoptimize_warned = 0;
   FILE *f;
   Gif_Stream *gfs;
   int i;
+  int read_flags = GIF_READ_UNCOMPRESSED;
+  if (netscape_workaround) read_flags |= GIF_READ_NETSCAPE_WORKAROUND;
   
   input = 0;
   input_name = name;
@@ -334,7 +343,7 @@ input_stream(char *name)
   
   name = name ? name : "<stdin>";
   if (verbosing) verbose_open('<', name);
-  gfs = Gif_FullReadFile(f, netscape_workaround);
+  gfs = Gif_FullReadFile(f, read_flags);
   fclose(f);
   
   if (!gfs || Gif_ImageCount(gfs) == 0) {
@@ -349,10 +358,6 @@ input_stream(char *name)
   
   if (gfs->errors)
     warning("there were errors reading `%s'", name);
-  if (gfs->odd_extensions)
-    warning("ignored extensions in `%s'", name);
-  if (gfs->odd_app_extensions)
-    warning("ignored application extensions in `%s'", name);
   
   /* Processing when we've got a new input frame */
   if (mode == BLANK_MODE)
@@ -378,7 +383,15 @@ input_stream(char *name)
     add_frame(frames, -1, gfs, gfs->images[i]);
   
   if (unoptimizing)
-    Gif_Unoptimize(gfs);
+    if (!Gif_Unoptimize(gfs)) {
+      warning("could not unoptimize `%s'", name);
+      if (!bad_unoptimize_warned) {
+	bad_unoptimize_warned = 1;
+	warning("  (The reason was local color tables or odd transparency.");
+	warning("  Try running the GIF through `gifsicle --colors=256'.)");
+      }
+    }
+  
   if (color_changes)
     apply_color_changes(gfs, color_changes);
   if (infoing)
@@ -633,11 +646,11 @@ main(int argc, char **argv)
      0);
   Clp_AddStringListType
     (clp, DISPOSAL_TYPE, Clp_AllowNumbers,
-     "none", 0,
-     "asis", 1,
-     "background", 2,
-     "bg", 2,
-     "previous", 3,
+     "none", GIF_DISPOSAL_NONE,
+     "asis", GIF_DISPOSAL_ASIS,
+     "background", GIF_DISPOSAL_BACKGROUND,
+     "bg", GIF_DISPOSAL_BACKGROUND,
+     "previous", GIF_DISPOSAL_ASIS,
      0);
   Clp_AddStringListType
     (clp, COLORMAP_ALG_TYPE, 0,
@@ -846,6 +859,16 @@ main(int argc, char **argv)
      case SAME_CROP_OPT:
       next_frame = 1;
       def_frame.crop = 0;
+      break;
+
+     case NO_EXTENSIONS_OPT:
+      next_frame = 1;
+      def_frame.no_extensions = 1;
+      break;
+
+     case SAME_EXTENSIONS_OPT:
+      next_frame = 1;
+      def_frame.no_extensions = 0;
       break;
       
       /* ANIMATION OPTIONS */
