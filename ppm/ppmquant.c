@@ -377,6 +377,11 @@ mediancut( chv, colors, sum, maxval, newcolors )
     register int bi, i;
     int boxes;
 
+    for (i = 0; i < colors; i++)
+      fprintf(stderr, "#%02X%02X%02X %d  ", PPM_GETR(chv[i].color),
+	      PPM_GETG(chv[i].color),PPM_GETB(chv[i].color),
+	      chv[i].value);
+    fprintf(stderr, "\n");
     bv = (box_vector) malloc( sizeof(struct box) * newcolors );
     colormap =
 	(colorhist_vector) malloc( sizeof(struct colorhist_item) * newcolors );
@@ -414,6 +419,8 @@ mediancut( chv, colors, sum, maxval, newcolors )
 	indx = bv[bi].ind;
 	clrs = bv[bi].colors;
 	sm = bv[bi].sum;
+    fprintf(stderr, "splitting %d / %d+%u : ", bi,
+	    clrs, sm);
 
 	/*
 	** Go through the box finding the minimum and maximum of each
@@ -434,6 +441,8 @@ mediancut( chv, colors, sum, maxval, newcolors )
 	    if ( v < minb ) minb = v;
 	    if ( v > maxb ) maxb = v;
 	    }
+    fprintf(stderr, "#%02X%02X%02X - %02X%02X%02X\n", minr, ming,
+	    minb, maxr, maxg, maxb);
 
 	/*
 	** Find the largest dimension, and sort by that component.  I have
@@ -495,7 +504,11 @@ mediancut( chv, colors, sum, maxval, newcolors )
 	    if ( lowersum >= halfsum )
 		break;
 	    lowersum += chv[indx + i].value;
+    fprintf(stderr, "#%02X%02X%02X/%d ", PPM_GETR(chv[indx+i].color),
+	    PPM_GETG(chv[indx+i].color),PPM_GETB(chv[indx+i].color),
+	    chv[indx+i].value);
 	    }
+	fprintf(stderr,"\n");
 
 	/*
 	** Split the box, and sort to bring the biggest boxes to the top.
@@ -505,6 +518,8 @@ mediancut( chv, colors, sum, maxval, newcolors )
 	bv[boxes].ind = indx + i;
 	bv[boxes].colors = clrs - i;
 	bv[boxes].sum = sm - lowersum;
+      fprintf(stderr, "    -> %u *** %d / %u\n", bv[bi].sum,
+	      boxes, bv[boxes].sum);
 	++boxes;
 	qsort( (char*) bv, boxes, sizeof(struct box), sumcompare );
 	}

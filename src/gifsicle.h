@@ -93,7 +93,7 @@ struct Gt_ColorChange {
  **/
 extern const char *program_name;
 
-void fatalerror(char *message, ...) NORETURN;
+void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);
 void error(char *message, ...);
 void usage(void);
@@ -133,7 +133,12 @@ void apply_color_changes(Gif_Stream *, Gt_ColorChange *);
  * quantization
  **/
 
-void histogram(Gif_Stream *);
+Gif_Color *histogram(Gif_Stream *, int *);
+
+#define ADAPTIVE_ALG_DIVERSITY	0
+#define ADAPTIVE_ALG_MEDIAN_CUT	1
+Gif_Color *adaptive_palette_median_cut(Gif_Color *, int, int, int *);
+Gif_Color *adaptive_palette_diversity(Gif_Color *, int, int, int *);
 
 /*****
  * parsing stuff
