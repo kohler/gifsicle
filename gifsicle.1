@@ -5,6 +5,9 @@
 .de OP
 .BR "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
+.de OR
+.RB "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
+..
 .de OA
 .IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
@@ -55,7 +58,7 @@ Extensive options let you control what exactly it does.
 This man page assumes that you know what GIFs and GIF animations are. For a
 tutorial, you might try some of the resources listed on-line at
 webreference\%.com:
-http://www.webreference.com/authoring/graphics/animation\|.html.
+http://www.webreference.com/authoring/graphics/animation\|.html
 '
 .SH INTRODUCTION
 '
@@ -67,7 +70,7 @@ same thing:
 % \fBgifsicle < in.gif > out.gif\fR
 % \fBgifsicle < in.gif | gifsicle | gifsicle | gifsicle > out.gif\fR
 .Ee
-Too bad this isn't very interesting! Most times you will probably give
+Well, that's not very interesting! Most times you will probably give
 .B gifsicle
 some command line options which tell it to alter the input GIF in some way.
 The
@@ -76,31 +79,38 @@ option, for example, tells it to interlace its input files:
 .Es
 % \fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
 .Ee
+.PP
 This style doesn't work very well if you want to modify GIF files in
-place\*Efor example, if you want to interlace all the GIFs in the current
-directory. For this, you should use the
+place. For that, you should use the
 .OP \-\-batch
-option. With
+option: with
 .OP \-\-batch ,
 .B gifsicle
 will modify the files you specify instead of writing a new file to the
-standard output. The interlacing example above would look like this:
+standard output. To interlace all the GIFs in the current directory, you
+could say:
 .Es
 % \fBgifsicle \-\-batch *.gif
 .Ee
+.PP
 .B gifsicle
-is very proficient at creating and manipulating GIF animations. The
-simplest way to create an animation is to give
+is quite good at creating and manipulating GIF animations. The simplest way
+to create an animation is to give
 .B gifsicle
 more than one input file; it will combine them, creating a ``flipbook''
 animation:
 .Es
 % \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
-That ends this quickie introduction! The next sections index
+Options like
+.OP \-\-delay ", " \-\-loopcount ", and " \-\-optimize
+will help you tune your animations; see their descriptions for more
+details.
+.PP
+The next sections index
 .BR gifsicle 's
-options and tell you how to run it in gory detail. New users probably want
-to skip to the Examples section at the end.
+options and tell you how to run it in gory detail. New users may want to
+skip to the Examples section at the end.
 '
 .SH CONCEPT INDEX
 '
@@ -113,9 +123,9 @@ options are on the right.
 .PD 0
 .Ix "Animations, changing" "frame selections, frame changes, etc."
 .Ix "\ \ \ disposal" "\fB\-\-disposal\fP"
-.Ix "\ \ \ file size" "see File size"
 .Ix "\ \ \ looping" "\fB\-\-loopcount\fP"
 .Ix "\ \ \ portions of" "frame selections"
+.Ix "\ \ \ smaller" "see File size"
 .Ix "\ \ \ speed" "\fB\-\-delay\fP"
 .Ix "Background color" "\fB\-\-background\fP"
 .Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
@@ -733,6 +743,8 @@ animation.
 There is no
 .OP \-\-same\-unoptimize
 option.
+.RE
+'
 .PD
 '
 .\" -----------------------------------------------------------------
@@ -985,8 +997,7 @@ To make a dithered black-and-white version of `anim.gif':
 .SH BUGS
 
 Please email suggestions, additions, patches and bugs to
-eddietwo@lcs.mit.edu. Also email that address to be added to a Gifsicle
-mailing list (non-spammy).
+eddietwo@lcs.mit.edu.
 '
 .SH AUTHORS
 .na
