@@ -43,7 +43,7 @@ typedef struct Gif_Writer {
   u_int32_t pos;
   u_int32_t cap;
   void (*byte_putter)(byte, struct Gif_Writer *);
-  void (*block_putter)(byte *, int, struct Gif_Writer *);
+  void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
   
 } Gif_Writer;
 
@@ -66,7 +66,7 @@ file_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-file_block_putter(byte *block, int size, Gif_Writer *grr)
+file_block_putter(byte *block, u_int16_t size, Gif_Writer *grr)
 {
   fwrite(block, size, 1, grr->f);
 }
@@ -86,7 +86,7 @@ memory_byte_putter(byte b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(byte *data, int len, Gif_Writer *grr)
+memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
@@ -192,8 +192,8 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     }
     
     if (output_code == clear_code) {
-      
       Gif_Code c;
+      
       cur_code_bits = min_code_bits + 1;
       next_code = eoi_code + 1;
       bump_code = clear_code << 1;
@@ -227,10 +227,6 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
     
     /* If height is 0 -- no more pixels to write -- we output work_code next
        time around. */
-    if (height == 0)
-      goto out_of_data;
-    
-    /* Actual code finding. */
     while (height != 0) {
       suffix = *imageline;
       if (suffix >= clear_code) suffix = 0;
@@ -245,29 +241,26 @@ write_compressed_data(byte **img, u_int16_t width, u_int16_t height,
 	imageline = img[0];
       }
       
-      if (prefixes[hash] == eoi_code)
-	break;
+      if (prefixes[hash] == eoi_code) {
+	/* We need to add something to the table. Output the current code. */
+	prefixes[hash] = work_code;
+	suffixes[hash] = suffix;
+	codes[hash] = next_code;
+	next_code++;
+	
+	output_code = work_code;
+	work_code = suffix;
+	goto found_output_code;
+      }
+      
       work_code = codes[hash];
     }
     
-    if (hash < HASH_SIZE && prefixes[hash] == eoi_code) {
-      /* We need to add something to the table. */
-      
-      prefixes[hash] = work_code;
-      suffixes[hash] = suffix;
-      codes[hash] = next_code;
-      next_code++;
-      
-      output_code = work_code;
-      work_code = suffix;	/* code for a pixel == the pixel value */
-      
-    } else {
-      /* Ran out of data and don't need to add anything to the table. */
-     out_of_data:
-      output_code = work_code;
-      work_code = eoi_code;
-    }
+    /* Ran out of data if we get here. */
+    output_code = work_code;
+    work_code = eoi_code;
     
+   found_output_code: ;
   }
   
   if (bits_left_over > 0)
@@ -420,9 +413,17 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
      but modify the uncompressed data anyway. That sucks. */
-  if (gfi->compressed)
-    gifputblock(gfi->compressed, gfi->compressed_len, grr);
-  else
+  if (gfi->compressed) {
+    byte *compressed = gfi->compressed;
+    u_int32_t compressed_len = gfi->compressed_len;
+    while (compressed_len > 0) {
+      u_int16_t amt = (compressed_len > 0x7000 ? 0x7000 : compressed_len);
+      gifputblock(compressed, amt, grr);
+      compressed += amt;
+      compressed_len -= amt;
+    }
+    
+  } else
     write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
 		     gfc, grr);
   

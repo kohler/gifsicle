@@ -1,4 +1,5 @@
-/* ungifwrt.c - Functions to write unGIFs -- GIFs without compression.
+/* ungifwrt.c - Functions to write unGIFs -- GIFs with run-length compression,
+   not LZW compression.
    Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
@@ -20,6 +21,12 @@ extern "C" {
 #endif
 
 #define WRITE_BUFFER_SIZE	255
+
+typedef struct Gif_Context {
+
+  Gif_Code *rle_next;
+
+} Gif_Context;
 
 typedef struct Gif_Writer {
   
@@ -84,9 +91,11 @@ memory_block_putter(byte *data, u_int16_t len, Gif_Writer *grr)
 }
 
 
+#ifdef GIF_NO_COMPRESSION
+
 static void
-write_uncompressed_data(byte **img, u_int16_t width, u_int16_t height,
-			byte min_code_bits, Gif_Writer *grr)
+real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
+		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte buffer[WRITE_BUFFER_SIZE];
   byte *buf;
@@ -102,9 +111,6 @@ write_uncompressed_data(byte **img, u_int16_t width, u_int16_t height,
   Gif_Code clear_code;
   Gif_Code eoi_code;
   Gif_Code bump_code;
-  byte suffix;
-  
-  u_int32_t hash;
   
   byte cur_code_bits;
   
@@ -174,9 +180,7 @@ write_uncompressed_data(byte **img, u_int16_t width, u_int16_t height,
     /* If height is 0 -- no more pixels to write -- output eoi_code. */
     if (height == 0)
       output_code = eoi_code;
-    
     else {
-      /* Use suffix as code (no compression). */
       output_code = *imageline;
       if (output_code >= clear_code) output_code = 0;
       
@@ -205,10 +209,147 @@ write_uncompressed_data(byte **img, u_int16_t width, u_int16_t height,
   gifputbyte(0, grr);
 }
 
+#else /* GIF_NO_COMPRESSION */
+
+static void
+real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
+		      byte min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+{
+  byte buffer[WRITE_BUFFER_SIZE];
+  byte *buf;
+  
+  u_int16_t xleft;
+  byte *imageline;
+  
+  u_int32_t leftover;
+  byte bits_left_over;
+  
+  Gif_Code next_code;
+  Gif_Code output_code;
+  Gif_Code clear_code;
+  Gif_Code eoi_code;
+  Gif_Code bump_code;
+  byte suffix;
+  
+  Gif_Code *rle_next = gfc->rle_next;
+  
+  byte cur_code_bits;
+  
+  /* Here we go! */
+  gifputbyte(min_code_bits, grr);
+  clear_code = 1 << min_code_bits;
+  eoi_code = clear_code + 1;
+  
+  cur_code_bits = min_code_bits + 1;
+  /* bump_code, next_code set by first runthrough of output clear_code */
+  GIF_DEBUG(("clear(%d) eoi(%d)", clear_code, eoi_code));
+  
+  output_code = clear_code;
+  /* Because output_code is clear_code, we'll initialize next_code, bump_code,
+     et al. below. */
+  
+  bits_left_over = 0;
+  leftover = 0;
+  buf = buffer;
+  xleft = width;
+  imageline = img[0];
+  
+  
+  while (1) {
+    
+    /*****
+     * Output `output_code' to the data stream. */
+    
+    leftover |= output_code << bits_left_over;
+    bits_left_over += cur_code_bits;
+    while (bits_left_over >= 8) {
+      *buf++ = leftover & 0xFF;
+      leftover = (leftover >> 8) & 0x00FFFFFF;
+      bits_left_over -= 8;
+      if (buf == buffer + WRITE_BUFFER_SIZE) {
+	GIF_DEBUG(("chunk"));
+	gifputbyte(WRITE_BUFFER_SIZE, grr);
+	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
+	buf = buffer;
+      }
+    }
+    
+    if (output_code == clear_code) {
+      Gif_Code c;
+      
+      cur_code_bits = min_code_bits + 1;
+      next_code = eoi_code + 1;
+      bump_code = clear_code << 1;
+      
+      for (c = 0; c < clear_code; c++)
+	rle_next[c] = clear_code;
+      
+    } else if (next_code > bump_code) {
+      
+      /* bump up compression size */
+      if (cur_code_bits == GIF_MAX_CODE_BITS) {
+	output_code = clear_code;
+	continue;
+      } else {
+	cur_code_bits++;
+	bump_code <<= 1;
+      }
+      
+    } else if (output_code == eoi_code)
+      break;
+    
+    
+    /*****
+     * Find the next code to output. */
+    
+    /* If height is 0 -- no more pixels to write -- output eoi_code. */
+    if (height == 0)
+      output_code = eoi_code;
+    else {
+      output_code = suffix = *imageline;
+      if (output_code >= clear_code) output_code = 0;
+      goto next_pixel;
+      
+      while (height != 0 && *imageline == suffix
+	     && rle_next[output_code] != clear_code) {
+	output_code = rle_next[output_code];
+       next_pixel:
+	imageline++;
+	xleft--;
+	if (xleft == 0) {
+	  xleft = width;
+	  height--;
+	  img++;
+	  imageline = img[0];
+	}
+      }
+      
+      if (height != 0 && *imageline == suffix) {
+	rle_next[output_code] = next_code;
+	rle_next[next_code] = clear_code;
+      }
+      next_code++;
+    }
+  }
+  
+  if (bits_left_over > 0)
+    *buf++ = leftover;
+  
+  if (buf != buffer) {
+    GIF_DEBUG(("imageblock(%d)", buf - buffer));
+    gifputbyte(buf - buffer, grr);
+    gifputblock(buffer, buf - buffer, grr);
+  }
+  
+  gifputbyte(0, grr);
+}
+
+#endif /* GIF_NO_COMPRESSION */
+
 
 static int
 write_image_data(byte **img, u_int16_t width, u_int16_t height,
-		 byte interlaced, Gif_Writer *grr)
+		 byte interlaced, Gif_Context *gfc, Gif_Writer *grr)
 {
   int i;
   u_int16_t x, y, max_color;
@@ -238,11 +379,11 @@ write_image_data(byte **img, u_int16_t width, u_int16_t height,
       nimg[y] = img[Gif_InterlaceLine(y, height)];
     nimg[height] = 0;
     
-    write_uncompressed_data(nimg, width, height, min_code_bits, grr);
+    real_write_image_data(nimg, width, height, min_code_bits, gfc, grr);
     
     Gif_DeleteArray(nimg);
   } else
-    write_uncompressed_data(img, width, height, min_code_bits, grr);
+    real_write_image_data(img, width, height, min_code_bits, gfc, grr);
   
   return 1;
 }
@@ -253,9 +394,12 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
 {
   int ok = 0;
   Gif_Writer grr;
+  Gif_Context gfc;
   
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
+  
+  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   
   grr.v = Gif_NewArray(byte, 1024);
   grr.pos = 0;
@@ -263,11 +407,11 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
   
-  if (!grr.v)
+  if (!grr.v || !gfc.rle_next)
     goto done;
   
   ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-			&grr);
+			&gfc, &grr);
   
  done:
   if (!ok) {
@@ -277,6 +421,7 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   gfi->compressed = grr.v;
   gfi->compressed_len = grr.pos;
   gfi->free_compressed = Gif_DeleteArrayFunc;
+  Gif_DeleteArray(gfc.rle_next);
   return grr.v != 0;
 }
 
@@ -309,7 +454,7 @@ write_color_table(Gif_Color *c, int ncol, Gif_Writer *grr)
 
 
 static int
-write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
+write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
   byte packed = 0;
   
@@ -337,17 +482,17 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
      but modify the uncompressed data anyway. That sucks. */
   if (gfi->compressed) {
     byte *compressed = gfi->compressed;
-    u_int32_t len = gfi->compressed_len;
-    while (len > 0x1000) {
-      gifputblock(compressed, 0x1000, grr);
-      len -= 0x1000;
-      compressed += 0x1000;
+    u_int32_t compressed_len = gfi->compressed_len;
+    while (compressed_len > 0) {
+      u_int16_t amt = (compressed_len > 0x7000 ? 0x7000 : compressed_len);
+      gifputblock(compressed, amt, grr);
+      compressed += amt;
+      compressed_len -= amt;
     }
-    if (len > 0) gifputblock(compressed, len, grr);
     
   } else
     write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-		     grr);
+		     gfc, grr);
   
   return 1;
 }
@@ -482,6 +627,11 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   int i;
   Gif_Image *gfi;
   Gif_Extension *gfex = gfs->extensions;
+  Gif_Context gfc;
+  
+  gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
+  if (!gfc.rle_next)
+    goto done;
   
   {
     byte isgif89a = 0;
@@ -516,7 +666,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
       write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
       write_graphic_control_extension(gfi, grr);
-    if (!write_image(gfs, gfi, grr))
+    if (!write_image(gfs, gfi, &gfc, grr))
       goto done;
   }
   
@@ -531,6 +681,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   ok = 1;
   
  done:
+  Gif_DeleteArray(gfc.rle_next);
   return ok;
 }
 
