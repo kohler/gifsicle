@@ -539,7 +539,7 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 #else
     /* don't bother really trying to do it right */
     if (arg[0] == '-')
-      val = arg;
+      val = (char *) arg;
     else
       clp->val.u = strtol(arg, &val, base);
 #endif
