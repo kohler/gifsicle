@@ -93,11 +93,10 @@ could say:
 .Ee
 .PP
 .B gifsicle
-is quite good at creating and manipulating GIF animations. The simplest way
-to create an animation is to give
+is good at creating and manipulating GIF animations. The simplest way to
+create an animation is to give more than one input file, which 
 .B gifsicle
-more than one input file; it will combine them, creating a ``flipbook''
-animation:
+will combine to create a ``flipbook'' animation:
 .Es
 % \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
@@ -108,8 +107,8 @@ details.
 .PP
 The next sections index
 .BR gifsicle 's
-options and tell you how to run it in gory detail. New users may want to
-skip to the Examples section at the end.
+options and describe them in gory detail. New users may want to skip to the
+Examples section at the end.
 '
 .SH CONCEPT INDEX
 '
@@ -212,10 +211,11 @@ Modify each GIF input in place by reading and writing to the same filename.
 .TP
 .OP \-\-explode ", " \-e
 '
-Write separate GIFs containing the individual frames of each GIF input to
-files named `xxx.0', `xxx.1', and so on. `xxx' is either the name of the
-input file or whatever you specified with
-.QO \-\-output .
+Create an output GIF for each frame of each input file. The output GIFs are
+named `xxx.000', `xxx.001', and so on, where `xxx' is the name of the input
+file (or whatever you specified with 
+.QO \-\-output )
+and the numeric extension is the frame number.
 '
 .TP
 .OP \-\-explode\-by\-name ", " \-E
@@ -945,7 +945,7 @@ To explode `anim.gif' into its component frames:
 .br
 % \fBls anim.gif*\fR
 .br
-anim.gif    anim.gif.0  anim.gif.1  anim.gif.2  anim.gif.3
+anim.gif      anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
 .Ee
 To optimize `anim.gif':
 .Es
@@ -995,7 +995,7 @@ twice forces normal output to occur. With only one
 .OP \-I ,
 the GIFs would not have changed on disk.
 .PP
-To change `anim.gif' to use only a 64-color subset of the Web-safe palette:
+To change `anim.gif' to use a 64-color subset of the Web-safe palette:
 .Es
 % \fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
 .Ee
