@@ -176,6 +176,8 @@ Animation options: Also --no-OPTION and --same-OPTION.\n\
 \n");
   printf("\
 Whole-GIF options: Also --no-OPTION.\n\
+      --careful                 Write larger GIFs that avoid bugs in other\n\
+                                programs.\n\
       --change-color COL1 COL2  Changes COL1 to COL2 throughout.\n\
   -k, --colors N                Reduces the number of colors to N.\n\
       --color-method METHOD     Set method for choosing reduced colors.\n\
@@ -190,7 +192,7 @@ Report bugs to <eddietwo@lcs.mit.edu>.\n\
 Too much information? Try `%s --help | more'.\n", program_name);
 #ifdef GIF_UNGIF
   printf("\
-This version of gifsicle writes uncompressed GIFs, which can be far larger\n\
+This version of Gifsicle writes uncompressed GIFs, which can be far larger\n\
 than compressed GIFs. See http://www.lcdf.org/gifsicle for more information.\n");
 #endif
 }
@@ -1344,7 +1346,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     
     /* compress immediately if possible to save on memory */
     if (compress_immediately) {
-      Gif_CompressImage(dest, desti);
+      Gif_FullCompressImage(dest, desti, gif_write_flags);
       Gif_ReleaseUncompressedImage(desti);
     }
     

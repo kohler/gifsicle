@@ -189,7 +189,7 @@ read_image_block(Gif_Reader *grr, byte *buffer, int *bit_pos_store,
       bit_length -= i * 8;
     }
     block_len = gifgetbyte(grr);
-    GIF_DEBUG(("image_block(%d)", block_len));
+    GIF_DEBUG(("\nimage_block(%d)", block_len));
     if (block_len == 0) return 0;
     gifgetblock(buffer + bit_length / 8, block_len, grr);
     bit_length += block_len * 8;
@@ -227,7 +227,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   gfc->decodepos = 0;
   
   min_code_size = gifgetbyte(grr);
-  GIF_DEBUG(("min_code_size(%d)", min_code_size));
+  GIF_DEBUG(("\n\nmin_code_size(%d)", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
     gif_read_error(gfc, "min_code_size too big");
     min_code_size = GIF_MAX_CODE_BITS - 1;
@@ -278,7 +278,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     code = (Gif_Code)((accum >> (bit_position % 8)) & CUR_CODE_MASK);
     bit_position += bits_needed;
     
-    GIF_DEBUG(("code(%d)", code));
+    GIF_DEBUG(("%d", code));
     
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
@@ -336,11 +336,11 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   
   /* read blocks until zero-length reached. */
   i = gifgetbyte(grr);
-  GIF_DEBUG(("after_image(%d)", i));
+  GIF_DEBUG(("\nafter_image(%d)\n", i));
   while (i > 0) {
     gifgetblock(buffer, i, grr);
     i = gifgetbyte(grr);
-    GIF_DEBUG(("after_image(%d)", i));
+    GIF_DEBUG(("\nafter_image(%d)\n", i));
   }
   
   /* zero-length block reached. */
@@ -772,17 +772,12 @@ read_gif(Gif_Reader *grr, int read_flags,
       new_gfi = Gif_NewImage();
       if (!new_gfi) goto done;
       
-      if (read_flags & GIF_READ_NETSCAPE_WORKAROUND) {
-	new_gfi->transparent = gfi->transparent;
-	new_gfi->delay = gfi->delay;
-	new_gfi->disposal = gfi->disposal;
-      }
       gfi = new_gfi;
       extension_position++;
       break;
       
      case ';': /* terminator */
-      GIF_DEBUG(("term"));
+      GIF_DEBUG(("term\n"));
       ok = 1;
       goto done;
       
@@ -866,6 +861,22 @@ Gif_FullReadRecord(const Gif_Record *gifrec, int read_flags,
   if (read_flags & GIF_READ_CONST_RECORD)
     read_flags |= GIF_READ_COMPRESSED;
   return read_gif(&grr, read_flags, h, hthunk);
+}
+
+
+#undef Gif_ReadFile
+#undef Gif_ReadRecord
+
+Gif_Stream *
+Gif_ReadFile(FILE *f)
+{
+  return Gif_FullReadFile(f, GIF_READ_UNCOMPRESSED, 0, 0);
+}
+
+Gif_Stream *
+Gif_ReadRecord(const Gif_Record *gifrec)
+{
+  return Gif_FullReadRecord(gifrec, GIF_READ_UNCOMPRESSED, 0, 0);
 }
 
 

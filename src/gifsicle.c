@@ -33,7 +33,9 @@ Gt_Frameset *nested_frames = 0;
 Gif_Stream *input = 0;
 char *input_name = 0;
 static int unoptimizing = 0;
-static int netscape_workaround = 0;
+
+int gif_read_flags = 0;
+int gif_write_flags = 0;
 
 static int frames_done = 0;
 static int files_given = 0;
@@ -125,7 +127,7 @@ static const char *output_option_types[] = {
 #define LOGICAL_SCREEN_OPT	309
 #define COMMENT_OPT		310
 #define UNOPTIMIZE_OPT		311
-#define NETSCAPE_WORK_OPT	312
+#define CAREFUL_OPT		312
 #define OPTIMIZE_OPT		313
 #define SAME_LOGICAL_SCREEN_OPT 314
 #define DELETE_OPT		315
@@ -191,7 +193,8 @@ Clp_Option options[] = {
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
   { "bg", 0, BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
-  
+
+  { "careful", 0, CAREFUL_OPT, 0, Clp_Negate },
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
@@ -232,7 +235,6 @@ Clp_Option options[] = {
   
   { "name", 'n', NAME_OPT, Clp_ArgString, 0 },
   { "no-names", 'n', NO_NAME_OPT, 0, Clp_OnlyNegated },
-  { "netscape-workaround", 0, NETSCAPE_WORK_OPT, 0, Clp_Negate },
   
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
   { "output", 'o', OUTPUT_OPT, Clp_ArgStringNotOption, 0 },
@@ -448,8 +450,6 @@ input_stream(char *name)
   int i;
   int saved_next_frame = next_frame;
   Gt_Frame old_def_frame;
-  int read_flags = GIF_READ_COMPRESSED;
-  if (netscape_workaround) read_flags |= GIF_READ_NETSCAPE_WORKAROUND;
   
   input = 0;
   input_name = name;
@@ -484,7 +484,8 @@ input_stream(char *name)
   
   if (verbosing) verbose_open('<', name);
   gifread_error_count = 0;
-  gfs = Gif_FullReadFile(f, read_flags, gifread_error, (void *)name);
+  gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
+			 gifread_error, (void *)name);
   fclose(f);
   gifread_error(0, -1, (void *)name); /* print out last error message */
   
@@ -723,7 +724,7 @@ write_stream(char *output_name, Gif_Stream *gfs)
   }
   
   if (f) {
-    Gif_WriteFile(gfs, f);
+    Gif_FullWriteFile(gfs, gif_write_flags, f);
     fclose(f);
     any_output_successful = 1;
   } else
@@ -1426,10 +1427,16 @@ main(int argc, char **argv)
       break;
       
       /* WHOLE-GIF OPTIONS */
-      
-     case NETSCAPE_WORK_OPT:
-      netscape_workaround = clp->negated ? 0 : 1;
-      break;
+
+     case CAREFUL_OPT: {
+       if (clp->negated)
+	 gif_read_flags = gif_write_flags = 0;
+       else {
+	 gif_read_flags = 0;
+	 gif_write_flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE;
+       }
+       break;
+     }
       
      case CHANGE_COLOR_OPT: {
        next_input |= CH_CHANGE_COLOR;

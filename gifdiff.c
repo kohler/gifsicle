@@ -96,8 +96,8 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
       if (map[*ind] != TRANSP)
 	*outd = map[*ind];
   }
-  if (gfi->compressed)
-    Gif_ReleaseCompressedImage(gfi);
+  Gif_ReleaseUncompressedImage(gfi);
+  Gif_ReleaseCompressedImage(gfi);
 }
 
 static void

@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.20   23.Jun.2000
+
+* Added `--careful' option, because some bad GIF implementations (Java,
+  Internet Explorer) don't support Gifsicle's super-optimized GIFs.
+
+* Gifdiff will work on very large images (better memory usage).
+
+
 Version 1.19   25.Apr.2000
 
 * Fixed memory corruption bug: `gifsicle --use-colormap=FILE.gif' would

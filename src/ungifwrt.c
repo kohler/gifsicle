@@ -1,7 +1,7 @@
 /* ungifwrt.c - Functions to write unGIFs -- GIFs with run-length compression,
    not LZW compression. Idea due to Hutchinson Avenue Software Corporation
    <http://www.hasc.com>.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
 
    The GIF library is free software. It is distributed under the GNU Public
@@ -11,12 +11,13 @@
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
-#elif !defined(__cplusplus)
+#elif !defined(__cplusplus) && !defined(inline)
 /* Assume we don't have inline by default */
 # define inline
 #endif
 #include "gif.h"
 #include <stdarg.h>
+#include <string.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,12 +30,14 @@ typedef struct Gif_Context {
   
 } Gif_Context;
 
+
 typedef struct Gif_Writer {
   
   FILE *f;
   byte *v;
   u_int32_t pos;
   u_int32_t cap;
+  int flags;
   void (*byte_putter)(byte, struct Gif_Writer *);
   void (*block_putter)(byte *, u_int16_t, struct Gif_Writer *);
   
@@ -242,12 +245,12 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
   eoi_code = clear_code + 1;
   
   cur_code_bits = min_code_bits + 1;
-  /* bump_code, next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d)", clear_code, eoi_code));
+  /* next_code set by first runthrough of output clear_code */
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
   
   output_code = clear_code;
-  /* Because output_code is clear_code, we'll initialize next_code, bump_code,
-     et al. below. */
+  /* Because output_code is clear_code, we'll initialize next_code, et al.
+     below. */
   
   bits_left_over = 0;
   leftover = 0;
@@ -255,12 +258,11 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
   xleft = width;
   imageline = img[0];
   
-  
   while (1) {
     
     /*****
      * Output `output_code' to the data stream. */
-    
+
     leftover |= output_code << bits_left_over;
     bits_left_over += cur_code_bits;
     while (bits_left_over >= 8) {
@@ -268,7 +270,6 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
       leftover = (leftover >> 8) & 0x00FFFFFF;
       bits_left_over -= 8;
       if (buf == buffer + WRITE_BUFFER_SIZE) {
-	GIF_DEBUG(("chunk"));
 	gifputbyte(WRITE_BUFFER_SIZE, grr);
 	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
 	buf = buffer;
@@ -276,6 +277,7 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
     }
     
     if (output_code == clear_code) {
+      /* Clear data and prepare gfc */
       Gif_Code c;
       
       cur_code_bits = min_code_bits + 1;
@@ -349,30 +351,64 @@ real_write_image_data(byte **img, u_int16_t width, u_int16_t height,
 
 
 static int
-write_image_data(byte **img, u_int16_t width, u_int16_t height,
-		 byte interlaced, Gif_Context *gfc, Gif_Writer *grr)
+calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
-  int i;
-  u_int16_t x, y, max_color;
-  byte min_code_bits;
+  int colors_used = -1, min_code_bits, i;
+
+  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+    /* calculate m_c_b based on colormap */
+    if (gfi->local && gfi->local->ncol > 0)
+      colors_used = gfi->local->ncol;
+    else if (gfs->global && gfs->global->ncol > 0)
+      colors_used = gfs->global->ncol;
+    
+  } else if (gfi->compressed) {
+    /* take m_c_b from compressed image */
+    colors_used = 1 << gfi->compressed[0];
   
-  max_color = 0;
-  for (y = 0; y < height && max_color < 128; y++) {
-    byte *data = img[y];
-    for (x = width; x > 0; x--, data++)
-      if (*data > max_color)
-	max_color = *data;
+  } else if (gfi->img) {
+    /* calculate m_c_b from uncompressed data */
+    int x, y, width = gfi->width, height = gfi->height;
+    colors_used = 0;
+    for (y = 0; y < height && colors_used < 128; y++) {
+      byte *data = gfi->img[y];
+      for (x = width; x > 0; x--, data++)
+	if (*data > colors_used)
+	  colors_used = *data;
+    }
+    colors_used++;
+    
+  } else {
+    /* should never happen */
+    colors_used = 256;
   }
   
   min_code_bits = 2;		/* min_code_bits of 1 isn't allowed */
   i = 4;
-  while (i < max_color + 1) {
+  while (i < colors_used) {
     min_code_bits++;
     i *= 2;
   }
+
+  if ((grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
+      && gfi->compressed && gfi->compressed[0] != min_code_bits) {
+    /* if compressed image disagrees with careful min_code_bits, recompress */
+    if (Gif_UncompressImage(gfi))
+      Gif_FullCompressImage(gfs, gfi, grr->flags);
+  }
   
-  if (interlaced) {
-    int y;
+  return min_code_bits;
+}
+
+static int
+write_image_data(Gif_Image *gfi, byte min_code_bits,
+		 Gif_Context *gfc, Gif_Writer *grr)
+{
+  byte **img = gfi->img;
+  u_int16_t width = gfi->width, height = gfi->height;
+    
+  if (gfi->interlace) {
+    u_int16_t y;
     byte **nimg = Gif_NewArray(byte *, height + 1);
     if (!nimg) return 0;
     
@@ -391,14 +427,17 @@ write_image_data(byte **img, u_int16_t width, u_int16_t height,
 
 
 int
-Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
+Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 {
   int ok = 0;
+  byte min_code_bits;
   Gif_Writer grr;
   Gif_Context gfc;
   
-  if (gfi->compressed && gfi->free_compressed)
+  if (gfi->compressed && gfi->free_compressed) {
     (*gfi->free_compressed)((void *)gfi->compressed);
+    gfi->compressed = 0;
+  }
   
   gfc.rle_next = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   
@@ -407,12 +446,13 @@ Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
   grr.cap = 1024;
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
+  grr.flags = flags;
   
   if (!grr.v || !gfc.rle_next)
     goto done;
-  
-  ok = write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-			&gfc, &grr);
+
+  min_code_bits = calculate_min_code_bits(gfs, gfi, &grr);
+  ok = write_image_data(gfi, min_code_bits, &gfc, &grr);
   
  done:
   if (!ok) {
@@ -457,7 +497,7 @@ write_color_table(Gif_Color *c, int ncol, Gif_Writer *grr)
 static int
 write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
 {
-  byte packed = 0;
+  byte min_code_bits, packed = 0;
   
   gifputbyte(',', grr);
   gifputunsigned(gfi->left, grr);
@@ -477,6 +517,10 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
   
   if (gfi->local && gfi->local->ncol > 0)
     write_color_table(gfi->local->col, gfi->local->ncol, grr);
+
+  /* calculate min_code_bits here (because calculation may involve
+     recompression, if GIF_WRITE_CAREFUL_MIN_CODE_BITS is true) */
+  min_code_bits = calculate_min_code_bits(gfs, gfi, grr);
   
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
@@ -492,8 +536,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
     }
     
   } else
-    write_image_data(gfi->img, gfi->width, gfi->height, gfi->interlace,
-		     gfc, grr);
+    write_image_data(gfi, min_code_bits, gfc, grr);
   
   return 1;
 }
@@ -688,13 +731,30 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
 
 int
-Gif_WriteFile(Gif_Stream *gfs, FILE *f)
+Gif_FullWriteFile(Gif_Stream *gfs, int flags, FILE *f)
 {
   Gif_Writer grr;
   grr.f = f;
   grr.byte_putter = file_byte_putter;
   grr.block_putter = file_block_putter;
+  grr.flags = flags;
   return write_gif(gfs, &grr);
+}
+
+
+#undef Gif_CompressImage
+#undef Gif_WriteFile
+
+int
+Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi)
+{
+  return Gif_FullCompressImage(gfs, gfi, 0);
+}
+
+int
+Gif_WriteFile(Gif_Stream *gfs, FILE *f)
+{
+  return Gif_FullWriteFile(gfs, 0, f);
 }
 
 

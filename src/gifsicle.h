@@ -124,6 +124,8 @@ extern const char *program_name;
 extern int verbosing;
 extern int error_count;
 extern int no_warnings;
+extern int gif_read_flags;
+extern int gif_write_flags;
 
 void fatal_error(char *message, ...) NORETURN;
 void warning(char *message, ...);

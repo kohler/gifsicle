@@ -1,5 +1,5 @@
 /* gif.h - Interface to the GIF library.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2000 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of the GIF library.
    
    The GIF library is free software*. It is distributed under the GNU Public
@@ -23,8 +23,8 @@ extern "C" {
    this file, probably by #including <sys/types.h>. */
   
 #define GIF_MAJOR_VERSION	1
-#define GIF_MINOR_VERSION	0
-#define GIF_VERSION		"1.0"
+#define GIF_MINOR_VERSION	1
+#define GIF_VERSION		"1.1"
 
 #ifndef BYTE
 #define BYTE
@@ -139,6 +139,7 @@ typedef		void (*Gif_ReadErrorHandler)(const char *, int, void *);
 #define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
 int		Gif_FullUncompressImage(Gif_Image*,Gif_ReadErrorHandler,void*);
 int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
+int		Gif_FullCompressImage(Gif_Stream *, Gif_Image *, int);
 void		Gif_ReleaseUncompressedImage(Gif_Image *);
 void		Gif_ReleaseCompressedImage(Gif_Image *);
 int		Gif_SetUncompressedImage(Gif_Image *, byte *data,
@@ -231,19 +232,24 @@ struct Gif_Record {
   u_int32_t length;
 };
 
-#define GIF_READ_NETSCAPE_WORKAROUND	(1)
-#define GIF_READ_COMPRESSED		(2)
-#define GIF_READ_UNCOMPRESSED		(4)
-#define GIF_READ_CONST_RECORD		(8)
+#define GIF_READ_COMPRESSED		(1)
+#define GIF_READ_UNCOMPRESSED		(2)
+#define GIF_READ_CONST_RECORD		(4)
+#define GIF_WRITE_CAREFUL_MIN_CODE_SIZE	(1)
+
+Gif_Stream *	Gif_ReadFile(FILE *);
+Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
+				 void *);
+Gif_Stream *	Gif_ReadRecord(const Gif_Record *);
+Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
+				   Gif_ReadErrorHandler, void *);
+int		Gif_WriteFile(Gif_Stream *, FILE *);
+int 		Gif_FullWriteFile(Gif_Stream *, int flags, FILE *);
 
 #define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)
 #define	Gif_ReadRecord(r)	Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED,0,0)
-
-Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
-				 void *);
-Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
-				   Gif_ReadErrorHandler, void *);
-int 		Gif_WriteFile(Gif_Stream *, FILE *);
+#define Gif_CompressImage(s, i)	Gif_FullCompressImage((s),(i),0)
+#define Gif_WriteFile(s, f)	Gif_FullWriteFile((s),0,(f))
 
 
 /** HOOKS AND MISCELLANEOUS **/

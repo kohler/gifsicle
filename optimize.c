@@ -948,7 +948,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
   /* First, try w/o transparency. Compare this to the result using
      transparency and pick the better of the two. */
   simple_frame_data(gfi, map);
-  Gif_CompressImage(gfs, gfi);
+  Gif_FullCompressImage(gfs, gfi, gif_write_flags);
   
   /* Actually copy data to frame.
     
@@ -1050,7 +1050,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, byte *map)
     void (*old_free_compressed)(void *) = gfi->free_compressed;
     u_int32_t old_compressed_len = gfi->compressed_len;
     gfi->compressed = 0;	/* prevent freeing old_compressed */
-    Gif_CompressImage(gfs, gfi);
+    Gif_FullCompressImage(gfs, gfi, gif_write_flags);
     if (gfi->compressed_len > old_compressed_len) {
       Gif_ReleaseCompressedImage(gfi);
       gfi->compressed = old_compressed;

@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.19
+.ds V 1.20
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -120,6 +120,7 @@ options are on the right.
 .Ix "\ \ \ portions of" "frame selections"
 .Ix "\ \ \ smaller" "\fB\-\-optimize\fP, \fB\-\-colors\fP"
 .Ix "\ \ \ speed" "\fB\-\-delay\fP"
+.Ix "Bad output" "\fB\-\-careful\fP"
 .Ix "Background color" "\fB\-\-background\fP"
 .Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
 .Ix "\ \ \ reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP"
@@ -755,6 +756,17 @@ be turned off with
 .Sp
 .PD 0
 .TP 5
+.OP \-\-careful
+'
+Write slightly larger GIFs that avoid bugs in some other GIF
+implementations. Some Java and Internet Explorer versions cannot display
+the correct, minimal GIFs that Gifsicle produces. Use the
+.OP \-\-careful
+option if you are having problems with a particular image.
+'
+.Sp
+.PD 0
+.TP 5
 .OA \-\-change\-color color1 " " color2
 '
 Change
@@ -1000,7 +1012,12 @@ To make a dithered black-and-white version of `anim.gif':
 .Ee
 '
 .SH BUGS
-
+'
+Some optimized output GIFs may appear incorrectly on some GIF
+implementations (for example, Java's); see the
+.OP \-\-careful
+option.
+.PP
 Please email suggestions, additions, patches and bugs to
 eddietwo@lcs.mit.edu.
 '
@@ -1012,7 +1029,7 @@ http://www.pdos.lcs.mit.edu/~eddietwo/
 .br
 He wrote it.
 .PP
-Anne Dudfield <anne@lvld.hp.com>
+Anne Dudfield <annied@frii.com>
 .br
 http://www.frii.com/~annied/
 .br
