@@ -52,10 +52,12 @@ typedef struct Gif_Reader {
   FILE *f;
   const byte *v;
   u_int32_t w;
+  u_int32_t length;
   int is_record;
   int is_eoi;
   byte (*byte_getter)(struct Gif_Reader *);
   void (*block_getter)(byte *, u_int32_t, struct Gif_Reader *);
+  u_int32_t (*offseter)(struct Gif_Reader *);
   int (*eofer)(struct Gif_Reader *);
   
 } Gif_Reader;
@@ -64,6 +66,7 @@ typedef struct Gif_Reader {
 #define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
 #define gifgetbyte(grr) ((*grr->byte_getter)(grr))
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
+#define gifgetoffset(grr) ((*grr->offseter)(grr))
 #define gifeof(grr)	((*grr->eofer)(grr))
 
 static inline u_int16_t
@@ -85,7 +88,13 @@ file_byte_getter(Gif_Reader *grr)
 static void
 file_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
 {
-  fread(p, s, 1, grr->f);
+  fread(p, 1, s, grr->f);
+}
+
+static u_int32_t
+file_offseter(Gif_Reader *grr)
+{
+  return ftell(grr->f);
 }
 
 static int
@@ -109,6 +118,12 @@ record_block_getter(byte *p, u_int32_t s, Gif_Reader *grr)
   grr->w -= s, grr->v += s;
 }
 
+static u_int32_t
+record_offseter(Gif_Reader *grr)
+{
+  return grr->length - grr->w;
+}
+
 static int
 record_eofer(Gif_Reader *grr)
 {
@@ -120,10 +135,12 @@ static void
 make_data_reader(Gif_Reader *grr, const byte *data, u_int32_t length)
 {
   grr->v = data;
+  grr->length = length;
   grr->w = length;
   grr->is_record = 1;
   grr->byte_getter = record_byte_getter;
   grr->block_getter = record_block_getter;
+  grr->offseter = record_offseter;
   grr->eofer = record_eofer;
 }
 
@@ -724,6 +741,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_Image *new_gfi;
   Gif_Context gfc;
   int extension_position = 0;
+  int unknown_block_type = 0;
   int ok = 0;
   
   if (gifgetc(grr) != 'G' ||
@@ -759,7 +777,7 @@ read_gif(Gif_Reader *grr, int read_flags,
     switch (block) {
       
      case ',': /* image block */
-      GIF_DEBUG(("imageread"));
+      GIF_DEBUG(("imageread %d", gfs->nimages));
       
       gfi->identifier = last_name;
       last_name = 0;
@@ -810,8 +828,13 @@ read_gif(Gif_Reader *grr, int read_flags,
       break;
       
      default:
-      gif_read_error(&gfc, "unknown block type");
-      break;
+       if (!unknown_block_type) {
+	 char buf[256];
+	 sprintf(buf, "unknown block type `0x%X' at offset 0x%x", block, gifgetoffset(grr) - 1);
+	 gif_read_error(&gfc, buf);
+	 unknown_block_type = 1;
+       }
+       break;
       
     }
     
@@ -847,6 +870,7 @@ Gif_FullReadFile(FILE *f, int read_flags,
   grr.is_record = 0;
   grr.byte_getter = file_byte_getter;
   grr.block_getter = file_block_getter;
+  grr.offseter = file_offseter;
   grr.eofer = file_eofer;
   return read_gif(&grr, read_flags, h, hthunk);
 }
