@@ -407,39 +407,47 @@ static void
 gifread_error(const char *message, int which_image, void *thunk)
 {
   static int last_which_image = 0;
-  static const char *last_message = 0;
+  static char last_message[256];
   static int different_error_count = 0;
   static int same_error_count = 0;
   const char *filename = (const char *)thunk;
   
   if (gifread_error_count == 0) {
     last_which_image = -1;
+    last_message[0] = 0;
     different_error_count = 0;
   }
   
   gifread_error_count++;
-  if (last_message && different_error_count <= 10
-      && (message != last_message || last_which_image != which_image)) {
+  if (last_message[0] && different_error_count <= 10
+      && (last_which_image != which_image || message == 0
+	  || strcmp(message, last_message) != 0)) {
     if (same_error_count == 1)
       error("  %s", last_message);
     else if (same_error_count > 0)
       error("  %s (%d times)", last_message, same_error_count);
     same_error_count = 0;
+    last_message[0] = 0;
   }
 
-  if (message != last_message)
+  if (last_message[0] == 0)
     different_error_count++;
   
   same_error_count++;
-  last_message = message;
+  if (message)
+    strcpy(last_message, message);
+  else
+    last_message[0] = 0;
   if (last_which_image != which_image && different_error_count <= 10
       && message) {
     error("Error while reading `%s' frame #%d:", filename, which_image);
     last_which_image = which_image;
   }
   
-  if (different_error_count == 11 && message)
+  if (different_error_count == 11 && message) {
     error("(more errors while reading `%s')", filename);
+    different_error_count++;
+  }
 }
 
 void
