@@ -742,7 +742,6 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_Context gfc;
   int extension_position = 0;
   int unknown_block_type = 0;
-  int ok = 0;
   
   if (gifgetc(grr) != 'G' ||
       gifgetc(grr) != 'I' ||
@@ -796,7 +795,6 @@ read_gif(Gif_Reader *grr, int read_flags,
       
      case ';': /* terminator */
       GIF_DEBUG(("term\n"));
-      ok = 1;
       goto done;
       
      case '!': /* extension */
@@ -830,7 +828,7 @@ read_gif(Gif_Reader *grr, int read_flags,
      default:
        if (!unknown_block_type) {
 	 char buf[256];
-	 sprintf(buf, "unknown block type `0x%X' at offset 0x%x", block, gifgetoffset(grr) - 1);
+	 sprintf(buf, "unknown block type %d at file offset %d", block, gifgetoffset(grr) - 1);
 	 gif_read_error(&gfc, buf);
 	 unknown_block_type = 1;
        }
@@ -851,12 +849,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
-  if (ok)
-    return gfs;
-  else {
-    Gif_DeleteStream(gfs);
-    return 0;
-  }
+  return gfs;
 }
 
 
