@@ -2,7 +2,7 @@
 /* clp.c - Complete source code for CLP.
  * This file is part of CLP, the command line parser package.
  *
- * Copyright (c) 1997-2003 Eddie Kohler, kohler@icir.org
+ * Copyright (c) 1997-2005 Eddie Kohler, kohler@cs.ucla.edu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -88,31 +88,26 @@ struct Clp_Internal {
     Clp_Option *current_option;
     int current_short;
     int negated_by_no;
-  
+
 };
 
 
 struct Clp_ParserState {
-  
     const char * const *argv;
     int argc;
     char option_chars[3];
     const char *text;
     int is_short;
     int whole_negated;
-  
 };
 
 
 typedef struct Clp_StringList {
-
     Clp_Option *items;
     Clp_LongMinMatch *long_min_match;
     int nitems;
-  
     int allow_int;
     int nitems_invalid_report;
-  
 } Clp_StringList;
 
 
@@ -233,15 +228,15 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, Clp_Option *opt)
   
     for (i = 0; i < 256; i++)
 	cli->option_class[i] = 0;
-    cli->option_class[(int) '-'] = Clp_Short;
+    cli->option_class[(unsigned char) '-'] = Clp_Short;
     cli->both_short_and_long = 0;
-  
+    
     cli->is_short = 0;
     cli->whole_negated = 0;
   
     cli->option_processing = 1;
     cli->current_option = 0;
-  
+
     /* Add default type parsers */
     Clp_AddType(clp, Clp_ArgString, 0, parse_string, 0);
     Clp_AddType(clp, Clp_ArgStringNotOption, Clp_DisallowOptions, parse_string, 0);
@@ -250,8 +245,9 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, Clp_Option *opt)
     Clp_AddType(clp, Clp_ArgBool, 0, parse_bool, 0);
     Clp_AddType(clp, Clp_ArgDouble, 0, parse_double, 0);
     return clp;
-  
+    
   failed:
+    /* It should be OK to free(0), but on some ancient systems, it isn't */
     if (cli && cli->argtype)
 	free(cli->argtype);
     if (cli)
@@ -283,13 +279,12 @@ Clp_DeleteParser(Clp_Parser *clp)
 	    free(clsl->long_min_match);
 	    free(clsl);
 	}
-  
+
     free(cli->argtype);
     free(cli->long_min_match);
     free(cli);
     free(clp);
 }
-
 
 int
 Clp_SetOptionProcessing(Clp_Parser *clp, int option_processing)
@@ -303,7 +298,6 @@ Clp_SetOptionProcessing(Clp_Parser *clp, int option_processing)
     return old;
 }
 
-
 Clp_ErrorHandler
 Clp_SetErrorHandler(Clp_Parser *clp, void (*error_handler)(const char *))
      /* Sets a hook function to be called before Clp_OptionError
@@ -314,7 +308,6 @@ Clp_SetErrorHandler(Clp_Parser *clp, void (*error_handler)(const char *))
     cli->error_handler = error_handler;
     return old;
 }
-
 
 int
 Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
@@ -348,14 +341,14 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
 	for (i = 1; i < 256; i++)
 	    cli->option_class[i] = option_type;
     else
-	cli->option_class[c] = option_type;
+	cli->option_class[(unsigned char) c] = option_type;
 
     /* If an option character can introduce either short or long options, then
        we need to fix up the long_min_match values. We may have set the
-       long_min_match for option '--abcde' to 1, if no other option starts
+       long_min_match for option 'abcde' to 1, if no other option starts
        with 'a'. But if '-' can introduce either a short option or a long
        option, AND a short option '-a' exists, then the long_min_match for
-       '--abcde' must be set to 2! */
+       'abcde' must be set to 2! */
     if (!cli->both_short_and_long) {
 	int either_short = option_type & (Clp_Short | Clp_ShortNegated);
 	int either_long = option_type & (Clp_Long | Clp_LongNegated);
@@ -378,6 +371,18 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int option_type)
     }
   
     return 1;
+}
+
+const char *
+Clp_ProgramName(Clp_Parser *clp)
+{
+    return clp->internal->program_name;
+}
+
+void
+Clp_SetProgramName(Clp_Parser *clp, const char *program_name)
+{
+    clp->internal->program_name = program_name;
 }
 
 
@@ -805,10 +810,94 @@ Clp_AddStringListTypeVec(Clp_Parser *clp, int type_id, int flags,
  * Returning information
  **/
 
-const char *
-Clp_ProgramName(Clp_Parser *clp)
+Clp_Argv *
+Clp_NewArgv(const char *str_in, int len)
 {
-    return clp->internal->program_name;
+    int argcap = 32;
+    Clp_Argv *clp_argv = (Clp_Argv *)malloc(sizeof(Clp_Argv));
+    char *s, *end;
+
+    if (!clp_argv)
+	goto failed_all;
+    if (len < 0)
+	len = strlen(str_in);
+    if (!(clp_argv->argv_buf = (char *)malloc(len + 1)))
+	goto failed_argv_buf;
+    if (!(clp_argv->argv = (char **)malloc(sizeof(char *) * argcap)))
+	goto failed_argv;
+    memcpy(clp_argv->argv_buf, str_in, len);
+    end = clp_argv->argv_buf + len;
+    *end = 0;
+
+    /* Parse arguments */
+    s = clp_argv->argv_buf;
+    clp_argv->argc = 0;
+    while (1) {
+	char *arg, *sout;
+	int state;
+	while (s < end && isspace((unsigned char) *s))
+	    s++;
+	if (s >= end)
+	    break;
+	/* Parse single argument */
+	for (arg = sout = s, state = 0; s < end; s++) {
+	    if (*s == '\'') {
+		if (state == 0)
+		    state = '\'';
+		else if (state == '\'')
+		    state = 0;
+		else
+		    *sout++ = *s;
+	    } else if (*s == '\"') {
+		if (state == 0)
+		    state = '\"';
+		else if (state == '\"')
+		    state = 0;
+		else
+		    *sout++ = *s;
+	    } else if (*s == '\\') {
+		if (state == '\'' || s == end - 1)
+		    *sout++ = *s;
+		else
+		    *sout++ = *++s;
+	    } else if (isspace((unsigned char) *s)) {
+		if (state == 0)
+		    break;
+		else
+		    *sout++ = *s;
+	    } else
+		*sout++ = *s;
+	}
+	*sout = 0;
+	s++;
+	/* Store argument */
+	if (clp_argv->argc < argcap - 2) {
+	    argcap *= 2;
+	    if (!(clp_argv->argv = (char **)realloc(clp_argv->argv, sizeof(char *) * argcap)))
+		goto failed_argv;
+	}
+	clp_argv->argv[clp_argv->argc++] = arg;
+    }
+    clp_argv->argv[clp_argv->argc] = 0;	/* know we have space */
+    
+    return clp_argv;
+
+  failed_argv:
+    free(clp_argv->argv_buf);
+  failed_argv_buf:
+    free(clp_argv);
+  failed_all:
+    return 0;
+}
+
+void
+Clp_DeleteArgv(Clp_Argv *clp_argv)
+{
+    if (!clp_argv)
+	return;
+    free(clp_argv->argv);
+    free(clp_argv->argv_buf);
+    free(clp_argv);
 }
 
 
@@ -939,7 +1028,7 @@ next_argument(Clp_Parser *clp, int want_argument)
     if (want_argument > 1)
 	goto not_option;
   
-    option_class = cli->option_class[ (unsigned char)text[0] ];
+    option_class = cli->option_class[(unsigned char)text[0]];
     if (text[0] == '-' && text[1] == '-')
 	option_class = Clp_DoubledLong;
   
@@ -1012,7 +1101,7 @@ switch_to_short_argument(Clp_Parser *clp)
 {
     Clp_Internal *cli = clp->internal;
     const char *text = cli->argv[0];
-    int option_class = cli->option_class[ (unsigned char)text[0] ];
+    int option_class = cli->option_class[(unsigned char)text[0]];
     cli->is_short = 1;
     cli->whole_negated = (option_class & Clp_ShortNegated ? 1 : 0);
     set_option_text(cli, cli->argv[0], 1);
