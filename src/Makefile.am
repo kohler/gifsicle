@@ -93,11 +93,11 @@ rpm-ungif: dist
 	rm -rf /tmp/rpm-ugfs
 
 dist-ungif: dist
-	tar xzf gifsicle-$(VERSION).tar.gz
+	$(TAR) xzf gifsicle-$(VERSION).tar.gz
 	@rm gifsicle-$(VERSION)/gifwrite.c
 	rm -rf ungifsicle-$(VERSION)
 	mv gifsicle-$(VERSION) ungifsicle-$(VERSION)
-	GZIP=--best gtar chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
+	GZIP=$(GZIP_ENV) $(TAR) chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
 	rm -rf ungifsicle-$(VERSION)
 
 .PHONY: srclinks versionize rpm dist-ungif rpm-ungif
