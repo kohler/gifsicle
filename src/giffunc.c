@@ -200,12 +200,32 @@ Gif_Stream *
 Gif_CopyStreamSkeleton(Gif_Stream *gfs)
 {
   Gif_Stream *ngfs = Gif_NewStream();
-  if (!ngfs) return 0;
   ngfs->global = Gif_CopyColormap(gfs->global);
   ngfs->background = gfs->background;
   ngfs->screen_width = gfs->screen_width;
   ngfs->screen_height = gfs->screen_height;
   ngfs->loopcount = gfs->loopcount;
+  if (gfs->global && !ngfs->global) {
+    Gif_DeleteStream(ngfs);
+    return 0;
+  } else
+    return ngfs;
+}
+
+
+Gif_Stream *
+Gif_CopyStreamImages(Gif_Stream *gfs)
+{
+  Gif_Stream *ngfs = Gif_CopyStreamSkeleton(gfs);
+  int i;
+  if (!ngfs) return 0;
+  for (i = 0; i < gfs->nimages; i++) {
+    Gif_Image *gfi = Gif_CopyImage(gfs->images[i]);
+    if (!gfi || !Gif_AddImage(ngfs, gfi)) {
+      Gif_DeleteStream(ngfs);
+      return 0;
+    }
+  }
   return ngfs;
 }
 

@@ -69,6 +69,7 @@ Gif_Stream *	Gif_NewStream(void);
 void		Gif_DeleteStream(Gif_Stream *);
 
 Gif_Stream *	Gif_CopyStreamSkeleton(Gif_Stream *);
+Gif_Stream *	Gif_CopyStreamImages(Gif_Stream *);
 
 #define		Gif_ScreenWidth(gfs)		((gfs)->screen_width)
 #define		Gif_ScreenHeight(gfs)		((gfs)->screen_height)
