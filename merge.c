@@ -87,6 +87,18 @@ find_color_index(Gif_Color *c, int nc, Gif_Color *color)
 }
 
 
+static int
+ensure_slot_255(Gif_Colormap *dest, int ncol)
+{
+  Gif_Color *background = &dest->col[255];
+  int i;
+  dest->userflags &= ~COLORMAP_ENSURE_SLOT_255;
+  for (i = 0; i < ncol; i++)
+    if (GIF_COLOREQ(&dest->col[i], background))
+      return ncol;
+  return ncol + 1;
+}
+
 int
 merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 {
@@ -99,14 +111,21 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
   for (i = 0; i < src->ncol; i++)
     if (srccol[i].haspixel == 1) {
       int mapto = srccol[i].pixel >= ndestcol ? -1 : srccol[i].pixel;
+      
       if (mapto == -1)
 	mapto = find_color_index(destcol, ndestcol, &srccol[i]);
+      
+      if (mapto == -1 && ndestcol == 255
+	  && (dest->userflags & COLORMAP_ENSURE_SLOT_255) != 0)
+	ndestcol = ensure_slot_255(dest, ndestcol);
+      
       if (mapto == -1 && ndestcol < 256) {
 	/* add the color */
 	mapto = ndestcol;
 	destcol[mapto] = srccol[i];
 	ndestcol++;
       }
+      
       if (mapto == -1)
 	/* check for a pure-transparent color */
 	for (x = 0; x < ndestcol; x++)
@@ -115,6 +134,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 	    destcol[mapto] = srccol[i];
 	    break;
 	  }
+      
       if (mapto == -1) {
 	/* local colormap required */
 	if (warn_local_colormaps == 1) {
@@ -125,11 +145,12 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 	return 0;
       }
       
-      if (mapto != i)
-	trivial_map = 0;
       assert(mapto >= 0 && mapto < ndestcol);
+      
       srccol[i].pixel = mapto;
       destcol[mapto].haspixel = 1;
+      if (mapto != i)
+	trivial_map = 0;
       
     } else if (srccol[i].haspixel == 2)
       /* a dedicated transparent color; if trivial_map & at end of colormap

@@ -17,6 +17,7 @@
 
 
 Gt_Frame def_frame;
+Gt_OutputData def_output_data;
 
 Gt_Frameset *frames = 0;
 int first_input_frame = 0;
@@ -231,7 +232,6 @@ initialize_def_frame(void)
 
   def_frame.name_change = 0;
   def_frame.comment_change = 0;
-  def_frame.background_change = 0;
   def_frame.extensions_change = 0;
   
   def_frame.name = 0;
@@ -241,7 +241,6 @@ initialize_def_frame(void)
   
   def_frame.interlacing = -1;
   def_frame.transparent.haspixel = 0;
-  def_frame.background.haspixel = 0;
   def_frame.left = -1;
   def_frame.top = -1;
 
@@ -251,18 +250,23 @@ initialize_def_frame(void)
   def_frame.disposal = -1;
   
   def_frame.nest = 0;
-  def_frame.output_name = 0;
   def_frame.explode_by_name = 0;
-  
-  def_frame.loopcount = -2;
-  def_frame.screen_width = -1;
-  def_frame.screen_height = -1;
   
   def_frame.no_extensions = 0;
   def_frame.extensions = 0;
   
   def_frame.flip_horizontal = 0;
   def_frame.flip_vertical = 0;
+  
+  def_output_data.background_change = 0;
+  def_output_data.screen_change = 0;
+  def_output_data.loopcount_change = 0;
+  
+  def_output_data.background.haspixel = 0;
+  def_output_data.screen_width = -1;
+  def_output_data.screen_height = -1;
+  def_output_data.loopcount = -2;
+  def_output_data.output_name = 0;
 }
 
 
@@ -432,18 +436,18 @@ input_stream(char *name)
   if (mode == BLANK_MODE)
     set_mode(MERGING);
   
-  if (def_frame.output_name == 0) {
+  if (def_output_data.output_name == 0) {
     /* Don't override explicit output names.
        This code works 'cause output_name is reset to 0 after each output. */
     if (mode == BATCHING)
-      def_frame.output_name = input_name;
+      def_output_data.output_name = input_name;
     else if (mode == EXPLODING) {
       /* Use name instead of input_name: it's #stdin# if required. */
       char *slash = strrchr(name, '/');
       if (slash)
-	def_frame.output_name = slash + 1;
+	def_output_data.output_name = slash + 1;
       else
-	def_frame.output_name = name;
+	def_output_data.output_name = name;
     }
   }
   
@@ -471,8 +475,6 @@ input_stream(char *name)
     def_frame.name = 0;
   if (!def_frame.comment_change)
     def_frame.comment = 0;
-  if (!def_frame.background_change)
-    def_frame.background.haspixel = 0;
   if (!def_frame.extensions_change)
     def_frame.extensions = 0;
   
@@ -485,7 +487,6 @@ input_stream(char *name)
   /* Mark the options as not having changed */
   def_frame.name_change = 0;
   def_frame.comment_change = 0;
-  def_frame.background_change = 0;
   def_frame.extensions_change = 0;
   
   if (unoptimizing)
@@ -764,7 +765,8 @@ do_frames_output(char *outfile, int f1, int f2)
   
   compress_immediately = new_colormap_size <= 0 && !new_colormap_fixed
     && resize_output_w <= 0 && optimizing <= 0;
-  out = merge_frame_interval(frames, f1, f2, compress_immediately);
+  out = merge_frame_interval(frames, f1, f2, &def_output_data,
+			     compress_immediately);
   if (out) {
     if (resize_output_w > 0 && resize_output_h > 0)
       resize_stream(out, resize_output_w, resize_output_h);
@@ -788,7 +790,7 @@ output_frames(void)
      This supports `gifsicle a.gif -o xxx'.
      It's not like any other option, but seems right: it fits the natural
      order -- input, then output. */
-  char *outfile = def_frame.output_name;
+  char *outfile = def_output_data.output_name;
   int i;
   
   if (outputing && frames->count > 0)
@@ -815,12 +817,6 @@ output_frames(void)
 	if (fr->explode_by_name)
 	  imagename = fr->name ? fr->name : fr->image->identifier;
 	
-	/* Save the screen size from the unexploded GIF */
-	if (fr->screen_width <= 0) {
-	  fr->screen_width = fr->stream->screen_width;
-	  fr->screen_height = fr->stream->screen_height;
-	}
-	
 	explodename = explode_filename(outfile, imagenumber, imagename);
 	do_frames_output(explodename, i, i);
       }
@@ -834,12 +830,16 @@ output_frames(void)
   
   next_output = 0;
   clear_frameset(frames, 0);
-  def_frame.output_name = 0;
   
   /* cropping: clear the `crop->ready' information, which depended on the last
      input image. */
   if (def_frame.crop)
     def_frame.crop->ready = 0;
+
+  def_output_data.background_change = 0;
+  def_output_data.screen_change = 0;
+  def_output_data.loopcount_change = 0;
+  def_output_data.output_name = 0;
 }
 
 void
@@ -1107,33 +1107,43 @@ main(int argc, char **argv)
       break;
       
      case BACKGROUND_OPT:
-      next_frame = 1;
+      next_output = 1;
+      if (def_output_data.background_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
       if (clp->negated)
-	def_frame.background.haspixel = 0;
+	def_output_data.background.haspixel = 0;
       else {
-	def_frame.background = parsed_color;
-	def_frame.background.haspixel = parsed_color.haspixel ? 2 : 1;
+	def_output_data.background = parsed_color;
+	def_output_data.background.haspixel = parsed_color.haspixel ? 2 : 1;
       }
-      def_frame.background_change = 1;
+      def_output_data.background_change = 1;
       break;
       
      case SAME_BACKGROUND_OPT:
-      next_frame = 1;
-      def_frame.background.haspixel = 0;
-      def_frame.background_change = 1;
+      next_output = 1;
+      if (def_output_data.background_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
+      def_output_data.background.haspixel = 0;
+      def_output_data.background_change = 1;
       break;
       
      case LOGICAL_SCREEN_OPT:
+      next_output = 1;
+      if (def_output_data.screen_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
       if (clp->negated)
-	def_frame.screen_width = def_frame.screen_height = 0;
+	def_output_data.screen_width = def_output_data.screen_height = 0;
       else {
-	def_frame.screen_width = dimensions_x;
-	def_frame.screen_height = dimensions_y;
+	def_output_data.screen_width = dimensions_x;
+	def_output_data.screen_height = dimensions_y;
       }
       break;
       
      case SAME_LOGICAL_SCREEN_OPT:
-      def_frame.screen_width = def_frame.screen_height = -1;
+      next_output = 1;
+      if (def_output_data.screen_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
+      def_output_data.screen_width = def_output_data.screen_height = -1;
       break;
       
      case CROP_OPT:
@@ -1245,14 +1255,22 @@ main(int argc, char **argv)
       break;
       
      case 'l':
+      next_output = 1;
+      if (def_output_data.loopcount_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
       if (clp->negated)
-	def_frame.loopcount = -1;
+	def_output_data.loopcount = -1;
       else
-	def_frame.loopcount = clp->hadarg ? clp->val.i : 0;
+	def_output_data.loopcount = clp->hadarg ? clp->val.i : 0;
+      def_output_data.loopcount_change = 1;
       break;
       
      case SAME_LOOPCOUNT_OPT:
-      def_frame.loopcount = -2;
+      next_output = 1;
+      if (def_output_data.loopcount_change)
+	Clp_OptionError(clp, "warning: redundant `%O' option");
+      def_output_data.loopcount = -2;
+      def_output_data.loopcount_change = 1;
       break;
       
      case OPTIMIZE_OPT:
@@ -1362,10 +1380,12 @@ particular purpose.\n");
       break;
       
      case OUTPUT_OPT:
+      if (def_output_data.output_name)
+	Clp_OptionError(clp, "redundant `%O' option");
       if (strcmp(clp->arg, "-") == 0)
-	def_frame.output_name = 0;
+	def_output_data.output_name = 0;
       else
-	def_frame.output_name = clp->arg;
+	def_output_data.output_name = clp->arg;
       break;
       
       /* NONOPTIONS */
@@ -1405,8 +1425,12 @@ particular purpose.\n");
     output_frames();
 
   verbose_endline();
-  if (next_frame || next_input || next_output)
-    warning("some options didn't affect anything");
+  if (next_frame)
+    warning("some frame options didn't affect anything");
+  if (next_input)
+    warning("some input options didn't affect anything");
+  if (next_output)
+    warning("some output options didn't affect anything");
   blank_frameset(frames, 0, 0, 1);
 #ifdef DMALLOC
   dmalloc_report();

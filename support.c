@@ -732,9 +732,6 @@ clear_def_frame_once_options(void)
   def_frame.comment = 0;
   def_frame.comment_change = 0;  
 
-  def_frame.background.haspixel = 0;
-  def_frame.background_change = 0;
-
   def_frame.extensions = 0;
   def_frame.extensions_change = 0;
 }
@@ -760,10 +757,6 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
   fset->f[number] = def_frame;
   fset->f[number].stream = gfs;
   fset->f[number].image = gfi;
-  
-  /* Warn about background option not in first position */
-  if (number > 0 && def_frame.background.haspixel)
-    warning("`--background' is only effective on the first frame");
   
   clear_def_frame_once_options();
   
@@ -840,8 +833,6 @@ static void
 find_background(Gif_Colormap *dest_global, Gif_Color *background)
 {
   int i;
-  *background = merger[0]->background;
-  
   /* This code is SUCH a PAIN in the PATOOTIE!! */
   
   /* 1. user set the background to a color index
@@ -864,47 +855,50 @@ find_background(Gif_Colormap *dest_global, Gif_Color *background)
         (prefer colors from images with disposal == BACKGROUND)
      -> choose the color. warn if two such images have conflicting colors */
   if (background->haspixel == 0) {
-    int report_conflict = 0;
+    int relevance = 0;
+    int saved_bg_transparent = 0;
     for (i = 0; i < nmerger; i++) {
-      Gif_Color new_bg;
       Gif_Stream *gfs = merger[i]->stream;
-      int relevant = merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND;
-      if (!relevant && report_conflict) continue;
+      int bg_disposal = merger[i]->image->disposal == GIF_DISPOSAL_BACKGROUND;
+      int bg_transparent = gfs->images[0]->transparent >= 0;
+      int bg_exists = gfs->global && gfs->background < gfs->global->ncol;
       
-      if (gfs->background == gfs->images[0]->transparent
-	  || gfs->background == merger[i]->image->transparent)
-	new_bg.pixel = 256;
-      else if (gfs->global && gfs->background < gfs->global->ncol) {
-	new_bg = gfs->global->col[ gfs->background ];
-	new_bg.pixel = 0;
-      } else
+      if ((!bg_exists && !bg_transparent) || (bg_disposal + 1 < relevance))
 	continue;
-      
-      if (report_conflict < 2) *background = new_bg;
-      report_conflict = relevant ? 2 : 1;
+      else if (bg_disposal + 1 > relevance) {
+	if (bg_exists)
+	  *background = gfs->global->col[gfs->background];
+	else
+	  background->red = background->green = background->blue = 0;
+	saved_bg_transparent = bg_transparent;
+	relevance = bg_disposal + 1;
+	continue;
+      }
       
       /* check for conflicting background requirements */
-      if ((new_bg.pixel == 256) != (background->pixel == 256)
-	  || (new_bg.pixel == 0 && !GIF_COLOREQ(&new_bg, background)))
+      if (bg_transparent != saved_bg_transparent
+	  || (!saved_bg_transparent &&
+	      !GIF_COLOREQ(background, &gfs->global->col[gfs->background])))
 	if (!warned_background_conflicts) {
 	  warning("some required background colors conflict; I picked one");
 	  warning("  (some animation frames may appear incorrect)");
 	  warned_background_conflicts = 1;
 	}
     }
-    background->haspixel = (report_conflict > 1);
+    background->pixel = (saved_bg_transparent ? 256 : 0);
+    background->haspixel = relevance != 0;
   }
   
   /* 3. user set the background to a specific color, or we need the background
         color to make the animation work (both cases flagged with
 	haspixel == 1)
-     -> put it in the colormap immediately */
-  if (background->haspixel == 1) {
-    dest_global->ncol = 1;
-    dest_global->col[0] = *background;
-    background->haspixel = 1;
-    background->pixel = 0;
-  }
+     -> force the merging process to keep it in the global colormap with
+     COLORMAP_ENSURE_SLOT_255. See merge.c function ensure_slot_255 */
+  if (background->haspixel) {
+    dest_global->userflags = COLORMAP_ENSURE_SLOT_255;
+    dest_global->col[255] = *background;
+  } else
+    dest_global->userflags = 0;
 }
 
 
@@ -1000,10 +994,10 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
     /* If this is the first frame, set the frame's screen width & height as
        the exchanged screen height & width. This ensures that if a single
        rotated frame is output, its logical screen will be rotated too. */
-    if (fr->screen_width <= 0 && first_image) {
+    /*if (fr->screen_width <= 0 && first_image) {
       fr->screen_width = screen_height;
       fr->screen_height = screen_width;
-    }
+      }*/
     handle_screen(dest, screen_height, screen_width);
   } else
     handle_screen(dest, screen_width, screen_height);
@@ -1012,7 +1006,7 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti,
 
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
-		     int compress_immediately)
+		     Gt_OutputData *output_data, int compress_immediately)
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
@@ -1047,8 +1041,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       unmark_colors_2(merger[i]->image->local);
   }
   
-  /* decide on the background */
+  /* decide on the background. use the one from output_data */
   warned_background_conflicts = 0;
+  dest_background = output_data->background;
   find_background(global, &dest_background);
   
   /* check for cropping the whole stream */
@@ -1061,6 +1056,14 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       if (merger[i]->crop != merger[0]->crop)
 	merger[0]->crop->whole_stream = 0;
   }
+  
+  /* copy stream-wide information from output_data */
+  if (output_data->loopcount > -2)
+    dest->loopcount = output_data->loopcount;
+  if (output_data->screen_width >= 0)
+    dest->screen_width = output_data->screen_width;
+  if (output_data->screen_height >= 0)
+    dest->screen_height = output_data->screen_height;
   
   /** ACTUALLY MERGE FRAMES INTO THE NEW STREAM **/
   for (i = 0; i < nmerger; i++) {
@@ -1181,30 +1184,23 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
   
-  /* Copy stream-wide information from the last frame in the set */
-  {
-    Gt_Frame *fr = merger[nmerger - 1];
-    if (fr->loopcount > -2)
-      dest->loopcount = fr->loopcount;
-    if (fr->screen_width >= 0)
-      dest->screen_width = fr->screen_width;
-    if (fr->screen_height >= 0)
-      dest->screen_height = fr->screen_height;
-  }
-  
   /* Set the background */
-  if (dest_background.haspixel == 0)
-    dest_background.pixel =
-      find_color_or_error(&dest_background, dest, dest->images[0], 0);
-  else if (dest_background.pixel == 256) {
+  if (dest_background.haspixel == 256) {
     if (dest->images[0]->transparent < 0) {
       warning("no transparency in first image:");
       warning("transparent background won't work as expected");
+    }
+    dest->background = dest->images[0]->transparent;
+  } else {
+    /* find the background color in the colormap, or add it if we can */
+    int bg = find_color_or_error(&dest_background, dest, dest->images[0], 0);
+    if (bg < 0 && global->ncol < 256) {
+      global->col[ global->ncol ] = dest_background;
+      global->ncol++;
     } else
-      dest_background.pixel = dest->images[0]->transparent;
+      dest->background = bg;
   }
-  dest->background = dest_background.pixel;
-
+  
   return dest;
 }
 

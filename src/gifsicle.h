@@ -27,7 +27,6 @@ typedef struct Gt_Frame {
   
   unsigned name_change: 1;
   unsigned comment_change: 1;
-  unsigned background_change: 1;
   unsigned extensions_change: 1;
   
   char *name;
@@ -36,7 +35,6 @@ typedef struct Gt_Frame {
   int no_comments;
   
   Gif_Color transparent;
-  Gif_Color background;
   int interlacing;
   int left;
   int top;
@@ -47,12 +45,7 @@ typedef struct Gt_Frame {
   int disposal;
   
   Gt_Frameset *nest;
-  char *output_name;
   int explode_by_name;
-  
-  int loopcount;
-  int screen_width;
-  int screen_height;
   
   int no_extensions;
   Gif_Extension *extensions;
@@ -65,11 +58,11 @@ typedef struct Gt_Frame {
 
 
 struct Gt_Frameset {
-
+  
   int count;
   int cap;
   Gt_Frame *f;
-
+  
 };
 
 
@@ -103,6 +96,22 @@ struct Gt_ColorTransform {
 };
 
 
+typedef struct {
+  
+  unsigned background_change: 1;
+  unsigned screen_change: 1;
+  unsigned loopcount_change: 1;
+  
+  Gif_Color background;
+  int screen_width;
+  int screen_height;
+  int loopcount;
+  
+  char *output_name;
+  
+} Gt_OutputData;
+
+
 /*****
  * error & verbose
  **/
@@ -129,6 +138,7 @@ char *explode_filename(char *filename, int number, char *name);
 /*****
  * merging images
  **/
+#define COLORMAP_ENSURE_SLOT_255 1
 void	unmark_colors(Gif_Colormap *);
 void	unmark_colors_2(Gif_Colormap *);
 int	find_color_index(Gif_Color *c, int nc, Gif_Color *);
@@ -229,6 +239,6 @@ Gt_Frame *	add_frame(Gt_Frameset *, int num, Gif_Stream *, Gif_Image *);
 void		clear_def_frame_once_options(void);
 
 Gif_Stream *	merge_frame_interval(Gt_Frameset *, int f1, int f2,
-				     int compress_immediately);
+				     Gt_OutputData *, int compress);
 void		clear_frameset(Gt_Frameset *, int from);
 void		blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);

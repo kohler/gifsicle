@@ -11,8 +11,6 @@
 #include <assert.h>
 #include <string.h>
 
-#define OPTIMIZED_TRANSPARENCY 0
-
 typedef struct {
   u_int16_t left;
   u_int16_t top;
@@ -445,7 +443,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
     }
     bounds->required_color_count = count[REQUIRED];
   }
-  
+
   bounds->needed_colors = need;
 }
 
@@ -1186,19 +1184,6 @@ initialize_optimizer(Gif_Stream *gfs, int optimize_level)
   else
     background = TRANSP;
   
-#if OPTIMIZED_TRANSPARENCY
-  /* set up hash arrays */
-  if (optimize_level >= 2) {
-    comp_prefix = Gif_NewArray(Gif_Code, COMP_HASH_SIZE);
-    comp_suffix = Gif_NewArray(byte, COMP_HASH_SIZE);
-    comp_code = Gif_NewArray(Gif_Code, COMP_HASH_SIZE);
-    /* need to add 1 to end of array because we actually store data for
-       code == GIF_MAX_CODE (but don't use it). */
-    comp_code_length = Gif_NewArray(u_int16_t, GIF_MAX_CODE + 1);
-    comp_hash = Gif_NewArray(u_int32_t, GIF_MAX_CODE + 1);
-  }
-#endif
-  
   return 1;
 }
 
@@ -1210,15 +1195,6 @@ finalize_optimizer(Gif_Stream *gfs)
   
   Gif_DeleteArray(last_data);
   Gif_DeleteArray(this_data);
-
-#if OPTIMIZED_TRANSPARENCY
-  destroy_all_active_codes();
-  Gif_DeleteArray(comp_prefix);
-  Gif_DeleteArray(comp_suffix);
-  Gif_DeleteArray(comp_code);
-  Gif_DeleteArray(comp_code_length);
-  Gif_DeleteArray(comp_hash);
-#endif
 }
 
 
@@ -1229,299 +1205,10 @@ optimize_fragments(Gif_Stream *gfs, int optimize_level)
 {
   if (!initialize_optimizer(gfs, optimize_level))
     return;
-
+  
   create_subimages(gfs, optimize_level);
   create_out_global_map(gfs);
   create_new_image_data(gfs, optimize_level);
   
   finalize_optimizer(gfs);
 }
-
-
-
-
-#if OPTIMIZED_TRANSPARENCY
-
-/*****
- * OPTIMIZED TRANSPARENCY: This lovely bit of code tries to create
- * transparency "optimally" -- according to a greedy algorithm (if a certain
- * stretch compresses better NOW w/o transparency, compress it w/o
- * transparency, not knowing or caring if that decision will later turn out
- * to be a bad one).
- *
- * The previous simple heuristic below seems to do better.
- **/
-
-#define COMP_HASH_SIZE		(2 << GIF_MAX_CODE_BITS)
-static Gif_Code *comp_prefix;
-static byte *comp_suffix;
-static Gif_Code *comp_code;
-static u_int16_t *comp_code_length;
-static u_int32_t *comp_hash;
-
-static u_int32_t
-comp_code_hash(Gif_Code prefix, byte suffix, Gif_Code eoi_code)
-{
-  u_int32_t hashish1 = (prefix << 9 ^ prefix << 2 ^ suffix) % COMP_HASH_SIZE;
-  u_int32_t hashish2 = ((prefix | suffix << 7) % COMP_HASH_SIZE) | 1;
-  Gif_Code *prefixes = comp_prefix;
-  byte *suffixes = comp_suffix;
-
-  while ((prefixes[hashish1] != prefix || suffixes[hashish1] != suffix)
-	 && prefixes[hashish1] != eoi_code)
-    hashish1 = (hashish1 + hashish2) % COMP_HASH_SIZE;
-  
-  return hashish1;
-}
-
-
-#define ACTIVE_CODES_SIZE	256
-
-typedef struct Gif_ActiveCode {
-  Gif_Code code;
-  int ntransp;
-  struct Gif_ActiveCode *next;
-} Gif_ActiveCode;
-
-static Gif_ActiveCode *comp_active_bank;
-static Gif_ActiveCode *comp_active_free;
-
-static void
-allocate_active_codes(void)
-{
-  int i;
-  Gif_ActiveCode *ac = Gif_NewArray(Gif_ActiveCode, 256);
-  for (i = 1; i < 255; i++)
-    ac[i].next = &ac[i+1];
-  ac[255].next = comp_active_free;
-  ac[0].next = comp_active_bank;
-  comp_active_free = &ac[1];
-  comp_active_bank = &ac[0];
-}
-
-static void
-destroy_all_active_codes(void)
-{
-  Gif_ActiveCode *ac = comp_active_bank;
-  while (ac) {
-    Gif_ActiveCode *next = ac->next;
-    Gif_DeleteArray(ac);
-    ac = next;
-  }
-  comp_active_free = 0;
-  comp_active_bank = 0;
-}
-
-#ifdef __GNUC__
-__inline__
-#endif
-static Gif_ActiveCode *
-new_active_code(void)
-{
-  Gif_ActiveCode *a;
-  if (!comp_active_free) allocate_active_codes();
-  a = comp_active_free;
-  comp_active_free = a->next;
-  return a;
-}
-
-
-static Gif_ActiveCode *comp_active_head;
-static Gif_ActiveCode *comp_active_tail;
-
-static void
-scan_active_codes(Gif_ActiveCode *head, byte suffix, Gif_Code eoi_code,
-		  int transparent)
-{
-  Gif_ActiveCode *ac;
-  for (ac = head; ac; ac = ac->next) {
-    int hash = comp_code_hash(ac->code, suffix, eoi_code);
-    if (comp_prefix[hash] != eoi_code) {
-      Gif_ActiveCode *nc = new_active_code();
-      nc->code = comp_code[hash];
-      nc->ntransp = ac->ntransp + (suffix == transparent);
-      nc->next = comp_active_head;
-      comp_active_head = nc;
-      if (!comp_active_tail) comp_active_tail = nc;
-    }
-  }
-}
-
-static Gif_Code
-best_active_code(Gif_ActiveCode *head)
-{
-  Gif_ActiveCode *best = head, *ac;
-  for (ac = head->next; ac; ac = ac->next)
-    if (ac->ntransp > best->ntransp)
-      best = ac;
-  return best->code;
-}
-
-static void
-optimized_transp_frame_data(Gif_Image *gfi, byte *map)
-{
-  int x_pos, height;
-  u_int32_t hash;
-  byte min_code_bits, cur_code_bits;
-  
-  Gif_Code work_code, output_code, next_code;
-  Gif_Code bump_code, clear_code, eoi_code;
-  
-  long num_codes_output = 0;
-  
-  u_int16_t *last_ptr, *this_ptr;
-  byte *out_ptr;
-  int transparent = gfi->transparent;
-  
-  {
-    Gif_Colormap *gfcm = (gfi->local ? gfi->local : out_global_map);
-    int i;
-    min_code_bits = 2;		/* min_code_bits of 1 isn't allowed */
-    for (i = 4; i < gfcm->ncol; i *= 2)
-      min_code_bits++;
-  }
-  
-  clear_code = 1 << min_code_bits;
-  eoi_code = clear_code + 1;
-  cur_code_bits = min_code_bits + 1;
-  comp_code_length[clear_code] = comp_code_length[eoi_code] = 0;
-  
-  work_code = output_code = clear_code;
-  /* Because output_code is clear_code, we'll initialize next_code, bump_code,
-     et al. below. */
-  
-  last_ptr = last_data + (gfi->top * screen_width) + gfi->left;
-  this_ptr = this_data + (gfi->top * screen_width) + gfi->left;
-  out_ptr = gfi->image_data;
-  height = gfi->height;
-  x_pos = 0;
-  
-  while (1) {
-    
-    /* must write data into image here */
-    num_codes_output++;
-    {
-      Gif_Code c = output_code;
-      byte *output;
-      output = out_ptr = out_ptr + comp_code_length[output_code];
-      while (c != clear_code && c != eoi_code) {
-	hash = comp_hash[c];
-	output--;
-	*output = comp_suffix[hash];
-	c = comp_prefix[hash];
-      }
-    }
-    
-    /* output a code */
-    if (output_code == clear_code) {
-      
-      Gif_Code c;
-      cur_code_bits = min_code_bits + 1;
-      next_code = eoi_code + 1;
-      bump_code = clear_code << 1;
-      
-      for (hash = 0; hash < COMP_HASH_SIZE; hash++)
-	comp_prefix[hash] = eoi_code;
-      for (c = 0; c < clear_code; c++) {
-	hash = comp_code_hash(clear_code, c, eoi_code);
-	comp_prefix[hash] = clear_code;
-	comp_suffix[hash] = c;
-	comp_code[hash] = c;
-	comp_hash[c] = hash;
-	comp_code_length[c] = 1;
-      }
-      
-    } else if (next_code > bump_code) {
-      
-      /* bump up compression size */
-      if (cur_code_bits == GIF_MAX_CODE_BITS) {
-	output_code = clear_code;
-	continue;
-      } else {
-	cur_code_bits++;
-	bump_code <<= 1;
-      }
-      
-    } else if (output_code == eoi_code)
-      break;
-    
-    
-    /*****
-     * Find the next code to output. */
-    
-    if (height == 0) {
-      /* There may be one pixel left.
-	 If there is not, work_code == eoi_code.
-	 If there is, then work_code contains it. We output it, but the next
-	 time through, work_code will be eoi_code as we want. */
-      output_code = work_code;
-      work_code = eoi_code;
-      continue;
-    }
-    
-    /* Actual code finding.
-       This part was changed to support optimization. We keep a set of all
-       the current runs that match. */
-    comp_active_head = comp_active_tail = new_active_code();
-    comp_active_head->code = work_code;
-    comp_active_head->ntransp = 0;
-    comp_active_head->next = 0;
-    
-    while (height != 0) {
-      Gif_ActiveCode *old_head = comp_active_head;
-      Gif_ActiveCode *old_tail = comp_active_tail;
-      byte suffix;
-      comp_active_head = comp_active_tail = 0;
-      
-      suffix = map[*this_ptr];
-      scan_active_codes(old_head, suffix, eoi_code, transparent);
-      if (*this_ptr == *last_ptr && suffix != transparent && transparent > 0) {
-	suffix = transparent;
-	scan_active_codes(old_head, suffix, eoi_code, transparent);
-      }
-      
-      last_ptr++, this_ptr++, x_pos++;
-      if (x_pos == gfi->width) {
-	height--;
-	last_ptr += screen_width - gfi->width;
-	this_ptr += screen_width - gfi->width;
-	x_pos = 0;
-      }
-      
-      if (comp_active_head == 0) {
-	/* We need to add something to the table. */
-	work_code = best_active_code(old_head);
-	hash = comp_code_hash(work_code, suffix, eoi_code);
-	comp_prefix[hash] = work_code;
-	comp_suffix[hash] = suffix;
-	comp_code[hash] = next_code;
-	comp_hash[next_code] = hash;
-	comp_code_length[next_code] = 1 + comp_code_length[work_code];
-	//assert(hash>=0 && hash<COMP_HASH_SIZE && next_code>=0 && next_code<=GIF_MAX_CODE);
-	next_code++;
-	
-	output_code = work_code;
-	work_code = suffix;	/* code for a pixel == the pixel value */
-	
-	old_tail->next = comp_active_free;
-	comp_active_free = old_head;
-	
-	goto done;
-      }
-      
-      old_tail->next = comp_active_free;
-      comp_active_free = old_head;
-    }
-    
-    /* Ran out of data and don't need to add anything to the table. */
-    output_code = best_active_code(comp_active_head);
-    work_code = eoi_code;
-    comp_active_tail->next = comp_active_free;
-    comp_active_free = comp_active_head;
-    
-   done:
-    ;
-  }
-}
-
-#endif
