@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.10   6.Jan.1999
+
+* Gifview is built by default.
+
+* No other changes from 1.10b1: Emil said it worked on Windows.
+
+
 Version 1.10b1   31.Dec.1998
 
 * The two malloc packages that come with Gifsicle don't #define `malloc' or

@@ -1,5 +1,5 @@
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-8 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -1399,7 +1399,7 @@ main(int argc, char **argv)
       
      case VERSION_OPT:
       printf("Gifsicle version %s\n", VERSION);
-      printf("Copyright (C) 1997-8 Eddie Kohler\n\
+      printf("Copyright (C) 1997-9 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
