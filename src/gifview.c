@@ -37,7 +37,7 @@
 #define EXTERN extern
 #endif
 
-#define SAVE_FRAMES 10
+#define SAVE_FRAMES 20
 
 /*****
  * TIME STUFF (from xwrits)
