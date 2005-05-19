@@ -208,7 +208,7 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   last2 = Gif_NewArray(uint16_t, screen_width * screen_height);
 
   /* Merge all distinct colors from the two images into one colormap, setting
-     the `pixel' slots in the images' colormaps to the corresponding values
+     the 'pixel' slots in the images' colormaps to the corresponding values
      in the merged colormap. Don't forget transparency */
   newcm = Gif_NewFullColormap(1, 256);
   combine_colormaps(s1->global, newcm);
@@ -284,7 +284,7 @@ void
 short_usage(void)
 {
   fprintf(stderr, "Usage: %s [OPTION]... FILE1 FILE2\n\
-Try `%s --help' for more information.\n",
+Try '%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -292,7 +292,7 @@ void
 usage(void)
 {
   printf("\
-`Gifdiff' compares two GIF files (either images or animations) for identical\n\
+'Gifdiff' compares two GIF files (either images or animations) for identical\n\
 visual appearance. An animation and an optimized version of the same animation\n\
 should compare as the same. Gifdiff exits with status 0 if the images are\n\
 the same, 1 if they're different, and 2 if there was some error.\n\
@@ -372,12 +372,12 @@ gifread_error(const char *message, int which_image, void *thunk)
   last_message = message;
   if (last_which_image != which_image && different_error_count <= 10
       && message) {
-    error("Error while reading `%s' frame #%d:", filename, which_image);
+    error("Error while reading '%s' frame #%d:", filename, which_image);
     last_which_image = which_image;
   }
   
   if (different_error_count == 11 && message)
-    error("(more errors while reading `%s')", filename);
+    error("(more errors while reading '%s')", filename);
 }
 
 
@@ -462,7 +462,7 @@ particular purpose.\n");
   gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED, gifread_error, (void *)filename1);
   gifread_error(0, -1, (void *)filename1); /* print out last error message */
   if (!gfs1)
-    fatal_error("`%s' doesn't seem to contain a GIF", filename1);
+    fatal_error("'%s' doesn't seem to contain a GIF", filename1);
   
   if (filename2 == 0) {
     f2 = stdin;
@@ -475,7 +475,7 @@ particular purpose.\n");
   gifread_error_count = 0;
   gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED, gifread_error, (void *)filename2);
   gifread_error(0, -1, (void *)filename2); /* print out last error message */
-  if (!gfs2) fatal_error("`%s' doesn't seem to contain a GIF", filename2);
+  if (!gfs2) fatal_error("'%s' doesn't seem to contain a GIF", filename2);
   
   status = (compare(gfs1, gfs2) == DIFFERENT);
   if (status == 1 && brief)

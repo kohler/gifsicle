@@ -75,8 +75,8 @@ delete_opt_data(Gif_OptData *od)
 }
 
 
-/* colormap_combine: Ensure that each color in `src' is represented in `dst'.
-   For each color `i' in `src', src->col[i].pixel == some j so that
+/* colormap_combine: Ensure that each color in 'src' is represented in 'dst'.
+   For each color 'i' in 'src', src->col[i].pixel == some j so that
    GIF_COLOREQ(&src->col[i], &dst->col[j]). dst->col[0] is reserved for
    transparency; no source color will be mapped to it. */
 
@@ -108,9 +108,9 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
 }
 
 
-/* sort_permutation: sorts a given permutation `perm' according to the
-   corresponding values in `values'. Thus, in the output, the sequence
-   `[ values[perm[i]] | i <- 0..size-1 ]' will be monotonic, either up or
+/* sort_permutation: sorts a given permutation 'perm' according to the
+   corresponding values in 'values'. Thus, in the output, the sequence
+   '[ values[perm[i]] | i <- 0..size-1 ]' will be monotonic, either up or
    (if is_down != 0) down. */
 
 /* 9.Dec.1998 - Dumb idiot, it's time you stopped using C. The optimizer was
@@ -280,7 +280,7 @@ apply_frame_disposal(uint16_t *into_data, uint16_t *from_data,
  **/
 
 /* find_difference_bounds: Find the smallest rectangular area containing all
-   the changes and store it in `bounds'. */
+   the changes and store it in 'bounds'. */
 
 static void
 find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
@@ -342,9 +342,9 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
    the background is transparent, we must expand the difference bounds to
    include any blanked (newly transparent) pixels that are still transparent
    in the next image. This function does that by comparing this_data and
-   next_data. The new bounds are passed and stored in `bounds'; the image's
+   next_data. The new bounds are passed and stored in 'bounds'; the image's
    old bounds, which are also the maximum bounds, are passed in
-   `this_bounds'. */
+   'this_bounds'. */
 
 static void
 expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
@@ -633,7 +633,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
    Otherwise, all_colormap->col[P].pixel == the J so that
    GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]).
 
-   On return, the `colormap_penalty' component of an image's Gif_OptData
+   On return, the 'colormap_penalty' component of an image's Gif_OptData
    structure is <0 iff that image will need a local colormap.
 
    20.Aug.1999 - updated to new version that arranges the entire colormap, not
@@ -756,8 +756,8 @@ create_out_global_map(Gif_Stream *gfs)
 
 /* prepare_colormap_map: Create and return an array of bytes mapping from
    global pixel values to pixel values for this image. It may add colormap
-   cells to `into'; if there isn't enough room in `into', it will return 0. It
-   sets the `transparent' field of `gfi->optdata', but otherwise doesn't
+   cells to 'into'; if there isn't enough room in 'into', it will return 0. It
+   sets the 'transparent' field of 'gfi->optdata', but otherwise doesn't
    change or read it at all. */
 
 static uint8_t *
@@ -775,13 +775,13 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
   uint8_t *map = Gif_NewArray(uint8_t, all_ncol);
   uint8_t into_used[256];
   
-  /* keep track of which pixel indices in `into' have been used; initially,
+  /* keep track of which pixel indices in 'into' have been used; initially,
      all unused */
   for (i = 0; i < 256; i++)
     into_used[i] = 0;
   
   /* go over all non-transparent global pixels which MUST appear
-     (need[P]==REQUIRED) and place them in `into' */
+     (need[P]==REQUIRED) and place them in 'into' */
   for (i = 1; i < all_ncol; i++) {
     int val;
     if (need[i] != REQUIRED)
@@ -810,7 +810,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
   if (need[TRANSP]) {
     int transparent = -1;
     
-    /* first, look for an unused index in `into'. Pick the lowest one: the
+    /* first, look for an unused index in 'into'. Pick the lowest one: the
        lower transparent index we get, the more likely we can shave a bit off
        min_code_bits later, thus saving space */
     for (i = 0; i < ncol; i++)
@@ -842,7 +842,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
   }
   
   /* If we get here, it worked! Commit state changes (the number of color
-     cells in `into') and return the map. */
+     cells in 'into') and return the map. */
   into->ncol = ncol;
   return map;
   
@@ -869,7 +869,7 @@ colormap_rgb_permutation_sorter(const void *v1, const void *v2)
 
 /* prepare_colormap: make a colormap up from the image data by fitting any
    used colors into a colormap. Returns a map from global color index to index
-   in this image's colormap. May set a local colormap on `gfi'. */
+   in this image's colormap. May set a local colormap on 'gfi'. */
 
 static uint8_t *
 prepare_colormap(Gif_Image *gfi, uint8_t *need)

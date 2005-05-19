@@ -103,7 +103,7 @@ void
 short_usage(void)
 {
   fprintf(stderr, "Usage: %s [OPTION | FILE | FRAME]...\n\
-Try `%s --help' for more information.\n",
+Try '%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -112,7 +112,7 @@ void
 usage(void)
 {
   printf("\
-`Gifsicle' manipulates GIF images. Its most common uses include combining\n\
+'Gifsicle' manipulates GIF images. Its most common uses include combining\n\
 single images into animations, adding transparency, optimizing animations for\n\
 space, and printing information about GIFs.\n\
 \n\
@@ -123,8 +123,8 @@ Mode options: at most one, before any filenames.\n\
   -b, --batch                   Batch mode: modify inputs, write back to\n\
                                 same filenames.\n\
   -e, --explode                 Explode mode: write N files for each input,\n\
-                                one per frame, to `input.frame-number'.\n\
-  -E, --explode-by-name         Explode mode, but write `input.name'.\n\
+                                one per frame, to 'input.frame-number'.\n\
+  -E, --explode-by-name         Explode mode, but write 'input.name'.\n\
 \n\
 General options: Also --no-OPTION for info and verbose.\n\
   -I, --info                    Print info about input GIFs. Two -I's means\n\
@@ -191,10 +191,10 @@ Whole-GIF options: Also --no-OPTION.\n\
       --scale XFACTOR[xYFACTOR] Scales the output GIF by XFACTORxYFACTOR.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
       --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
-                                be `web', `gray', `bw', or a GIF file.\n\
+                                be 'web', 'gray', 'bw', or a GIF file.\n\
 \n\
 Report bugs to <eddietwo@lcs.mit.edu>.\n\
-Too much information? Try `%s --help | more'.\n", program_name);
+Too much information? Try '%s --help | more'.\n", program_name);
 #ifdef GIF_UNGIF
   printf("\
 This version of Gifsicle writes uncompressed GIFs, which can be far larger\n\
@@ -314,12 +314,12 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
   
   fprintf(where, "  extension %d: ", count);
   if (gfex->kind == 255) {
-    fprintf(where, "app `");
+    fprintf(where, "app '");
     safe_puts(gfex->application, strlen(gfex->application), where);
     fprintf(where, "'");
   } else {
     if (gfex->kind >= 32 && gfex->kind < 127)
-      fprintf(where, "`%c' (0x%02X)", gfex->kind, gfex->kind);
+      fprintf(where, "'%c' (0x%02X)", gfex->kind, gfex->kind);
     else
       fprintf(where, "0x%02X", gfex->kind);
   }
@@ -541,12 +541,12 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
       frame_spec_name = (char *)arg;
       frame_spec_1 = frame_spec_2 = Gif_ImageNumber(input, gfi);
       return 1;
-    } else if (complain < 0)	/* -1 is special value meaning `don't complain
+    } else if (complain < 0)	/* -1 is special value meaning 'don't complain
                                    about frame NAMES, but do complain about
                                    frame numbers.' */
       return -97;		/* Return -97 on bad frame name. */
     else if (complain)
-      return Clp_OptionError(clp, "no frame named `#%s'", arg);
+      return Clp_OptionError(clp, "no frame named '#%s'", arg);
     else
       return 0;
     
@@ -591,7 +591,7 @@ parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "invalid dimensions `%s' (want WxH)", arg);
+    return Clp_OptionError(clp, "invalid dimensions '%s' (want WxH)", arg);
   else
     return 0;
 }
@@ -610,7 +610,7 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "invalid position `%s' (want `X,Y')", arg);
+    return Clp_OptionError(clp, "invalid position '%s' (want 'X,Y')", arg);
   else
     return 0;
 }
@@ -632,7 +632,7 @@ parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "invalid scale factor `%s' (want XxY)", arg);
+    return Clp_OptionError(clp, "invalid scale factor '%s' (want XxY)", arg);
   else
     return 0;
 }
@@ -669,7 +669,7 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
   
   if (complain)
-    return Clp_OptionError(clp, "invalid rectangle `%s' (want `X1,Y1-X2,Y2' or `X1,Y1+WxH'", input_arg);
+    return Clp_OptionError(clp, "invalid rectangle '%s' (want 'X1,Y1-X2,Y2' or 'X1,Y1+WxH'", input_arg);
   else
     return 0;
 }
@@ -717,7 +717,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     if (len == 0 || len % 3 != 0
 	|| (int)strspn(arg, "0123456789ABCDEFabcdef") != len) {
       if (complain)
-	Clp_OptionError(clp, "invalid color `%s' (want `#RGB' or `#RRGGBB')",
+	Clp_OptionError(clp, "invalid color '%s' (want '#RGB' or '#RRGGBB')",
 			input_arg);
       return 0;
     }
@@ -762,7 +762,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
  error:
   if (complain)
-    return Clp_OptionError(clp, "invalid color `%s'", input_arg);
+    return Clp_OptionError(clp, "invalid color '%s'", input_arg);
   else
     return 0;
 }
@@ -777,7 +777,7 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   
   arg = Clp_Shift(clp, 0);
   if (!arg && complain)
-    return Clp_OptionError(clp, "`%O' takes two color arguments");
+    return Clp_OptionError(clp, "'%O' takes two color arguments");
   else if (!arg)
     return 0;
   
@@ -840,7 +840,7 @@ read_text_colormap(FILE *f, const char *name)
   }
   
   if (ncol == 0) {
-    error("`%s' doesn't seem to contain a colormap", name);
+    error("'%s' doesn't seem to contain a colormap", name);
     Gif_DeleteColormap(cm);
     return 0;
   } else {
@@ -878,12 +878,12 @@ read_colormap_file(const char *name, FILE *f)
   if (c == 'G') {
     Gif_Stream *gfs = Gif_ReadFile(f);
     if (!gfs)
-      error("`%s' doesn't seem to contain a GIF", name);
+      error("'%s' doesn't seem to contain a GIF", name);
     else if (!gfs->global)
-      error("can't use `%s' as a palette (no global color table)", name);
+      error("can't use '%s' as a palette (no global color table)", name);
     else {
       if (gfs->errors)
-	warning("there were errors reading `%s'", name);
+	warning("there were errors reading '%s'", name);
       cm = Gif_CopyColormap(gfs->global);
     }
     
@@ -919,13 +919,13 @@ clear_def_frame_once_options(void)
 {
   /* Get rid of next-frame-only options.
      
-     This causes problems with frame selection. In the command `gifsicle
+     This causes problems with frame selection. In the command 'gifsicle
      -nblah f.gif', the name should be applied to frame 0 of f.gif. This will
      happen automatically when f.gif is read, since all of its frames will be
      added when it is input. After frame 0, the name in def_frame will be
      cleared.
      
-     Now, `gifsicle -nblah f.gif #1' should apply the name to frame 1 of
+     Now, 'gifsicle -nblah f.gif #1' should apply the name to frame 1 of
      f.gif. But once f.gif is input, its frames are added, and the name
      component of def_frame is cleared!! So when #1 comes around it's gone!
      

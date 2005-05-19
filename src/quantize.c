@@ -162,7 +162,7 @@ histogram(Gif_Stream *gfs, int *nhist_store)
       Gif_ReleaseUncompressedImage(gfi);
   }
   
-  /* account for background by adding it to `ntransparent' or the histogram */
+  /* account for background by adding it to 'ntransparent' or the histogram */
   if (gfs->images[0]->transparent < 0 && gfs->global
       && gfs->background < gfs->global->ncol)
     add_histogram_color(&gfs->global->col[gfs->background], &hist, nbackground);
@@ -646,7 +646,7 @@ hash_color(int red, int green, int blue,
 	 available grays in the colormap. Thanks to Christian Kumpf,
 	 <kumpf@igd.fhg.de>, for providing a patch.
 	 
-	 Note on the calculation of `gray': Using the factors 306, 601, and
+	 Note on the calculation of 'gray': Using the factors 306, 601, and
 	 117 (proportional to 0.299,0.587,0.114) we get a scaled gray value
 	 between 0 and 255 * 1024. */
       int gray = 306 * red + 601 * green + 117 * blue;
@@ -893,7 +893,7 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
   }
   
   /* not found: mark the least-frequently-used color as the new transparent
-     color and return 1 (meaning `dither again') */
+     color and return 1 (meaning 'dither again') */
   assert(*new_ncol == 256);
   min_used = 0xFFFFFFFFU;
   for (i = 0; i < 256; i++)
@@ -1010,8 +1010,8 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   Gif_DeleteColormap(gfs->global);
   
   /* We may have used only a subset of the colors in new_cm. We try to store
-     only that subset, just as if we'd piped the output of `gifsicle
-     --use-colormap=X' through `gifsicle' another time. */
+     only that subset, just as if we'd piped the output of 'gifsicle
+     --use-colormap=X' through 'gifsicle' another time. */
   gfs->global = Gif_CopyColormap(new_cm);
   if (compress_new_cm) {
     /* only bother to recompress if we'll get anything out of it */
@@ -1026,7 +1026,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   if (compress_new_cm) {
     int map[256];
     
-    /* Gif_CopyColormap copies the `pixel' values as well */
+    /* Gif_CopyColormap copies the 'pixel' values as well */
     new_col = gfs->global->col;
     for (j = 0; j < new_cm->ncol; j++)
       new_col[j].haspixel = j;

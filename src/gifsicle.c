@@ -456,12 +456,12 @@ gifread_error(const char *message, int which_image, void *thunk)
     last_message[0] = 0;
   if (last_which_image != which_image && different_error_count <= 10
       && message) {
-    error("Error while reading `%s' frame #%d:", filename, which_image);
+    error("Error while reading '%s' frame #%d:", filename, which_image);
     last_which_image = which_image;
   }
   
   if (different_error_count == 11 && message) {
-    error("(more errors while reading `%s')", filename);
+    error("(more errors while reading '%s')", filename);
     different_error_count++;
   }
 }
@@ -585,7 +585,7 @@ input_stream(const char *name)
               g.gif --name=X    h.gif   // name on h.gif #0 !!!
       
      Here's the solution. Mark when we CHANGE an option. After processing
-     an input GIF, mark all the options as `unchanged' -- but leave the
+     an input GIF, mark all the options as 'unchanged' -- but leave the
      VALUES as is. Then when we read the next frame, CLEAR the unchanged
      options. So it's like so: (* means changed, . means not.)
      
@@ -614,10 +614,10 @@ input_stream(const char *name)
   if (unoptimizing)
     if (!Gif_Unoptimize(gfs)) {
       static int context = 0;
-      warning("`%s' is too complex to unoptimize", name);
+      warning("'%s' is too complex to unoptimize", name);
       if (!context) {
 	warncontext("(The reason was local color tables or complex transparency.");
-	warncontext("Try running the GIF through `gifsicle --colors=255' first.)");
+	warncontext("Try running the GIF through 'gifsicle --colors=255' first.)");
       }
       context = 1;
     }
@@ -874,7 +874,7 @@ void
 output_frames(void)
 {
   /* Use the current output name, not the stored output name.
-     This supports `gifsicle a.gif -o xxx'.
+     This supports 'gifsicle a.gif -o xxx'.
      It's not like any other option, but seems right: it fits the natural
      order -- input, then output. */
   int i;
@@ -932,7 +932,7 @@ output_frames(void)
   active_next_output = 0;
   clear_frameset(frames, 0);
   
-  /* cropping: clear the `crop->ready' information, which depended on the last
+  /* cropping: clear the 'crop->ready' information, which depended on the last
      input image. */
   if (def_frame.crop)
     def_frame.crop->ready = 0;
@@ -946,7 +946,7 @@ output_frames(void)
 int
 frame_argument(Clp_Parser *clp, const char *arg)
 {
-  /* Returns 0 iff you should try a file named `arg'. */
+  /* Returns 0 iff you should try a file named 'arg'. */
   int val = parse_frame_spec(clp, arg, -1, 0);
   if (val == -97)
     return 0;
@@ -1193,7 +1193,7 @@ main(int argc, char *argv[])
   
   /* Yep, I'm an idiot.
      GIF dimensions are unsigned 16-bit integers. I assume that these
-     numbers will fit in an `int'. This assertion tests that assumption.
+     numbers will fit in an 'int'. This assertion tests that assumption.
      Really I should go through & change everything over, but it doesn't
      seem worth my time. */
   {
@@ -1532,7 +1532,7 @@ main(int argc, char *argv[])
 	 input_transforms = delete_color_transforms
 	   (input_transforms, &color_change_transformer);
        else if (parsed_color2.haspixel)
-	 error("COLOR2 must be in RGB format in `--change-color COLOR1 COLOR2'");
+	 error("COLOR2 must be in RGB format in '--change-color COLOR1 COLOR2'");
        else
 	 input_transforms = append_color_change
 	   (input_transforms, parsed_color, parsed_color2);
@@ -1557,7 +1557,7 @@ main(int argc, char *argv[])
 	def_output_data.colormap_size = clp->val.i;
 	if (def_output_data.colormap_size < 2
 	    || def_output_data.colormap_size > 256) {
-	  Clp_OptionError(clp, "argument to `%O' must be between 2 and 256");
+	  Clp_OptionError(clp, "argument to '%O' must be between 2 and 256");
 	  def_output_data.colormap_size = 0;
 	}
       }
@@ -1587,7 +1587,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error("one of W and H must be positive in `--resize WxH'");
+	error("one of W and H must be positive in '--resize WxH'");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1601,7 +1601,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (clp->val.u == 0) {
-	error("`--resize-width' argument must be positive");
+	error("'--resize-width' argument must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1615,7 +1615,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (clp->val.u == 0) {
-	error("`--resize-height' argument must be positive");
+	error("'--resize-height' argument must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1629,7 +1629,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
-	error("`--scale' X and Y factors must be positive");
+	error("'--scale' X and Y factors must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 2; /* use scale factor */

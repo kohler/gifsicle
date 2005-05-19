@@ -101,7 +101,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
   for (i = 0; i < src->ncol; i++) {
     if (srccol[i].haspixel == 1) {
       /* Store an image color cell's mapping to the global colormap in its
-	 `pixel' slot. This is useful caching: oftentimes many input frames
+	 'pixel' slot. This is useful caching: oftentimes many input frames
 	 will share a colormap */
       int mapto = (srccol[i].pixel < 256 ? (int)srccol[i].pixel : -1);
       
@@ -157,7 +157,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
     static int context = 0;
     warning("so many colors that local colormaps were required");
     if (!context)
-      warncontext("(You may want to try `--colors 256'.)");
+      warncontext("(You may want to try '--colors 256'.)");
     warn_local_colormaps = 2;
     context = 1;
   }
@@ -241,7 +241,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   
   /* Merge the colormap */
   if (merge_colormap_if_possible(dest->global, imagecm)) {
-    /* Create `map' and `used' for global colormap. */
+    /* Create 'map' and 'used' for global colormap. */
     for (i = 0; i < imagecm->ncol; i++)
       if (imagecol[i].haspixel == 1) {
 	map[i] = imagecol[i].pixel;

@@ -232,7 +232,7 @@ void
 short_usage(void)
 {
   fprintf(stderr, "Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
-Try `%s --help' for more information.\n",
+Try '%s --help' for more information.\n",
 	  program_name, program_name);
 }
 
@@ -240,7 +240,7 @@ void
 usage(void)
 {
   printf("\
-`Gifview' is a lightweight GIF viewer for X. It can display animated GIFs as\n\
+'Gifview' is a lightweight GIF viewer for X. It can display animated GIFs as\n\
 slideshows, one frame at a time, or as animations.\n\
 \n\
 Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
@@ -418,7 +418,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
     XColor color;
     if (!XParseColor(viewer->display, viewer->colormap, cur_background_color,
 		     &color)) {
-      error("invalid background color `%s'", cur_background_color);
+      error("invalid background color '%s'", cur_background_color);
       cur_background_color = 0;
     } else if (!XAllocColor(viewer->display, viewer->colormap, &color))
       warning("can't allocate background color");
@@ -525,7 +525,7 @@ get_input_stream(const char *name)
   fclose(f);
   
   if (!gfs || Gif_ImageCount(gfs) == 0) {
-    error("`%s' doesn't seem to contain a GIF", name);
+    error("'%s' doesn't seem to contain a GIF", name);
     Gif_DeleteStream(gfs);
     return 0;
   }
@@ -1011,7 +1011,7 @@ frame_argument(Gt_Viewer *viewer, const char *arg)
   if (c[0] != 0) {
     Gif_Image *gfi = Gif_GetNamedImage(viewer->gfs, c);
     if (!gfi)
-      error("no frame named `%s'", c);
+      error("no frame named '%s'", c);
     else
       n1 = Gif_ImageNumber(viewer->gfs, gfi);
   } else {
@@ -1238,7 +1238,7 @@ main(int argc, char *argv[])
       
      case DISPLAY_OPT:
       if (cur_display)
-	fatal_error("`--display' must come before all other options");
+	fatal_error("'--display' must come before all other options");
       cur_display_name = clp->arg;
       cur_display = 0;
       cur_arrow_cursor = cur_wait_cursor = None;
