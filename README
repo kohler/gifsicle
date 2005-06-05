@@ -124,7 +124,7 @@ This Server' page, but it's not required.
    This code, with the exception of the GIF compression code in gifwrite.c,
 is distributed under the GNU General Public License, Version 2, or, at your
 discretion, any later version. The GNU General Public License is available
-via the Web at <http://www.gnu.org/copyleft/gpl.html>
+via the Web at <http://www.gnu.org/licenses/gpl.html>
 
    The following alternative license may be used at your discretion.
 
