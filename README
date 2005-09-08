@@ -1,4 +1,4 @@
-GIFSICLE 1.42
+GIFSICLE 1.43
 =============
 
 ABOUT GIFSICLE
@@ -23,7 +23,7 @@ slideshows, displaying one frame at a time, or as real-time animations.
 visual appearance. This is probably most useful for testing
 GIF-manipulating software.
 
-   Each of these programs has a manpage, `PROGRAMNAME.1'.
+   Each of these programs has a manpage, 'PROGRAMNAME.1'.
 
    The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of merchantability
@@ -42,15 +42,15 @@ readable by normal GIF viewers, and they avoid the Unisys patents.
 
    Gifsicle can be configured to write run-length-encoded GIFs, rather than
 LZW-compressed GIFs, making it completely free software (if you believe
-that decompression isn't patented). Turn this on by giving `./configure'
-the `--enable-ungif' switch. The disadvantage: your GIF outputs will be
+that decompression isn't patented). Turn this on by giving './configure'
+the '--enable-ungif' switch. The disadvantage: your GIF outputs will be
 larger, often by a factor of 2 or more. You can tell which gifsicle you are
-running by typing `gifsicle --version'. If it says `(ungif)', gifsicle is
+running by typing 'gifsicle --version'. If it says '(ungif)', gifsicle is
 writing run-length-encoded GIFs.
 
    This gifsicle package may have been distributed without the file that
 implements LZW compression. If you try to configure such a distribution
-without `--enable-ungif', you will get an error message. See the Gifsicle
+without '--enable-ungif', you will get an error message. See the Gifsicle
 web page <http://www.lcdf.org/gifsicle/> if you have such a distribution
 but want LZW compression.
 
@@ -58,16 +58,16 @@ MAKING GIFSICLE ON UNIX
 -----------------------
    You need an ANSI C compiler, such as gcc.
 
-   Just type `./configure', then `make'. `make install' will build and
+   Just type './configure', then 'make'.  'make install' will build and
 install gifsicle and its manual page (under /usr/local by default).
 
-   `./configure' accepts the usual options. See `INSTALL' for more
+   './configure' accepts the usual options. See 'INSTALL' for more
 details.
 
    To build without gifview (for example, if you don't have X11), give the
-`--disable-gifview' option. To build without gifdiff, give the
-`--disable-gifdiff' option. To have Gifsicle create unGIFs instead of GIFs,
-avoiding the Unisys patents, give the `--enable-ungif' option.
+'--disable-gifview' option. To build without gifdiff, give the
+'--disable-gifdiff' option. To have Gifsicle create unGIFs instead of GIFs,
+avoiding the Unisys patents, give the '--enable-ungif' option.
 
 MAKING GIFSICLE ON 32-BIT WINDOWS
 ---------------------------------
@@ -92,7 +92,7 @@ it with any text editor (like Notepad). See the file for more information.
 
 CHANGES
 -------
-   See `NEWS' in this directory for a detailed listing of changes.
+   See 'NEWS' in this directory for a detailed listing of changes.
 
 BUGS, SUGGESTIONS, ETC.
 -----------------------
@@ -112,13 +112,13 @@ home page at
 
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-2003 Eddie Kohler.
+   All source code is Copyright (C) 1997-2005 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
 wish; the license applies only to those who plan to copy, distribute, or
 alter its code. If you use Gifsicle for an organizational or commercial Web
-site, I would appreciate a link to the Gifsicle home page on any `About
+site, I would appreciate a link to the Gifsicle home page on any 'About
 This Server' page, but it's not required.
 
    This code, with the exception of the GIF compression code in gifwrite.c,
@@ -148,8 +148,8 @@ contact the author and obtain permission before doing so.
 
 AUTHORS
 -------
-Eddie Kohler <kohler@icir.org>
-http://www.icir.org/kohler/
+Eddie Kohler <kohler@cs.ucla.edu>
+http://www.cs.ucla.edu/~kohler/
 He wrote it.
 
 Anne Dudfield <anne@mazunetworks.com>

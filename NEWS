@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.43   8.Sep.2005
+
+* '-I -b', and other similar combinations, causes a fatal error rather than
+  putting information in an unexpected file.  Reported by Michiel de Bondt.
+
+
 Version 1.42   8.Jan.2005
 
 * Improve manual page.

@@ -50,8 +50,9 @@ static Gt_ColorTransform *output_transforms;
 #define MERGING		1
 #define BATCHING	2
 #define EXPLODING	3
-#define DELETING	4
-#define INSERTING	5
+#define INFOING		4
+#define DELETING	5
+#define INSERTING	6
 static int mode = BLANK_MODE;
 static int nested_mode = 0;
 
@@ -311,7 +312,9 @@ set_mode(int newmode)
   if (mode == BLANK_MODE)
     mode = newmode;
   else if (mode == newmode)
-    ;
+    /* do nothing */;
+  else if (newmode == INFOING)
+    fatal_error("'--info' suppresses normal output, can't use with an\n  output mode like '--merge' or '--batch'.\n  (Try '-II', which doesn't suppress normal output.)");
   else
     fatal_error("too late to change modes");
 }
@@ -324,7 +327,7 @@ set_frame_change(int kind)
   Gt_Frameset *fset;
   
   if (mode == BLANK_MODE)
-    set_mode(MERGING);
+    set_mode(infoing == 1 ? INFOING : MERGING);
   if (mode < DELETING && frames_done) {
     fatal_error("frame selection and frame changes don't mix");
     return;
@@ -383,18 +386,20 @@ show_frame(int imagenumber, int usename)
   Gif_Image *gfi;
   Gt_Frame *frame;
   
-  if (!input) return;
-  gfi = Gif_GetImage(input, imagenumber);
-  if (!gfi) return;
+  if (!input || !(gfi = Gif_GetImage(input, imagenumber)))
+    return;
   
   switch (mode) {
-    
+
    case MERGING:
    case INSERTING:
    case EXPLODING:
-    if (!frames_done) clear_frameset(frames, first_input_frame);
+   case INFOING:
+    if (!frames_done)
+      clear_frameset(frames, first_input_frame);
     frame = add_frame(frames, -1, input, gfi);
-    if (usename) frame->explode_by_name = 1;
+    if (usename)
+      frame->explode_by_name = 1;
     break;
     
    case BATCHING:
@@ -486,6 +491,9 @@ input_stream(const char *name)
   if (next_output)
     combine_output_options();
   files_given++;
+
+  if (infoing == 1)
+    set_mode(INFOING);
   
   if (name == 0 || strcmp(name, "-") == 0) {
 #if defined(_MSDOS) || defined(_WIN32)
@@ -793,7 +801,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   int colormap_change;
   int huge_stream;
   assert(!nested_mode);
-  if (verbosing) verbose_open('[', outfile ? outfile : "#stdout#");
+  if (verbosing)
+    verbose_open('[', outfile ? outfile : "#stdout#");
 
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
@@ -890,6 +899,7 @@ output_frames(void)
       
      case MERGING:
      case BATCHING:
+     case INFOING:
       merge_and_write_frames(outfile, 0, -1);
       break;
       
@@ -954,7 +964,8 @@ frame_argument(Clp_Parser *clp, const char *arg)
     int i;
     for (i = frame_spec_1; i <= frame_spec_2; i++)
       show_frame(i, frame_spec_name != 0);
-    if (next_output) combine_output_options();
+    if (next_output)
+      combine_output_options();
     return 1;
   } else
     return 1;
@@ -1242,7 +1253,8 @@ main(int argc, char *argv[])
 	def_frame.colormap_info = 0;
       else {
 	def_frame.colormap_info = 1;
-	if (!infoing) infoing = 1;
+	if (!infoing)
+	  infoing = 1;
       }
       break;
       
@@ -1251,7 +1263,8 @@ main(int argc, char *argv[])
 	def_frame.extensions_info = 0;
       else {
 	def_frame.extensions_info = 1;
-	if (!infoing) infoing = 1;
+	if (!infoing)
+	  infoing = 1;
       }
       break;
       
@@ -1666,7 +1679,7 @@ main(int argc, char *argv[])
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2003 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2005 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
@@ -1719,7 +1732,7 @@ particular purpose.\n");
   
   frame_change_done();
   input_done();
-  if (mode == MERGING)
+  if (mode == MERGING || mode == INFOING)
     output_frames();
   
   verbose_endline();

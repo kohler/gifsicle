@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.42
+.ds V 1.43
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -270,12 +270,15 @@ Print usage information and exit.
 Print a human-readable description of each input GIF to the standard
 output, or whatever file you specify with
 .OP \-o .
-This option suppresses normal output. If you give two
+This option suppresses normal output, and cannot be combined with mode
+options like
+.OP \-\-batch . 
+If you give two
 .OP \-\-info
 or
 .OP \-I
-options, however, the description will be printed on standard error and
-output will occur as usual.
+options, however, normal output is not suppressed; information will be
+printed on standard error, and you can supply a mode option.
 '
 .Sp
 .TP
