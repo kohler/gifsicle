@@ -10,8 +10,8 @@ URL:		http://www.lcdf.org/gifsicle/
 
 Group:		Applications/Graphics
 Vendor:		Little Cambridgeport Design Factory
-Packager:	Eddie Kohler <kohler@icir.org>
-Copyright:	GPL
+Packager:	Eddie Kohler <kohler@cs.ucla.edu>
+License:	GPL
 
 BuildRoot:	/tmp/gifsicle-build
 
