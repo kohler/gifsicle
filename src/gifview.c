@@ -614,6 +614,8 @@ schedule_next_frame(Gt_Viewer *viewer)
   
   interval.tv_sec = delay / 100;
   interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
+  if (delay == 0)
+    interval.tv_usec = 2000;
   xwADDTIME(viewer->timer, viewer->timer, interval);
 
   /* 1.Aug.2002 - leave some time to prepare the frame if necessary */

@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.44
+
+* gifview: Enforce a minimum delay of 0.002 sec.  Requested by Dale Wiles.
+
+
 Version 1.43   8.Sep.2005
 
 * '-I -b', and other similar combinations, causes a fatal error rather than
