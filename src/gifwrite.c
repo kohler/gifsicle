@@ -38,12 +38,12 @@ extern "C" {
    lot faster. However, it does NOT create "better" results in any way.
    
    Each code is represented by a Node. The Nodes form a tree with variable
-   fan-out -- up to `clear_code' children per Node. There are two kinds of
+   fan-out -- up to 'clear_code' children per Node. There are two kinds of
    Node, TABLE and LINKS. In a TABLE node, the children are stored in a table
    indexed by suffix -- thus, it's very efficient to determine a given child.
    In a LINKS node, the existent children are stored in a linked list. This is
    slightly slower to access. When a LINKS node gets more than
-   `MAX_LINKS_TYPE-1' children, it is converted to a TABLE node. (This is why
+   'MAX_LINKS_TYPE-1' children, it is converted to a TABLE node. (This is why
    it's an adaptive tree.)
    
    Problems with this implementation: MAX_LINKS_TYPE is fixed, so GIFs with
@@ -211,7 +211,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
   while (1) {
     
     /*****
-     * Output `output_code' to the data stream. */
+     * Output 'output_code' to the data stream. */
 
     leftover |= output_code << bits_left_over;
     bits_left_over += cur_code_bits;

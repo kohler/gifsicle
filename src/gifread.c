@@ -205,7 +205,7 @@ read_image_block(Gif_Reader *grr, uint8_t *buffer, int *bit_pos_store,
   while (bit_position + bits_needed > bit_length) {
     /* Read in the next data block. */
     if (bit_position >= 8) {
-      /* Need to shift down the upper, unused part of `buffer' */
+      /* Need to shift down the upper, unused part of 'buffer' */
       int i = bit_position / 8;
       buffer[0] = buffer[i];
       buffer[1] = buffer[i+1];
@@ -273,18 +273,18 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   code = clear_code;
   
   bit_length = bit_position = 0;
-  /* Thus the `Read in the next data block.' code below will be invoked on the
+  /* Thus the 'Read in the next data block.' code below will be invoked on the
      first time through: exactly right! */
   
   while (1) {
     
     old_code = code;
     
-    /* GET A CODE INTO THE `code' VARIABLE.
+    /* GET A CODE INTO THE 'code' VARIABLE.
      * 
      * 9.Dec.1998 - Rather than maintain a byte pointer and a bit offset into
      * the current byte (and the processing associated with that), we maintain
-     * one number: the offset, in bits, from the beginning of `buffer'. This
+     * one number: the offset, in bits, from the beginning of 'buffer'. This
      * much cleaner choice was inspired by Patrick J. Naughton
      * <naughton@wind.sun.com>'s GIF-reading code, which does the same thing.
      * His code distributed as part of XV in xvgif.c. */
@@ -327,7 +327,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     
     /* PROCESS THE CURRENT CODE and define the next code. If no meaningful
      * next code should be defined, then we have set next_code to either
-     * `eoi_code' or `clear_code' -- so we'll store useless prefix/suffix data
+     * 'eoi_code' or 'clear_code' -- so we'll store useless prefix/suffix data
      * in a useless place. */
     
     /* *First,* set up the prefix and length for the next code
@@ -344,7 +344,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (code == next_code)
       gfc->image[gfc->decodepos - 1] = gfc->suffix[next_code];
     
-    /* Increment next_code except for the `clear_code' special case (that's
+    /* Increment next_code except for the 'clear_code' special case (that's
        when we're reading at the end of a GIF) */
     if (next_code != clear_code) {
       next_code++;
@@ -518,7 +518,7 @@ Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
   if (gfi->img)
     return 1;
   if (gfi->image_data)
-    /* we have uncompressed data, but not an `img' array;
+    /* we have uncompressed data, but not an 'img' array;
        this shouldn't happen */
     return 0;
   

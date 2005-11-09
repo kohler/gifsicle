@@ -593,7 +593,7 @@ Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
     gfx->transparent_pixel = bg_pixel;
   }
   
-  /* if there is no `last' then we need special handling */
+  /* if there is no 'last' then we need special handling */
   if (last == None
       || (last_gfi && last_gfi->width == gfs->screen_width
 	  && last_gfi->height == gfs->screen_height

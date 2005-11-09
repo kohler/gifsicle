@@ -150,7 +150,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
   while (1) {
     
     /*****
-     * Output `output_code' to the data stream. */
+     * Output 'output_code' to the data stream. */
 
     leftover |= output_code << bits_left_over;
     bits_left_over += cur_code_bits;
@@ -280,7 +280,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
   while (1) {
     
     /*****
-     * Output `output_code' to the data stream. */
+     * Output 'output_code' to the data stream. */
     
     leftover |= output_code << bits_left_over;
     bits_left_over += cur_code_bits;
