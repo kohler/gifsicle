@@ -23,7 +23,7 @@ int no_warnings = 0;
 
 
 static void
-verror(int seriousness, const char *message, va_list val)
+verror(int seriousness, const char *fmt, va_list val)
 {
   char pattern[BUFSIZ];
   char buffer[BUFSIZ];
@@ -44,12 +44,12 @@ verror(int seriousness, const char *message, va_list val)
   /* try and keep error messages together (no interleaving of error messages
      from two gifsicle processes in the same command line) by calling fprintf
      only once */
-  if (strlen(message) + strlen(pattern) < BUFSIZ) {
-    sprintf(buffer, pattern, message);
+  if (strlen(fmt) + strlen(pattern) < BUFSIZ) {
+    sprintf(buffer, pattern, fmt);
     vfprintf(stderr, buffer, val);
   } else {
     fwrite(pattern, 1, strlen(pattern) - 3, stderr);
-    vfprintf(stderr, message, val);
+    vfprintf(stderr, fmt, val);
     putc('\n', stderr);
   }
 }

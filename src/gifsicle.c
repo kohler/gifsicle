@@ -724,7 +724,7 @@ do_colormap_change(Gif_Stream *gfs)
 	  any_locals = 1;
       hist = histogram(gfs, &nhist);
       if (nhist <= active_output_data.colormap_size && !any_locals) {
-	warncontext("trivial adaptive palette (only %d colors in source)", nhist);
+	warning("trivial adaptive palette (only %d colors in source)", nhist);
 	return;
       }
     }
