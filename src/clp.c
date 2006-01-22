@@ -2,7 +2,7 @@
 /* clp.c - Complete source code for CLP.
  * This file is part of CLP, the command line parser package.
  *
- * Copyright (c) 1997-2005 Eddie Kohler, kohler@cs.ucla.edu
+ * Copyright (c) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
