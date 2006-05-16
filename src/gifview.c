@@ -262,7 +262,7 @@ Options are:\n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
 \n\
 Keystrokes:\n\
-  [Space] Go to next frame.             [B] Go to previous frame.\n\
+  [N]/[Space] Go to next frame.         [P]/[B] Go to previous frame.\n\
   [R]/[<] Go to first frame.            [>] Go to last frame.\n\
   [ESC] Stop animation.                 [S]/[A] Toggle animation.\n\
   [U] Toggle unoptimization.            [Backspace]/[W] Delete window.\n\
@@ -1046,11 +1046,11 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
   int nbuf = XLookupString(e, buf, 32, &key, 0);
   if (nbuf > 1) buf[0] = 0;	/* ignore multikey sequences */
   
-  if (key == XK_space || key == XK_F || key == XK_f)
-    /* space or F: one frame ahead */
+  if (key == XK_space || key == XK_F || key == XK_f || key == XK_N || key == XK_n)
+    /* space, N or F: one frame ahead */
     view_frame(viewer, viewer->im_pos + 1);
   
-  else if (key == XK_B || key == XK_b)
+  else if (key == XK_B || key == XK_b || key == XK_P || key == XK_p)
     /* B: one frame back */
     view_frame(viewer, viewer->im_pos - 1);
   
