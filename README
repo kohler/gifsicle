@@ -29,31 +29,6 @@ GIF-manipulating software.
 including, but not limited to, the implied warranties of merchantability
 and fitness for a particular purpose.
 
-THE GIF PATENTS AND UNGIFS
---------------------------
-   Unisys owns patents on the Lempel-Ziv-Welch compression algorithm used
-in GIFs, which means that GIF-manipulating software cannot be truly free.
-Some people in the know have said that decompression is not covered by the
-LZW patents (I have my doubts). That leaves compression. Independently,
-Toshio Kuratomi <badger@prtr-13.ucsc.edu> and Hutchison Avenue Software
-Corporation (http://www.hasc.com/, <info@hasc.com>) cut the Gordian knot by
-writing GIFs without LZW compression. These GIFs are larger, but perfectly
-readable by normal GIF viewers, and they avoid the Unisys patents.
-
-   Gifsicle can be configured to write run-length-encoded GIFs, rather than
-LZW-compressed GIFs, making it completely free software (if you believe
-that decompression isn't patented). Turn this on by giving './configure'
-the '--enable-ungif' switch. The disadvantage: your GIF outputs will be
-larger, often by a factor of 2 or more. You can tell which gifsicle you are
-running by typing 'gifsicle --version'. If it says '(ungif)', gifsicle is
-writing run-length-encoded GIFs.
-
-   This gifsicle package may have been distributed without the file that
-implements LZW compression. If you try to configure such a distribution
-without '--enable-ungif', you will get an error message. See the Gifsicle
-web page <http://www.lcdf.org/gifsicle/> if you have such a distribution
-but want LZW compression.
-
 MAKING GIFSICLE ON UNIX
 -----------------------
    You need an ANSI C compiler, such as gcc.
@@ -67,7 +42,7 @@ details.
    To build without gifview (for example, if you don't have X11), give the
 '--disable-gifview' option. To build without gifdiff, give the
 '--disable-gifdiff' option. To have Gifsicle create unGIFs instead of GIFs,
-avoiding the Unisys patents, give the '--enable-ungif' option.
+give the '--enable-ungif' option.
 
 MAKING GIFSICLE ON 32-BIT WINDOWS
 ---------------------------------
@@ -100,8 +75,8 @@ BUGS, SUGGESTIONS, ETC.
 you have suggestions or patches.
 
 	Eddie Kohler
-	kohler@icir.org
-	http://www.icir.org/kohler/
+	kohler@cs.ucla.edu
+	http://www.cs.ucla.edu/~kohler/
 
 GIFSICLE HOME PAGE
 ------------------
@@ -110,9 +85,29 @@ home page at
 
 	http://www.lcdf.org/gifsicle/
 
+THE GIF PATENTS AND UNGIFS
+--------------------------
+   Unisys formerly held patents on the Lempel-Ziv-Welch compression
+algorithm used in GIFs, which means that GIF-manipulating software could
+not be truly free.  As of October 1, 2006, however, it is believed (by the
+Software Freedom Law Center and the Free Software Foundation, among others)
+that there are no significant patent claims interfering with employment of
+the GIF format.  For that reason, gifsicle is completely free software.
+
+   Nonetheless, Gifsicle can be configured to write run-length-encoded
+GIFs, rather than LZW-compressed GIFs, avoiding these obsolete patents.
+This idea was first implemented independently by Toshio Kuratomi
+<badger@prtr-13.ucsc.edu> and Hutchison Avenue Software Corporation
+(http://www.hasc.com/, <info@hasc.com>). Turn this on by giving
+'./configure' the '--enable-ungif' switch. Now that the patents have
+expired there is no good reason to turn on this switch, which inflates GIF
+sizes often by a factor of 2 or more. If your copy of gifsicle says
+'(ungif)' when you run 'gifsicle --version', it is writing
+run-length-encoded GIFs.
+
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-2005 Eddie Kohler.
+   All source code is Copyright (C) 1997-2006 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
@@ -121,30 +116,24 @@ alter its code. If you use Gifsicle for an organizational or commercial Web
 site, I would appreciate a link to the Gifsicle home page on any 'About
 This Server' page, but it's not required.
 
-   This code, with the exception of the GIF compression code in gifwrite.c,
-is distributed under the GNU General Public License, Version 2, or, at your
-discretion, any later version. The GNU General Public License is available
-via the Web at <http://www.gnu.org/licenses/gpl.html>
+   This code is distributed under the GNU General Public License, Version 2
+(and only Version 2). The GNU General Public License is available via the
+Web at <http://www.gnu.org/licenses/gpl.html> or in the 'COPYING' file in
+this directory.
 
    The following alternative license may be used at your discretion.
 
-   Permission is granted to copy, distribute, or alter gifsicle, whole
-or in part, as long as source code copyright notices are kept intact, with
-the following restrictions.
+   Permission is granted to copy, distribute, or alter gifsicle, whole or
+in part, as long as source code copyright notices are kept intact, with the
+following restriction: Developers or distributors who plan to use Gifsicle
+code, whole or in part, in a product whose source code will not be made
+available to the end user -- more precisely, in a context which would
+violate the GPL -- MUST contact the author and obtain permission before
+doing so.
 
-   1. Unisys Corp. holds a patent on the Lempel-Ziv-Welch compression
-algorithm used by GIF images. When this first became an issue several years
-ago, Unisys stated that programs available at no cost to the user, like
-Gifsicle, could use LZW compression in the context of GIF images without
-obtaining a license. If you plan to distribute GIF writing code in a
-shareware or commercial product, you will need to worry about obtaining a
-license. (Many people believe that LZW decompression is not covered by the
-Unisys patent, so GIF reading code is probably all right.)
-
-   2. Developers or distributors who plan to use Gifsicle code, whole or in
-part, in a product whose source code will not be made available to the end
-user -- more precisely, in a context which would violate the GPL -- MUST
-contact the author and obtain permission before doing so.
+   As of October 1, 2006, it is believed that there are no significant
+patent claims interfering with employment of the GIF format, so previous
+language about obtaining a license from Unisys has been removed.
 
 AUTHORS
 -------

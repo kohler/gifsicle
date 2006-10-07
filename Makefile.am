@@ -5,7 +5,7 @@ SUBDIRS = src
 
 man_MANS = gifsicle.1 @OTHERMANS@
 
-EXTRA_DIST = gifsicle.spec \
+EXTRA_DIST = COPYING gifsicle.spec \
 	include/lcdf/clp.h include/lcdf/inttypes.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
