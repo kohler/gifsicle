@@ -2,11 +2,11 @@
 /* ungifwrt.c - Functions to write unGIFs -- GIFs with run-length compression,
    not LZW compression. Idea due to Hutchinson Avenue Software Corporation
    <http://www.hasc.com>.
-   Copyright (C) 1997-2001 Eddie Kohler, eddietwo@lcs.mit.edu
-   This file is part of the GIF library.
+   Copyright (C) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
+   This file is part of the LCDF GIF library.
 
-   The GIF library is free software. It is distributed under the GNU Public
-   License, version 2 or later; you can copy, distribute, or alter it at will,
+   The LCDF GIF library is free software. It is distributed under the GNU
+   Public License, version 2; you can copy, distribute, or alter it at will,
    as long as this notice is kept intact and this source code is made
    available. There is no warranty, express or implied. */
 

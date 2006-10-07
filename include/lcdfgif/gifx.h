@@ -6,18 +6,13 @@ extern "C" {
 #endif
 
 /* gifx.h - Functions to turn GIFs in memory into X Pixmaps.
-   Copyright (C) 1997-9 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software*. It is distributed under the GNU
    General Public License, version 2 or later; you can copy, distribute, or
    alter it at will, as long as this notice is kept intact and this source
-   code is made available. There is no warranty, express or implied.
-
-   *There is a patent on the LZW compression method used by GIFs, and included
-   in gifwrite.c. Unisys, the patent holder, allows the compression algorithm
-   to be used without a license in software distributed at no cost to the
-   user. The decompression algorithm is not patented. */
+   code is made available. There is no warranty, express or implied. */
 
 #include <X11/Xlib.h>
 
