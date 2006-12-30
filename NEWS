@@ -4,6 +4,9 @@ Version 1.45   30.Dec.2006
 
 * Do not compile gifview by default when X is not available.
 
+* gifview: Add '--title' option, based on patch supplied by Andres Tello
+  Abrego.
+
 
 Version 1.44   3.Oct.2005
 

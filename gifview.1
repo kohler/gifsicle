@@ -25,7 +25,7 @@
 .RE
 .PP
 ..
-.TH GIFVIEW 1 "3 Apr 2000" "Version \*V"
+.TH GIFVIEW 1 "30 Dec 2006" "Version \*V"
 .SH NAME
 gifview \- displays GIF images and animations on the X window system
 .SH SYNOPSIS
@@ -139,7 +139,7 @@ This option must come before any GIF files.
 .OA \-\-name name
 '
 Sets the application name under which resources are found, rather than
-the default of ``gifview''. Since
+the default of "gifview". Since
 .B gifview
 itself does not use the resource database, this is mostly useful for
 communication with your window manager.
@@ -153,6 +153,15 @@ Set the size and position of
 windows. This is a standard X option. At most one
 .OP \-\-geometry
 option can be given per window (that is, per input GIF file).
+'
+.Sp
+.TP 5
+.OA \-\-title title
+'
+Sets the
+.B gifview
+window's title. The default is "gifview", followed by information about the
+currently displayed file and frame.
 '
 .Sp
 .TP 5

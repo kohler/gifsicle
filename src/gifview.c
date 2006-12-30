@@ -1,6 +1,6 @@
 /* -*- c-basic-offset: 2 -*- */
 /* gifview.c - gifview's main loop.
-   Copyright (C) 1997-2002 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2006 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifview, in the gifsicle package.
 
    Gifview is free software. It is distributed under the GNU Public License,
@@ -115,6 +115,7 @@ typedef struct Gt_Viewer {
   
   Gif_Stream *gfs;
   const char *name;
+  const char *title;
 
   Gif_Image **im;
   int nim;
@@ -147,6 +148,7 @@ static const char *cur_geometry_spec = 0;
 static Cursor cur_arrow_cursor = 0;
 static Cursor cur_wait_cursor = 0;
 static const char *cur_resource_name;
+static const char *cur_window_title = 0;
 static Window cur_use_window = None;
 static int cur_use_window_new = 0;
 static const char *cur_background_color = "black";
@@ -173,6 +175,7 @@ static struct timeval preparation_time;
 #define INTERACTIVE_OPT		309
 #define BACKGROUND_OPT		310
 #define NEW_WINDOW_OPT		311
+#define TITLE_OPT		312
 
 #define WINDOW_TYPE		(Clp_FirstUserType)
 
@@ -186,10 +189,11 @@ Clp_Option options[] = {
   { "interactive", 'e', INTERACTIVE_OPT, 0, Clp_Negate },
   { "help", 0, HELP_OPT, 0, 0 },
   { "name", 0, NAME_OPT, Clp_ArgString, 0 },
+  { "title", 'T', TITLE_OPT, Clp_ArgString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
   { "window", 'w', WINDOW_OPT, WINDOW_TYPE, 0 },
-  { "new-window", 0, NEW_WINDOW_OPT, WINDOW_TYPE, 0 },
+  { "new-window", 0, NEW_WINDOW_OPT, WINDOW_TYPE, 0 }
 };
 
 
@@ -251,6 +255,7 @@ Options are:\n\
   -d, --display DISPLAY         Set display to DISPLAY.\n\
       --name NAME               Set application resource name to NAME.\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
+  -T, --title TITLE             Set window title.\n\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
       --new-window WINDOW       Show GIF in new child of existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
@@ -448,6 +453,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   viewer->gfs = gfs;
   gfs->refcount++;
   viewer->name = name;
+  viewer->title = cur_window_title;
   viewer->nim = Gif_ImageCount(gfs);
   viewer->im = Gif_NewArray(Gif_Image *, viewer->nim);
   for (i = 0; i < viewer->nim; i++)
@@ -797,13 +803,15 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
     return;
 
   gfi = viewer->im[im_pos];
-  len = strlen(viewer->name) + 21;
+  len = strlen(viewer->title) + strlen(viewer->name) + 14;
   identifier = (slow_number >= 0 ? (char *)0 : gfi->identifier);
   if (identifier)
     len += 2 + strlen(identifier);
   
   strs[0] = Gif_NewArray(char, len);
-  if (slow_number >= 0)
+  if (strcmp(viewer->title, "gifview") != 0)
+    strcpy(strs[0], viewer->title);
+  else if (slow_number >= 0)
     sprintf(strs[0], "gifview: %s [#%d]", viewer->name, im_pos);
   else if (viewer->nim == 1 && identifier)
     sprintf(strs[0], "gifview: %s #%s", viewer->name, identifier);
@@ -1051,7 +1059,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     view_frame(viewer, viewer->im_pos + 1);
   
   else if (key == XK_B || key == XK_b || key == XK_P || key == XK_p)
-    /* B: one frame back */
+    /* B or P: one frame back */
     view_frame(viewer, viewer->im_pos - 1);
   
   else if (key == XK_W || key == XK_w || key == XK_BackSpace)
@@ -1228,7 +1236,7 @@ main(int argc, char *argv[])
     (clp, WINDOW_TYPE, Clp_AllowNumbers,
      "root", -1,
      (const char*) 0);
-  program_name = cur_resource_name = Clp_ProgramName(clp);
+  program_name = cur_resource_name = cur_window_title = Clp_ProgramName(clp);
   
   xwGETTIMEOFDAY(&genesis_time);
   preparation_time.tv_sec = 0;
@@ -1245,7 +1253,11 @@ main(int argc, char *argv[])
       cur_display = 0;
       cur_arrow_cursor = cur_wait_cursor = None;
       break;
-      
+
+     case TITLE_OPT:
+      cur_window_title = clp->arg;
+      break;
+
      case GEOMETRY_OPT:
       cur_geometry_spec = clp->arg;
       break;
@@ -1286,7 +1298,7 @@ main(int argc, char *argv[])
       
      case VERSION_OPT:
       printf("gifview (LCDF Gifsicle) %s\n", VERSION);
-      printf("Copyright (C) 1997-2003 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2006 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
