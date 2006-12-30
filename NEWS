@@ -1,6 +1,11 @@
 Gifsicle NEWS
 
-Version 1.44
+Version 1.45   30.Dec.2006
+
+* Do not compile gifview by default when X is not available.
+
+
+Version 1.44   3.Oct.2005
 
 * gifview: Enforce a minimum delay of 0.002 sec.  Requested by Dale Wiles.
 
