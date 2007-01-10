@@ -1,6 +1,6 @@
 /* -*- c-basic-offset: 2 -*- */
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-2002 Eddie Kohler, kohler@icir.org
+   Copyright (C) 1997-2007 Eddie Kohler, kohler@icir.org
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -35,7 +35,8 @@ Gif_Stream *input = 0;
 const char *input_name = 0;
 static int unoptimizing = 0;
 
-int gif_read_flags = 0;
+static int gif_read_flags = 0;
+static int nextfile = 0;
 int gif_write_flags = 0;
 
 static int frames_done = 0;
@@ -181,6 +182,7 @@ static const char *output_option_types[] = {
 #define CROP_TRANSPARENCY_OPT	360
 #define CONSERVE_MEMORY_OPT	361
 #define MULTIFILE_OPT		362
+#define NEXTFILE_OPT		363
 
 #define LOOP_TYPE		(Clp_FirstUserType)
 #define DISPOSAL_TYPE		(Clp_FirstUserType + 1)
@@ -245,6 +247,7 @@ Clp_Option options[] = {
   { "multifile", 0, MULTIFILE_OPT, 0, Clp_Negate },
   
   { "name", 'n', NAME_OPT, Clp_ArgString, 0 },
+  { "nextfile", 0, NEXTFILE_OPT, 0, Clp_Negate },
   { "no-names", 'n', NO_NAME_OPT, 0, Clp_OnlyNegated },
   
   { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
@@ -525,7 +528,7 @@ input_stream(const char *name)
   /* check for empty file */
   i = getc(f);
   if (i == EOF) {
-    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
+    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) || nextfile)
       error("%s: empty file", name);
     if (f != stdin)
       fclose(f);
@@ -634,7 +637,7 @@ input_stream(const char *name)
   gfs->refcount++;
 
   /* Read more files. */
-  if (gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK)
+  if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile)
     goto retry_file;
   else if (f != stdin)
     fclose(f);
@@ -1531,11 +1534,9 @@ main(int argc, char *argv[])
 
      case CAREFUL_OPT: {
        if (clp->negated)
-	 gif_read_flags = gif_write_flags = 0;
-       else {
-	 gif_read_flags = 0;
+	 gif_write_flags = 0;
+       else
 	 gif_write_flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE;
-       }
        break;
      }
      
@@ -1669,8 +1670,19 @@ main(int argc, char *argv[])
      case MULTIFILE_OPT:
       if (clp->negated)
 	gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
-      else
+      else {
 	gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+	nextfile = 0;
+      }
+      break;
+
+     case NEXTFILE_OPT:
+      if (clp->negated)
+        gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
+      else {
+	gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+	nextfile = 1;
+      }
       break;
 
      case VERSION_OPT:
@@ -1679,7 +1691,7 @@ main(int argc, char *argv[])
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2005 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2007 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

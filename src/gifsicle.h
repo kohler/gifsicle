@@ -1,5 +1,5 @@
 /* gifsicle.h - Function declarations for gifsicle.
-   Copyright (C) 1997 Eddie Kohler, eddietwo@lcs.mit.edu
+   Copyright (C) 1997-2007 Eddie Kohler, eddietwo@lcs.mit.edu
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -127,7 +127,6 @@ extern const char *program_name;
 extern int verbosing;
 extern int error_count;
 extern int no_warnings;
-extern int gif_read_flags;
 extern int gif_write_flags;
 
 void fatal_error(const char *message, ...) NORETURN;

@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.46   9.Jan.2007
+
+* gifsicle: Add '--nextfile' option, useful for scripts.  Problem reported
+  by Jason Young.
+
+
 Version 1.45   30.Dec.2006
 
 * Do not compile gifview by default when X is not available.

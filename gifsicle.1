@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.45
+.ds V 1.46
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -318,15 +318,30 @@ if you are processing large GIFs on a computer without very much memory.
 '
 .Sp
 .TP
+.OP \-\-nextfile
+'
+Read GIF data from the
+.I beginning
+of each file, ignoring any stuff after the GIF data. This option can help
+scripts avoid the need for temporary files. For example, to create an
+animated GIF with three frames with different delays, you might run
+"\fBgifsicle \-\-nextfile \-d10 \- \-d20 \- \-d30 \- > out.gif\fR" and
+write the three GIF images, in sequence, to \fBgifsicle\fR's standard
+input.
+'
+.Sp
+.TP
 .OP \-\-multifile
 '
-Accept concatenated GIF files (multiple GIF image files concatenated into
-one big file; each image file may, of course, contain multiple frames).
-This option is intended for scripts. For example, to merge an unknown
-number of GIF images into a single animation, run
-"\fBgifsicle \-\-multifile \- > out.gif\fR"
-and write the GIF images, in sequence, to \fBgifsicle\fR's standard input.
-Any frame selections apply only to the last file in the concatenation.
+Like
+.OP \-\-nextfile ,
+but read
+.I as many GIF images as possible
+from each file. This option is intended for scripts. For example, to merge
+an unknown number of GIF images into a single animation, run "\fBgifsicle
+\-\-multifile \- > out.gif\fR" and write the GIF images, in sequence, to
+\fBgifsicle\fR's standard input.  Any frame selections apply only to the
+last file in the concatenation.
 '
 .PD
 '
