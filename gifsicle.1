@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.46
+.ds V 1.47
 .ds E " \-\- 
 .if t .ds E \(em
 .de OP
@@ -320,14 +320,13 @@ if you are processing large GIFs on a computer without very much memory.
 .TP
 .OP \-\-nextfile
 '
-Read GIF data from the
-.I beginning
-of each file, ignoring any stuff after the GIF data. This option can help
-scripts avoid the need for temporary files. For example, to create an
-animated GIF with three frames with different delays, you might run
-"\fBgifsicle \-\-nextfile \-d10 \- \-d20 \- \-d30 \- > out.gif\fR" and
-write the three GIF images, in sequence, to \fBgifsicle\fR's standard
-input.
+Allow input files to contain multiple concatenated GIF images. If a
+filename appears multiple times on the command line, \fBgifsicle\fR will
+read a new image from the file each time. This option can help scripts
+avoid the need for temporary files. For example, to create an animated GIF
+with three frames with different delays, you might run "\fBgifsicle
+\-\-nextfile \-d10 \- \-d20 \- \-d30 \- > out.gif\fR" and write the three
+GIF images, in sequence, to \fBgifsicle\fR's standard input.
 '
 .Sp
 .TP

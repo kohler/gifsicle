@@ -474,6 +474,74 @@ gifread_error(const char *message, int which_image, void *thunk)
   }
 }
 
+struct StoredFile {
+  FILE *f;
+  struct StoredFile *next;
+  char name[1];
+};
+
+static struct StoredFile *stored_files = 0;
+
+static FILE *
+open_giffile(const char *name)
+{
+  struct StoredFile *sf;
+  FILE *f;
+  
+  if (name == 0 || strcmp(name, "-") == 0) {
+#if defined(_MSDOS) || defined(_WIN32)
+    _setmode(_fileno(stdin), _O_BINARY);
+#elif defined(__EMX__)
+    _fsetmode(stdin, "b");
+#endif
+    return stdin;
+  }
+    
+  if (nextfile)
+    for (sf = stored_files; sf; sf = sf->next)
+      if (strcmp(name, sf->name) == 0)
+	return sf->f;
+  
+  f = fopen(name, "rb");
+  
+  if (f && nextfile) {
+    sf = (struct StoredFile *) malloc(sizeof(struct StoredFile) + strlen(name));
+    sf->f = f;
+    sf->next = stored_files;
+    stored_files = sf;
+    strcpy(sf->name, name);
+  }
+  
+  return f;
+}
+
+static void
+close_giffile(FILE *f, int final)
+{
+  struct StoredFile **sf_pprev, *sf;
+  
+  if (!final && nextfile) {
+    int c = getc(f);
+    if (c == EOF)
+      final = 1;
+    else
+      ungetc(c, f);
+  }
+
+  for (sf_pprev = &stored_files; (sf = *sf_pprev); sf_pprev = &sf->next)
+    if (sf->f == f) {
+      if (final) {
+	fclose(f);
+	*sf_pprev = sf->next;
+	free((void *) sf);
+      }
+      return;
+    }
+
+  if (f != stdin && (!nextfile || final))
+    fclose(f);
+}
+
 void
 input_stream(const char *name)
 {
@@ -497,21 +565,14 @@ input_stream(const char *name)
 
   if (infoing == 1)
     set_mode(INFOING);
-  
-  if (name == 0 || strcmp(name, "-") == 0) {
-#if defined(_MSDOS) || defined(_WIN32)
-    _setmode(_fileno(stdin), _O_BINARY);
-#elif defined(__EMX__)
-    _fsetmode(stdin, "b");
-#endif
-    f = stdin;
-    name = "<stdin>";
-    input_name = 0;
-  } else
-    f = fopen(name, "rb");
+
+  f = open_giffile(name);
   if (!f) {
     error("%s: %s", name, strerror(errno));
     return;
+  } else if (f == stdin) {
+    name = "<stdin>";
+    input_name = 0;
   }
   main_name = name;
 
@@ -528,10 +589,11 @@ input_stream(const char *name)
   /* check for empty file */
   i = getc(f);
   if (i == EOF) {
-    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) || nextfile)
+    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
       error("%s: empty file", name);
-    if (f != stdin)
-      fclose(f);
+    else if (nextfile)
+      error("%s: no more images in file", name);
+    close_giffile(f, 1);
     return;
   }
   ungetc(i, f);
@@ -551,9 +613,9 @@ input_stream(const char *name)
     else
       error("%s: trailing garbage ignored", main_name);
     Gif_DeleteStream(gfs);
-    if (verbosing) verbose_close('>');
-    if (f != stdin)
-      fclose(f);
+    if (verbosing)
+      verbose_close('>');
+    close_giffile(f, 1);
     return;
   }
 
@@ -639,8 +701,7 @@ input_stream(const char *name)
   /* Read more files. */
   if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile)
     goto retry_file;
-  else if (f != stdin)
-    fclose(f);
+  close_giffile(f, 0);
 }
 
 void

@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.47   10.Mar.2007
+
+* gifsicle: Improve '--nextfile' behavior.
+
+
 Version 1.46   9.Jan.2007
 
 * gifsicle: Add '--nextfile' option, useful for scripts.  Problem reported
