@@ -538,7 +538,7 @@ close_giffile(FILE *f, int final)
       return;
     }
 
-  if (f != stdin && (!nextfile || final))
+  if (f != stdin)
     fclose(f);
 }
 
