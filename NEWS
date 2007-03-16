@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.48   16.Mar.2007
+
+* gifsicle: Avoid crash in '--crop-transparency' when an image's first
+  frame is totally transparent.  Reported by Gerald Johanson.
+
+
 Version 1.47   10.Mar.2007
 
 * gifsicle: Improve '--nextfile' behavior.

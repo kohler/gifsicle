@@ -189,7 +189,7 @@ Gt_ColorTransform *append_color_change
 
 void	pipe_color_transformer(Gif_Colormap *, void *);
 
-int	crop_image(Gif_Image *, Gt_Crop *);
+int	crop_image(Gif_Image *, Gt_Crop *, int first_image);
 
 void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
 void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);

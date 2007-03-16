@@ -1142,9 +1142,9 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
      cropped away. This ends up being comments and delay. */
   Gt_Frame *fr = merger[merger_index];
   Gt_Frame *next_fr = 0;
-  Gif_Image *prev_image = 0;
-  if (dest->nimages > 0)
-      prev_image = dest->images[dest->nimages - 1];
+  Gif_Image *prev_image;
+  assert(dest->nimages > 0);
+  prev_image = dest->images[dest->nimages - 1];
   if (merger_index < nmerger - 1)
       next_fr = merger[merger_index + 1];
   
@@ -1360,7 +1360,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (fr->crop) {
       srci = Gif_CopyImage(fr->image);
       Gif_UncompressImage(srci);
-      if (!crop_image(srci, fr->crop)) {
+      if (!crop_image(srci, fr->crop, dest->nimages == 0)) {
 	/* We cropped the image out of existence! Be careful not to make 0x0
 	   frames. */
 	fix_total_crop(dest, srci, i);
