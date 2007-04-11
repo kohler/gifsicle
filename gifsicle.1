@@ -384,9 +384,9 @@ For example,
 .Xe
 will use all of `happy.gif's frames, while
 .Xs
-\fBgifsicle happy.gif '#0'\fR
+\fBgifsicle happy.gif "#0"\fR
 .Xe
-will only use the first. (Note the single quotes around the frame
+will only use the first. (Note the quotes around the frame
 specification. The `#' character has special meaning for many shells, so
 you may need to quote it.)
 .PP
@@ -449,7 +449,7 @@ frames from the
 input GIF. So, if `a.gif' has 3 frames and `b.gif' has one, this
 command
 .Xs
-\fBgifsicle a.gif \-\-delete '#0' \-\-replace '#2' b.gif\fR
+\fBgifsicle a.gif \-\-delete "#0" \-\-replace "#2" b.gif\fR
 .Xe
 will produce an output animation with 2 frames: `a.gif' frame 1, then
 `b.gif'.
@@ -463,13 +463,13 @@ The
 last until the next frame change option, so this command replaces the
 first frame of `in.gif' with the merge of `a.gif' and `b.gif':
 .Xs
-\fBgifsicle \-b in.gif \-\-replace '#0' a.gif b.gif\fR
+\fBgifsicle \-b in.gif \-\-replace "#0" a.gif b.gif\fR
 .Xe
 .PP
 This command, however, replaces the first frame of `in.gif' with
 `a.gif' and then processes `b.gif' separately:
 .Xs
-\fBgifsicle \-b in.gif \-\-replace '#0' a.gif \-\-done b.gif\fR
+\fBgifsicle \-b in.gif \-\-replace "#0" a.gif \-\-done b.gif\fR
 .Xe
 .PP
 Warning: You shouldn't use both frame selections and frame changes on
@@ -494,7 +494,7 @@ form means that the feature's value is copied from each input. The default
 is always
 .QO \-\-same\-X . 
 For example,
-.OP \-background= "'#0000FF'"
+.OP \-background= """#0000FF"""
 sets the background color to blue,
 .OP \-\-no\-background
 turns the background color off (by setting it to 0), and
@@ -628,7 +628,7 @@ Make
 transparent in the following frames.
 .I Color
 can be a colormap index (0\-255), a hexadecimal color specification
-(like '#FF00FF' for magenta), or slash- or comma-separated red, green
+(like "#FF00FF" for magenta), or slash- or comma-separated red, green
 and blue values (each between 0 and 255).
 .PD
 '
@@ -720,7 +720,7 @@ and
 .QO \-\-same\-X ,
 and you can give animation options multiple times; for example,
 .Xs
-\fBgifsicle \-b a.gif \-d50 '#0' '#1' \-d100 '#2' '#3'\fR
+\fBgifsicle \-b a.gif \-d50 "#0" "#1" \-d100 "#2" "#3"\fR
 .Xe
 sets the delays of frames 0 and 1 to 50, and frames 2 and 3 to 100.
 '
@@ -1069,7 +1069,7 @@ To optimize `anim.gif':
 .Ee
 To change the second frame of `anim.gif' to `x.gif':
 .Es
-% \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace '#1' x.gif\fR
+% \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace "#1" x.gif\fR
 .Ee
 .OP \-\-unoptimize
 is used since `anim.gif' was optimized in the last step. Editing
@@ -1094,14 +1094,14 @@ GIF files.
 .PP
 To print information about the first and fourth frames of `anim.gif':
 .Es
-% \fBgifsicle \-I '#0' '#3' < anim.gif\fR
+% \fBgifsicle \-I "#0" "#3" < anim.gif\fR
 .br
 (information printed)
 .Ee
 To make black the transparent color in all the GIFs in the current
 directory, and also print information about each:
 .Es
-% \fBgifsicle \-bII \-\-trans '#000000' *.gif\fR
+% \fBgifsicle \-bII \-\-trans "#000000" *.gif\fR
 .br
 (information printed)
 .Ee
@@ -1125,7 +1125,7 @@ looks like the superposition of the two inputs\*Euse
 .B gifsicle
 twice:
 .Es
-% \fBgifsicle bottom.gif top.gif | gifsicle -U '#1' > result.gif\fR
+% \fBgifsicle bottom.gif top.gif | gifsicle -U "#1" > result.gif\fR
 .Ee
 '
 .SH BUGS
