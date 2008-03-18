@@ -19,7 +19,7 @@
 #define HELP_OPT		301
 #define VERSION_OPT		302
 
-Clp_Option options[] = {
+const Clp_Option options[] = {
   { "help", 'h', HELP_OPT, 0, 0 },
   { "brief", 'q', QUIET_OPT, 0, Clp_Negate },
   { "version", 'v', VERSION_OPT, 0, 0 },
@@ -425,10 +425,10 @@ particular purpose.\n");
       }
       inputp = (how_many_inputs == 0 ? &filename1 : &filename2);
       how_many_inputs++;
-      if (strcmp(clp->arg, "-") == 0)
+      if (strcmp(clp->vstr, "-") == 0)
 	*inputp = 0;
       else
-	*inputp = clp->arg;
+	*inputp = clp->vstr;
       break;
 
      bad_option:

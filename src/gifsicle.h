@@ -133,7 +133,7 @@ void fatal_error(const char *message, ...) NORETURN;
 void warning(const char *message, ...);
 void warncontext(const char *message, ...);
 void error(const char *message, ...);
-void clp_error_handler(const char *clp_message);
+void clp_error_handler(Clp_Parser *clp, const char *clp_message);
 void usage(void);
 void short_usage(void);
 

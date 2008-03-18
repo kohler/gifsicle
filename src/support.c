@@ -92,10 +92,11 @@ warncontext(const char *message, ...)
 }
 
 void
-clp_error_handler(const char *message)
+clp_error_handler(Clp_Parser *clp, const char *message)
 {
-  verbose_endline();
-  fputs(message, stderr);
+    (void) clp;
+    verbose_endline();
+    fputs(message, stderr);
 }
 
 

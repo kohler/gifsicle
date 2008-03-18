@@ -184,21 +184,21 @@ static const char *output_option_types[] = {
 #define MULTIFILE_OPT		362
 #define NEXTFILE_OPT		363
 
-#define LOOP_TYPE		(Clp_FirstUserType)
-#define DISPOSAL_TYPE		(Clp_FirstUserType + 1)
-#define DIMENSIONS_TYPE		(Clp_FirstUserType + 2)
-#define FRAME_SPEC_TYPE		(Clp_FirstUserType + 3)
-#define COLOR_TYPE		(Clp_FirstUserType + 4)
-#define POSITION_TYPE		(Clp_FirstUserType + 5)
-#define RECTANGLE_TYPE		(Clp_FirstUserType + 6)
-#define TWO_COLORS_TYPE		(Clp_FirstUserType + 7)
-#define COLORMAP_ALG_TYPE	(Clp_FirstUserType + 8)
-#define SCALE_FACTOR_TYPE	(Clp_FirstUserType + 9)
+#define LOOP_TYPE		(Clp_ValFirstUser)
+#define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
+#define DIMENSIONS_TYPE		(Clp_ValFirstUser + 2)
+#define FRAME_SPEC_TYPE		(Clp_ValFirstUser + 3)
+#define COLOR_TYPE		(Clp_ValFirstUser + 4)
+#define POSITION_TYPE		(Clp_ValFirstUser + 5)
+#define RECTANGLE_TYPE		(Clp_ValFirstUser + 6)
+#define TWO_COLORS_TYPE		(Clp_ValFirstUser + 7)
+#define COLORMAP_ALG_TYPE	(Clp_ValFirstUser + 8)
+#define SCALE_FACTOR_TYPE	(Clp_ValFirstUser + 9)
 
-Clp_Option options[] = {
+const Clp_Option options[] = {
   
   { "append", 0, APPEND_OPT, 0, 0 },
-  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ArgString, 0 },
+  { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ValString, 0 },
   
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
@@ -208,16 +208,16 @@ Clp_Option options[] = {
   { "change-color", 0, CHANGE_COLOR_OPT, TWO_COLORS_TYPE, Clp_Negate },
   { "cinfo", 0, COLOR_INFO_OPT, 0, Clp_Negate },
   { "clip", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
-  { "colors", 'k', COLORMAP_OPT, Clp_ArgInt, Clp_Negate },
+  { "colors", 'k', COLORMAP_OPT, Clp_ValInt, Clp_Negate },
   { "color-method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "color-info", 0, COLOR_INFO_OPT, 0, Clp_Negate },
-  { "comment", 'c', COMMENT_OPT, Clp_ArgString, 0 },
-  { "no-comments", 'c', NO_COMMENTS_OPT, 0, Clp_OnlyNegated },
+  { "comment", 'c', COMMENT_OPT, Clp_ValString, 0 },
+  { "no-comments", 'c', NO_COMMENTS_OPT, 0, 0 },
   { "conserve-memory", 0, CONSERVE_MEMORY_OPT, 0, Clp_Negate },
   { "crop", 0, CROP_OPT, RECTANGLE_TYPE, Clp_Negate },
   { "crop-transparency", 0, CROP_TRANSPARENCY_OPT, 0, Clp_Negate },
   
-  { "delay", 'd', 'd', Clp_ArgInt, Clp_Negate },
+  { "delay", 'd', 'd', Clp_ValInt, Clp_Negate },
   { "delete", 0, DELETE_OPT, 0, 0 },
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, Clp_Negate },
   { "dither", 'f', DITHER_OPT, 0, Clp_Negate },
@@ -225,7 +225,7 @@ Clp_Option options[] = {
   
   { "explode", 'e', 'e', 0, 0 },
   { "explode-by-name", 'E', 'E', 0, 0 },
-  { "extension", 0, EXTENSION_OPT, Clp_ArgString, 0 },
+  { "extension", 0, EXTENSION_OPT, Clp_ValString, 0 },
   { "no-extensions", 'x', NO_EXTENSIONS_OPT, 0, 0 },
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
   
@@ -246,19 +246,19 @@ Clp_Option options[] = {
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "multifile", 0, MULTIFILE_OPT, 0, Clp_Negate },
   
-  { "name", 'n', NAME_OPT, Clp_ArgString, 0 },
+  { "name", 'n', NAME_OPT, Clp_ValString, 0 },
   { "nextfile", 0, NEXTFILE_OPT, 0, Clp_Negate },
-  { "no-names", 'n', NO_NAME_OPT, 0, Clp_OnlyNegated },
+  { "no-names", 'n', NO_NAME_OPT, 0, 0 },
   
-  { "optimize", 'O', OPTIMIZE_OPT, Clp_ArgInt, Clp_Negate | Clp_Optional },
-  { "output", 'o', OUTPUT_OPT, Clp_ArgStringNotOption, 0 },
+  { "optimize", 'O', OPTIMIZE_OPT, Clp_ValInt, Clp_Negate | Clp_Optional },
+  { "output", 'o', OUTPUT_OPT, Clp_ValStringNotOption, 0 },
   
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
   
   { "replace", 0, REPLACE_OPT, FRAME_SPEC_TYPE, 0 },
   { "resize", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
-  { "resize-width", 0, RESIZE_WIDTH_OPT, Clp_ArgUnsigned, Clp_Negate },
-  { "resize-height", 0, RESIZE_HEIGHT_OPT, Clp_ArgUnsigned, Clp_Negate },
+  { "resize-width", 0, RESIZE_WIDTH_OPT, Clp_ValUnsigned, Clp_Negate },
+  { "resize-height", 0, RESIZE_HEIGHT_OPT, Clp_ValUnsigned, Clp_Negate },
   { "resiz", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resi", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "res", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
@@ -285,12 +285,12 @@ Clp_Option options[] = {
   { "same-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
   
-  { "transform-colormap", 0, COLOR_TRANSFORM_OPT, Clp_ArgStringNotOption,
+  { "transform-colormap", 0, COLOR_TRANSFORM_OPT, Clp_ValStringNotOption,
     Clp_Negate },
   { "transparent", 't', 't', COLOR_TYPE, Clp_Negate },
   
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
-  { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ArgString, Clp_Negate },
+  { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ValString, Clp_Negate },
   
   { "verbose", 'V', VERBOSE_OPT, 0, Clp_Negate },
   { 0, 'v', VERBOSE_OPT, 0, Clp_Negate },
@@ -1039,7 +1039,7 @@ static int
 handle_extension(Clp_Parser *clp, int is_app)
 {
   Gif_Extension *gfex;
-  const char *extension_type = clp->arg;
+  const char *extension_type = clp->vstr;
   const char *extension_body = Clp_Shift(clp, 1);
   if (!extension_body) {
     Clp_OptionError(clp, "%O requires two arguments");
@@ -1355,7 +1355,7 @@ main(int argc, char *argv[])
      case NAME_OPT:
       if (clp->negated) goto no_names;
       MARK_CH(frame, CH_NAME);
-      def_frame.name = clp->arg;
+      def_frame.name = clp->vstr;
       break;
       
      no_names:
@@ -1374,7 +1374,7 @@ main(int argc, char *argv[])
       if (clp->negated) goto no_comments;
       MARK_CH(frame, CH_COMMENT);
       if (!def_frame.comment) def_frame.comment = Gif_NewComment();
-      Gif_AddComment(def_frame.comment, clp->arg, -1);
+      Gif_AddComment(def_frame.comment, clp->vstr, -1);
       break;
       
      no_comments:
@@ -1570,7 +1570,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.loopcount = -1;
       else
-	def_output_data.loopcount = (clp->have_arg ? clp->val.i : 0);
+	def_output_data.loopcount = (clp->have_val ? clp->val.i : 0);
       break;
       
      case SAME_LOOPCOUNT_OPT:
@@ -1583,7 +1583,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.optimizing = 0;
       else
-	def_output_data.optimizing = (clp->have_arg ? clp->val.i : 1);
+	def_output_data.optimizing = (clp->have_val ? clp->val.i : 1);
       break;
       
      case UNOPTIMIZE_OPT:
@@ -1621,7 +1621,7 @@ main(int argc, char *argv[])
 	  (output_transforms, &pipe_color_transformer);
       else
 	output_transforms = append_color_transform
-	  (output_transforms, &pipe_color_transformer, (void *)clp->arg);
+	  (output_transforms, &pipe_color_transformer, (void *)clp->vstr);
       break;
       
      case COLORMAP_OPT:
@@ -1644,7 +1644,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.colormap_fixed = 0;
       else
-	set_new_fixed_colormap(clp->arg);
+	set_new_fixed_colormap(clp->vstr);
       break;
       
      case COLORMAP_ALGORITHM_OPT:
@@ -1766,18 +1766,18 @@ particular purpose.\n");
       
      case OUTPUT_OPT:
       MARK_CH(output, CH_OUTPUT);
-      if (strcmp(clp->arg, "-") == 0)
+      if (strcmp(clp->vstr, "-") == 0)
 	def_output_data.output_name = 0;
       else
-	def_output_data.output_name = clp->arg;
+	def_output_data.output_name = clp->vstr;
       break;
       
       /* NONOPTIONS */
       
      case Clp_NotOption:
-      if (clp->arg[0] != '#' || !frame_argument(clp, clp->arg)) {
+      if (clp->vstr[0] != '#' || !frame_argument(clp, clp->vstr)) {
 	input_done();
-	input_stream(clp->arg);
+	input_stream(clp->vstr);
       }
       break;
       

@@ -177,19 +177,19 @@ static struct timeval preparation_time;
 #define NEW_WINDOW_OPT		311
 #define TITLE_OPT		312
 
-#define WINDOW_TYPE		(Clp_FirstUserType)
+#define WINDOW_TYPE		(Clp_ValFirstUser)
 
-Clp_Option options[] = {
+const Clp_Option options[] = {
   { "animate", 'a', ANIMATE_OPT, 0, Clp_Negate },
-  { "background", 'b', BACKGROUND_OPT, Clp_ArgString, 0 },
-  { "bg", 't', BACKGROUND_OPT, Clp_ArgString, 0 },
-  { "display", 'd', DISPLAY_OPT, Clp_ArgStringNotOption, 0 },
-  { "geometry", 'g', GEOMETRY_OPT, Clp_ArgString, 0 },
+  { "background", 'b', BACKGROUND_OPT, Clp_ValString, 0 },
+  { "bg", 't', BACKGROUND_OPT, Clp_ValString, 0 },
+  { "display", 'd', DISPLAY_OPT, Clp_ValStringNotOption, 0 },
+  { "geometry", 'g', GEOMETRY_OPT, Clp_ValString, 0 },
   { "install-colormap", 'i', INSTALL_COLORMAP_OPT, 0, Clp_Negate },
   { "interactive", 'e', INTERACTIVE_OPT, 0, Clp_Negate },
   { "help", 0, HELP_OPT, 0, 0 },
-  { "name", 0, NAME_OPT, Clp_ArgString, 0 },
-  { "title", 'T', TITLE_OPT, Clp_ArgString, 0 },
+  { "name", 0, NAME_OPT, Clp_ValString, 0 },
+  { "title", 'T', TITLE_OPT, Clp_ValString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "version", 0, VERSION_OPT, 0, 0 },
   { "window", 'w', WINDOW_OPT, WINDOW_TYPE, 0 },
@@ -1249,21 +1249,21 @@ main(int argc, char *argv[])
      case DISPLAY_OPT:
       if (cur_display)
 	fatal_error("'--display' must come before all other options");
-      cur_display_name = clp->arg;
+      cur_display_name = clp->vstr;
       cur_display = 0;
       cur_arrow_cursor = cur_wait_cursor = None;
       break;
 
      case TITLE_OPT:
-      cur_window_title = clp->arg;
+      cur_window_title = clp->vstr;
       break;
 
      case GEOMETRY_OPT:
-      cur_geometry_spec = clp->arg;
+      cur_geometry_spec = clp->vstr;
       break;
       
      case NAME_OPT:
-      cur_resource_name = clp->arg;
+      cur_resource_name = clp->vstr;
       break;
       
      case UNOPTIMIZE_OPT:
@@ -1271,7 +1271,7 @@ main(int argc, char *argv[])
       break;
       
      case BACKGROUND_OPT:
-      cur_background_color = clp->arg;
+      cur_background_color = clp->vstr;
       break;
       
      case ANIMATE_OPT:
@@ -1311,7 +1311,7 @@ particular purpose.\n");
       break;
       
      case Clp_NotOption:
-      if (clp->arg[0] == '#') {
+      if (clp->vstr[0] == '#') {
 	if (!viewer_given) {
 	  viewer = get_input_stream(0);
 	  viewer_given = 1;
@@ -1322,11 +1322,11 @@ particular purpose.\n");
 	  viewer = next_viewer(viewer->gfs, viewer->name);
 	}
 	if (viewer)
-	  first_frame = frame_argument(viewer, clp->arg + 1);
+	  first_frame = frame_argument(viewer, clp->vstr + 1);
       } else {
         if (viewer) input_stream_done(viewer, first_frame);
 	first_frame = -1;
-        viewer = get_input_stream(clp->arg);
+        viewer = get_input_stream(clp->vstr);
 	viewer_given = 1;
       }
       break;
