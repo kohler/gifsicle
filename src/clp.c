@@ -253,7 +253,7 @@ static int ambiguity_error(Clp_Parser *, int, int *, const Clp_Option *,
 static char *
 encode_utf8(char *s, int n, int c)
 {
-    if (c < 0 || c >= 0x110000)
+    if (c < 0 || c >= 0x110000 || (c >= 0xD800 && c <= 0xDFFF))
 	c = U_REPLACEMENT;
     if (c <= 0x7F && n >= 1)
 	*s++ = c;
@@ -278,16 +278,34 @@ static int
 decode_utf8(const char *s, char **cp)
 {
     int c;
-    if ((unsigned char) *s <= 0x7F)
+    if ((unsigned char) *s <= 0x7F)		/* 1 byte:  0x000000-0x00007F */
 	c = *s++;
-    else if ((*s & 0xE0) == 0xC0 && (s[1] & 0x80)) {
+    else if ((unsigned char) *s <= 0xC1)	/*   bad/overlong encoding */
+	goto replacement;
+    else if ((unsigned char) *s <= 0xDF) {	/* 2 bytes: 0x000080-0x0007FF */
+	if ((s[1] & 0xC0) != 0x80)		/*   bad encoding */
+	    goto replacement;
 	c = (*s++ & 0x1F) << 6;
 	goto char1;
-    } else if ((*s & 0xF0) == 0xE0 && (s[1] & 0x80) && (s[2] & 0x80)) {
+    } else if ((unsigned char) *s <= 0xEF) {	/* 3 bytes: 0x000800-0x00FFFF */
+	if ((s[1] & 0xC0) != 0x80		/*   bad encoding */
+	    || (s[2] & 0xC0) != 0x80		/*   bad encoding */
+	    || ((unsigned char) *s == 0xE0	/*   overlong encoding */
+		&& (s[1] & 0xE0) == 0x80)
+	    || ((unsigned char) *s == 0xED	/*   encoded surrogate */
+		&& (s[1] & 0xE0) == 0xA0))
+	    goto replacement;
 	c = (*s++ & 0x0F) << 12;
 	goto char2;
-    } else if ((*s & 0xF8) == 0xF0 && (s[1] & 0x80) && (s[2] & 0x80)
-	       && (s[3] & 0x80)) {
+    } else if ((unsigned char) *s <= 0xF4) {	/* 4 bytes: 0x010000-0x10FFFF */
+	if ((s[1] & 0xC0) != 0x80		/*   bad encoding */
+	    || (s[2] & 0xC0) != 0x80		/*   bad encoding */
+	    || (s[3] & 0xC0) != 0x80		/*   bad encoding */
+	    || ((unsigned char) *s == 0xF0	/*   overlong encoding */
+		&& (s[1] & 0xF0) == 0x80)
+	    || ((unsigned char) *s == 0xF4	/*   encoded value > 0x10FFFF */
+		&& (unsigned char) s[1] >= 0x90))
+	    goto replacement;
 	c = (*s++ & 0x07) << 18;
 	c += (*s++ & 0x3F) << 12;
       char2:
@@ -295,8 +313,10 @@ decode_utf8(const char *s, char **cp)
       char1:
 	c += (*s++ & 0x3F);
     } else {
+      replacement:
 	c = U_REPLACEMENT;
-	s++;
+	for (s++; (*s & 0xC0) == 0x80; s++)
+	    /* nothing */;
     }
     if (cp)
 	*cp = (char *) s;
