@@ -15,6 +15,13 @@
 #include <string.h>
 #include <errno.h>
 
+/* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
+/* Need _fsetmode under OS/2 for the same reason */
+#if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
+# include <fcntl.h>
+# include <io.h>
+#endif
+
 #define QUIET_OPT		300
 #define HELP_OPT		301
 #define VERSION_OPT		302
@@ -452,6 +459,13 @@ particular purpose.\n");
   
   if (filename1 == 0) {
     f1 = stdin;
+#if defined(_MSDOS) || defined(_WIN32)
+    _setmode(_fileno(stdin), _O_BINARY);
+#elif defined(__DJGPP__)
+    setmode(fileno(stdin), O_BINARY);
+#elif defined(__EMX__)
+    _fsetmode(stdin, "b");
+#endif
     filename1 = "<stdin>";
   } else {
     f1 = fopen(filename1, "rb");
@@ -466,6 +480,13 @@ particular purpose.\n");
   
   if (filename2 == 0) {
     f2 = stdin;
+#if defined(_MSDOS) || defined(_WIN32)
+    _setmode(_fileno(stdin), _O_BINARY);
+#elif defined(__DJGPP__)
+    setmode(fileno(stdin), O_BINARY);
+#elif defined(__EMX__)
+    _fsetmode(stdin, "b");
+#endif
     filename2 = "<stdin>";
   } else {
     f2 = fopen(filename2, "rb");

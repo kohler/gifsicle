@@ -19,7 +19,7 @@
 
 /* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
 /* Need _fsetmode under OS/2 for the same reason */
-#if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__)
+#if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
 # include <fcntl.h>
 # include <io.h>
 #endif
@@ -491,6 +491,8 @@ open_giffile(const char *name)
   if (name == 0 || strcmp(name, "-") == 0) {
 #if defined(_MSDOS) || defined(_WIN32)
     _setmode(_fileno(stdin), _O_BINARY);
+#elif defined(__DJGPP__)
+    setmode(fileno(stdin), O_BINARY);
 #elif defined(__EMX__)
     _fsetmode(stdin, "b");
 #endif
@@ -842,6 +844,8 @@ write_stream(const char *output_name, Gif_Stream *gfs)
 #endif
 #if defined(_MSDOS) || defined(_WIN32)
     _setmode(_fileno(stdout), _O_BINARY);
+#elif defined(__DJGPP__)
+    setmode(fileno(stdout), O_BINARY);
 #elif defined(__EMX__)
     _fsetmode(stdout, "b");
 #endif
