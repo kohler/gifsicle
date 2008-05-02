@@ -11,25 +11,20 @@ EXTRA_DIST = COPYING gifsicle.spec \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
 
 gifsicle:
-	@cd src && $(MAKE)
+	@cd src && $(MAKE) gifsicle
+gifdiff:
+	@cd src && $(MAKE) gifdiff
+gifview:
+	@cd src && $(MAKE) gifview
 
 srclinks:
-	test -d $(srcdir)/include || mkdir $(srcdir)/include
-	test -d $(srcdir)/include/lcdf || mkdir $(srcdir)/include/lcdf
-	test -d $(srcdir)/include/lcdfgif || mkdir $(srcdir)/include/lcdfgif
-	cd $(srcdir); for i in clp inttypes; do \
-	ln -sf ../../../liblcdf/include/lcdf/$$i.h include/lcdf/$$i.h ; done
-	cd $(srcdir); for i in gif gifx; do \
-	ln -sf ../../../liblcdf/include/lcdfgif/$$i.h include/lcdfgif/$$i.h ; done
-	cd $(srcdir); for i in clp fmalloc strerror ; do \
-	ln -sf ../../liblcdf/liblcdf/$$i.c src/$$i.c ; done
-	cd $(srcdir); for i in giffunc gifread gifwrite ungifwrt gifunopt giftoc gifx ; do \
-	ln -sf ../../liblcdf/liblcdfgif/$$i.c src/$$i.c ; done
+	cd $(top_srcdir); sh ./sourcecheckout.sh
 
 versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" $(top_srcdir)/gifsicle.1 $(top_srcdir)/gifview.1 $(top_srcdir)/gifdiff.1
 	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" $(top_srcdir)/gifsicle.spec
 	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" $(top_srcdir)/src/win32cfg.h
+	perl -pi -e "s/GIFSICLE [\d.]+/GIFSICLE $(VERSION)/;" $(top_srcdir)/README
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \

@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/gifsicle.h)
-AM_INIT_AUTOMAKE(gifsicle, 1.48)
+AM_INIT_AUTOMAKE(gifsicle, 1.49)
 AM_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
@@ -76,7 +76,7 @@ supply a '--with-x' option, or simply '--disable-gifview'.])
 fi
 
 if test "x$build_gifview" = xyes ; then
-  OTHERPROGRAMS="$OTHERPROGRAMS gifview"
+  OTHERPROGRAMS="$OTHERPROGRAMS gifview"'$(EXEEXT)'
   OTHERMANS="$OTHERMANS gifview.1"
   AC_CACHE_CHECK(for gettimeofday prototype, ac_cv_gettimeofday,
 [AC_TRY_COMPILE([#include <time.h>
@@ -94,7 +94,7 @@ else
 fi
 
 if test "x$build_gifdiff" = xyes ; then
-  OTHERPROGRAMS="$OTHERPROGRAMS gifdiff"
+  OTHERPROGRAMS="$OTHERPROGRAMS gifdiff"'$(EXEEXT)'
   OTHERMANS="$OTHERMANS gifdiff.1"
 fi
 

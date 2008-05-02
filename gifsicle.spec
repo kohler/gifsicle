@@ -1,16 +1,16 @@
 Summary:	Powerful program for manipulating GIF images and animations
 
 Name:		gifsicle
-Version:	1.48
+Version:	1.49
 Release:	1
-Source:		http://www.lcdf.org/gifsicle/gifsicle-1.48.tar.gz
+Source:		http://www.lcdf.org/gifsicle/gifsicle-1.49.tar.gz
 
 Icon:		logo1.gif
 URL:		http://www.lcdf.org/gifsicle/
 
 Group:		Applications/Graphics
 Vendor:		Little Cambridgeport Design Factory
-Packager:	Eddie Kohler <kohler@cs.ucla.edu>
+Packager:	Eddie Kohler <ekohler@gmail.com>
 License:	GPL
 
 BuildRoot:	/tmp/gifsicle-build

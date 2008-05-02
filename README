@@ -1,4 +1,4 @@
-GIFSICLE 1.44
+GIFSICLE 1.49
 =============
 
 ABOUT GIFSICLE
@@ -107,7 +107,7 @@ run-length-encoded GIFs.
 
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-2006 Eddie Kohler.
+   All source code is Copyright (C) 1997-2008 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
@@ -137,7 +137,7 @@ language about obtaining a license from Unisys has been removed.
 
 AUTHORS
 -------
-Eddie Kohler <kohler@cs.ucla.edu>
+Eddie Kohler <ekohler@gmail.com>
 http://www.cs.ucla.edu/~kohler/
 He wrote it.
 

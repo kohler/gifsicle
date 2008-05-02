@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.49   2.May.2008
+
+* Just some Makefile updates requested by Robert Riebisch.
+
+
 Version 1.48   16.Mar.2007
 
 * gifsicle: Avoid crash in '--crop-transparency' when an image's first
