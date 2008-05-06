@@ -489,6 +489,13 @@ open_giffile(const char *name)
   FILE *f;
   
   if (name == 0 || strcmp(name, "-") == 0) {
+#ifndef OUTPUT_GIF_TO_TERMINAL
+    extern int isatty(int);
+    if (isatty(fileno(stdin))) {
+      error("<stdin>: is a terminal");
+      return NULL;
+    }
+#endif
 #if defined(_MSDOS) || defined(_WIN32)
     _setmode(_fileno(stdin), _O_BINARY);
 #elif defined(__DJGPP__)
@@ -512,7 +519,8 @@ open_giffile(const char *name)
     sf->next = stored_files;
     stored_files = sf;
     strcpy(sf->name, name);
-  }
+  } else if (!f)
+    error("%s: %s", name, strerror(errno));
   
   return f;
 }
@@ -569,10 +577,9 @@ input_stream(const char *name)
     set_mode(INFOING);
 
   f = open_giffile(name);
-  if (!f) {
-    error("%s: %s", name, strerror(errno));
+  if (!f)
     return;
-  } else if (f == stdin) {
+  if (f == stdin) {
     name = "<stdin>";
     input_name = 0;
   }
@@ -838,7 +845,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdout))) {
-      error("not writing to <stdout>: it's a terminal");
+      error("<stdout>: is a terminal");
       return;
     }
 #endif
