@@ -378,6 +378,7 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
 		const Clp_Option *o2, Clp_InternOption *io2)
 {
     Clp_Internal *cli = clp->internal;
+    int short1, shortx1;
     
     /* ignore meaningless combinations */
     if ((!io1->ishort && !io1->ilong) || (!io2->ishort && !io2->ilong)
@@ -386,8 +387,8 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
 	return;
     
     /* look for duplication of short options */
-    int short1 = (io1->ishort ? o1->short_name : -1);
-    int shortx1 = long_as_short(cli, o1, io1, -2);
+    short1 = (io1->ishort ? o1->short_name : -1);
+    shortx1 = long_as_short(cli, o1, io1, -2);
     if (short1 >= 0 || shortx1 >= 0) {
 	int short2 = (io2->ishort ? o2->short_name : -3);
 	int shortx2 = long_as_short(cli, o2, io2, -4);
@@ -1016,11 +1017,12 @@ Clp_AddType(Clp_Parser *clp, int val_type, int flags,
 	    Clp_ValParseFunc parser, void *user_data)
 {
     Clp_Internal *cli = clp->internal;
+    int vtpos;
   
     if (val_type <= 0 || !parser)
 	return -1;
     
-    int vtpos = val_type_binsearch(cli, val_type);
+    vtpos = val_type_binsearch(cli, val_type);
     
     if (vtpos == cli->nvaltype || cli->valtype[vtpos].val_type != val_type) {
 	if (cli->nvaltype != 0 && (cli->nvaltype % Clp_InitialValType) == 0) {
