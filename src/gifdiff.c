@@ -387,6 +387,44 @@ gifread_error(const char *message, int which_image, void *thunk)
     error("(more errors while reading '%s')", filename);
 }
 
+static Gif_Stream *
+read_stream(const char **filename)
+{
+    FILE *f;
+    Gif_Stream *gfs;
+    if (*filename == 0) {
+#if 0
+	/* Since gifdiff always takes explicit filename arguments,
+	   allow explicit reads from terminal. */
+#ifndef OUTPUT_GIF_TO_TERMINAL
+	extern int isatty(int);
+	if (isatty(fileno(stdin))) {
+	    fatal_error("<stdin>: is a terminal");
+	    return NULL;
+	}
+#endif
+#endif
+	f = stdin;
+#if defined(_MSDOS) || defined(_WIN32)
+	_setmode(_fileno(stdin), _O_BINARY);
+#elif defined(__DJGPP__)
+	setmode(fileno(stdin), O_BINARY);
+#elif defined(__EMX__)
+	_fsetmode(stdin, "b");
+#endif
+	*filename = "<stdin>";
+    } else {
+	f = fopen(*filename, "rb");
+	if (!f)
+	    fatal_error("%s: %s", *filename, strerror(errno));
+    }
+    gifread_error_count = 0;
+    gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, gifread_error, (void *) *filename);
+    gifread_error(0, -1, (void *) *filename); /* print out last error message */
+    if (!gfs)
+	fatal_error("'%s' doesn't seem to contain a GIF", *filename);
+    return gfs;
+}
 
 int
 main(int argc, char *argv[])
@@ -394,7 +432,6 @@ main(int argc, char *argv[])
   int how_many_inputs = 0;
   int status;
   const char **inputp;
-  FILE *f1, *f2;
   Gif_Stream *gfs1, *gfs2;
   
   Clp_Parser *clp =
@@ -456,47 +493,9 @@ particular purpose.\n");
     fatal_error("need exactly 2 file arguments");
   if (filename1 == 0 && filename2 == 0)
     fatal_error("can't read both files from stdin");
-  
-  if (filename1 == 0) {
-    f1 = stdin;
-#if defined(_MSDOS) || defined(_WIN32)
-    _setmode(_fileno(stdin), _O_BINARY);
-#elif defined(__DJGPP__)
-    setmode(fileno(stdin), O_BINARY);
-#elif defined(__EMX__)
-    _fsetmode(stdin, "b");
-#endif
-    filename1 = "<stdin>";
-  } else {
-    f1 = fopen(filename1, "rb");
-    if (!f1)
-      fatal_error("%s: %s", filename1, strerror(errno));
-  }
-  gifread_error_count = 0;
-  gfs1 = Gif_FullReadFile(f1, GIF_READ_COMPRESSED, gifread_error, (void *)filename1);
-  gifread_error(0, -1, (void *)filename1); /* print out last error message */
-  if (!gfs1)
-    fatal_error("'%s' doesn't seem to contain a GIF", filename1);
-  
-  if (filename2 == 0) {
-    f2 = stdin;
-#if defined(_MSDOS) || defined(_WIN32)
-    _setmode(_fileno(stdin), _O_BINARY);
-#elif defined(__DJGPP__)
-    setmode(fileno(stdin), O_BINARY);
-#elif defined(__EMX__)
-    _fsetmode(stdin, "b");
-#endif
-    filename2 = "<stdin>";
-  } else {
-    f2 = fopen(filename2, "rb");
-    if (!f2)
-      fatal_error("%s: %s", filename2, strerror(errno));
-  }
-  gifread_error_count = 0;
-  gfs2 = Gif_FullReadFile(f2, GIF_READ_COMPRESSED, gifread_error, (void *)filename2);
-  gifread_error(0, -1, (void *)filename2); /* print out last error message */
-  if (!gfs2) fatal_error("'%s' doesn't seem to contain a GIF", filename2);
+
+  gfs1 = read_stream(&filename1);
+  gfs2 = read_stream(&filename2);
   
   status = (compare(gfs1, gfs2) == DIFFERENT);
   if (status == 1 && brief)

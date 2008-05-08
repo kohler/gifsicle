@@ -100,7 +100,7 @@
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "1.49 (Windows)"
+#define VERSION "1.50 (Windows)"
 
 /* Define if the X Window System is missing or not being used.  */
 #define X_DISPLAY_MISSING 1

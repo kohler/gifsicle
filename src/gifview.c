@@ -525,6 +525,13 @@ get_input_stream(const char *name)
   Gif_Stream *gfs = 0;
   
   if (name == 0 || strcmp(name, "-") == 0) {
+#ifndef OUTPUT_GIF_TO_TERMINAL
+    extern int isatty(int);
+    if (isatty(fileno(stdin))) {
+      error("<stdin>: is a terminal");
+      return NULL;
+    }
+#endif
     f = stdin;
 #if defined(_MSDOS) || defined(_WIN32)
     _setmode(_fileno(stdin), _O_BINARY);
