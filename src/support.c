@@ -151,30 +151,30 @@ Frame change options:\n\
   --done                        Done with frame changes.\n\
 \n\
 Image options: Also --no-OPTION and --same-OPTION.\n\
-  -B, --background COL          Makes COL the background color.\n\
+  -B, --background COL          Make COL the background color.\n\
       --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
-                                Crops the image.\n\
-      --crop-transparency       Crops transparent borders off the image.\n\
+                                Crop the image.\n\
+      --crop-transparency       Crop transparent borders off the image.\n\
       --flip-horizontal, --flip-vertical\n\
-                                Flips the image.\n\
-  -i, --interlace               Turns on interlacing.\n\
-  -S, --logical-screen WxH      Sets logical screen to WxH.\n\
-  -p, --position X,Y            Sets frame position to (X,Y).\n\
+                                Flip the image.\n\
+  -i, --interlace               Turn on interlacing.\n\
+  -S, --logical-screen WxH      Set logical screen to WxH.\n\
+  -p, --position X,Y            Set frame position to (X,Y).\n\
       --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
-                                Rotates the image.\n\
-  -t, --transparent COL         Makes COL transparent.\n\
+                                Rotate the image.\n\
+  -t, --transparent COL         Make COL transparent.\n\
 \n");
   printf("\
 Extension options: Also --no-OPTION and --same-OPTION.\n\
-  -x, --app-extension N D       Adds an app extension named N with data D.\n\
-  -c, --comment TEXT            Adds a comment before the next frame.\n\
-      --extension N D           Adds an extension number N with data D.\n\
-  -n, --name TEXT               Sets next frame's name.\n\
+  -x, --app-extension N D       Add an app extension named N with data D.\n\
+  -c, --comment TEXT            Add a comment before the next frame.\n\
+      --extension N D           Add an extension number N with data D.\n\
+  -n, --name TEXT               Set next frame's name.\n\
 \n\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
-  -d, --delay TIME              Sets frame delay to TIME (in 1/100sec).\n\
-  -D, --disposal METHOD         Sets frame disposal to METHOD.\n\
-  -l, --loopcount[=N]           Sets loop extension to N (default forever).\n\
+  -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
+  -D, --disposal METHOD         Set frame disposal to METHOD.\n\
+  -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
   -O, --optimize[=LEV]          Optimize output GIFs.\n\
   -U, --unoptimize              Unoptimize input GIFs.\n\
 \n");
@@ -182,14 +182,14 @@ Animation options: Also --no-OPTION and --same-OPTION.\n\
 Whole-GIF options: Also --no-OPTION.\n\
       --careful                 Write larger GIFs that avoid bugs in other\n\
                                 programs.\n\
-      --change-color COL1 COL2  Changes COL1 to COL2 throughout.\n\
-  -k, --colors N                Reduces the number of colors to N.\n\
+      --change-color COL1 COL2  Change COL1 to COL2 throughout.\n\
+  -k, --colors N                Reduce the number of colors to N.\n\
       --color-method METHOD     Set method for choosing reduced colors.\n\
   -f, --dither                  Dither image after changing colormap.\n\
-      --resize WxH              Resizes the output GIF to WxH.\n\
-      --resize-width W          Resizes to width W and proportional height.\n\
-      --resize-height H         Resizes to height H and proportional width.\n\
-      --scale XFACTOR[xYFACTOR] Scales the output GIF by XFACTORxYFACTOR.\n\
+      --resize WxH              Resize the output GIF to WxH.\n\
+      --resize-width W          Resize to width W and proportional height.\n\
+      --resize-height H         Resize to height H and proportional width.\n\
+      --scale XFACTOR[xYFACTOR] Scale the output GIF by XFACTORxYFACTOR.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
       --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
                                 be 'web', 'gray', 'bw', or a GIF file.\n\
@@ -1488,8 +1488,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       gfi->left -= l;
       gfi->top -= t;
     }
-    /* Clear the logical screen */
-    dest->screen_width = dest->screen_height = 0;
+    /* 13.May.2008: Set the logical screen to the cropped dimensions */
+    dest->screen_width = (merger[0]->crop->w > 0 ? merger[0]->crop->w : 0);
+    dest->screen_height = (merger[0]->crop->h > 0 ? merger[0]->crop->h : 0);
   }
   
   /* Set the logical screen from the user's preferences */

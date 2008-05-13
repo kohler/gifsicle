@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.51   12.May.2008
+
+* gifsicle: '--crop' preserves the logical screen when it can.  Reported by
+  Petio Tonev.
+
+
 Version 1.50   7.May.2008
 
 * gifsicle, gifview: Refuse to read GIFs from the terminal.  Requested by
