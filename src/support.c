@@ -652,8 +652,12 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
       if (x >= 0 && y >= 0
 	  && (position_x <= 0 || x < position_x)
 	  && (position_y <= 0 || y < position_y)) {
-	dimensions_x = (position_x <= 0 ? -x + position_x : position_x - x);
-	dimensions_y = (position_y <= 0 ? -y + position_y : position_y - y);
+	/* 18.May.2008: Found it unintuitive that X,Y-0,0 acted like X,Y+-Xx-Y.
+	   Therefore changed it so that X,Y-0,0 acts like X,Y+0,0, and similar
+	   for negative dimensions.  Probably safe to change this behavior
+	   since only X,Y+0,0 was documented. */
+	dimensions_x = (position_x <= 0 ? -position_x : position_x - x);
+	dimensions_y = (position_y <= 0 ? -position_y : position_y - y);
 	position_x = x;
 	position_y = y;
 	return 1;
@@ -1489,8 +1493,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       gfi->top -= t;
     }
     /* 13.May.2008: Set the logical screen to the cropped dimensions */
-    dest->screen_width = (merger[0]->crop->w > 0 ? merger[0]->crop->w : 0);
-    dest->screen_height = (merger[0]->crop->h > 0 ? merger[0]->crop->h : 0);
+    /* 18.May.2008: Unless --crop-transparency is on */
+    if (merger[0]->crop->transparent_edges)
+      dest->screen_width = dest->screen_height = 0;
+    else {
+      dest->screen_width = (merger[0]->crop->w > 0 ? merger[0]->crop->w : 0);
+      dest->screen_height = (merger[0]->crop->h > 0 ? merger[0]->crop->h : 0);
+    }
   }
   
   /* Set the logical screen from the user's preferences */

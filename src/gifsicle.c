@@ -1,6 +1,6 @@
 /* -*- c-basic-offset: 2 -*- */
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-2007 Eddie Kohler, kohler@icir.org
+   Copyright (C) 1997-2008 Eddie Kohler, kohler@icir.org
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,

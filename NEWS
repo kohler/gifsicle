@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.52   18.May.2008
+
+* gifsicle: Fix bug introduced in 1.51: --crop-transparent works.  Reported by
+  dgdd wanadoo fr.
+
+
 Version 1.51   12.May.2008
 
 * gifsicle: '--crop' preserves the logical screen when it can.  Reported by
