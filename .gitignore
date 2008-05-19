@@ -15,6 +15,7 @@ gifsicle
 gifsicle-*.rpm
 gifsicle-*.tar.gz
 gifview
+include
 install-sh
 missing
 stamp-h*
