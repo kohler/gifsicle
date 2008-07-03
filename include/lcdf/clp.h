@@ -194,6 +194,14 @@ struct Clp_Parser {
     struct Clp_Internal *internal;
 };
 
+/** @cond never */
+#if __GNUC__ >= 4
+# define CLP_SENTINEL		__attribute__((sentinel))
+#else
+# define CLP_SENTINEL		/* nothing */
+#endif
+/** @endcond never */
+
 
 /** @brief Create a new Clp_Parser. */
 Clp_Parser *Clp_NewParser(int argc, const char * const *argv,
@@ -250,7 +258,8 @@ int Clp_AddStringListTypeVec(Clp_Parser *clp, int val_type, int flags,
 			     const int *vals);
 
 /** @brief Define a new string list value type for @a clp. */
-int Clp_AddStringListType(Clp_Parser *clp, int val_type, int flags, ...);
+int Clp_AddStringListType(Clp_Parser *clp, int val_type, int flags, ...)
+			  CLP_SENTINEL;
 
 
 /** @brief Parse and return the next argument from @a clp. */
@@ -282,6 +291,7 @@ int Clp_CurOptionNameBuf(Clp_Parser *clp, char *buf, int len);
 /** @brief Extract the current option as a string. */
 const char *Clp_CurOptionName(Clp_Parser *clp);
 
+#undef CLP_SENTINEL
 #ifdef __cplusplus
 }
 #endif
