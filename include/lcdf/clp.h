@@ -167,10 +167,10 @@ typedef void (*Clp_ErrorHandler)(Clp_Parser *clp, const char *message);
 struct Clp_Parser {
     int negated;		/**< Whether the last option was negated. */
 
-    int have_val;		/**< Whether the last option had a value. */ 
+    int have_val;		/**< Whether the last option had a value. */
     const char *vstr;		/**< The string value provided with the last
 				     option. */
-    
+
     union {
 	int i;
 	unsigned u;
@@ -190,7 +190,7 @@ struct Clp_Parser {
 
     void *user_data;		/**< Uninterpreted by CLP; users can set
 				     arbitrarily. */
-    
+
     struct Clp_Internal *internal;
 };
 

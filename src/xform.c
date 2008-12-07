@@ -33,7 +33,7 @@ append_color_transform(Gt_ColorTransform *list,
   xform->next = 0;
   xform->func = func;
   xform->data = data;
-  
+
   for (trav = list; trav && trav->next; trav = trav->next)
     ;
   if (trav) {
@@ -87,7 +87,7 @@ color_change_transformer(Gif_Colormap *gfcm, void *thunk)
   int i, have;
   Gt_ColorChange *first_change = (Gt_ColorChange *)thunk;
   Gt_ColorChange *change;
-  
+
   /* change colors named by color */
   for (i = 0; i < gfcm->ncol; i++)
     for (change = first_change; change; change = change->next) {
@@ -95,7 +95,7 @@ color_change_transformer(Gif_Colormap *gfcm, void *thunk)
 	have = GIF_COLOREQ(&gfcm->col[i], &change->old_color);
       else
 	have = (change->old_color.pixel == (uint32_t)i);
-      
+
       if (have) {
 	gfcm->col[i] = change->new_color;
 	break;			/* ignore remaining color changes */
@@ -112,7 +112,7 @@ append_color_change(Gt_ColorTransform *list,
   change->old_color = old_color;
   change->new_color = new_color;
   change->next = 0;
-  
+
   for (xform = list; xform && xform->next; xform = xform->next)
     ;
   if (!xform || xform->func != &color_change_transformer)
@@ -144,7 +144,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   char *tmp_file = tmpnam(0);
 #endif
   char *new_command;
-  
+
 #ifdef HAVE_MKSTEMP
   if (mkstemp(tmp_file) < 0)
     fatal_error("can't create temporary file!");
@@ -152,17 +152,17 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   if (!tmp_file)
     fatal_error("can't create temporary file!");
 #endif
-  
+
   new_command = Gif_NewArray(char, strlen(command) + strlen(tmp_file) + 4);
   sprintf(new_command, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
   if (!f)
     fatal_error("can't run color transformation command: %s", strerror(errno));
   Gif_DeleteArray(new_command);
-  
+
   for (i = 0; i < gfcm->ncol; i++)
     fprintf(f, "%d %d %d\n", col[i].red, col[i].green, col[i].blue);
-  
+
   errno = 0;
   status = pclose(f);
   if (status < 0) {
@@ -172,7 +172,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
     error("color transformation command failed");
     goto done;
   }
-  
+
   f = fopen(tmp_file, "r");
   if (!f || feof(f)) {
     error("color transformation command generated no output", command);
@@ -181,7 +181,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   }
   new_cm = read_colormap_file("<color transformation>", f);
   fclose(f);
-  
+
   if (new_cm) {
     int nc = new_cm->ncol;
     if (nc < gfcm->ncol) {
@@ -192,7 +192,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
     for (i = 0; i < nc; i++)
       col[i] = new_cm->col[i];
   }
-  
+
  done:
   remove(tmp_file);
   Gif_DeleteColormap(new_cm);
@@ -209,12 +209,12 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
 {
   int x, y, w, h, j;
   uint8_t **img;
-  
+
   x = crop->x - gfi->left;
   y = crop->y - gfi->top;
   w = crop->w;
   h = crop->h;
-  
+
   /* Check that the rectangle actually intersects with the image. */
   if (x < 0)
       w += x, x = 0;
@@ -261,7 +261,7 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
     }
    found_bottom_edge: ;
   }
-  
+
   if (w > 0 && h > 0) {
     img = Gif_NewArray(uint8_t *, h + 1);
     for (j = 0; j < h; j++)
@@ -270,20 +270,20 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
 
     gfi->left += x - crop->left_offset;
     gfi->top += y - crop->top_offset;
-    
+
   } else if (first_image) {
       w = h = 1;
       img = Gif_NewArray(uint8_t *, h + 1);
       img[0] = gfi->img[0];
       img[1] = 0;
       gfi->transparent = img[0][0];
-      
+
   } else {
     /* Empty image */
     w = h = 0;
     img = 0;
   }
-  
+
   Gif_DeleteArray(gfi->img);
   gfi->img = img;
   gfi->width = w;
@@ -303,7 +303,7 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
   int width = gfi->width;
   int height = gfi->height;
   uint8_t **img = gfi->img;
-  
+
   /* horizontal flips */
   if (!is_vert) {
     uint8_t *buffer = Gif_NewArray(uint8_t, width);
@@ -317,7 +317,7 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
     gfi->left = screen_width - (gfi->left + width);
     Gif_DeleteArray(buffer);
   }
-  
+
   /* vertical flips */
   if (is_vert) {
     uint8_t **buffer = Gif_NewArray(uint8_t *, height);
@@ -338,10 +338,10 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
   uint8_t **img = gfi->img;
   uint8_t *new_data = Gif_NewArray(uint8_t, width * height);
   uint8_t *trav = new_data;
-  
+
   /* this function can only rotate by 90 or 270 degrees */
   assert(rotation == 1 || rotation == 3);
-  
+
   if (rotation == 1) {
     for (x = 0; x < width; x++)
       for (y = height - 1; y >= 0; y--)
@@ -349,7 +349,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
     x = gfi->left;
     gfi->left = screen_height - (gfi->top + height);
     gfi->top = x;
-    
+
   } else {
     for (x = width - 1; x >= 0; x--)
       for (y = 0; y < height; y++)
@@ -358,7 +358,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
     gfi->top = screen_width - (gfi->left + width);
     gfi->left = y;
   }
-  
+
   Gif_ReleaseUncompressedImage(gfi);
   gfi->width = height;
   gfi->height = width;
@@ -380,7 +380,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   uint8_t *new_data;
   int new_left, new_top, new_right, new_bottom, new_width, new_height;
   int was_compressed = (gfi->img == 0);
-  
+
   int i, j, new_x, new_y;
   int scaled_xstep, scaled_ystep, scaled_new_x, scaled_new_y;
 
@@ -388,11 +388,11 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
      left edge of the *subimage* to right edge of the subimage, causing
      consistency problems when several subimages overlap. Solution: always use
      scale factors relating to the *whole image* (the screen size). */
-  
+
   /* use fixed-point arithmetic */
   scaled_xstep = (int)(SCALE_FACTOR * xfactor + 0.5);
   scaled_ystep = (int)(SCALE_FACTOR * yfactor + 0.5);
-  
+
   /* calculate new width and height based on the four edges (left, right, top,
      bottom). This is better than simply multiplying the width and height by
      the scale factors because it avoids roundoff inconsistencies between
@@ -402,7 +402,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   new_top = UNSCALE(scaled_ystep * gfi->top);
   new_right = UNSCALE(scaled_xstep * (gfi->left + gfi->width));
   new_bottom = UNSCALE(scaled_ystep * (gfi->top + gfi->height));
-  
+
   new_width = new_right - new_left;
   new_height = new_bottom - new_top;
 
@@ -410,45 +410,45 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   if (new_height <= 0) new_height = 1, new_bottom = new_top + 1;
   if (new_width > UNSCALE(INT_MAX) || new_height > UNSCALE(INT_MAX))
     fatal_error("new image size is too big for me to handle");
-  
+
   if (was_compressed)
     Gif_UncompressImage(gfi);
   new_data = Gif_NewArray(uint8_t, new_width * new_height);
-  
+
   new_y = new_top;
   scaled_new_y = scaled_ystep * gfi->top;
-  
+
   for (j = 0; j < gfi->height; j++) {
     uint8_t *in_line = gfi->img[j];
     uint8_t *out_data;
     int x_delta, y_delta, yinc;
-    
+
     scaled_new_y += scaled_ystep;
     /* account for images which should've had 0 height but don't */
     if (j == gfi->height - 1) scaled_new_y = SCALE(new_bottom);
-    
+
     if (scaled_new_y < SCALE(new_y + 1)) continue;
     y_delta = UNSCALE(scaled_new_y - SCALE(new_y));
-    
+
     new_x = new_left;
     scaled_new_x = scaled_xstep * gfi->left;
     out_data = &new_data[(new_y - new_top) * new_width + (new_x - new_left)];
-    
+
     for (i = 0; i < gfi->width; i++) {
       scaled_new_x += scaled_xstep;
       /* account for images which should've had 0 width but don't */
       if (i == gfi->width - 1) scaled_new_x = SCALE(new_right);
-      
+
       x_delta = UNSCALE(scaled_new_x - SCALE(new_x));
-      
+
       for (; x_delta > 0; new_x++, x_delta--, out_data++)
 	for (yinc = 0; yinc < y_delta; yinc++)
 	  out_data[yinc * new_width] = in_line[i];
     }
-    
+
     new_y += y_delta;
   }
-  
+
   Gif_ReleaseUncompressedImage(gfi);
   Gif_ReleaseCompressedImage(gfi);
   gfi->width = new_width;
@@ -472,13 +472,13 @@ resize_stream(Gif_Stream *gfs, int new_width, int new_height)
     new_width = (int)(((double)gfs->screen_width / gfs->screen_height) * new_height);
   if (new_height <= 0)
     new_height = (int)(((double)gfs->screen_height / gfs->screen_width) * new_width);
-  
+
   Gif_CalculateScreenSize(gfs, 0);
   xfactor = (double)new_width / gfs->screen_width;
   yfactor = (double)new_height / gfs->screen_height;
   for (i = 0; i < gfs->nimages; i++)
     scale_image(gfs, gfs->images[i], xfactor, yfactor);
-  
+
   gfs->screen_width = new_width;
   gfs->screen_height = new_height;
 }

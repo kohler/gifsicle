@@ -239,7 +239,7 @@ Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
   int i;
   int screen_width = 0;
   int screen_height = 0;
-  
+
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
     /* 17.Dec.1999 - I find this old behavior annoying. */
@@ -249,14 +249,14 @@ Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
     if (screen_height < gfi->top + gfi->height)
       screen_height = gfi->top + gfi->height;
   }
-  
+
   /* Only use the default 640x480 screen size if we are being forced to create
      a new screen size or there's no screen size currently. */
   if (screen_width == 0 && (gfs->screen_width == 0 || force))
     screen_width = 640;
   if (screen_height == 0 && (gfs->screen_height == 0 || force))
     screen_height = 480;
-  
+
   if (gfs->screen_width < screen_width || force)
     gfs->screen_width = screen_width;
   if (gfs->screen_height < screen_height || force)
@@ -304,15 +304,15 @@ Gif_CopyColormap(Gif_Colormap *src)
   int i;
   Gif_Colormap *dest;
   if (!src) return 0;
-  
+
   dest = Gif_NewFullColormap(src->ncol, src->capacity);
   if (!dest) return 0;
-  
+
   for (i = 0; i < src->ncol; i++) {
     dest->col[i] = src->col[i];
     dest->col[i].haspixel = 0;
   }
-  
+
   return dest;
 }
 
@@ -324,10 +324,10 @@ Gif_CopyImage(Gif_Image *src)
   uint8_t *data;
   int i;
   if (!src) return 0;
-  
+
   dest = Gif_NewImage();
   if (!dest) return 0;
-  
+
   dest->identifier = Gif_CopyString(src->identifier);
   if (!dest->identifier && src->identifier) goto failure;
   if (src->comment) {
@@ -338,19 +338,19 @@ Gif_CopyImage(Gif_Image *src)
 			  src->comment->len[i]))
 	goto failure;
   }
-  
+
   dest->local = Gif_CopyColormap(src->local);
   if (!dest->local && src->local) goto failure;
   dest->transparent = src->transparent;
-  
+
   dest->delay = src->delay;
   dest->disposal = src->disposal;
   dest->left = src->left;
   dest->top = src->top;
-  
+
   dest->width = src->width;
   dest->height = src->height;
-  
+
   dest->interlace = src->interlace;
   if (src->img) {
     dest->img = Gif_NewArray(uint8_t *, dest->height + 1);
@@ -374,9 +374,9 @@ Gif_CopyImage(Gif_Image *src)
     }
     dest->compressed_len = src->compressed_len;
   }
-  
+
   return dest;
-  
+
  failure:
   Gif_DeleteImage(dest);
   return 0;
@@ -402,14 +402,14 @@ Gif_DeleteStream(Gif_Stream *gfs)
   int i;
   if (!gfs) return;
   if (--gfs->refcount > 0) return;
-  
+
   Gif_DeleteColormap(gfs->global);
   Gif_DeleteComment(gfs->comment);
-  
+
   for (i = 0; i < gfs->nimages; i++)
     Gif_DeleteImage(gfs->images[i]);
   Gif_DeleteArray(gfs->images);
-  
+
   gfex = gfs->extensions;
   while (gfex) {
     Gif_Extension *next = gfex->next;
@@ -417,7 +417,7 @@ Gif_DeleteStream(Gif_Stream *gfs)
     Gif_DeleteExtension(gfex);
     gfex = next;
   }
-  
+
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_STREAM)
       (*hook->func)(GIF_T_STREAM, gfs, hook->callback_data);
@@ -431,11 +431,11 @@ Gif_DeleteImage(Gif_Image *gfi)
   Gif_DeletionHook *hook;
   if (!gfi) return;
   if (--gfi->refcount > 0) return;
-  
+
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_IMAGE)
       (*hook->func)(GIF_T_IMAGE, gfi, hook->callback_data);
-  
+
   Gif_DeleteArray(gfi->identifier);
   Gif_DeleteComment(gfi->comment);
   Gif_DeleteColormap(gfi->local);
@@ -460,7 +460,7 @@ Gif_DeleteColormap(Gif_Colormap *gfcm)
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_COLORMAP)
       (*hook->func)(GIF_T_COLORMAP, gfcm, hook->callback_data);
-  
+
   Gif_DeleteArray(gfcm->col);
   Gif_Delete(gfcm);
 }
@@ -588,15 +588,15 @@ Gif_Image *
 Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 {
   int i;
-  
+
   if (!name)
     return gfs->nimages ? gfs->images[0] : 0;
-  
+
   for (i = 0; i < gfs->nimages; i++)
     if (gfs->images[i]->identifier &&
 	strcmp(gfs->images[i]->identifier, name) == 0)
       return gfs->images[i];
-  
+
   return 0;
 }
 
@@ -643,7 +643,7 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
   int y;
 
   if (!gfi->img) return 0;
-  
+
   if (gfi->left < left) {
     int shift = left - gfi->left;
     for (y = 0; y < gfi->height; y++)
@@ -651,7 +651,7 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
     gfi->left += shift;
     new_width -= shift;
   }
-  
+
   if (gfi->top < top) {
     int shift = top - gfi->top;
     for (y = gfi->height - 1; y >= shift; y++)
@@ -659,13 +659,13 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
     gfi->top += shift;
     new_height -= shift;
   }
-  
+
   if (gfi->left + new_width >= width)
     new_width = width - gfi->left;
-  
+
   if (gfi->top + new_height >= height)
     new_height = height - gfi->top;
-  
+
   if (new_width < 0) new_width = 0;
   if (new_height < 0) new_height = 0;
   gfi->width = new_width;
@@ -697,13 +697,13 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
   int width = gfi->width;
   int height = gfi->height;
   uint8_t **img;
-  
+
   Gif_ReleaseUncompressedImage(gfi);
   if (!image_data) return 0;
-  
+
   img = Gif_NewArray(uint8_t *, height + 1);
   if (!img) return 0;
-  
+
   if (data_interlaced)
     for (i = 0; i < height; i++)
       img[ Gif_InterlaceLine(i, height) ] = image_data + width * i;
@@ -711,7 +711,7 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
     for (i = 0; i < height; i++)
       img[i] = image_data + width * i;
   img[height] = 0;
-  
+
   gfi->img = img;
   gfi->image_data = image_data;
   gfi->free_image_data = free_data;

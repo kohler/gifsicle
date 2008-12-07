@@ -20,32 +20,32 @@ typedef struct Gt_Crop Gt_Crop;
 typedef struct Gt_ColorTransform Gt_ColorTransform;
 
 typedef struct Gt_Frame {
-  
+
   Gif_Stream *stream;
   Gif_Image *image;
   int use;
-  
+
   const char *name;
   int no_name;
   Gif_Comment *comment;
   int no_comments;
-  
+
   Gif_Color transparent;	/* also background */
   int interlacing;
   int left;
   int top;
-  
+
   Gt_Crop *crop;
-  
+
   int delay;
   int disposal;
-  
+
   Gt_Frameset *nest;
   int explode_by_name;
-  
+
   int no_extensions;
   Gif_Extension *extensions;
-  
+
   unsigned flip_horizontal: 1;
   unsigned flip_vertical: 1;
   unsigned colormap_info: 1;
@@ -53,9 +53,9 @@ typedef struct Gt_Frame {
   unsigned position_is_offset: 1;
   unsigned total_crop: 1;
   unsigned rotation;
-  
+
   const char *input_filename;
-  
+
 } Gt_Frame;
 
 
@@ -93,20 +93,20 @@ struct Gt_ColorTransform {
 
 
 typedef struct {
-  
+
   const char *output_name;
-  
+
   int screen_width;
   int screen_height;
-  
+
   Gif_Color background;
   int loopcount;
-  
+
   int colormap_size;
   Gif_Colormap *colormap_fixed;
   int colormap_algorithm;
   int colormap_dither;
-  
+
   int optimizing;
 
   int scaling;

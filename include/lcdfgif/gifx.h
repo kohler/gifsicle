@@ -23,7 +23,7 @@ typedef struct Gif_XContext Gif_XContext;
 typedef struct Gif_XColormap Gif_XColormap;
 
 struct Gif_XContext {
-  
+
     Display *display;
     int screen_number;
     Drawable drawable;
@@ -31,20 +31,20 @@ struct Gif_XContext {
     uint16_t depth;
     uint16_t ncolormap;
     Colormap colormap;
-  
+
     uint16_t nclosest;
     Gif_Color *closest;
-    
+
     int free_deleted_colormap_pixels;
     Gif_XColormap *xcolormap;
-  
+
     GC image_gc;
     GC mask_gc;
-  
+
     unsigned long transparent_pixel;
     unsigned long foreground_pixel;
     int refcount;
-    
+
 };
 
 

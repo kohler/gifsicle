@@ -21,17 +21,17 @@ extern "C" {
 #define SAFELS(a,b) ((b) < 0 ? (a) >> -(b) : (a) << (b))
 
 struct Gif_XColormap {
-  
+
   Gif_XContext *x_context;
   Gif_Colormap *colormap;
-  
+
   int allocated;
   int claimed;
   uint16_t npixels;
   unsigned long *pixels;
-  
+
   Gif_XColormap *next;
-  
+
 };
 
 static unsigned long crap_pixels[256];
@@ -44,13 +44,13 @@ load_closest(Gif_XContext *gfx)
   uint16_t ncolor;
   uint16_t ncolormap;
   int i;
-  
+
   if (gfx->closest) return;
-  
+
   ncolormap = ncolor = gfx->ncolormap;
   if (ncolor > 256) ncolor = 256;
   color = Gif_NewArray(XColor, ncolor);
-  
+
   if (ncolormap > 256)
     for (i = 0; i < ncolor; i++)
       color[i].pixel = (rand() >> 4) % ncolormap;
@@ -58,7 +58,7 @@ load_closest(Gif_XContext *gfx)
     for (i = 0; i < ncolor; i++)
       color[i].pixel = i;
   XQueryColors(gfx->display, gfx->colormap, color, ncolor);
-  
+
   gfx->closest = Gif_NewArray(Gif_Color, ncolor);
   for (i = 0; i < ncolor; i++) {
     Gif_Color *c = &gfx->closest[i];
@@ -69,7 +69,7 @@ load_closest(Gif_XContext *gfx)
     c->pixel = color[i].pixel;
   }
   gfx->nclosest = ncolor;
-  
+
   Gif_DeleteArray(color);
 }
 
@@ -81,9 +81,9 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
   Gif_Color *got = 0;
   uint32_t distance = 0x4000000;
   int i;
-  
+
   load_closest(gfx);
-  
+
   for (i = 0, closer = gfx->closest; i < gfx->nclosest; i++, closer++) {
     int redd = c->red - closer->red;
     int greend = c->green - closer->green;
@@ -94,7 +94,7 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
       got = closer;
     }
   }
-  
+
   if (!got) return 0;
   if (!got->haspixel) {
     XColor xcol;
@@ -110,7 +110,7 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
     got->pixel = xcol.pixel;
     got->haspixel = 1;
   }
-  
+
   return got->pixel;
 }
 
@@ -219,7 +219,7 @@ Gif_XClaimStreamColors(Gif_XContext *gfx, Gif_Stream *gfs, int *np_store)
   unsigned long *pixels;
   Gif_Colormap *global = gfs->global;
   *np_store = 0;
-  
+
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
     Gif_Colormap *gfcm = (gfi->local ? gfi->local : global);
@@ -230,9 +230,9 @@ Gif_XClaimStreamColors(Gif_XContext *gfx, Gif_Stream *gfs, int *np_store)
       if (gfcm == global) global = 0;
     }
   }
-  
+
   if (!npixels) return 0;
-  
+
   pixels = Gif_NewArray(unsigned long, npixels);
   if (!pixels) return 0;
   *np_store = npixels;
@@ -266,15 +266,15 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 {
   XImage *ximage;
   uint8_t *xdata;
-  
+
   int i, j, k;
   int bytes_per_line;
-  
+
   unsigned long saved_transparent = 0;
   int release_uncompressed = 0;
   uint16_t nct;
   unsigned long *pixels;
-  
+
   /* Find the correct image and colormap */
   if (!gfi) return 0;
   if (!gfx->image_gc)
@@ -287,13 +287,13 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
     Gif_UncompressImage(gfi);
     release_uncompressed = 1;
   }
-  
+
   /* Check subimage dimensions */
   if (width <= 0 || height <= 0 || left < 0 || top < 0
       || left+width <= 0 || top+height <= 0
       || left+width > gfi->width || top+height > gfi->height)
     return 0;
-  
+
   /* Allocate colors from the colormap; make sure the transparent color
    * has the given pixel value */
   if (gfcm) {
@@ -311,7 +311,7 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
     saved_transparent = pixels[ gfi->transparent ];
     pixels[ gfi->transparent ] = gfx->transparent_pixel;
   }
-  
+
   /* Set up the X image */
   if (gfx->depth <= 8) i = 8;
   else if (gfx->depth <= 16) i = 16;
@@ -320,17 +320,17 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
     XCreateImage(gfx->display, gfx->visual, gfx->depth,
 		 gfx->depth == 1 ? XYBitmap : ZPixmap, 0, NULL,
 		 width, height, i, 0);
-  
+
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
   xdata = Gif_NewArray(uint8_t, bytes_per_line * height);
   ximage->data = (char *)xdata;
-  
+
   /* The main loop */
   if (ximage->bits_per_pixel % 8 == 0) {
     /* Optimize for cases where a pixel is exactly one or more bytes */
     int bytes_per_pixel = ximage->bits_per_pixel / 8;
-    
+
     for (j = 0; j < height; j++) {
       uint8_t *line = gfi->img[top + j] + left;
       uint8_t *writer = xdata + bytes_per_line * j;
@@ -346,25 +346,25 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 	}
       }
     }
-    
+
   } else {
     /* Other bits-per-pixel */
     int bits_per_pixel = ximage->bits_per_pixel;
     uint32_t bits_per_pixel_mask = (1UL << bits_per_pixel) - 1;
-    
+
     for (j = 0; j < height; j++) {
       int imshift = 0;
       uint32_t impixel = 0;
       uint8_t *line = gfi->img[top + j] + left;
       uint8_t *writer = xdata + bytes_per_line * j;
-      
+
       for (i = 0; i < width; i++) {
 	unsigned long pixel;
 	if (line[i] < nct)
 	  pixel = pixels[line[i]];
 	else
 	  pixel = pixels[0];
-	
+
 	impixel |= SAFELS(pixel & bits_per_pixel_mask, imshift);
 	while (imshift + bits_per_pixel >= BYTESIZE) {
 	  *writer++ = impixel;
@@ -373,12 +373,12 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 	}
 	imshift += bits_per_pixel;
       }
-      
+
       if (imshift)
 	*writer++ = impixel;
     }
   }
-  
+
   /* Restore saved transparent pixel value */
   if (gfi->transparent >= 0 && gfi->transparent < 256)
     pixels[ gfi->transparent ] = saved_transparent;
@@ -386,14 +386,14 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
   /* Put it onto the pixmap */
   XPutImage(gfx->display, pixmap, gfx->image_gc, ximage, 0, 0,
 	    pixmap_x, pixmap_y, width, height);
-  
+
   Gif_DeleteArray(xdata);
-  ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
+  ximage->data = 0; /* avoid freeing it again in XDestroyImage */
   XDestroyImage(ximage);
 
   if (release_uncompressed)
     Gif_ReleaseUncompressedImage(gfi);
-  
+
   return 1;
 }
 
@@ -457,80 +457,80 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
   Pixmap pixmap = None;
   XImage *ximage;
   uint8_t *xdata;
-  
+
   int i, j;
   int transparent;
   int bytes_per_line;
   int release_uncompressed = 0;
-  
+
   /* Find the correct image */
   if (!gfi) return None;
-  
+
   /* Check subimage dimensions */
   if (width <= 0 || height <= 0 || left < 0 || top < 0
       || left+width <= 0 || top+height <= 0
       || left+width > gfi->width || top+height > gfi->height)
     return None;
-  
+
   /* Make sure the image is uncompressed */
   if (!gfi->img && !gfi->image_data && gfi->compressed) {
     Gif_UncompressImage(gfi);
     release_uncompressed = 1;
   }
-  
+
   /* Create the X image */
   ximage =
     XCreateImage(gfx->display, gfx->visual, 1,
 		 XYBitmap, 0, NULL,
 		 width, height,
 		 8, 0);
-  
+
   ximage->bitmap_bit_order = ximage->byte_order = LSBFirst;
   bytes_per_line = ximage->bytes_per_line;
   xdata = Gif_NewArray(uint8_t, bytes_per_line * height);
   ximage->data = (char *)xdata;
-  
+
   transparent = gfi->transparent;
-  
+
   /* The main loop */
   for (j = 0; j < height; j++) {
     int imshift = 0;
     uint32_t impixel = 0;
     uint8_t *line = gfi->img[top + j] + left;
     uint8_t *writer = xdata + bytes_per_line * j;
-    
+
     for (i = 0; i < width; i++) {
       if (line[i] == transparent)
 	impixel |= 1 << imshift;
-      
+
       if (++imshift >= BYTESIZE) {
 	*writer++ = impixel;
 	imshift = 0;
 	impixel = 0;
       }
     }
-    
+
     if (imshift)
       *writer++ = impixel;
   }
-  
+
   /* Create the pixmap */
   pixmap =
     XCreatePixmap(gfx->display, gfx->drawable, width, height, 1);
   if (!gfx->mask_gc)
     gfx->mask_gc = XCreateGC(gfx->display, pixmap, 0, 0);
-  
+
   if (pixmap && gfx->mask_gc)
     XPutImage(gfx->display, pixmap, gfx->mask_gc, ximage, 0, 0, 0, 0,
 	      width, height);
-  
+
   Gif_DeleteArray(xdata);
-  ximage->data = 0; /* avoid freeing it again in XDestroyImage */  
+  ximage->data = 0; /* avoid freeing it again in XDestroyImage */
   XDestroyImage(ximage);
 
   if (release_uncompressed)
     Gif_ReleaseUncompressedImage(gfi);
-  
+
   return pixmap;
 }
 
@@ -557,16 +557,16 @@ Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
 
   if (gfs->screen_width == 0 || gfs->screen_height == 0)
     return None;
-  
+
   if (gfi->width == gfs->screen_width && gfi->height == gfs->screen_height
       && gfi->left == 0 && gfi->top == 0 && gfi->transparent < 0)
     return Gif_XImage(gfx, gfs, gfi);
-  
+
   /* create the pixmap */
   pixmap = XCreatePixmap(gfx->display, gfx->drawable,
 			 gfs->screen_width, gfs->screen_height, gfx->depth);
   if (!pixmap) goto error_exit;
-  
+
   /* find background color if necessary */
   if (last == None
       || (last_gfi && last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)) {
@@ -587,7 +587,7 @@ Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
     XSetForeground(gfx->display, gfx->image_gc, bg_pixel);
     gfx->transparent_pixel = bg_pixel;
   }
-  
+
   /* if there is no 'last' then we need special handling */
   if (last == None
       || (last_gfi && last_gfi->width == gfs->screen_width
@@ -601,7 +601,7 @@ Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
       goto error_exit;
     return pixmap;
   }
-  
+
   /* use the disposal to create the intermediate image */
   XCopyArea(gfx->display, last, pixmap, gfx->image_gc,
 	    0, 0, gfs->screen_width, gfs->screen_height, 0, 0);
@@ -631,10 +631,10 @@ Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
     XFreePixmap(gfx->display, image);
     XFreePixmap(gfx->display, mask);
   }
-  
+
   gfx->transparent_pixel = old_transparent;
   return pixmap;
-  
+
  error_exit:
   if (pixmap) XFreePixmap(gfx->display, pixmap);
   if (image) XFreePixmap(gfx->display, image);
@@ -685,17 +685,17 @@ Gif_NewXContextFromVisual(Display *display, int screen_number,
 			  Visual *visual, int depth, Colormap colormap)
 {
   Gif_XContext *gfx;
-  
+
   gfx = Gif_New(Gif_XContext);
   gfx->display = display;
   gfx->screen_number = screen_number;
   gfx->drawable = RootWindow(display, screen_number);
-  
+
   gfx->visual = visual;
   gfx->colormap = colormap;
   gfx->ncolormap = visual->map_entries;
   gfx->depth = depth;
-  
+
   gfx->closest = 0;
   gfx->nclosest = 0;
 
@@ -704,7 +704,7 @@ Gif_NewXContextFromVisual(Display *display, int screen_number,
 
   gfx->image_gc = None;
   gfx->mask_gc = None;
-  
+
   gfx->transparent_pixel = 0UL;
   gfx->foreground_pixel = 1UL;
   gfx->refcount = 0;

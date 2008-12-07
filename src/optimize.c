@@ -85,13 +85,13 @@ colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
 {
   Gif_Color *src_col, *dst_col;
   int i, j;
-  
+
   /* expand dst->col if necessary. This might change dst->col */
   if (dst->ncol + src->ncol >= dst->capacity) {
     dst->capacity *= 2;
     Gif_ReArray(dst->col, Gif_Color, dst->capacity);
   }
-  
+
   src_col = src->col;
   dst_col = dst->col;
   for (i = 0; i < src->ncol; i++, src_col++) {
@@ -227,7 +227,7 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
     was_compressed = 1;
     Gif_UncompressImage(gfi);
   }
-  
+
   /* make sure transparency maps to TRANSP */
   for (i = 0; i < colormap->ncol; i++)
     map[i] = colormap->col[i].pixel;
@@ -238,13 +238,13 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
     map[gfi->transparent] = TRANSP;
   else
     replace = 1;
-  
+
   /* map the image */
   dst += gfi->left + gfi->top * screen_width;
   for (y = 0; y < gfi->height; y++) {
     uint8_t *gfi_pointer = gfi->img[y];
     int x;
-    
+
     if (replace)
       for (x = 0; x < gfi->width; x++)
 	dst[x] = map[gfi_pointer[x]];
@@ -254,10 +254,10 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 	if (new_pixel != TRANSP)
 	    dst[x] = new_pixel;
       }
-    
+
     dst += screen_width;
   }
-  
+
   if (was_compressed && !save_uncompressed)
     Gif_ReleaseUncompressedImage(gfi);
 }
@@ -269,7 +269,7 @@ apply_frame_disposal(uint16_t *into_data, uint16_t *from_data,
   if (gfi->disposal == GIF_DISPOSAL_NONE
       || gfi->disposal == GIF_DISPOSAL_ASIS)
     copy_data_area(into_data, from_data, gfi);
-  
+
   else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
     fill_data_area(into_data, background, gfi);
 }
@@ -286,7 +286,7 @@ static void
 find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
 {
   int lf, rt, lf_min, rt_max, tp, bt, x, y;
-  
+
   /* 1.Aug.99 - use current bounds if possible, since this function is a speed
      bottleneck */
   if (!last || last->disposal == GIF_DISPOSAL_NONE
@@ -301,7 +301,7 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
     tp = 0;
     bt = screen_height - 1;
   }
-  
+
   for (; tp < screen_height; tp++)
     if (memcmp(last_data + screen_width * tp, this_data + screen_width * tp,
 	       screen_width * sizeof(uint16_t)) != 0)
@@ -310,7 +310,7 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
     if (memcmp(last_data + screen_width * bt, this_data + screen_width * bt,
 	       screen_width * sizeof(uint16_t)) != 0)
       break;
-  
+
   lf = screen_width;
   rt = 0;
   for (y = tp; y <= bt; y++) {
@@ -320,7 +320,7 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
       if (ld[x] != td[x])
 	break;
     lf = x;
-    
+
     for (x = rt_max; x > rt; x--)
       if (ld[x] != td[x])
 	break;
@@ -330,7 +330,7 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
   /* 19.Aug.1999 - handle case when there's no difference between frames */
   if (tp > bt)
     tp = bt = lf = rt = 0;
-  
+
   bounds->left = lf;
   bounds->top = tp;
   bounds->width = rt + 1 - lf;
@@ -350,16 +350,16 @@ static void
 expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
 {
   int x, y;
-  
+
   int lf = bounds->left, tp = bounds->top;
   int rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
-  
+
   int tlf = this_bounds->left, ttp = this_bounds->top;
   int trt = tlf + this_bounds->width - 1, tbt = ttp + this_bounds->height - 1;
 
   if (lf > rt || tp > bt)
     lf = 0, tp = 0, rt = screen_width - 1, bt = screen_height - 1;
-  
+
   for (y = ttp; y < tp; y++) {
     uint16_t *now = this_data + screen_width * y;
     uint16_t *next = next_data + screen_width * y;
@@ -369,7 +369,7 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   }
  found_top:
   tp = y;
-  
+
   for (y = tbt; y > bt; y--) {
     uint16_t *now = this_data + screen_width * y;
     uint16_t *next = next_data + screen_width * y;
@@ -379,7 +379,7 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   }
  found_bottom:
   bt = y;
-  
+
   for (x = tlf; x < lf; x++) {
     uint16_t *now = this_data + x;
     uint16_t *next = next_data + x;
@@ -389,7 +389,7 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   }
  found_left:
   lf = x;
-  
+
   for (x = trt; x > rt; x--) {
     uint16_t *now = this_data + x;
     uint16_t *next = next_data + x;
@@ -399,7 +399,7 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   }
  found_right:
   rt = x;
-  
+
   bounds->left = lf;
   bounds->top = tp;
   bounds->width = rt + 1 - lf;
@@ -436,7 +436,7 @@ fix_difference_bounds(Gif_OptData *bounds)
    need array so that need[j] == REQUIRED if the output colormap must
    include all_color j; REPLACE_TRANSP if it should be replaced by
    transparency; and 0 if it's not in the image at all.
-   
+
    If use_transparency > 0, then a pixel which was the same in the last frame
    may be replaced with transparency. If use_transparency == 2, transparency
    MUST be set. (This happens on the first image if the background should be
@@ -449,10 +449,10 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
   int i, x, y;
   int all_ncol = all_colormap->ncol;
   uint8_t *need = Gif_NewArray(uint8_t, all_ncol);
-  
+
   for (i = 0; i < all_ncol; i++)
     need[i] = 0;
-  
+
   /* set elements that are in the image. need == 2 means the color
      must be in the map; need == 1 means the color may be replaced by
      transparency. */
@@ -468,7 +468,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
   }
   if (need[TRANSP])
     need[TRANSP] = REQUIRED;
-  
+
   /* check for too many colors; also force transparency if needed */
   {
     int count[3];
@@ -508,7 +508,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
     }
     bounds->required_color_count = count[REQUIRED];
   }
-  
+
   bounds->needed_colors = need;
 }
 
@@ -524,30 +524,30 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
   Gif_Image *last_gfi;
   int next_data_valid;
   uint16_t *previous_data = 0;
-  
+
   screen_size = screen_width * screen_height;
-  
+
   next_data = Gif_NewArray(uint16_t, screen_size);
   next_data_valid = 0;
-  
+
   /* do first image. Remember to uncompress it if necessary */
   erase_screen(last_data);
   erase_screen(this_data);
   last_gfi = 0;
-  
+
   /* PRECONDITION: last_data -- garbage
      this_data -- equal to image data for previous image
      next_data -- equal to image data for next image if next_image_valid */
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *gfi = gfs->images[image_index];
     Gif_OptData *subimage = new_opt_data();
-    
+
     /* save previous data if necessary */
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
       previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, gfi);
     }
-    
+
     /* set this_data equal to the current image */
     if (next_data_valid) {
       uint16_t *temp = this_data;
@@ -556,7 +556,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       next_data_valid = 0;
     } else
       apply_frame(this_data, gfi, 0, save_uncompressed);
-    
+
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
     if (image_index > 0)
@@ -567,7 +567,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       subimage->width = gfi->width;
       subimage->height = gfi->height;
     }
-    
+
     /* might need to expand difference border if transparent background &
        background disposal */
     if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
@@ -583,9 +583,9 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       expand_difference_bounds(subimage, gfi);
       subimage->disposal = GIF_DISPOSAL_BACKGROUND;
     }
-    
+
     fix_difference_bounds(subimage);
-    
+
     /* set map of used colors */
     {
       int use_transparency = optimize_level > 1 && image_index > 0;
@@ -593,10 +593,10 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 	use_transparency = 2;
       get_used_colors(subimage, use_transparency);
     }
-    
+
     gfi->user_data = subimage;
     last_gfi = gfi;
-    
+
     /* Apply optimized disposal to last_data and unoptimized disposal to
        this_data. Before 9.Dec.1998 I applied unoptimized disposal uniformly
        to both. This led to subtle bugs. After all, to determine bounds, we
@@ -607,7 +607,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       fill_data_area_subimage(last_data, background, subimage);
     else
       copy_data_area_subimage(last_data, this_data, subimage);
-    
+
     if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(this_data, background, last_gfi);
     else if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -615,7 +615,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       Gif_DeleteArray(previous_data);
     }
   }
-  
+
   Gif_DeleteArray(next_data);
 }
 
@@ -627,9 +627,9 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 /* create_out_global_map: The interface function to this pass. It creates
    out_global_map and sets pixel values on all_colormap appropriately.
    Specifically:
-   
+
    all_colormap->col[P].pixel >= 256 ==> P is not in the global colormap.
-   
+
    Otherwise, all_colormap->col[P].pixel == the J so that
    GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]).
 
@@ -660,11 +660,11 @@ create_out_global_map(Gif_Stream *gfs)
   int cur_ncol, i, imagei;
   int nglobal_all = (all_ncol <= 257 ? all_ncol - 1 : 256);
   int permutation_changed;
-		     
+
   /* initial permutation is null */
   for (i = 0; i < all_ncol - 1; i++)
     permute[i] = i + 1;
-  
+
   /* choose appropriate penalties for each image */
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
@@ -674,7 +674,7 @@ create_out_global_map(Gif_Stream *gfs)
     opt->active_penalty =
       (all_ncol > 257 ? opt->colormap_penalty : opt->global_penalty);
   }
-  
+
   /* set initial penalties for each color */
   for (i = 1; i < all_ncol; i++)
     penalty[i] = 0;
@@ -683,20 +683,20 @@ create_out_global_map(Gif_Stream *gfs)
     increment_penalties(opt, penalty, opt->active_penalty);
   }
   permutation_changed = 1;
-  
+
   /* Loop, removing one color at a time. */
   for (cur_ncol = all_ncol - 1; cur_ncol; cur_ncol--) {
     uint16_t removed;
-    
+
     /* sort permutation based on penalty */
     if (permutation_changed)
       sort_permutation(permute, cur_ncol, penalty, 1);
     permutation_changed = 0;
-    
+
     /* update reverse permutation */
     removed = permute[cur_ncol - 1];
     ordering[removed] = cur_ncol - 1;
-    
+
     /* decrement penalties for colors that are out of the running */
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_OptData *opt = (Gif_OptData *)gfs->images[imagei]->user_data;
@@ -708,7 +708,7 @@ create_out_global_map(Gif_Stream *gfs)
 	permutation_changed = 1;
       }
     }
-    
+
     /* change colormap penalties if we're no longer working w/globalmap */
     if (cur_ncol == 257) {
       for (i = 0; i < all_ncol; i++)
@@ -721,24 +721,24 @@ create_out_global_map(Gif_Stream *gfs)
       permutation_changed = 1;
     }
   }
-  
+
   /* make sure background is in the global colormap */
   if (background != TRANSP && ordering[background] >= 256) {
     uint16_t other = permute[255];
     ordering[other] = ordering[background];
     ordering[background] = 255;
   }
-  
+
   /* assign out_global_map based on permutation */
   out_global_map = Gif_NewFullColormap(nglobal_all, 256);
-  
+
   for (i = 1; i < all_ncol; i++)
     if (ordering[i] < 256) {
       out_global_map->col[ordering[i]] = all_colormap->col[i];
       all_colormap->col[i].pixel = ordering[i];
     } else
       all_colormap->col[i].pixel = NOT_IN_OUT_GLOBAL;
-  
+
   /* set the stream's background color */
   if (background != TRANSP)
     gfs->background = ordering[background];
@@ -765,28 +765,28 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 {
   int i;
   int is_global = (into == out_global_map);
-  
+
   int all_ncol = all_colormap->ncol;
   Gif_Color *all_col = all_colormap->col;
-  
+
   int ncol = into->ncol;
   Gif_Color *col = into->col;
-  
+
   uint8_t *map = Gif_NewArray(uint8_t, all_ncol);
   uint8_t into_used[256];
-  
+
   /* keep track of which pixel indices in 'into' have been used; initially,
      all unused */
   for (i = 0; i < 256; i++)
     into_used[i] = 0;
-  
+
   /* go over all non-transparent global pixels which MUST appear
      (need[P]==REQUIRED) and place them in 'into' */
   for (i = 1; i < all_ncol; i++) {
     int val;
     if (need[i] != REQUIRED)
       continue;
-    
+
     /* fail if a needed pixel isn't in the global map */
     if (is_global) {
       val = all_col[i].pixel;
@@ -800,16 +800,16 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
       col[val] = all_col[i];
       ncol++;
     }
-    
+
     map[i] = val;
     into_used[val] = 1;
   }
-  
+
   /* now check for transparency */
   gfi->transparent = -1;
   if (need[TRANSP]) {
     int transparent = -1;
-    
+
     /* first, look for an unused index in 'into'. Pick the lowest one: the
        lower transparent index we get, the more likely we can shave a bit off
        min_code_bits later, thus saving space */
@@ -818,7 +818,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 	transparent = i;
 	break;
       }
-    
+
     /* otherwise, [1.Aug.1999] use a fake slot for the purely transparent
        color. Don't actually enter the transparent color into the colormap --
        we might be able to output a smaller colormap! If there's no room for
@@ -831,21 +831,21 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
       } else
 	goto error;
     }
-    
+
     /* change mapping */
     map[TRANSP] = transparent;
     for (i = 1; i < all_ncol; i++)
       if (need[i] == REPLACE_TRANSP)
 	map[i] = transparent;
-    
+
     gfi->transparent = transparent;
   }
-  
+
   /* If we get here, it worked! Commit state changes (the number of color
      cells in 'into') and return the map. */
   into->ncol = ncol;
   return map;
-  
+
  error:
   /* If we get here, it failed! Return 0 and don't change global state. */
   Gif_DeleteArray(map);
@@ -875,18 +875,18 @@ static uint8_t *
 prepare_colormap(Gif_Image *gfi, uint8_t *need)
 {
   uint8_t *map;
-  
+
   /* try to map pixel values into the global colormap */
   Gif_DeleteColormap(gfi->local);
   gfi->local = 0;
   map = prepare_colormap_map(gfi, out_global_map, need);
-  
+
   if (!map) {
     /* that didn't work; add a local colormap. */
     uint8_t permutation[256];
     Gif_Color *local_col;
     int i;
-    
+
     gfi->local = Gif_NewFullColormap(0, 256);
     map = prepare_colormap_map(gfi, gfi->local, need);
 
@@ -895,23 +895,23 @@ prepare_colormap(Gif_Image *gfi, uint8_t *need)
     local_col = gfi->local->col;
     for (i = 0; i < gfi->local->ncol; i++)
       local_col[i].pixel = i;
-    
+
     qsort(local_col, gfi->local->ncol, sizeof(Gif_Color),
 	  colormap_rgb_permutation_sorter);
-    
+
     for (i = 0; i < gfi->local->ncol; i++)
       permutation[local_col[i].pixel] = i;
     /* 1.Aug.1999 - we might not have added space for gfi->transparent */
     if (gfi->transparent >= gfi->local->ncol)
       permutation[gfi->transparent] = gfi->transparent;
-    
+
     for (i = 0; i < all_colormap->ncol; i++)
       map[i] = permutation[map[i]];
 
     if (gfi->transparent >= 0)
       gfi->transparent = map[TRANSP];
   }
-  
+
   return map;
 }
 
@@ -928,7 +928,7 @@ simple_frame_data(Gif_Image *gfi, uint8_t *map)
 {
   int top = gfi->top, width = gfi->width, height = gfi->height;
   int x, y;
-  
+
   for (y = 0; y < height; y++) {
     uint16_t *from = this_data + screen_width * (y+top) + gfi->left;
     uint8_t *into = gfi->image_data + y * width;
@@ -951,14 +951,14 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
   uint16_t *cur = 0;
   uint8_t *data, *swit;
   int transparentizing;
-  
+
   /* First, try w/o transparency. Compare this to the result using
      transparency and pick the better of the two. */
   simple_frame_data(gfi, map);
   Gif_FullCompressImage(gfs, gfi, gif_write_flags);
-  
+
   /* Actually copy data to frame.
-    
+
      Use transparency if possible to shrink the size of the written GIF.
 
      The written GIF will be small if patterns (sequences of pixel values)
@@ -973,20 +973,20 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
      By & large, we just use the regular image's values. However, we might
      create a transparent run *not in* the regular image, if TWO OR MORE
      adjacent runs OF DIFFERENT COLORS *could* be made transparent.
-     
+
      (An area can be made transparent if the corresponding area in the previous
      frame had the same colors as the area does now.)
-     
+
      Why? If only one run (say of color C) could be transparent, we get no
      large immediate advantage from making it transparent (it'll be a run of
      the same length regardless). Also, we might LOSE: what if the run was
      adjacent to some more of color C, which couldn't be made transparent? If
      we use color C (instead of the transparent color), then we get a longer
      run.
-    
+
      This simple heuristic does a little better than Gifwizard's (6/97)
      on some images, but does *worse than nothing at all* on others.
-    
+
      However, it DOES do better than the complicated, greedy algorithm I
      commented out above; and now we pick either the transparency-optimized
      version or the normal version, whichever compresses smaller, for the best
@@ -1034,7 +1034,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 	}
     }
 
-  
+
   /* Now, try compressed transparent version and pick the better of the two. */
   {
     uint8_t *old_compressed = gfi->compressed;
@@ -1060,10 +1060,10 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 
 /* last == what last image ended up looking like
    this == what new image should look like
-   
+
    last = apply O1 + dispose O1 + ... + apply On-1 + dispose On-1
    this = apply U1 + dispose U1 + ... + apply Un-1 + dispose Un-1 + apply Un
-   
+
    invariant: apply O1 + dispose O1 + ... + apply Ok
    === apply U1 + dispose U1 + ... + apply Uk */
 
@@ -1075,31 +1075,31 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
 				   disposal */
   int screen_size = screen_width * screen_height;
   uint16_t *previous_data = 0;
-  
+
   gfs->global = out_global_map;
-  
+
   /* do first image. Remember to uncompress it if necessary */
   erase_screen(last_data);
   erase_screen(this_data);
-  
+
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *cur_gfi = gfs->images[image_index];
     Gif_OptData *opt = (Gif_OptData *)cur_gfi->user_data;
     int was_compressed = (cur_gfi->img == 0);
-    
+
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
       previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, cur_gfi);
     }
-    
+
     /* set up this_data to be equal to the current image */
     apply_frame(this_data, cur_gfi, 0, 0);
-    
+
     /* save actual bounds and disposal from unoptimized version so we can
        apply the disposal correctly next time through */
     cur_unopt_gfi = *cur_gfi;
-    
+
     /* set bounds and disposal from optdata */
     Gif_ReleaseUncompressedImage(cur_gfi);
     cur_gfi->left = opt->left;
@@ -1108,13 +1108,13 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
     cur_gfi->height = opt->height;
     cur_gfi->disposal = opt->disposal;
     if (image_index > 0) cur_gfi->interlace = 0;
-    
+
     /* find the new image's colormap and then make new data */
     {
       uint8_t *map = prepare_colormap(cur_gfi, opt->needed_colors);
       uint8_t *data = Gif_NewArray(uint8_t, cur_gfi->width * cur_gfi->height);
       Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
-      
+
       /* don't use transparency on first frame */
       if (optimize_level > 1 && image_index > 0 && cur_gfi->transparent >= 0)
 	transp_frame_data(gfs, cur_gfi, map);
@@ -1128,13 +1128,13 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
 	} else			/* bug fix 22.May.2001 */
 	  Gif_ReleaseCompressedImage(cur_gfi);
       }
-      
+
       Gif_DeleteArray(map);
     }
-    
+
     delete_opt_data(opt);
     cur_gfi->user_data = 0;
-    
+
     /* Set up last_data and this_data. last_data must contain this_data + new
        disposal. this_data must contain this_data + old disposal. */
     if (cur_gfi->disposal == GIF_DISPOSAL_NONE
@@ -1144,7 +1144,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
       fill_data_area(last_data, background, cur_gfi);
     else
       assert(0 && "optimized frame has strange disposal");
-    
+
     if (cur_unopt_gfi.disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(this_data, background, &cur_unopt_gfi);
     else if (cur_unopt_gfi.disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -1163,16 +1163,16 @@ static int
 initialize_optimizer(Gif_Stream *gfs)
 {
   int i, screen_size;
-  
+
   if (gfs->nimages < 1)
     return 0;
-  
+
   /* combine colormaps */
   all_colormap = Gif_NewFullColormap(1, 384);
   all_colormap->col[0].red = 255;
   all_colormap->col[0].green = 255;
   all_colormap->col[0].blue = 255;
-  
+
   in_global_map = gfs->global;
   if (!in_global_map) {
     Gif_Color *col;
@@ -1181,7 +1181,7 @@ initialize_optimizer(Gif_Stream *gfs)
     for (i = 0; i < 256; i++, col++)
       col->red = col->green = col->blue = i;
   }
-  
+
   {
     int any_globals = 0;
     int first_transparent = -1;
@@ -1196,7 +1196,7 @@ initialize_optimizer(Gif_Stream *gfs)
     }
     if (any_globals)
       colormap_combine(all_colormap, in_global_map);
-    
+
     /* try and maintain transparency's pixel value */
     if (first_transparent >= 0) {
       Gif_Image *gfi = gfs->images[first_transparent];
@@ -1204,31 +1204,31 @@ initialize_optimizer(Gif_Stream *gfs)
       all_colormap->col[TRANSP] = gfcm->col[gfi->transparent];
     }
   }
-  
+
   /* find screen_width and screen_height, and clip all images to screen */
   Gif_CalculateScreenSize(gfs, 0);
   screen_width = gfs->screen_width;
   screen_height = gfs->screen_height;
   for (i = 0; i < gfs->nimages; i++)
     Gif_ClipImage(gfs->images[i], 0, 0, screen_width, screen_height);
-  
+
   /* create data arrays */
   screen_size = screen_width * screen_height;
   last_data = Gif_NewArray(uint16_t, screen_size);
   this_data = Gif_NewArray(uint16_t, screen_size);
-  
+
   /* set up colormaps */
   gif_color_count = 2;
   while (gif_color_count < gfs->global->ncol && gif_color_count < 256)
     gif_color_count *= 2;
-  
+
   /* choose background */
   if (gfs->images[0]->transparent < 0
       && gfs->background < in_global_map->ncol)
     background = in_global_map->col[gfs->background].pixel;
   else
     background = TRANSP;
-  
+
   return 1;
 }
 
@@ -1236,7 +1236,7 @@ static void
 finalize_optimizer(Gif_Stream *gfs)
 {
   int i;
-  
+
   if (background == TRANSP)
     gfs->background = (uint8_t)gfs->images[0]->transparent;
 
@@ -1249,10 +1249,10 @@ finalize_optimizer(Gif_Stream *gfs)
 	&& gfs->images[i]->delay == 0
 	&& gfs->images[i]->transparent < 0)
       gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
-  
+
   Gif_DeleteColormap(in_global_map);
   Gif_DeleteColormap(all_colormap);
-  
+
   Gif_DeleteArray(last_data);
   Gif_DeleteArray(this_data);
 }
@@ -1269,6 +1269,6 @@ optimize_fragments(Gif_Stream *gfs, int optimize_level, int huge_stream)
   create_subimages(gfs, optimize_level, !huge_stream);
   create_out_global_map(gfs);
   create_new_image_data(gfs, optimize_level);
-  
+
   finalize_optimizer(gfs);
 }

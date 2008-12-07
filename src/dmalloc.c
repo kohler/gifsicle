@@ -22,13 +22,13 @@ debug_malloc_id(size_t k, const char *file, int line)
   void *p = malloc(k + sizeof(bucket));
   bucket *b = (bucket *)p;
   int bnum = (((long)p) >> 4) % NBUCK;
-  
+
   if (p == 0) {
     fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %d)\n",
 	    file, line, k);
     abort();
   }
-  
+
   b->size = k;
   b->next = buckets[bnum];
   b->file = file;
@@ -53,35 +53,35 @@ debug_realloc_id(void *p, size_t k, const char *file, int line)
   bucket *new_b;
   int bnum = (((long)b_in) >> 4) % NBUCK;
   if (p == 0) return debug_malloc_id(k, file, line);
-  
+
   for (b = buckets[bnum], prev = 0; b && b != b_in; prev = b, b = b->next)
     ;
   if (b == 0) {
     fprintf(stderr, "debug_realloc given bad pointer %p\n", p);
     abort();
   }
-  
+
   dmalloc_live_memory += k - b->size;
   if (verbose_out)
     fprintf(verbose_out, "%5d: %p +%-7d (%s:%d) >> ", event_number,
 	    p, b->size, b->file, b->line);
-  
+
   new_b = (bucket *)realloc(b, k + sizeof(bucket));
   if (new_b == 0) {
     fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %d)\n",
 	    file, line, k);
     abort();
   }
-  
+
   new_b->size = k;
   if (new_b != b) {
     if (prev) prev->next = new_b->next;
     else buckets[bnum] = new_b->next;
-    
+
     bnum = (((long)new_b) >> 4) % NBUCK;
     new_b->next = buckets[bnum];
     buckets[bnum] = new_b;
-    
+
     p = (void *)(((char *)new_b) + sizeof(bucket));
   }
 
@@ -101,14 +101,14 @@ debug_free_id(void *p, const char *file, int line)
   int chain_length = 0;
   int bnum = (((long)b_in) >> 4) % NBUCK;
   if (p == 0) return;
-  
+
   for (b = buckets[bnum], prev = 0; b && b != b_in; prev = b, b = b->next)
     chain_length++;
   if (b == 0) {
     fprintf(stderr, "my_free given bad pointer %p\n", p);
     abort();
   }
-  
+
   dmalloc_live_memory -= b->size;
   if (prev) prev->next = b->next;
   else buckets[bnum] = b->next;

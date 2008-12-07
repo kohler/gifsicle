@@ -100,7 +100,7 @@ struct timeval genesis_time;
  **/
 
 typedef struct Gt_Viewer {
-  
+
   Display *display;
   int screen_number;
   Visual *visual;
@@ -109,33 +109,33 @@ typedef struct Gt_Viewer {
   Gif_XContext *gfx;
   Cursor arrow_cursor;
   Cursor wait_cursor;
-  
+
   Window parent;
   int top_level;
-  
+
   Window window;
   int use_window;
   int width;
   int height;
   int resizable;
   int being_deleted;
-  
+
   Gif_Stream *gfs;
   const char *name;
   const char *title;
 
   Gif_Image **im;
   int nim;
-  
+
   Pixmap pixmap;
   int im_pos;
   int was_unoptimized;
   int free_pixmaps;
-  
+
   Pixmap *unoptimized_pixmaps;
-  
+
   struct Gt_Viewer *next;
-  
+
   int can_animate;
   int animating;
   int unoptimizing;
@@ -144,7 +144,7 @@ typedef struct Gt_Viewer {
   struct Gt_Viewer *anim_next;
   struct timeval timer;
   int anim_loop;
-  
+
 } Gt_Viewer;
 
 const char *program_name = "gifview";
@@ -302,12 +302,12 @@ choose_visual(Gt_Viewer *viewer)
   Display *display = viewer->display;
   int screen_number = viewer->screen_number;
   VisualID default_visualid = DefaultVisual(display, screen_number)->visualid;
-  
+
   XVisualInfo visi_template;
   int nv, i;
   XVisualInfo *v, *best_v = 0;
   Gt_Viewer *trav;
-  
+
   /* Look for an existing Gt_Viewer with the same display and screen number */
   if (!install_colormap)
     for (trav = viewers; trav; trav = trav->next)
@@ -320,24 +320,24 @@ choose_visual(Gt_Viewer *viewer)
 	viewer->gfx->refcount++;
 	return;
       }
-  
+
   /* Find the default visual's XVisualInfo & put it in best_v */
   visi_template.screen = screen_number;
   v = XGetVisualInfo(display, VisualScreenMask, &visi_template, &nv);
   for (i = 0; i < nv && !best_v; i++)
     if (v[i].visualid == default_visualid)
       best_v = &v[i];
-  
+
   if (!best_v) {
-    
+
     /* This should never happen. If we can't find the default visual's
        XVisualInfo, we just use the default visual */
     viewer->visual = DefaultVisual(display, screen_number);
     viewer->depth = DefaultDepth(display, screen_number);
     viewer->colormap = DefaultColormap(display, screen_number);
-    
+
   } else {
-    
+
     /* Which visual to choose? This isn't exactly a simple decision, since
        we want to avoid colormap flashing while choosing a nice visual. So
        here's the algorithm: Prefer the default visual, or take a TrueColor
@@ -345,7 +345,7 @@ choose_visual(Gt_Viewer *viewer)
     for (i = 0; i < nv; i++)
       if (v[i].depth > best_v->depth && v[i].VISUAL_CLASS == TrueColor)
 	best_v = &v[i];
-    
+
     viewer->visual = best_v->visual;
     viewer->depth = best_v->depth;
     if (best_v->visualid != default_visualid
@@ -355,13 +355,13 @@ choose_visual(Gt_Viewer *viewer)
 			viewer->visual, AllocNone);
     else
       viewer->colormap = DefaultColormap(display, screen_number);
-    
+
   }
-  
+
   viewer->gfx = Gif_NewXContextFromVisual
     (display, screen_number, viewer->visual, viewer->depth, viewer->colormap);
   viewer->gfx->refcount++;
-  
+
   if (v) XFree(v);
 }
 
@@ -371,11 +371,11 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
 {
   Gt_Viewer *viewer;
   int i;
-  
+
   /* Make the Gt_Viewer structure */
   viewer = Gif_New(Gt_Viewer);
   viewer->display = display;
-  
+
   if (cur_use_window) {
     XWindowAttributes attr;
 
@@ -383,19 +383,19 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
       viewer->screen_number = DefaultScreen(display);
       cur_use_window = RootWindow(display, viewer->screen_number);
     }
-    
+
     XGetWindowAttributes(display, cur_use_window, &attr);
-    
+
     viewer->screen_number = -1;
     for (i = 0; i < ScreenCount(display); i++)
       if (ScreenOfDisplay(display, i) == attr.screen)
 	viewer->screen_number = i;
     assert(viewer->screen_number >= 0);
-    
+
     viewer->visual = attr.visual;
     viewer->depth = attr.depth;
     viewer->colormap = attr.colormap;
-    
+
     viewer->gfx = Gif_NewXContextFromVisual
       (display, viewer->screen_number, viewer->visual, viewer->depth,
        viewer->colormap);
@@ -414,7 +414,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
     viewer->parent = cur_use_window;
     viewer->top_level = 0;
     viewer->resizable = 0;
-    
+
   } else {
     viewer->screen_number = DefaultScreen(display);
     choose_visual(viewer);
@@ -424,7 +424,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
     viewer->top_level = 1;
     viewer->resizable = 1;
   }
-  
+
   /* assign background color */
   if (cur_background_color) {
     XColor color;
@@ -455,7 +455,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   }
   viewer->arrow_cursor = cur_arrow_cursor;
   viewer->wait_cursor = cur_wait_cursor;
-  
+
   viewer->being_deleted = 0;
   viewer->gfs = gfs;
   gfs->refcount++;
@@ -481,7 +481,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   viewer->anim_next = 0;
   viewer->anim_loop = 0;
   viewer->timer.tv_sec = viewer->timer.tv_usec = 0;
-  
+
   return viewer;
 }
 
@@ -496,12 +496,12 @@ delete_viewer(Gt_Viewer *viewer)
   for (i = 0; i < viewer->nim; i++)
     if (viewer->unoptimized_pixmaps[i])
       XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[i]);
-  
+
   for (trav = viewers; trav != viewer; prev = trav, trav = trav->next)
     ;
   if (prev) prev->next = viewer->next;
   else viewers = viewer->next;
-  
+
   Gif_DeleteStream(viewer->gfs);
   Gif_DeleteArray(viewer->unoptimized_pixmaps);
   Gif_DeleteArray(viewer->im);
@@ -523,7 +523,7 @@ get_input_stream(const char *name)
 {
   FILE *f;
   Gif_Stream *gfs = 0;
-  
+
   if (name == 0 || strcmp(name, "-") == 0) {
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
@@ -547,16 +547,16 @@ get_input_stream(const char *name)
     error("%s: %s", name, strerror(errno));
     return 0;
   }
-  
+
   gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, 0, 0);
   fclose(f);
-  
+
   if (!gfs || Gif_ImageCount(gfs) == 0) {
     error("'%s' doesn't seem to contain a GIF", name);
     Gif_DeleteStream(gfs);
     return 0;
   }
-  
+
   if (!cur_display) {
     cur_display = XOpenDisplay(cur_display_name);
     if (!cur_display) {
@@ -608,7 +608,7 @@ void
 schedule(Gt_Viewer *viewer)
 {
   Gt_Viewer *prev, *trav;
-  
+
   if (viewer->scheduled)
     unschedule(viewer);
 
@@ -623,7 +623,7 @@ schedule(Gt_Viewer *viewer)
     viewer->anim_next = animations;
     animations = viewer;
   }
-  
+
   viewer->scheduled = 1;
 }
 
@@ -638,7 +638,7 @@ schedule_next_frame(Gt_Viewer *viewer)
 
   if (viewer->timer.tv_sec == 0 && viewer->timer.tv_usec == 0)
     xwGETTIME(viewer->timer);
-  
+
   interval.tv_sec = delay / 100;
   interval.tv_usec = (delay % 100) * (MICRO_PER_SEC / 100);
   if (delay == 0)
@@ -665,7 +665,7 @@ parse_geometry(const char *const_g, XSizeHints *sh, int screen_width,
 {
   char *g = (char *)const_g;
   sh->flags = 0;
-  
+
   if (isdigit(*g)) {
     sh->flags |= USSize;
     sh->width = strtol(g, &g, 10);
@@ -675,31 +675,31 @@ parse_geometry(const char *const_g, XSizeHints *sh, int screen_width,
       goto error;
   } else if (!*g)
     goto error;
-  
+
   if (*g == '+' || *g == '-') {
     int x_minus, y_minus;
     sh->flags |= USPosition | PWinGravity;
     x_minus = *g == '-';
     sh->x = strtol(g + 1, &g, 10);
     if (x_minus) sh->x = screen_width - sh->x - sh->width;
-    
+
     y_minus = *g == '-';
     if (*g == '-' || *g == '+')
       sh->y = strtol(g + 1, &g, 10);
     else
       goto error;
     if (y_minus) sh->y = screen_height - sh->y - sh->height;
-    
+
     if (x_minus)
       sh->win_gravity = y_minus ? SouthEastGravity : NorthEastGravity;
     else
       sh->win_gravity = y_minus ? SouthWestGravity : NorthWestGravity;
-    
+
   } else if (*g)
     goto error;
-  
+
   return 1;
-  
+
  error:
   warning("bad geometry specification");
   sh->flags = 0;
@@ -727,7 +727,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     int scr_height = DisplayHeight(viewer->display, viewer->screen_number);
     parse_geometry(cur_geometry_spec, sizeh, scr_width, scr_height);
   }
-  
+
   /* Open the display and create the window */
   if (!viewer->window) {
     XSetWindowAttributes x_set_attr;
@@ -739,7 +739,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     x_set_attr.background_pixel = 0;
     x_set_attr_mask = CWColormap | CWBorderPixel | CWBackPixel
       | CWBackingStore | CWSaveUnder;
-    
+
     viewer->window = XCreateWindow
       (display, viewer->parent,
        sizeh->x, sizeh->y, sizeh->width, sizeh->height, 0,
@@ -753,7 +753,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
     viewer->resizable = 0;
   viewer->width = w;
   viewer->height = h;
-  
+
   /* Set the window's title and class (for window manager resources) */
   if (viewer->top_level) {
     stringlist[0] = "gifview";
@@ -766,7 +766,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
 		     NULL, 0, sizeh, NULL, &classh);
     XFree(window_name.value);
     XFree(icon_name.value);
-  
+
     if (!wm_delete_window_atom) {
       wm_delete_window_atom = XInternAtom(display, "WM_DELETE_WINDOW", False);
       wm_protocols_atom = XInternAtom(display, "WM_PROTOCOLS", False);
@@ -779,7 +779,7 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
 		 | StructureNotifyMask);
   else
     XSelectInput(display, viewer->window, StructureNotifyMask);
-  
+
   XFree(sizeh);
 }
 
@@ -789,9 +789,9 @@ pre_delete_viewer(Gt_Viewer *viewer)
 {
   if (viewer->being_deleted) return;
   viewer->being_deleted = 1;
-  
+
   if (viewer->scheduled) unschedule(viewer);
-  
+
   if (viewer->window && !viewer->use_window)
     XDestroyWindow(viewer->display, viewer->window);
   else
@@ -819,7 +819,7 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
   XTextProperty name_prop;
   int im_pos = (slow_number >= 0 ? slow_number : viewer->im_pos);
   int len;
-  
+
   if (!viewer->top_level || im_pos >= viewer->nim || viewer->being_deleted)
     return;
 
@@ -828,7 +828,7 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
   identifier = (slow_number >= 0 ? (char *)0 : gfi->identifier);
   if (identifier)
     len += 2 + strlen(identifier);
-  
+
   strs[0] = Gif_NewArray(char, len);
   if (strcmp(viewer->title, "gifview") != 0)
     strcpy(strs[0], viewer->title);
@@ -843,11 +843,11 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
   else
     sprintf(strs[0], "gifview: %s #%d #%s", viewer->name, im_pos, identifier);
   strs[1] = 0;
-  
+
   XStringListToTextProperty(strs, 1, &name_prop);
   XSetWMName(viewer->display, viewer->window, &name_prop);
   XSetWMIconName(viewer->display, viewer->window, &name_prop);
-  
+
   XFree(name_prop.value);
   Gif_DeleteArray(strs[0]);
 }
@@ -863,7 +863,7 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
       last_last = unoptimized_frame(viewer, frame - 2, slow);
     if (frame >= 1)
       last = unoptimized_frame(viewer, frame - 1, slow);
-    
+
     viewer->unoptimized_pixmaps[frame] =
       Gif_XNextImage(viewer->gfx, last_last, last, gfs, frame);
 
@@ -883,7 +883,7 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
 	viewer->unoptimized_pixmaps[kill] = None;
       }
   }
-  
+
   return viewer->unoptimized_pixmaps[frame];
 }
 
@@ -893,7 +893,7 @@ prepare_frame(Gt_Viewer *viewer, int frame)
   Display *display = viewer->display;
   Window window = viewer->window;
   int changed_cursor = 0;
-  
+
   if (viewer->being_deleted || !viewer->animating)
     return;
 
@@ -909,7 +909,7 @@ prepare_frame(Gt_Viewer *viewer, int frame)
       XFlush(display);
     }
   }
-  
+
   /* Prepare the frame */
   (void) unoptimized_frame(viewer, frame, changed_cursor);
 
@@ -930,10 +930,10 @@ view_frame(Gt_Viewer *viewer, int frame)
   Window window = viewer->window;
   Pixmap old_pixmap = viewer->pixmap;
   int need_set_name = 0;
-  
+
   if (viewer->being_deleted)
     return;
-  
+
   if (frame < 0)
     frame = 0;
   if (frame > viewer->nim - 1 && viewer->animating) {
@@ -948,7 +948,7 @@ view_frame(Gt_Viewer *viewer, int frame)
   }
   if (frame > viewer->nim - 1)
     frame = viewer->nim - 1;
-  
+
   if (frame != viewer->im_pos) {
     Gif_Image *gfi = viewer->im[frame];
     int width, height, changed_cursor = 0;
@@ -962,14 +962,14 @@ view_frame(Gt_Viewer *viewer, int frame)
 	XFlush(display);
       }
     }
-    
+
     /* 5/26/98 Do some noodling around to try and use memory most effectively.
        If animating, keep the uncompressed frame; otherwise, throw it away. */
     if (viewer->animating || viewer->unoptimizing)
       viewer->pixmap = unoptimized_frame(viewer, frame, changed_cursor);
     else
       viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
-    
+
     /* put the image on the window */
     if (viewer->animating || viewer->unoptimizing)
       width = viewer->gfs->screen_width, height = viewer->gfs->screen_height;
@@ -1001,19 +1001,19 @@ view_frame(Gt_Viewer *viewer, int frame)
     /* Restore cursor */
     if (changed_cursor)
       XDefineCursor(display, window, viewer->arrow_cursor);
-    
+
     /* Do we need a new name? */
     if ((!viewer->animating && Gif_ImageCount(viewer->gfs) > 1)
 	|| old_pixmap == None)
       need_set_name = 1;
   }
-  
+
   viewer->im_pos = frame;
   viewer->preparing = 0;
-  
+
   if (need_set_name)
     set_viewer_name(viewer, -1);
-  
+
   if (!old_pixmap && !viewer->use_window)
     /* first image; map the window */
     XMapRaised(display, window);
@@ -1032,11 +1032,11 @@ frame_argument(Gt_Viewer *viewer, const char *arg)
 {
   const char *c = arg;
   int n1 = 0;
-  
+
   /* Get a number range (#x, #x-y, #x-, or #-y). First, read x. */
   if (isdigit(c[0]))
     n1 = strtol(arg, (char **)&c, 10);
-  
+
   /* It really was a number range only if c is now at the end of the
      argument. */
   if (c[0] != 0) {
@@ -1051,7 +1051,7 @@ frame_argument(Gt_Viewer *viewer, const char *arg)
       n1 = 0;
     }
   }
-  
+
   return n1;
 }
 
@@ -1074,27 +1074,27 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
   KeySym key;
   int nbuf = XLookupString(e, buf, 32, &key, 0);
   if (nbuf > 1) buf[0] = 0;	/* ignore multikey sequences */
-  
+
   if (key == XK_space || key == XK_F || key == XK_f || key == XK_N || key == XK_n)
     /* space, N or F: one frame ahead */
     view_frame(viewer, viewer->im_pos + 1);
-  
+
   else if (key == XK_B || key == XK_b || key == XK_P || key == XK_p)
     /* B or P: one frame back */
     view_frame(viewer, viewer->im_pos - 1);
-  
+
   else if (key == XK_W || key == XK_w || key == XK_BackSpace)
     /* backspace: delete viewer */
     pre_delete_viewer(viewer);
-  
+
   else if (key == XK_Q || key == XK_q)
     /* Q: quit applicaton */
     exit(0);
-  
+
   else if (key == XK_S || key == XK_s || key == XK_a || key == XK_A) {
     /* S or A: toggle animation */
     switch_animating(viewer, !viewer->animating);
-    
+
     if (viewer->animating) {
       int pos = viewer->im_pos;
       if (viewer->im_pos >= viewer->nim - 1) {
@@ -1102,12 +1102,12 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
 	viewer->anim_loop = 0;
       }
       view_frame(viewer, pos);
-      
+
     } else
       unschedule(viewer);
-    
+
     set_viewer_name(viewer, -1);
-    
+
   } else if (key == XK_U || key == XK_u) {
     /* U: toggle unoptimizing */
     int pos = viewer->im_pos;
@@ -1117,26 +1117,26 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
       view_frame(viewer, pos);
       set_viewer_name(viewer, -1);
     }
-    
+
   } else if (key == XK_R || key == XK_r
 	     || (nbuf == 1 && buf[0] == '<')) {
     /* R or <: reset to first frame */
     unschedule(viewer);
     viewer->anim_loop = 0;
     view_frame(viewer, 0);
-    
+
   } else if (nbuf == 1 && buf[0] == '>') {
     /* >: reset to last frame */
     unschedule(viewer);
     viewer->anim_loop = 0;
     view_frame(viewer, viewer->nim - 1);
-    
+
   } else if (key == XK_Escape && viewer->animating) {
     /* Escape: stop animation */
     switch_animating(viewer, 0);
     unschedule(viewer);
     set_viewer_name(viewer, -1);
-    
+
   } else if (key == XK_Z || key == XK_z) {
     /* Z: trigger resizability */
     viewer->resizable = !viewer->resizable;
@@ -1156,12 +1156,12 @@ loop(void)
   int x_socket = ConnectionNumber(display);
   stop_delta.tv_sec = 0;
   stop_delta.tv_usec = 200000;
-  
+
   xwGETTIME(now);
   FD_ZERO(&xfds);
-  
+
   while (viewers) {
-    
+
     /* Check for any animations */
     /* 13.Feb.2001 - Use the 'pending' counter to avoid a tight loop
        if all the frames in an animation have delay 0. Reported by
@@ -1182,7 +1182,7 @@ loop(void)
       }
       xwGETTIME(now);
     }
-    
+
     pending = XPending(display);
     if (!pending) {
       /* select() until event arrives */
@@ -1194,12 +1194,12 @@ loop(void)
 	timeout_ptr = &timeout;
       } else
 	timeout_ptr = 0;
-    
+
       FD_SET(x_socket, &xfds);
       retval = select(x_socket + 1, &xfds, 0, 0, timeout_ptr);
       pending = (retval <= 0 ? 0 : FD_ISSET(x_socket, &xfds));
     }
-    
+
     if (pending)
       while (XPending(display)) {
 	XNextEvent(display, &e);
@@ -1209,33 +1209,33 @@ loop(void)
 	    if (e.type == ButtonPress && e.xbutton.button == 1)
 	      /* Left mouse button: go to next frame */
 	      view_frame(v, v->im_pos + 1);
-	    
+
 	    else if (e.type == ButtonPress && e.xbutton.button == 3)
 	      /* Right mouse button: delete window */
 	      pre_delete_viewer(v);
-	    
+
 	    else if (e.type == KeyPress)
 	      /* Key press: call function */
 	      key_press(v, &e.xkey);
 	  }
-	  
+
 	  if (e.type == ClientMessage
 	      && e.xclient.message_type == wm_protocols_atom
 	      && (Atom)(e.xclient.data.l[0]) == wm_delete_window_atom)
 	    /* WM_DELETE_WINDOW message: delete window */
 	    pre_delete_viewer(v);
-	  
+
 	  else if (e.type == MapNotify && v->animating
 		   && v->scheduled == 0)
 	    /* Window was just mapped; now, start animating it */
 	    schedule_next_frame(v);
-	  
+
 	  else if (e.type == DestroyNotify)
 	    /* Once the window has been destroyed, delete related state */
 	    delete_viewer(v);
 	}
       }
-    
+
     xwGETTIME(now);
   }
 }
@@ -1248,7 +1248,7 @@ main(int argc, char *argv[])
   int viewer_given = 0;
   int any_errors = 0;
   int first_frame = -1;
-  
+
   Clp_Parser *clp =
     Clp_NewParser(argc, (const char * const *)argv,
                   sizeof(options) / sizeof(options[0]), options);
@@ -1258,15 +1258,15 @@ main(int argc, char *argv[])
      "root", -1,
      (const char*) 0);
   program_name = cur_resource_name = cur_window_title = Clp_ProgramName(clp);
-  
+
   xwGETTIMEOFDAY(&genesis_time);
   preparation_time.tv_sec = 0;
   preparation_time.tv_usec = 200000;
-  
+
   while (1) {
     int opt = Clp_Next(clp);
     switch (opt) {
-      
+
      case DISPLAY_OPT:
       if (cur_display)
 	fatal_error("'--display' must come before all other options");
@@ -1282,41 +1282,41 @@ main(int argc, char *argv[])
      case GEOMETRY_OPT:
       cur_geometry_spec = clp->vstr;
       break;
-      
+
      case NAME_OPT:
       cur_resource_name = clp->vstr;
       break;
-      
+
      case UNOPTIMIZE_OPT:
       unoptimizing = clp->negated ? 0 : 1;
       break;
-      
+
      case BACKGROUND_OPT:
       cur_background_color = clp->vstr;
       break;
-      
+
      case ANIMATE_OPT:
       animating = clp->negated ? 0 : 1;
       break;
-      
+
      case INSTALL_COLORMAP_OPT:
       install_colormap = clp->negated ? 0 : 1;
       break;
-      
+
      case WINDOW_OPT:
       cur_use_window = clp->val.u;
       cur_use_window_new = 0;
       break;
-      
+
      case NEW_WINDOW_OPT:
       cur_use_window = clp->val.u;
       cur_use_window_new = 1;
       break;
-      
+
      case INTERACTIVE_OPT:
       interactive = clp->negated ? 0 : 1;
       break;
-      
+
      case VERSION_OPT:
       printf("gifview (LCDF Gifsicle) %s\n", VERSION);
       printf("Copyright (C) 1997-2008 Eddie Kohler\n\
@@ -1325,12 +1325,12 @@ There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
       exit(0);
       break;
-      
+
      case HELP_OPT:
       usage();
       exit(0);
       break;
-      
+
      case Clp_NotOption:
       if (clp->vstr[0] == '#') {
 	if (!viewer_given) {
@@ -1351,22 +1351,22 @@ particular purpose.\n");
 	viewer_given = 1;
       }
       break;
-      
+
      case Clp_Done:
       goto done;
-      
+
      case Clp_BadOption:
       any_errors = 1;
       break;
-      
+
      default:
       break;
-      
+
     }
   }
-  
+
  done:
-  
+
   if (!viewer_given) {
     if (any_errors) {
       short_usage();
@@ -1375,9 +1375,9 @@ particular purpose.\n");
     viewer = get_input_stream(0);
   }
   if (viewer) input_stream_done(viewer, first_frame);
-  
+
   if (viewers) loop();
-  
+
 #ifdef DMALLOC
   dmalloc_report();
 #endif

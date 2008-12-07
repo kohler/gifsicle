@@ -34,27 +34,27 @@ typedef struct Gif_Record	Gif_Record;
 /** GIF_STREAM **/
 
 struct Gif_Stream {
-  
+
     Gif_Colormap *global;
     uint8_t background;
-  
+
     uint16_t screen_width;
     uint16_t screen_height;
     long loopcount;		/* -1 means no loop count */
-  
+
     Gif_Comment *comment;
-  
+
     Gif_Image **images;
     int nimages;
     int imagescap;
-  
+
     Gif_Extension *extensions;
-  
+
     unsigned errors;
-    
+
     int userflags;
     int refcount;
-  
+
 };
 
 Gif_Stream *	Gif_NewStream(void);
@@ -74,41 +74,41 @@ int		Gif_Unoptimize(Gif_Stream *);
 /** GIF_IMAGE **/
 
 struct Gif_Image {
-  
+
     char *identifier;
     Gif_Comment *comment;
-  
+
     Gif_Colormap *local;
     short transparent;		/* -1 means no transparent index */
-  
+
     uint16_t delay;
     uint8_t disposal;
     uint16_t left;
     uint16_t top;
-  
+
     uint16_t width;
     uint16_t height;
-  
+
     uint8_t interlace;
     uint8_t **img;		/* img[y][x] == image byte (x,y) */
     uint8_t *image_data;
     void (*free_image_data)(void *);
-  
+
     uint32_t compressed_len;
     uint8_t *compressed;
     void (*free_compressed)(void *);
-  
+
     void *user_data;
     void (*free_user_data)(void *);
     int refcount;
-  
+
 };
 
 #define		GIF_DISPOSAL_NONE		0
 #define		GIF_DISPOSAL_ASIS		1
 #define		GIF_DISPOSAL_BACKGROUND		2
 #define		GIF_DISPOSAL_PREVIOUS		3
-  
+
 Gif_Image *	Gif_NewImage(void);
 void		Gif_DeleteImage(Gif_Image *);
 
@@ -125,7 +125,7 @@ int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
 #define		Gif_ImageDelay(gfi)		((gfi)->delay)
 #define		Gif_ImageUserData(gfi)		((gfi)->userdata)
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
-  
+
 typedef		void (*Gif_ReadErrorHandler)(const char *, int, void *);
 
 #define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
@@ -144,25 +144,25 @@ int		Gif_ClipImage(Gif_Image *, int l, int t, int w, int h);
 /** GIF_COLORMAP **/
 
 typedef struct {
-  
+
     uint8_t haspixel;
     uint8_t red;
     uint8_t green;
     uint8_t blue;
-  
+
     uint32_t pixel;
-  
+
 } Gif_Color;
 
 
 struct Gif_Colormap {
-  
+
     int ncol;
     int capacity;
     uint32_t userflags;
     int refcount;
     Gif_Color *col;
-  
+
 };
 
 Gif_Colormap *	Gif_NewColormap(void);
@@ -197,17 +197,17 @@ int		Gif_AddComment(Gif_Comment *, const char *, int);
 /** GIF_EXTENSION **/
 
 struct Gif_Extension {
-  
+
     int kind;			/* negative kinds are reserved */
     char *application;
     uint8_t *data;
     uint32_t length;
     int position;
-  
+
     Gif_Stream *stream;
     Gif_Extension *next;
     void (*free_data)(void *);
-  
+
 };
 
 
@@ -237,7 +237,7 @@ Gif_Stream *	Gif_ReadRecord(const Gif_Record *);
 Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
 				   Gif_ReadErrorHandler, void *);
 int		Gif_WriteFile(Gif_Stream *, FILE *);
-int 		Gif_FullWriteFile(Gif_Stream *, int flags, FILE *);
+int		Gif_FullWriteFile(Gif_Stream *, int flags, FILE *);
 
 #define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)
 #define	Gif_ReadRecord(r)	Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED,0,0)
@@ -259,7 +259,7 @@ void		Gif_RemoveDeletionHook(int, Gif_DeletionHookFunc, void *);
 
 #ifdef GIF_DEBUGGING
 #define		GIF_DEBUG(x)			Gif_Debug x
-void 		Gif_Debug(char *x, ...);
+void		Gif_Debug(char *x, ...);
 #else
 #define		GIF_DEBUG(x)
 #endif
