@@ -741,13 +741,19 @@ in hundredths of a second.
 '
 Set the disposal method for the following frames to
 .IR method .
+A frame's disposal method determines how a viewer should remove the frame
+when it's time to display the next.
 .I Method
 can be a number between 0 and 7 (although only 0 through 3 are
 generally meaningful), or one of these names:
-.BR none ","
-.BR asis ","
-.BR background " (or " bg "),"
-.BR previous "."
+.BR none
+(leave the frame visible for future frames to build upon),
+.BR asis
+(same as "none"),
+.BR background " (or " bg ")"
+(replace the frame with the background), or
+.BR previous
+(replace the frame with the area from the previous displayed frame).
 .Op \-\-no\-disposal
 means
 .Op \-\-disposal = none .
