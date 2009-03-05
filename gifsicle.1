@@ -2,19 +2,16 @@
 .ds V 1.52
 .ds E " \-\- 
 .if t .ds E \(em
-.de OP
+.de Op
 .BR "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
-.de OR
-.RB "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
-..
-.de OA
+.de Oa
 .IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
-.de QO
+.de Qo
 .RB ` "\\$1" "'\\$2"
 ..
-.de QA
+.de Qa
 .BI "\fR`\fB\\$1" " \\$2" " \\$3" " \\$4" "\fR'\\$5"
 ..
 .de Sp
@@ -71,16 +68,16 @@ GIF on standard output. That means these two commands do the same thing:
 Not too interesting. Most times you'll tell
 .B gifsicle
 to alter its inputs by giving it command line options. The
-.OP \-i
+.Op \-i
 option, for example, tells it to interlace its input files:
 .Es
 % \fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
 To modify GIF files in place, you should use the
-.OP \-\-batch
+.Op \-\-batch
 option. With
-.OP \-\-batch ,
+.Op \-\-batch ,
 .B gifsicle
 will modify the files you specify instead of writing a new file to the
 standard output. To interlace all the GIFs in the current directory, you
@@ -98,7 +95,7 @@ will combine to create a ``flipbook'' animation:
 % \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
 Use options like
-.OP \-\-delay ", " \-\-loopcount ", and " \-\-optimize
+.Op \-\-delay ", " \-\-loopcount ", and " \-\-optimize
 to tune your animations; see their descriptions for more details.
 .PP
 The bulk of this manual page indexes
@@ -161,29 +158,29 @@ exits with status 0 if there were no errors and status 1 otherwise.
 .SH OPTIONS
 
 Every option has a long form,
-.QO \-\-long\-descriptive\-name .
+.Qo \-\-long\-descriptive\-name .
 You don't need to type the whole long descriptive name, just enough to
 make it unambiguous.
 .PP
 Some options also have a short form,
-.QO \-X .
+.Qo \-X .
 You can combine short options if they don't take arguments:
-.QO \-IIb
+.Qo \-IIb
 is the same as
-.QO "\-I \-I \-b" .
+.Qo "\-I \-I \-b" .
 But be careful with options that do take arguments:
-.QO \-cblah
+.Qo \-cblah
 means
-.QO "\-c \fRblah" ,
+.Qo "\-c \fRblah" ,
 not
-.QO "\-c \-b \-l \-a \-h" .
+.Qo "\-c \-b \-l \-a \-h" .
 .PP
 Many options also have a converse,
-.QO \-\-no\-option ,
+.Qo \-\-no\-option ,
 which turns off the option. You can turn off a short option
-.QO \-X
+.Qo \-X
 by saying
-.QO \+X
+.Qo \+X
 instead.
 '
 .\" -----------------------------------------------------------------
@@ -194,34 +191,34 @@ Mode options tell
 what kind of output to generate. There can be at most one, and it must
 precede any GIF inputs.
 .TP 5
-.OP \-\-merge ", " \-m
+.Op "\-\-merge" ", " "\-m"
 '
 Combine all GIF inputs into one file with multiple frames and write that
 file to the standard output. This is the default mode.
 '
 .TP
-.OP \-\-batch ", " \-b
+.Op \-\-batch ", " \-b
 '
 Modify each GIF input in place by reading and writing to the same filename.
 (GIFs read from the standard input are written to the standard output.)
 '
 .TP
-.OP \-\-explode ", " \-e
+.Op \-\-explode ", " \-e
 '
 Create an output GIF for each frame of each input file. The output GIFs are
 named `xxx.000', `xxx.001', and so on, where `xxx' is the name of the input
 file (or whatever you specified with 
-.QO \-\-output )
+.Qo \-\-output )
 and the numeric extension is the frame number.
 '
 .TP
-.OP \-\-explode\-by\-name ", " \-E
+.Op \-\-explode\-by\-name ", " \-E
 '
 Same as
-.OP \-\-explode ","
+.Op \-\-explode ","
 but write any named frames to files `xxx.\fIname\fR' instead of
 `xxx.\fIframe-number\fR'.  Frames are named using the
-.QO \-\-name
+.Qo \-\-name
 option.
 '
 .\" -----------------------------------------------------------------
@@ -230,63 +227,63 @@ option.
 General options control the information
 .B gifsicle
 prints and where it writes its output. The info options and
-.OP \-\-verbose
+.Op \-\-verbose
 can be turned off with
-.QO \-\-no\-X .
+.Qo \-\-no\-X .
 '
 .Sp
 .PD 0
 .TP 5
-.OP \-\-color\-info
+.Op \-\-color\-info
 '
 Like
-.OP \%\-\-info ,
+.Op \%\-\-info ,
 but also print information about input files' colormaps.
-.OP \%\-\-cinfo
+.Op \%\-\-cinfo
 is a synonym for
-.OP \%\-\-color\-info .
+.Op \%\-\-color\-info .
 '
 .Sp
 .TP 5
-.OP \-\-extension\-info
+.Op \-\-extension\-info
 '
 Like
-.OP \%\-\-info ,
+.Op \%\-\-info ,
 but also print any unrecognized GIF extensions in a
 .BR hexdump (1)-like
 format.
-.OP \%\-\-xinfo
+.Op \%\-\-xinfo
 is a synonym for
-.OP \%\-\-extension\-info .
+.Op \%\-\-extension\-info .
 '
 .Sp
 .TP 5
-.OP \-\-help ", " \-h
+.Op \-\-help ", " \-h
 '
 Print usage information and exit.
 '
 .Sp
 .TP 5
-.OP \-\-info ", " \-I
+.Op \-\-info ", " \-I
 '
 Print a human-readable description of each input GIF to the standard
 output, or whatever file you specify with
-.OP \-o .
+.Op \-o .
 This option suppresses normal output, and cannot be combined with mode
 options like
-.OP \-\-batch . 
+.Op \-\-batch . 
 If you give two
-.OP \-\-info
+.Op \-\-info
 or
-.OP \-I
+.Op \-I
 options, however, normal output is not suppressed; information will be
 printed on standard error, and you can supply a mode option.
 '
 .Sp
 .TP
-.OA \-o file
+.Oa \-o file
 .TP
-.OA \-\-output file
+.Oa \-\-output file
 '
 Send output to
 .IR file .
@@ -294,33 +291,33 @@ The special filename `-' means the standard output.
 '
 .Sp
 .TP
-.OP \-\-verbose ", " \-V
+.Op \-\-verbose ", " \-V
 '
 Print progress information (files read and written) to standard
 error.
 '
 .Sp
 .TP
-.OP \-\-no\-warnings ", " \-w
+.Op \-\-no\-warnings ", " \-w
 '
 Suppress all warning messages.
 '
 .Sp
 .TP
-.OP \-\-version
+.Op \-\-version
 '
 Print the version number and some short non-warranty information and exit.
 '
 .Sp
 .TP
-.OP \-\-conserve\-memory
+.Op \-\-conserve\-memory
 '
 Conserve memory usage at the expense of processing time. This may be useful
 if you are processing large GIFs on a computer without very much memory.
 '
 .Sp
 .TP
-.OP \-\-nextfile
+.Op \-\-nextfile
 '
 Allow input files to contain multiple concatenated GIF images. If a
 filename appears multiple times on the command line, \fBgifsicle\fR will
@@ -332,10 +329,10 @@ GIF images, in sequence, to \fBgifsicle\fR's standard input.
 '
 .Sp
 .TP
-.OP \-\-multifile
+.Op \-\-multifile
 '
 Like
-.OP \-\-nextfile ,
+.Op \-\-nextfile ,
 but read
 .I as many GIF images as possible
 from each file. This option is intended for scripts. For example, to merge
@@ -360,9 +357,9 @@ acceptable forms for frame specifications.
 .BI # num
 '
 Select frame \fInum\fR. (The first frame is
-.QO #0 .
+.Qo #0 .
 Negative numbers count backwards from the last frame, which is
-.QO #-1 .)
+.Qo #-1 .)
 '
 .TP 13
 .BI # num1 \- num2
@@ -407,14 +404,14 @@ frame in an animation\*Eare difficult to express with frame selections, but
 easy with frame changes.
 '
 .TP 5
-.OA \-\-delete frames " [" frames ".\|.\|.]"
+.Oa \-\-delete frames " [" frames ".\|.\|.]"
 '
 Delete
 .I frames
 from the input GIF.
 '
 .TP
-.OA \-\-insert\-before "frame other-GIFs"
+.Oa \-\-insert\-before "frame other-GIFs"
 '
 Insert
 .I other-GIFs
@@ -423,14 +420,14 @@ before
 in the input GIF.
 '
 .TP
-.OA \-\-append "other-GIFs"
+.Oa \-\-append "other-GIFs"
 '
 Append
 .I other-GIFs
 to the input GIF.
 '
 .TP
-.OA \-\-replace "frames other-GIFs"
+.Oa \-\-replace "frames other-GIFs"
 '
 Replace
 .I frames
@@ -482,25 +479,25 @@ the same input GIF.
 
 Image options modify input images\*Eby changing their interlacing,
 transparency, and cropping, for example. Image options have three forms:
-.QO \-\-X ,
-.QO \-\-no\-X ,
+.Qo \-\-X ,
+.Qo \-\-no\-X ,
 and
-.QO \-\-same\-X .
+.Qo \-\-same\-X .
 The
-.QO \-\-X
+.Qo \-\-X
 form selects a value for the feature, the
-.QO \-\-no\-X
+.Qo \-\-no\-X
 form turns off the feature, and the
-.QO \-\-same\-X
+.Qo \-\-same\-X
 form means that the feature's value is copied from each input. The default
 is always
-.QO \-\-same\-X . 
+.Qo \-\-same\-X . 
 For example,
-.OP \-background= """#0000FF"""
+.Op \-background= """#0000FF"""
 sets the background color to blue,
-.OP \-\-no\-background
+.Op \-\-no\-background
 turns the background color off (by setting it to 0), and
-.OP \-\-same\-background
+.Op \-\-same\-background
 uses input images' existing background colors. You can give each option
 multiple times; for example,
 .Xs
@@ -512,21 +509,21 @@ if they were already.
 .Sp
 .PD 0
 .TP 5
-.OA \-B color
+.Oa \-B color
 .TP
-.OA \-\-background color
+.Oa \-\-background color
 '
 Set the output GIF's background to
 .IR color .
 The argument can have the same forms as in the
-.OP \-\-transparent
+.Op \-\-transparent
 option below.
 '
 .Sp
 .TP
-.OA \-\-crop x1 , y1 - x2\fR,\fIy2
+.Oa \-\-crop x1 , y1 - x2\fR,\fIy2
 .TP
-.OA \-\-crop x1 , y1 + width\fRx\fIheight
+.Oa \-\-crop x1 , y1 + width\fRx\fIheight
 '
 Crop the following input frames to a smaller rectangular area. The top-left
 corner of this rectangle is
@@ -542,87 +539,87 @@ and
 can be zero or negative. A zero dimension means the cropping area goes to
 the edge of the image; a negative dimension brings the cropping area that
 many pixels back from the image edge. For example,
-.OP \-\-crop " 2,2+-2x-2"
+.Op \-\-crop " 2,2+-2x-2"
 will shave 2 pixels off each side of the input image. Cropping takes place
 before any rotation, flipping, resizing, or positioning.
 '
 .Sp
 .TP
-.OP \-\-crop\-transparency
+.Op \-\-crop\-transparency
 '
 Crop any transparent borders off the following input frames. This happens
 after any cropping due to the
-.OP \-\-crop
+.Op \-\-crop
 option. It works on the raw input image; for example, any transparency
 options have not yet been applied.
 '
 .Sp
 .TP
-.OP \-\-flip\-horizontal
+.Op \-\-flip\-horizontal
 .TP
-.OP \-\-flip\-vertical
+.Op \-\-flip\-vertical
 '
 Flip the following frames horizontally or vertically.
 '
 .Sp
 .TP
-.OP \-i
+.Op \-i
 .TP
-.OP \-\-interlace
+.Op \-\-interlace
 '
 Turn interlacing on.
 '
 .Sp
 .TP
-.OA \-S width x height
+.Oa \-S width x height
 .TP
-.OA \-\-logical\-screen width x height
+.Oa \-\-logical\-screen width x height
 '
 Set the output logical screen to
 .IR width x height .
-.OP \-\-no\-logical\-screen
+.Op \-\-no\-logical\-screen
 sets the output logical screen to the size of the largest output
 frame, while
-.OP \-\-same\-logical\-screen
+.Op \-\-same\-logical\-screen
 sets the output logical screen to the largest input logical screen.
-.OP \-\-screen
+.Op \-\-screen
 is a synonym for
-.OP \-\-logical\-screen .
+.Op \-\-logical\-screen .
 '
 .Sp
 .TP
-.OA \-p x\fR,\fIy
+.Oa \-p x\fR,\fIy
 .TP
-.OA \-\-position x\fR,\fIy
+.Oa \-\-position x\fR,\fIy
 '
 Set the following frames' positions to 
 .RI ( x , y ).
-.OP \-\-no\-position
+.Op \-\-no\-position
 means
-.OP \-\-position " 0,0."
+.Op \-\-position " 0,0."
 Normally,
-.OA \-\-position x\fR,\fIy
+.Oa \-\-position x\fR,\fIy
 places every succeeding frame exactly at \fIx\fR,\fIy\fR. However, if an
 entire animation is input, \fIx\fR,\fIy\fR is treated as the position for
 the animation.
 '
 .Sp
 .TP
-.OP \-\-rotate\-90
+.Op \-\-rotate\-90
 .TP
-.OP \-\-rotate\-180
+.Op \-\-rotate\-180
 .TP
-.OP \-\-rotate\-270
+.Op \-\-rotate\-270
 '
 Rotate the following frames by 90, 180, or 270 degrees.
-.OP \-\-no\-rotate
+.Op \-\-no\-rotate
 turns off any rotation.
 '
 .Sp
 .TP
-.OA \-t color
+.Oa \-t color
 .TP
-.OA \-\-transparent color
+.Oa \-\-transparent color
 '
 Make
 .I color
@@ -642,9 +639,9 @@ includes names, comments, and generic extensions.
 .Sp
 .PD 0
 .TP 5
-.OA \-x app\-name " " extension
+.Oa \-x app\-name " " extension
 .TP
-.OA \-\-app\-extension app\-name " " extension
+.Oa \-\-app\-extension app\-name " " extension
 '
 Add an application extension named
 .I app\-name
@@ -654,25 +651,25 @@ to the output GIF.
 '
 .Sp
 .TP
-.OA \-c text
+.Oa \-c text
 .TP
-.OA \-\-comment text
+.Oa \-\-comment text
 '
 Add a comment,
 .IR text ,
 to the output GIF. The comment will be placed before the next frame in
 the stream.
 .Sp
-.OP \-\-no\-comments
+.Op \-\-no\-comments
 and
-.OP \-\-same\-comments
+.Op \-\-same\-comments
 affect all the images following, and apply only to input GIF comments,
 not ones added with
-.OP \-\-comment .
+.Op \-\-comment .
 '
 .Sp
 .TP
-.OA \-\-extension number " " extension
+.Oa \-\-extension number " " extension
 '
 Add an extension numbered
 .I number
@@ -683,30 +680,30 @@ to the output GIF.
 can be in decimal, octal, hex, or it can be a single character like `n',
 whose ASCII value is used.
 .Sp
-.OP \-\-no\-extensions
+.Op \-\-no\-extensions
 (or
-.OP +x )
+.Op +x )
 and
-.OP \-\-same\-extensions
+.Op \-\-same\-extensions
 affect all the images following, and apply only to input GIF extensions.
 '
 .Sp
 .TP
-.OA \-n text
+.Oa \-n text
 .TP
-.OA \-\-name text
+.Oa \-\-name text
 '
 Set the next frame's name to
 .IR text .
 This name is stored as an extension in the output GIF (extension number
 0xCE, followed by the characters of the frame name).
 .Sp
-.OP \-\-no\-names
+.Op \-\-no\-names
 and
-.OP \-\-same\-names
+.Op \-\-same\-names
 affect all the images following. They apply only to input GIF names,
 not ones added with
-.OP \-\-name .
+.Op \-\-name .
 '
 .PD
 '
@@ -715,10 +712,10 @@ not ones added with
 
 Animation options apply to GIF animations, or to individual frames in GIF
 animations. As with image options, most animation options have three forms,
-.QO \-\-X ,
-.QO \-\-no\-X ,
+.Qo \-\-X ,
+.Qo \-\-no\-X ,
 and
-.QO \-\-same\-X ,
+.Qo \-\-same\-X ,
 and you can give animation options multiple times; for example,
 .Xs
 \fBgifsicle \-b a.gif \-d50 "#0" "#1" \-d100 "#2" "#3"\fR
@@ -728,9 +725,9 @@ sets the delays of frames 0 and 1 to 50, and frames 2 and 3 to 100.
 .Sp
 .PD 0
 .TP 5
-.OA \-d time
+.Oa \-d time
 .TP
-.OA \-\-delay time
+.Oa \-\-delay time
 '
 Set the delay between frames to
 .IR time 
@@ -738,9 +735,9 @@ in hundredths of a second.
 '
 .Sp
 .TP
-.OA \-D method
+.Oa \-D method
 .TP
-.OA \-\-disposal method
+.Oa \-\-disposal method
 '
 Set the disposal method for the following frames to
 .IR method .
@@ -751,15 +748,15 @@ generally meaningful), or one of these names:
 .BR asis ","
 .BR background " (or " bg "),"
 .BR previous "."
-.OP \-\-no\-disposal
+.Op \-\-no\-disposal
 means
-.OP \-\-disposal = none .
+.Op \-\-disposal = none .
 '
 .Sp
 .TP
-.OP \-l "[\fIcount\fR]"
+.Op \-l "[\fIcount\fR]"
 .TP
-.OP \-\-loopcount "[=\fIcount\fR]"
+.Op \-\-loopcount "[=\fIcount\fR]"
 '
 Set the Netscape loop extension to
 .IR count .
@@ -767,32 +764,32 @@ Set the Netscape loop extension to
 is an integer, or
 .B forever
 to loop endlessly. If you supply a
-.OP \-\-loopcount
+.Op \-\-loopcount
 option without specifying
 .IR count ,
 Gifsicle will use
 .BR forever .
-.OP \-\-no\-loopcount
+.Op \-\-no\-loopcount
 (the default) turns off looping.
 .Sp
 Set the loop count to one less than the number of times you want the
 animation to run. An animation with
-.OP \-\-no\-loopcount
+.Op \-\-no\-loopcount
 will show every frame once;
-.OP \-\-loopcount =1
+.Op \-\-loopcount =1
 will loop once, thus showing every frame twice; and so forth.
 Note that
-.OP \-\-loopcount =0
+.Op \-\-loopcount =0
 is equivalent to
-.OP \-\-loopcount =forever,
+.Op \-\-loopcount =forever,
 not
-.OP \-\-no\-loopcount .
+.Op \-\-no\-loopcount .
 '
 .Sp
 .TP
-.OP \-O "[\fIlevel\fR]"
+.Op \-O "[\fIlevel\fR]"
 .TP
-.OP \-\-optimize "[=\fIlevel\fR]"
+.Op \-\-optimize "[=\fIlevel\fR]"
 '
 Optimize output GIF animations for space.
 .I Level
@@ -801,37 +798,37 @@ levels:
 .Sp
 .RS
 .TP 5
-.OP \-O1
+.Op \-O1
 Stores only the changed portion of each image. This is the default.
 .TP 5
-.OP \-O2
+.Op \-O2
 Also uses transparency to shrink the file further.
 .Sp
 .PP
 There is no
-.OP \-\-same\-optimize
+.Op \-\-same\-optimize
 option.
 .RE
 '
 .Sp
 .TP 5
-.OA \-U
+.Oa \-U
 .TP
-.OA \-\-unoptimize
+.Oa \-\-unoptimize
 '
 Unoptimize GIF animations into an easy-to-edit form.
 .Sp
 GIF animations are often optimized (see 
-.OP \-\-optimize )
+.Op \-\-optimize )
 to make them smaller and faster to load, which unfortunately makes them
 difficult to edit.
-.OP \-\-unoptimize
+.Op \-\-unoptimize
 changes optimized input GIFs into unoptimized GIFs, where each frame is a
 faithful representation of what a user would see at that point in the
 animation.
 .Sp
 There is no
-.OP \-\-same\-unoptimize
+.Op \-\-same\-unoptimize
 option.
 .RE
 '
@@ -842,22 +839,22 @@ option.
 
 Whole-GIF options effect entire GIFs as they are read or written. They can
 be turned off with
-.QO \-\-no\-option .
+.Qo \-\-no\-option .
 .Sp
 .PD 0
 .TP 5
-.OP \-\-careful
+.Op \-\-careful
 '
 Write slightly larger GIFs that avoid bugs in some other GIF
 implementations. Some Java and Internet Explorer versions cannot display
 the correct, minimal GIFs that Gifsicle produces. Use the
-.OP \-\-careful
+.Op \-\-careful
 option if you are having problems with a particular image.
 '
 .Sp
 .PD 0
 .TP 5
-.OA \-\-change\-color color1 " " color2
+.Oa \-\-change\-color color1 " " color2
 '
 Change
 .I color1
@@ -866,20 +863,20 @@ to
 in the following input GIFs. (The 
 .I color
 arguments have the same forms as in the
-.OP \-t
+.Op \-t
 option.) You can change multiple colors by giving the option multiple
 times. Color changes don't interfere with one another, so you can safely
 swap two colors with
-.QA \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
+.Qa \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
 They all take effect as an input GIF is read.
-.OP \-\-no\-change\-color
+.Op \-\-no\-change\-color
 cancels all color changes.
 '
 .Sp
 .TP
-.OA \-k num
+.Oa \-k num
 .TP
-.OA \-\-colors num
+.Oa \-\-colors num
 '
 Reduce the number of distinct colors in each output GIF to
 .I num
@@ -889,17 +886,17 @@ must be between 2 and 256. This can be used to shrink output GIFs or
 eliminate any local color tables.
 .Sp
 Unless you give
-.OP \-\-use\-colormap ,
+.Op \-\-use\-colormap ,
 an adaptive group of colors is chosen from the existing color table.
 You can affect this process with the
-.OP \-\-color\-method
+.Op \-\-color\-method
 option. Gifsicle may need to add an additional color (making
 .IR num +1
 in all) if there is transparency in the image.
 '
 .Sp
 .TP
-.OA \-\-color\-method method
+.Oa \-\-color\-method method
 '
 Determine how a smaller colormap is chosen. There are three choices:
 .BR diversity ,
@@ -911,25 +908,25 @@ is a modification of this: some color values are blended from a group of
 the existing colors.
 .B median\-cut
 is the median cut algorithm described by Heckbert.
-.OP \-\-method
+.Op \-\-method
 is a synonym for
-.OP \-\-color\-method .
+.Op \-\-color\-method .
 '
 .Sp
 .TP
-.OA \-f
+.Oa \-f
 .TP
-.OA \-\-dither
+.Oa \-\-dither
 '
 This option only matters if the colormap was changed. With
-.OP \-\-dither
+.Op \-\-dither
 on, Floyd-Steinberg error diffusion is used to approximate any colors that
 were removed. This looks better, but makes bigger files and can cause
 animation artifacts, so it is off by default.
 '
 .Sp
 .TP
-.OA \-\-resize width x height
+.Oa \-\-resize width x height
 '
 Resize the output GIF to
 .IR width x height .
@@ -950,21 +947,21 @@ quality; for best-looking results you will need to use other tools.
 '
 .Sp
 .TP
-.OA \-\-resize\-width width
+.Oa \-\-resize\-width width
 '
 Same as
-.OA \-\-resize width x_.
+.Oa \-\-resize width x_.
 '
 .Sp
 .TP
-.OA \-\-resize\-height height
+.Oa \-\-resize\-height height
 '
 Same as
-.OA \-\-resize "" _x height .
+.Oa \-\-resize "" _x height .
 '
 .Sp
 .TP
-.OA \-\-scale Xfactor [x Yfactor ]
+.Oa \-\-scale Xfactor [x Yfactor ]
 '
 Scale the output GIF's width and height by
 .IR Xfactor " and " Yfactor .
@@ -977,20 +974,20 @@ optimization.
 '
 .Sp
 .TP
-.OA \-\-transform\-colormap command
+.Oa \-\-transform\-colormap command
 '
 .I Command
 should be a shell command that reads from standard input and writes to
 standard output. Each colormap in the output GIF is translated into text
 colormap format (see
-.OP \-\-use\-colormap
+.Op \-\-use\-colormap
 below) and piped to the command. The output that command generates (which
 should also be in text colormap format) will be used as the colormap
 instead.
 '
 .Sp
 .TP
-.OA \-\-use\-colormap colormap
+.Oa \-\-use\-colormap colormap
 '
 Set the image's colormap to 
 .IR colormap .
@@ -1004,7 +1001,7 @@ for grayscale;
 for black-and-white; or the name of a file. That file should either be a
 text file (the format is described below) or a GIF file, whose global
 colormap will be used. If
-.OP \-\-colors\fR=\fIN
+.Op \-\-colors\fR=\fIN
 is also given, an
 .IR N \-sized
 subset of
@@ -1034,26 +1031,26 @@ First, let's create an animation, `anim.gif':
 This animation will move very quickly: since we didn't specify a delay, a
 browser will cycle through the frames as fast as it can. Let's slow it down
 and pause .5 seconds between frames, using the
-.OP \-\-delay
+.Op \-\-delay
 option.
 .Es
 % \fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 If we also want the GIF to loop three times, we can use
-.OP \-\-loopcount :
+.Op \-\-loopcount :
 .Es
 % \fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 (Rather than type
-.OP \-\-delay
+.Op \-\-delay
 again, we used its short form,
-.OP \-d .
+.Op \-d .
 Many options have short forms; you can see them by running
 .RB ` "gifsicle \-\-help" '.
 We also abbreviated
-.OP \-\-loopcount
+.Op \-\-loopcount
 to
-.OP \-\-loop ,
+.Op \-\-loop ,
 which is OK since no other option starts with `loop'.)
 .PP
 To explode `anim.gif' into its component frames:
@@ -1072,23 +1069,23 @@ To change the second frame of `anim.gif' to `x.gif':
 .Es
 % \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace "#1" x.gif\fR
 .Ee
-.OP \-\-unoptimize
+.Op \-\-unoptimize
 is used since `anim.gif' was optimized in the last step. Editing
 individual frames in optimized GIFs is dangerous without
-.OP \-\-unoptimize ;
+.Op \-\-unoptimize ;
 frames following the changed frame could be corrupted by the change.
 Of course, this might be what you want.
 .PP
 Note that
-.OP \-\-unoptimize
+.Op \-\-unoptimize
 and
-.OP \-\-optimize
+.Op \-\-optimize
 can be on simultaneously.
-.OP \-\-unoptimize
+.Op \-\-unoptimize
 affects
 .I input
 GIF files, while
-.OP \-\-optimize
+.Op \-\-optimize
 affects
 .I output
 GIF files.
@@ -1107,9 +1104,9 @@ directory, and also print information about each:
 (information printed)
 .Ee
 Giving
-.OP \-I
+.Op \-I
 twice forces normal output to occur. With only one
-.OP \-I ,
+.Op \-I ,
 the GIFs would not have changed on disk.
 .PP
 To change `anim.gif' to use a 64-color subset of the Web-safe palette:
@@ -1133,7 +1130,7 @@ twice:
 '
 Some optimized output GIFs may appear incorrectly on some GIF
 implementations (for example, Java's); see the
-.OP \-\-careful
+.Op \-\-careful
 option.
 .PP
 Please email suggestions, additions, patches and bugs to

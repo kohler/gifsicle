@@ -2,13 +2,13 @@
 .ds V 1.52
 .ds E " \-\- 
 .if t .ds E \(em
-.de OP
+.de Op
 .BR "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
-.de OA
+.de Oa
 .IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
-.de QO
+.de Qo
 .RB ` "\\$1" "'\\$2"
 ..
 .de Sp
@@ -100,35 +100,35 @@ standard input.
 
 .PD 0
 .TP 5
-.OP \-\-animate ", " \-a
+.Op \-\-animate ", " \-a
 '
 Animate multi-image GIFs by default. Normally, multi-image GIFs first
 appear in slideshow mode. You can always use the
 .RB ` a '
 keystroke to toggle between modes. This option has a converse,
-.QO \-\-no\-animate
+.Qo \-\-no\-animate
 or
-.QO +a .
+.Qo +a .
 '
 .Sp
 .TP 5
-.OP \-\-unoptimize ", " \-U
+.Op \-\-unoptimize ", " \-U
 '
 Display multi-image GIFs as ``unoptimized'', which shows a faithful
 representation of what a user will see at each frame of an animation. See
 .BR gifsicle (1)
 for a more detailed description of unoptimization. This option has a
 converse,
-.QO \-\-no\-unoptimize
+.Qo \-\-no\-unoptimize
 or
-.QO +U .
+.Qo +U .
 GIFs are always displayed unoptimized in animation mode.
 '
 .Sp
 .TP 5
-.OA \-d display
+.Oa \-d display
 .TP
-.OA \-\-display display
+.Oa \-\-display display
 '
 Sets the X display to
 .IR display .
@@ -136,7 +136,7 @@ This option must come before any GIF files.
 '
 .Sp
 .TP 5
-.OA \-\-name name
+.Oa \-\-name name
 '
 Sets the application name under which resources are found, rather than
 the default of "gifview". Since
@@ -146,17 +146,17 @@ communication with your window manager.
 '
 .Sp
 .TP 5
-.OA \-\-geometry geometry
+.Oa \-\-geometry geometry
 '
 Set the size and position of
 .BR gifview 's
 windows. This is a standard X option. At most one
-.OP \-\-geometry
+.Op \-\-geometry
 option can be given per window (that is, per input GIF file).
 '
 .Sp
 .TP 5
-.OA \-\-title title
+.Oa \-\-title title
 '
 Sets the
 .B gifview
@@ -165,9 +165,9 @@ currently displayed file and frame.
 '
 .Sp
 .TP 5
-.OA \-w window
+.Oa \-w window
 .TP
-.OA \-\-window window
+.Oa \-\-window window
 '
 Display the next GIF input in an existing X window, instead of making a new
 top-level window. This way, you can use
@@ -183,7 +183,7 @@ will use the root window).
 '
 .Sp
 .TP 5
-.OA \-\-new\-window window
+.Oa \-\-new\-window window
 '
 Display the next GIF input in a new child of an existing X window. This
 child window will disappear when
@@ -199,7 +199,7 @@ will use the root window).
 '
 .Sp
 .TP 5
-.OP \-\-install\-colormap ", " \-i
+.Op \-\-install\-colormap ", " \-i
 '
 Use a private colormap for each window (if you are using a PseudoColor
 display). This avoids polluting the existing colormap, and may produce
@@ -208,28 +208,28 @@ flashing.
 '
 .Sp
 .TP 5
-.OA \-\-background color
+.Oa \-\-background color
 .TP
-.OA \-\-bg color
+.Oa \-\-bg color
 '
 Set the background color, which is used
 for transparent pixels.
 '
 .Sp
 .TP 5
-.OP \-\-no\-interactive ", " \+e
+.Op \-\-no\-interactive ", " \+e
 '
 Don't pay attention to mouse buttons or keystrokes.
 '
 .Sp
 .TP 5
-.OP \-\-help
+.Op \-\-help
 '
 Print usage information and exit.
 '
 .Sp
 .TP
-.OP \-\-version
+.Op \-\-version
 '
 Print the version number and some quickie warranty information and exit.
 '
@@ -249,9 +249,9 @@ selections can only be displayed in slideshow mode.
 .BI # num
 '
 Select frame \fInum\fR. (The first frame is
-.QO #0 .
+.Qo #0 .
 Negative numbers count backwards from the last frame, which is
-.QO #-1 .)
+.Qo #-1 .)
 '
 .TP 13
 .BI # name

@@ -2,14 +2,8 @@
 .ds V 1.52
 .ds E " \-\- 
 .if t .ds E \(em
-.de OP
+.de Op
 .BR "\\$1" "\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
-..
-.de OA
-.IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
-..
-.de QO
-.RB ` "\\$1" "'\\$2"
 ..
 .de Sp
 .if n .sp
@@ -49,19 +43,19 @@ there were some differences, and 2 if there was trouble.
 
 .PD 0
 .TP 5
-.OP \-\-brief ", " \-q
+.Op \-\-brief ", " \-q
 '
 Report only whether the GIFs differ, not the details of the differences.
 '
 .Sp
 .TP 5
-.OP \-\-help
+.Op \-\-help
 '
 Print usage information and exit.
 '
 .Sp
 .TP
-.OP \-\-version
+.Op \-\-version
 '
 Print the version number and some quickie warranty information and exit.
 '
