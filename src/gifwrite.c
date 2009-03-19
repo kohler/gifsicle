@@ -79,6 +79,7 @@ typedef struct Gif_Writer {
   int flags;
   int global_size;
   int local_size;
+  int errors;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(uint8_t *, uint16_t, struct Gif_Writer *);
 
@@ -105,7 +106,8 @@ file_byte_putter(uint8_t b, Gif_Writer *grr)
 static void
 file_block_putter(uint8_t *block, uint16_t size, Gif_Writer *grr)
 {
-  fwrite(block, size, 1, grr->f);
+  if (fwrite(block, 1, size, grr->f) != size)
+    grr->errors = 1;
 }
 
 
@@ -431,6 +433,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
   grr.flags = flags;
   grr.global_size = get_color_table_size(gfs, 0, &grr);
   grr.local_size = get_color_table_size(gfs, gfi, &grr);
+  grr.errors = 0;
 
   if (!gfc.nodes || !gfc.links || !grr.v)
     goto done;
@@ -754,6 +757,7 @@ Gif_FullWriteFile(Gif_Stream *gfs, int flags, FILE *f)
   grr.byte_putter = file_byte_putter;
   grr.block_putter = file_block_putter;
   grr.flags = flags;
+  grr.errors = 0;
   return write_gif(gfs, &grr);
 }
 

@@ -48,7 +48,8 @@ verror(int seriousness, const char *fmt, va_list val)
     sprintf(buffer, pattern, fmt);
     vfprintf(stderr, buffer, val);
   } else {
-    fwrite(pattern, 1, strlen(pattern) - 3, stderr);
+    pattern[strlen(pattern) - 3] = 0;
+    fprintf(stderr, "%s", pattern);
     vfprintf(stderr, fmt, val);
     putc('\n', stderr);
   }
@@ -252,8 +253,10 @@ safe_puts(const char *s, uint32_t len, FILE *f)
   const char *last_safe = s;
   for (; len > 0; len--, s++)
     if (*s < ' ' || *s >= 0x7F || *s == '\\') {
-      if (last_safe != s)
-	fwrite(last_safe, 1, s - last_safe, f);
+      if (last_safe != s) {
+	if (fwrite(last_safe, 1, s - last_safe, f) != s - last_safe)
+	  return;
+      }
       last_safe = s + 1;
       switch (*s) {
        case '\a': fputs("\\a", f); break;
@@ -268,8 +271,10 @@ safe_puts(const char *s, uint32_t len, FILE *f)
        default:	  fprintf(f, "\\%03o", *s); break;
       }
     }
-  if (last_safe != s)
-    fwrite(last_safe, 1, s - last_safe, f);
+  if (last_safe != s) {
+    if (fwrite(last_safe, 1, s - last_safe, f) != s - last_safe)
+      return;
+  }
 }
 
 

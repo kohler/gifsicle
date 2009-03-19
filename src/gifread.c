@@ -84,7 +84,9 @@ file_byte_getter(Gif_Reader *grr)
 static void
 file_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
 {
-  fread(p, 1, s, grr->f);
+  size_t nread = fread(p, 1, s, grr->f);
+  if (nread < s)
+    memset(p + nread, 0, s - nread);
 }
 
 static uint32_t
@@ -115,9 +117,12 @@ record_byte_getter(Gif_Reader *grr)
 static void
 record_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
 {
-  if (s > grr->w) s = grr->w;
-  memcpy(p, grr->v, s);
-  grr->w -= s, grr->v += s;
+  uint32_t ncopy = s;
+  if (ncopy > grr->w) ncopy = grr->w;
+  memcpy(p, grr->v, ncopy);
+  grr->w -= ncopy, grr->v += ncopy;
+  if (ncopy < s)
+    memset(p + ncopy, 0, s - ncopy);
 }
 
 static uint32_t
