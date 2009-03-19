@@ -1,5 +1,5 @@
 /* gifunopt.c - Unoptimization function for the GIF library.
-   Copyright (C) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
+   Copyright (C) 1997-2009 Eddie Kohler, kohler@cs.ucla.edu
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -66,7 +66,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 
 static int
 create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
-		  uint8_t *new_data)
+		  uint8_t *new_data, int *used_transparent)
 {
   int have[257];
   int transparent = -1;
@@ -96,10 +96,12 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
   }
 
   /* map the wide image onto the new data */
+  *used_transparent = 0;
   for (i = 0, move = screen; i < size; i++, move++, new_data++)
-    if (*move == TRANSPARENT)
+    if (*move == TRANSPARENT) {
       *new_data = transparent;
-    else
+      *used_transparent = 1;
+    } else
       *new_data = *move;
 
   gfi->transparent = transparent;
@@ -114,6 +116,7 @@ static int
 unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int size = gfs->screen_width * gfs->screen_height;
+  int used_transparent;
   uint8_t *new_data = Gif_NewArray(uint8_t, size);
   uint16_t *new_screen = screen;
   if (!new_data) return 0;
@@ -129,7 +132,7 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   }
 
   put_image_in_screen(gfs, gfi, new_screen);
-  if (!create_image_data(gfs, gfi, new_screen, new_data)) {
+  if (!create_image_data(gfs, gfi, new_screen, new_data, &used_transparent)) {
     Gif_DeleteArray(new_data);
     return 0;
   }
@@ -143,15 +146,30 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   gfi->top = 0;
   gfi->width = gfs->screen_width;
   gfi->height = gfs->screen_height;
-  gfi->disposal = GIF_DISPOSAL_BACKGROUND;
+  gfi->disposal = used_transparent;
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
 
   return 1;
 }
 
 
+static int
+no_more_transparency(Gif_Image *gfi1, Gif_Image *gfi2)
+{
+  uint8_t *d1 = gfi1->image_data, *d2 = gfi2->image_data;
+  uint8_t t1 = gfi1->transparent, t2 = gfi2->transparent;
+  int left = gfi1->width * gfi1->height;
+  if (gfi1->transparent < 0)
+    return 1;
+  for (; left > 0; ++d1, ++d2)
+    if (*d1 == t1 && *d2 != t2)
+      return 0;
+  return 1;
+}
+
+
 int
-Gif_Unoptimize(Gif_Stream *gfs)
+Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
 {
   int ok = 1;
   int i, size;
@@ -179,10 +197,33 @@ Gif_Unoptimize(Gif_Stream *gfs)
     if (!unoptimize_image(gfs, gfs->images[i], screen))
       ok = 0;
 
+  if (ok) {
+    if (flags & GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL) {
+      /* set disposal based on use of transparency.
+	 If (every transparent pixel in frame i is also transparent in frame
+	 i - 1), then frame i - 1 gets disposal ASIS; otherwise, disposal
+	 BACKGROUND. */
+      gfs->images[gfs->nimages - 1]->disposal = GIF_DISPOSAL_NONE;
+      for (i = gfs->nimages - 2; i >= 0; --i)
+	if (gfs->images[i+1]->disposal == 0	/* no transparency */
+	    || no_more_transparency(gfs->images[i+1], gfs->images[i]))
+	  gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
+	else
+	  gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
+    } else
+      for (i = 0; i < gfs->nimages; ++i)
+	gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
+  }
+
   Gif_DeleteArray(screen);
   return ok;
 }
 
+int
+Gif_Unoptimize(Gif_Stream *gfs)
+{
+  return Gif_FullUnoptimize(gfs, 0);
+}
 
 #ifdef __cplusplus
 }

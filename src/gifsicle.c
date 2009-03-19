@@ -694,7 +694,7 @@ input_stream(const char *name)
   def_frame = old_def_frame;
 
   if (unoptimizing)
-    if (!Gif_Unoptimize(gfs)) {
+    if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
       static int context = 0;
       warning("'%s' is too complex to unoptimize", name);
       if (!context) {

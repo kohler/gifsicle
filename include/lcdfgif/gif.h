@@ -1,5 +1,5 @@
 /* gif.h - Interface to the LCDF GIF library.
-   Copyright (C) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
+   Copyright (C) 1997-2009 Eddie Kohler, kohler@cs.ucla.edu
    This file is part of the LCDF GIF library.
 
    The GIF library is free software. It is distributed under the GNU General
@@ -67,8 +67,11 @@ Gif_Stream *	Gif_CopyStreamImages(Gif_Stream *);
 #define		Gif_ScreenHeight(gfs)		((gfs)->screen_height)
 #define		Gif_ImageCount(gfs)		((gfs)->nimages)
 
+#define		GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL	1
+
 void		Gif_CalculateScreenSize(Gif_Stream *, int force);
 int		Gif_Unoptimize(Gif_Stream *);
+int		Gif_FullUnoptimize(Gif_Stream *, int flags);
 
 
 /** GIF_IMAGE **/
