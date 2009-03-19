@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.53   19.Mar.2009
+
+* gifsicle: Frames in an unoptimized image will use disposal "none" when
+  possible.  This leads to fewer surprises later.
+
+
 Version 1.52   18.May.2008
 
 * gifsicle: Fix bug introduced in 1.51: --crop-transparent works.  Reported by
