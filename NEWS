@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.54   3.Apr.2009
+
+* gifsicle, gifview: Fix several serious bugs with --disposal previous that
+  could affect optimized, unoptimized, and displayed images.  Reported by
+  Gerald Johanson.
+
+
 Version 1.53   19.Mar.2009
 
 * gifsicle: Frames in an unoptimized image will use disposal "none" when
