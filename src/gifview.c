@@ -132,7 +132,7 @@ typedef struct Gt_Viewer {
   int was_unoptimized;
   int free_pixmaps;
 
-  Pixmap *unoptimized_pixmaps;
+  Gif_XFrame *unoptimized_frames;
 
   struct Gt_Viewer *next;
 
@@ -469,9 +469,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   viewer->im_pos = -1;
   viewer->was_unoptimized = 0;
   viewer->free_pixmaps = 1;
-  viewer->unoptimized_pixmaps = Gif_NewArray(Pixmap, viewer->nim);
-  for (i = 0; i < viewer->nim; i++)
-    viewer->unoptimized_pixmaps[i] = None;
+  viewer->unoptimized_frames = Gif_NewXFrames(gfs);
   viewer->next = viewers;
   viewers = viewer;
   viewer->animating = 0;
@@ -493,17 +491,14 @@ delete_viewer(Gt_Viewer *viewer)
   int i;
   if (viewer->pixmap && !viewer->was_unoptimized)
     XFreePixmap(viewer->display, viewer->pixmap);
-  for (i = 0; i < viewer->nim; i++)
-    if (viewer->unoptimized_pixmaps[i])
-      XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[i]);
 
   for (trav = viewers; trav != viewer; prev = trav, trav = trav->next)
     ;
   if (prev) prev->next = viewer->next;
   else viewers = viewer->next;
 
+  Gif_DeleteXFrames(viewer->gfx, viewer->gfs, viewer->unoptimized_frames);
   Gif_DeleteStream(viewer->gfs);
-  Gif_DeleteArray(viewer->unoptimized_pixmaps);
   Gif_DeleteArray(viewer->im);
   Gif_DeleteXContext(viewer->gfx);
   Gif_Delete(viewer);
@@ -646,7 +641,7 @@ schedule_next_frame(Gt_Viewer *viewer)
   xwADDTIME(viewer->timer, viewer->timer, interval);
 
   /* 1.Aug.2002 - leave some time to prepare the frame if necessary */
-  if (!viewer->unoptimized_pixmaps[next_pos]) {
+  if (viewer->unoptimized_frames[next_pos].pixmap) {
     xwSUBTIME(viewer->timer, viewer->timer, preparation_time);
     viewer->preparing = 1;
   }
@@ -856,17 +851,9 @@ static Pixmap
 unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
 {
   /* create a new unoptimized frame if necessary */
-  if (!viewer->unoptimized_pixmaps[frame]) {
-    Gif_Stream *gfs = viewer->gfs;
-    Pixmap last = None, last_last = None;
-    if (frame >= 2 && gfs->images[frame-1]->disposal == GIF_DISPOSAL_PREVIOUS)
-      last_last = unoptimized_frame(viewer, frame - 2, slow);
-    if (frame >= 1)
-      last = unoptimized_frame(viewer, frame - 1, slow);
-
-    viewer->unoptimized_pixmaps[frame] =
-      Gif_XNextImage(viewer->gfx, last_last, last, gfs, frame);
-
+  if (!viewer->unoptimized_frames[frame].pixmap) {
+    (void) Gif_XNextImage(viewer->gfx, viewer->gfs, frame,
+			  viewer->unoptimized_frames);
     if (slow) {
       set_viewer_name(viewer, frame);
       XFlush(viewer->display);
@@ -877,14 +864,14 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
   if (viewer->free_pixmaps && frame % SAVE_FRAMES == 1) {
     int kill, block_first = frame - 1, block_last = frame + SAVE_FRAMES - 1;
     for (kill = 1; kill < viewer->nim; kill++)
-      if (viewer->unoptimized_pixmaps[kill] && kill % 50 != 0
+      if (viewer->unoptimized_frames[kill].pixmap && kill % 50 != 0
 	  && (kill < block_first || kill >= block_last)) {
-	XFreePixmap(viewer->display, viewer->unoptimized_pixmaps[kill]);
-	viewer->unoptimized_pixmaps[kill] = None;
+	XFreePixmap(viewer->display, viewer->unoptimized_frames[kill].pixmap);
+	viewer->unoptimized_frames[kill].pixmap = None;
       }
   }
 
-  return viewer->unoptimized_pixmaps[frame];
+  return viewer->unoptimized_frames[frame].pixmap;
 }
 
 void
@@ -902,7 +889,7 @@ prepare_frame(Gt_Viewer *viewer, int frame)
 
   /* Change cursor if we need to wait. */
   if ((viewer->animating || viewer->unoptimizing)
-      && !viewer->unoptimized_pixmaps[frame]) {
+      && !viewer->unoptimized_frames[frame].pixmap) {
     if (frame > viewer->im_pos + 10 || frame < viewer->im_pos) {
       changed_cursor = 1;
       XDefineCursor(display, window, viewer->wait_cursor);
@@ -955,7 +942,7 @@ view_frame(Gt_Viewer *viewer, int frame)
 
     /* Change cursor if we need to wait. */
     if ((viewer->animating || viewer->unoptimizing)
-	&& !viewer->unoptimized_pixmaps[frame]) {
+	&& !viewer->unoptimized_frames[frame].pixmap) {
       if (frame > viewer->im_pos + 10 || frame < viewer->im_pos) {
 	changed_cursor = 1;
 	XDefineCursor(display, window, viewer->wait_cursor);

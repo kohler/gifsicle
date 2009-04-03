@@ -1,5 +1,5 @@
 /* gifx.c - Functions to turn GIFs in memory into X Pixmaps.
-   Copyright (C) 1997-2006 Eddie Kohler, kohler@cs.ucla.edu
+   Copyright (C) 1997-2009 Eddie Kohler, kohler@cs.ucla.edu
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -543,102 +543,197 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   return Gif_XSubMask(gfx, gfi, 0, 0, gfi->width, gfi->height);
 }
 
-
-Pixmap
-Gif_XNextImage(Gif_XContext *gfx, Pixmap last_last, Pixmap last,
-	       Gif_Stream *gfs, int n)
+static Pixmap
+screen_pixmap(Gif_XContext *gfx, Gif_Stream *gfs)
 {
-  Pixmap pixmap = None, image = None, mask = None;
-  Gif_Image *gfi = gfs->images[n];
-  Gif_Image *last_gfi = (n > 0 ? gfs->images[n-1] : 0);
+  return XCreatePixmap(gfx->display, gfx->drawable,
+		       gfs->screen_width, gfs->screen_height, gfx->depth);
+}
+
+static int
+apply_background(Gif_XContext *gfx, Gif_Stream *gfs, int i, Pixmap pixmap)
+{
+  Gif_Image *gfi = gfs->images[i >= 0 ? i : 0];
   Gif_Colormap *gfcm = (gfi->local ? gfi->local : gfs->global);
   unsigned long bg_pixel;
-  unsigned long old_transparent = gfx->transparent_pixel;
 
-  if (gfs->screen_width == 0 || gfs->screen_height == 0)
-    return None;
+  /* find bg_pixel */
+  if (gfs->global && gfs->background < gfs->global->ncol
+      && gfs->images[0]->transparent < 0) {
+    Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 1);
+    if (!gfxc)
+      return -1;
+    allocate_colors(gfxc);
+    bg_pixel = gfxc->pixels[gfs->background];
+  } else
+    bg_pixel = gfx->transparent_pixel;
 
-  if (gfi->width == gfs->screen_width && gfi->height == gfs->screen_height
-      && gfi->left == 0 && gfi->top == 0 && gfi->transparent < 0)
-    return Gif_XImage(gfx, gfs, gfi);
+  /* install it as the foreground color on gfx->image_gc */
+  if (!gfx->image_gc)
+    gfx->image_gc = XCreateGC(gfx->display, pixmap, 0, 0);
+  if (!gfx->image_gc)
+    return -1;
+  XSetForeground(gfx->display, gfx->image_gc, bg_pixel);
+  gfx->transparent_pixel = bg_pixel;
 
-  /* create the pixmap */
-  pixmap = XCreatePixmap(gfx->display, gfx->drawable,
-			 gfs->screen_width, gfs->screen_height, gfx->depth);
-  if (!pixmap) goto error_exit;
-
-  /* find background color if necessary */
-  if (last == None
-      || (last_gfi && last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)) {
-    /* find bg_pixel */
-    if (gfs->global && gfs->background < gfs->global->ncol
-	&& gfs->images[0]->transparent < 0) {
-      Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 1);
-      if (!gfxc)
-	return None;
-      allocate_colors(gfxc);
-      bg_pixel = gfxc->pixels[gfs->background];
-    } else
-      bg_pixel = old_transparent;
-    /* install it as the foreground color on gfx->image_gc */
-    if (!gfx->image_gc)
-      gfx->image_gc = XCreateGC(gfx->display, pixmap, 0, 0);
-    if (!gfx->image_gc) goto error_exit;
-    XSetForeground(gfx->display, gfx->image_gc, bg_pixel);
-    gfx->transparent_pixel = bg_pixel;
-  }
-
-  /* if there is no 'last' then we need special handling */
-  if (last == None
-      || (last_gfi && last_gfi->width == gfs->screen_width
-	  && last_gfi->height == gfs->screen_height
-	  && last_gfi->left == 0 && last_gfi->top == 0
-	  && last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)) {
-    XFillRectangle(gfx->display, pixmap, gfx->image_gc, 0, 0,
-		   gfs->screen_width, gfs->screen_height);
-    if (!put_sub_image_colormap(gfx, gfi, gfcm, 0, 0, gfi->width, gfi->height,
-				pixmap, gfi->left, gfi->top))
-      goto error_exit;
-    return pixmap;
-  }
-
-  /* use the disposal to create the intermediate image */
-  XCopyArea(gfx->display, last, pixmap, gfx->image_gc,
-	    0, 0, gfs->screen_width, gfs->screen_height, 0, 0);
-  if (last_last != None && last_gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-    XCopyArea(gfx->display, last_last, pixmap, gfx->image_gc,
-	      last_gfi->left, last_gfi->top, last_gfi->width, last_gfi->height,
-	      last_gfi->left, last_gfi->top);
-  else if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+  /* clear the image portion */
+  if (i < 0)
     XFillRectangle(gfx->display, pixmap, gfx->image_gc,
-		   last_gfi->left, last_gfi->top,
-		   last_gfi->width, last_gfi->height);
+		   0, 0, gfs->screen_width, gfs->screen_height);
+  else if (gfi->transparent < 0)
+    XFillRectangle(gfx->display, pixmap, gfx->image_gc,
+		   gfi->left, gfi->top, gfi->width, gfi->height);
+  else {
+    Pixmap mask = Gif_XMask(gfx, gfs, gfi);
+    if (mask == None)
+      return -1;
+    XSetClipMask(gfx->display, gfx->image_gc, mask);
+    XSetClipOrigin(gfx->display, gfx->image_gc, gfi->left, gfi->top);
+    XFillRectangle(gfx->display, pixmap, gfx->image_gc,
+		   gfi->left, gfi->top, gfi->width, gfi->height);
+    XSetClipMask(gfx->display, gfx->image_gc, None);
+    XFreePixmap(gfx->display, mask);
+  }
 
-  /* apply image */
-  if (gfi->transparent < 0) {
-    if (!put_sub_image_colormap(gfx, gfi, gfcm, 0, 0, gfi->width, gfi->height,
-				pixmap, gfi->left, gfi->top))
-      goto error_exit;
-  } else {
-    image = Gif_XImage(gfx, gfs, gfi);
+  return 0;
+}
+
+static int
+apply_image(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi, Pixmap pixmap)
+{
+  Pixmap image = Gif_XImage(gfx, gfs, gfi), mask;
+  if (image == None)
+    return -1;
+
+  if (gfi->transparent >= 0) {
     mask = Gif_XMask(gfx, gfs, gfi);
-    if (image == None || mask == None) goto error_exit;
+    if (mask == None) {
+      XFreePixmap(gfx->display, image);
+      return -1;
+    }
+
     XSetClipMask(gfx->display, gfx->image_gc, mask);
     XSetClipOrigin(gfx->display, gfx->image_gc, gfi->left, gfi->top);
     XCopyArea(gfx->display, image, pixmap, gfx->image_gc,
 	      0, 0, gfi->width, gfi->height, gfi->left, gfi->top);
     XSetClipMask(gfx->display, gfx->image_gc, None);
-    XFreePixmap(gfx->display, image);
     XFreePixmap(gfx->display, mask);
+  } else {
+    XCopyArea(gfx->display, image, pixmap, gfx->image_gc,
+	      0, 0, gfi->width, gfi->height, gfi->left, gfi->top);
   }
 
-  gfx->transparent_pixel = old_transparent;
-  return pixmap;
+  XFreePixmap(gfx->display, image);
+  return 0;
+}
+
+static int
+fullscreen(Gif_Stream *gfs, Gif_Image *gfi, int require_opaque)
+{
+  return (gfi->left == 0 && gfi->top == 0 && gfi->width == gfs->screen_width
+	  && gfi->height == gfs->screen_height
+	  && (!require_opaque || gfi->transparent < 0));
+}
+
+Gif_XFrame *
+Gif_NewXFrames(Gif_Stream *gfs)
+{
+  int i, last_postdisposal = -1;
+  Gif_XFrame *fs = Gif_NewArray(Gif_XFrame, gfs->nimages);
+  if (!fs)
+    return 0;
+  for (i = 0; i < gfs->nimages; ++i) {
+    Gif_Image *gfi = gfs->images[i];
+    fs[i].pixmap = None;
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
+      fs[i].postdisposal = last_postdisposal;
+    else
+      fs[i].postdisposal = i;
+    last_postdisposal = fs[i].postdisposal;
+  }
+  return fs;
+}
+
+void
+Gif_DeleteXFrames(Gif_XContext *gfx, Gif_Stream *gfs, Gif_XFrame *fs)
+{
+  int i;
+  for (i = 0; i < gfs->nimages; ++i)
+    if (fs[i].pixmap)
+      XFreePixmap(gfx->display, fs[i].pixmap);
+  Gif_DeleteArray(fs);
+}
+
+Pixmap
+Gif_XNextImage(Gif_XContext *gfx, Gif_Stream *gfs, int i, Gif_XFrame *frames)
+{
+  Pixmap result = None, image = None, mask = None;
+  unsigned long old_transparent = gfx->transparent_pixel;
+  Gif_Image *gfi;
+  int previ, scani;
+
+  /* return already rendered pixmap if any */
+  if (frames[i].pixmap != None)
+    return frames[i].pixmap;
+
+  /* render fullscreen image */
+  gfi = gfs->images[i];
+  if (fullscreen(gfs, gfi, 1)) {
+    frames[i].pixmap = Gif_XImage(gfx, gfs, gfi);
+    return frames[i].pixmap;
+  }
+
+  /* image is not full screen, need to find background */
+  previ = i - 1;
+  if (previ >= 0)
+    previ = frames[previ].postdisposal;
+
+  /* scan backwards for a renderable image */
+  scani = previ;
+  while (scani >= 0
+	 && frames[scani].pixmap == None
+	 && !fullscreen(gfs, gfs->images[scani], 1))
+    --scani;
+
+  /* create the pixmap */
+  result = screen_pixmap(gfx, gfs);
+  if (result == None)
+    return None;
+
+  /* scan forward to produce background */
+  gfi = (scani >= 0 ? gfs->images[scani] : 0);
+  if (gfi && (!fullscreen(gfs, gfi, 1)
+	      || gfi->disposal != GIF_DISPOSAL_BACKGROUND))
+    XCopyArea(gfx->display, frames[scani].pixmap, result, gfx->image_gc,
+	      0, 0, gfs->screen_width, gfs->screen_height, 0, 0);
+  if (!gfi || gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+    if (apply_background(gfx, gfs, scani, result) < 0)
+      goto error_exit;
+  }
+
+  while (scani < previ) {
+    ++scani;
+    gfi = gfs->images[scani];
+    if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+      if (apply_background(gfx, gfs, scani, result) < 0)
+	goto error_exit;
+    } else if (gfi->disposal != GIF_DISPOSAL_PREVIOUS) {
+      if (apply_image(gfx, gfs, gfs->images[scani], result) < 0)
+	goto error_exit;
+    }
+  }
+
+  /* apply image */
+  if (gfs->screen_width != 0 && gfs->screen_height != 0) {
+    if (apply_image(gfx, gfs, gfs->images[i], result) < 0)
+      goto error_exit;
+  }
+
+  frames[i].pixmap = result;
+  return frames[i].pixmap;
 
  error_exit:
-  if (pixmap) XFreePixmap(gfx->display, pixmap);
-  if (image) XFreePixmap(gfx->display, image);
-  if (mask) XFreePixmap(gfx->display, mask);
+  XFreePixmap(gfx->display, result);
   gfx->transparent_pixel = old_transparent;
   return None;
 }
