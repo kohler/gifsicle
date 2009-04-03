@@ -346,10 +346,10 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
    old bounds, which are also the maximum bounds, are passed in
    'this_bounds'. */
 
-static void
+static int
 expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
 {
-  int x, y;
+  int x, y, expanded = 0;
 
   int lf = bounds->left, tp = bounds->top;
   int rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
@@ -364,8 +364,10 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     uint16_t *now = this_data + screen_width * y;
     uint16_t *next = next_data + screen_width * y;
     for (x = tlf; x <= trt; x++)
-      if (now[x] != TRANSP && next[x] == TRANSP)
+      if (now[x] != TRANSP && next[x] == TRANSP) {
+	expanded = 1;
 	goto found_top;
+      }
   }
  found_top:
   tp = y;
@@ -374,8 +376,10 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     uint16_t *now = this_data + screen_width * y;
     uint16_t *next = next_data + screen_width * y;
     for (x = tlf; x <= trt; x++)
-      if (now[x] != TRANSP && next[x] == TRANSP)
+      if (now[x] != TRANSP && next[x] == TRANSP) {
+	expanded = 1;
 	goto found_bottom;
+      }
   }
  found_bottom:
   bt = y;
@@ -384,8 +388,10 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     uint16_t *now = this_data + x;
     uint16_t *next = next_data + x;
     for (y = tp; y <= bt; y++)
-      if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP)
+      if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
+	expanded = 1;
 	goto found_left;
+      }
   }
  found_left:
   lf = x;
@@ -394,16 +400,31 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     uint16_t *now = this_data + x;
     uint16_t *next = next_data + x;
     for (y = tp; y <= bt; y++)
-      if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP)
+      if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
+	expanded = 1;
 	goto found_right;
+      }
   }
  found_right:
   rt = x;
 
+  if (!expanded)
+    for (y = tp; y <= bt; ++y) {
+      uint16_t *now = this_data + y*screen_width;
+      uint16_t *next = next_data + y*screen_width;
+      for (x = lf; x <= rt; ++x)
+	if (now[x] != TRANSP && next[x] == TRANSP) {
+	  expanded = 1;
+	  goto found_expanded;
+	}
+    }
+
+ found_expanded:
   bounds->left = lf;
   bounds->top = tp;
   bounds->width = rt + 1 - lf;
   bounds->height = bt + 1 - tp;
+  return expanded;
 }
 
 
@@ -570,7 +591,8 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 
     /* might need to expand difference border if transparent background &
        background disposal */
-    if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
+    if ((gfi->disposal == GIF_DISPOSAL_BACKGROUND
+	 || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
 	&& background == TRANSP
 	&& image_index < gfs->nimages - 1) {
       /* set up next_data */
@@ -580,8 +602,8 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
       apply_frame(next_data, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
       /* expand border as necessary */
-      expand_difference_bounds(subimage, gfi);
-      subimage->disposal = GIF_DISPOSAL_BACKGROUND;
+      if (expand_difference_bounds(subimage, gfi))
+	subimage->disposal = GIF_DISPOSAL_BACKGROUND;
     }
 
     fix_difference_bounds(subimage);
