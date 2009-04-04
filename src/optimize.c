@@ -264,14 +264,16 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 
 static void
 apply_frame_disposal(uint16_t *into_data, uint16_t *from_data,
-		     Gif_Image *gfi)
+		     uint16_t *previous_data, Gif_Image *gfi)
 {
-  if (gfi->disposal == GIF_DISPOSAL_NONE
-      || gfi->disposal == GIF_DISPOSAL_ASIS)
-    copy_data_area(into_data, from_data, gfi);
-
-  else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-    fill_data_area(into_data, background, gfi);
+  int screen_size = screen_width * screen_height;
+  if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
+    memcpy(into_data, previous_data, sizeof(uint16_t) * screen_size);
+  else {
+    memcpy(into_data, from_data, sizeof(uint16_t) * screen_size);
+    if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_data_area(into_data, background, gfi);
+  }
 }
 
 
@@ -556,8 +558,8 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
   erase_screen(this_data);
   last_gfi = 0;
 
-  /* PRECONDITION: last_data -- garbage
-     this_data -- equal to image data for previous image
+  /* PRECONDITION: last_data, previous_data -- garbage
+     this_data -- equal to image data after disposal of previous image
      next_data -- equal to image data for next image if next_image_valid */
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *gfi = gfs->images[image_index];
@@ -565,7 +567,8 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 
     /* save previous data if necessary */
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      previous_data = Gif_NewArray(uint16_t, screen_size);
+      if (!previous_data)
+	previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, gfi);
     }
 
@@ -597,8 +600,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 	&& image_index < gfs->nimages - 1) {
       /* set up next_data */
       Gif_Image *next_gfi = gfs->images[image_index + 1];
-      memcpy(next_data, this_data, screen_size * sizeof(uint16_t));
-      apply_frame_disposal(next_data, this_data, gfi);
+      apply_frame_disposal(next_data, this_data, previous_data, gfi);
       apply_frame(next_data, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
       /* expand border as necessary */
@@ -633,12 +635,15 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
     if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(this_data, background, last_gfi);
     else if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      copy_data_area(this_data, previous_data, last_gfi);
-      Gif_DeleteArray(previous_data);
+      uint16_t *d = previous_data;
+      previous_data = this_data;
+      this_data = d;
     }
   }
 
   Gif_DeleteArray(next_data);
+  if (previous_data)
+    Gif_DeleteArray(previous_data);
 }
 
 
