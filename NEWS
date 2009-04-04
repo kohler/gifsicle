@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.55   3.Apr.2009
+
+* gifsicle: Another optimize fix for --disposal previous.  Reported by
+  Gerald Johanson.
+
+
 Version 1.54   3.Apr.2009
 
 * gifsicle, gifview: Fix several serious bugs with --disposal previous that
