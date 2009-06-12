@@ -488,7 +488,6 @@ void
 delete_viewer(Gt_Viewer *viewer)
 {
   Gt_Viewer *prev = 0, *trav;
-  int i;
   if (viewer->pixmap && !viewer->was_unoptimized)
     XFreePixmap(viewer->display, viewer->pixmap);
 

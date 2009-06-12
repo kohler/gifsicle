@@ -667,7 +667,7 @@ Gif_DeleteXFrames(Gif_XContext *gfx, Gif_Stream *gfs, Gif_XFrame *fs)
 Pixmap
 Gif_XNextImage(Gif_XContext *gfx, Gif_Stream *gfs, int i, Gif_XFrame *frames)
 {
-  Pixmap result = None, image = None, mask = None;
+  Pixmap result = None;
   unsigned long old_transparent = gfx->transparent_pixel;
   Gif_Image *gfi;
   int previ, scani;
