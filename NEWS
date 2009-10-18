@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.56   18.Oct.2009
+
+* gifsicle: Fix --crop-transparency for animated images; previous versions
+  could lose frames.  Problem reported by Daniel v. Dombrowski.
+
+* gifview: Make --disposal=background behavior look like Firefox.
+
+
 Version 1.55   3.Apr.2009
 
 * gifsicle: Another optimize fix for --disposal previous.  Reported by
