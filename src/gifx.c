@@ -580,10 +580,10 @@ apply_background(Gif_XContext *gfx, Gif_Stream *gfs, int i, Pixmap pixmap)
   if (i < 0)
     XFillRectangle(gfx->display, pixmap, gfx->image_gc,
 		   0, 0, gfs->screen_width, gfs->screen_height);
-  else if (gfi->transparent < 0)
+  else /*if (gfi->transparent < 0)*/
     XFillRectangle(gfx->display, pixmap, gfx->image_gc,
 		   gfi->left, gfi->top, gfi->width, gfi->height);
-  else {
+  /*else {
     Pixmap mask = Gif_XMask(gfx, gfs, gfi);
     if (mask == None)
       return -1;
@@ -593,7 +593,7 @@ apply_background(Gif_XContext *gfx, Gif_Stream *gfs, int i, Pixmap pixmap)
 		   gfi->left, gfi->top, gfi->width, gfi->height);
     XSetClipMask(gfx->display, gfx->image_gc, None);
     XFreePixmap(gfx->display, mask);
-  }
+  }*/
 
   return 0;
 }
