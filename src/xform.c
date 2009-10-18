@@ -225,43 +225,6 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
   if (y + h > gfi->height)
       h = gfi->height - y;
 
-  /* Remove transparent edges if required. */
-  if (w > 0 && h > 0 && crop->transparent_edges && gfi->transparent >= 0) {
-    img = gfi->img;
-    /* left edge */
-    while (w > 0) {
-      for (j = y; j < y + h; j++)
-	if (img[j][x] != gfi->transparent)
-	  goto found_left_edge;
-      x++, w--;
-    }
-   found_left_edge:
-    /* top edge */
-    while (h > 0) {
-      for (j = x; j < x + w; j++)
-	if (img[y][j] != gfi->transparent)
-	  goto found_top_edge;
-      y++, h--;
-    }
-   found_top_edge:
-    /* right edge */
-    while (w > 0) {
-      for (j = y; j < y + h; j++)
-	if (img[j][x + w - 1] != gfi->transparent)
-	  goto found_right_edge;
-      w--;
-    }
-   found_right_edge:
-    /* bottom edge */
-    while (h > 0) {
-      for (j = x; j < x + w; j++)
-	if (img[y + h - 1][j] != gfi->transparent)
-	  goto found_bottom_edge;
-      h--;
-    }
-   found_bottom_edge: ;
-  }
-
   if (w > 0 && h > 0) {
     img = Gif_NewArray(uint8_t *, h + 1);
     for (j = 0; j < h; j++)

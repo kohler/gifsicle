@@ -1221,11 +1221,10 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr)
 }
 
 static void
-analyze_crop(int nmerger, Gt_Crop *crop)
+analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 {
-  int i;
+  int i, j, nframes = 0;
   int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
-  int nframes = 0;
 
   /* count frames to which this crop applies */
   for (i = 0; i < nmerger; i++)
@@ -1236,19 +1235,30 @@ analyze_crop(int nmerger, Gt_Crop *crop)
   for (i = 0; i < nmerger; i++)
     if (merger[i]->crop == crop) {
       Gt_Frame *fr = merger[i];
-      int ll = (nframes > 1 ? 0 : fr->image->left);
-      int tt = (nframes > 1 ? 0 : fr->image->top);
-      int ww = (nframes > 1 ? fr->stream->screen_width : fr->image->width);
-      int hh = (nframes > 1 ? fr->stream->screen_height : fr->image->height);
+      int ll, tt, rr, bb;
+      if (nframes <= 1) {
+	ll = fr->image->left;
+	tt = fr->image->top;
+	rr = fr->image->left + fr->image->width;
+	bb = fr->image->top + fr->image->height;
+      } else {
+	ll = tt = 0;
+	rr = fr->stream->screen_width;
+	bb = fr->stream->screen_height;
+      }
       if (ll < l)
 	l = ll;
       if (tt < t)
 	t = tt;
-      if (ll + ww > r)
-	r = ll + ww;
-      if (tt + hh > b)
-	b = tt + hh;
+      if (rr > r)
+	r = rr;
+      if (bb > b)
+	b = bb;
     }
+
+  if (t > b)
+    /* total crop */
+    l = r = t = b = 0;
 
   crop->x = crop->spec_x + l;
   crop->y = crop->spec_y + t;
@@ -1262,6 +1272,95 @@ analyze_crop(int nmerger, Gt_Crop *crop)
     crop->ready = 2;
   } else
     crop->ready = 1;
+
+  /* Remove transparent edges. */
+  if (crop->transparent_edges && crop->ready == 1) {
+    int have_l = crop->x, have_t = crop->y,
+      have_r = crop->x + crop->w, have_b = crop->y + crop->h;
+    l = t = 0x7FFFFFFF, r = b = 0;
+
+    for (i = 0;
+	 i < nmerger && (l > have_l || t > have_t || r < have_r || b < have_b);
+	 ++i)
+      if (merger[i]->crop == crop) {
+	Gt_Frame *fr = merger[i];
+	Gif_Image *srci = fr->image;
+	int ll = constrain(have_l, srci->left, have_r),
+	  tt = constrain(have_t, srci->top, have_b),
+	  rr = constrain(have_l, srci->left + srci->width, have_r),
+	  bb = constrain(have_t, srci->top + srci->height, have_b);
+
+	if (srci->transparent >= 0) {
+	  int x, y;
+	  uint8_t **img;
+	  Gif_UncompressImage(srci);
+	  img = srci->img;
+
+	  /* Move top edge down over transparency */
+	  while (tt < bb && tt < t) {
+	    uint8_t *data = img[tt - srci->top];
+	    for (x = 0; x < srci->width; ++x)
+	      if (data[x] != srci->transparent)
+		goto found_top;
+	    ++tt;
+	  }
+
+	found_top:
+	  /* Move bottom edge up over transparency */
+	  while (bb > tt + 1 && bb > b) {
+	    uint8_t *data = img[bb - 1 - srci->top];
+	    for (x = 0; x < srci->width; ++x)
+	      if (data[x] != srci->transparent)
+		goto found_bottom;
+	    --bb;
+	  }
+
+	found_bottom:
+	  if (tt < bb) {
+	    /* Move left edge right over transparency */
+	    while (ll < rr && ll < l) {
+	      for (y = tt - srci->top; y < bb - srci->top; ++y)
+		if (img[y][ll - srci->left] != srci->transparent)
+		  goto found_left;
+	      ++ll;
+	    }
+
+	  found_left:
+	    /* Move right edge left over transparency */
+	    while (rr > ll + 1 && rr > r) {
+	      for (y = tt - srci->top; y < bb - srci->top; ++y)
+		if (img[y][rr - 1 - srci->left] != srci->transparent)
+		  goto found_right;
+	      --rr;
+	    }
+	  }
+
+	found_right:
+	  if (compress_immediately)
+	    Gif_ReleaseUncompressedImage(srci);
+	}
+
+	if (tt < bb) {
+	  if (ll < l)
+	    l = ll;
+	  if (tt < t)
+	    t = tt;
+	  if (rr > r)
+	    r = rr;
+	  if (bb > b)
+	    b = bb;
+	}
+      }
+
+    if (t > b)
+      crop->w = crop->h = 0;
+    else {
+      crop->x = l;
+      crop->y = t;
+      crop->w = r - l;
+      crop->h = b - t;
+    }
+  }
 }
 
 
@@ -1333,7 +1432,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       merger[i]->crop->ready = all_same_compressed_ok = 0;
   for (i = 0; i < nmerger; i++)
     if (merger[i]->crop && !merger[i]->crop->ready)
-      analyze_crop(nmerger, merger[i]->crop);
+      analyze_crop(nmerger, merger[i]->crop, compress_immediately);
 
   /* copy stream-wide information from output_data */
   if (output_data->loopcount > -2)

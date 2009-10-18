@@ -1484,7 +1484,8 @@ main(int argc, char *argv[])
       break;
 
      case CROP_TRANSPARENCY_OPT:
-      if (clp->negated) goto no_crop_transparency;
+      if (clp->negated)
+	goto no_crop_transparency;
       def_frame.crop = copy_crop(def_frame.crop);
       def_frame.crop->transparent_edges = 1;
       break;
