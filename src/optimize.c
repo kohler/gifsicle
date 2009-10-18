@@ -13,6 +13,13 @@
 #include <string.h>
 
 typedef struct {
+  int left;
+  int top;
+  int width;
+  int height;
+} Gif_OptBounds;
+
+typedef struct {
   uint16_t left;
   uint16_t top;
   uint16_t width;
@@ -151,17 +158,30 @@ sort_permutation(uint16_t *perm, int size, int32_t *values, int is_down)
  * MANIPULATING IMAGE AREAS
  **/
 
+static Gif_OptBounds
+safe_bounds(Gif_Image *area)
+{
+  /* Returns bounds constrained to lie within the screen. */
+  Gif_OptBounds b;
+  b.left = constrain(0, area->left, screen_width);
+  b.top = constrain(0, area->top, screen_height);
+  b.width = constrain(0, area->left + area->width, screen_width) - b.left;
+  b.height = constrain(0, area->top + area->height, screen_height) - b.top;
+  return b;
+}
+
 static void
 copy_data_area(uint16_t *dst, uint16_t *src, Gif_Image *area)
 {
-  int y, width, height;
-  if (!area) return;
-  width = area->width;
-  height = area->height;
-  dst += area->top * screen_width + area->left;
-  src += area->top * screen_width + area->left;
-  for (y = 0; y < height; y++) {
-    memcpy(dst, src, sizeof(uint16_t) * width);
+  Gif_OptBounds ob;
+  int y;
+  if (!area)
+    return;
+  ob = safe_bounds(area);
+  dst += ob.top * screen_width + ob.left;
+  src += ob.top * screen_width + ob.left;
+  for (y = 0; y < ob.height; y++) {
+    memcpy(dst, src, sizeof(uint16_t) * ob.width);
     dst += screen_width;
     src += screen_width;
   }
@@ -182,11 +202,10 @@ static void
 fill_data_area(uint16_t *dst, uint16_t value, Gif_Image *area)
 {
   int x, y;
-  int width = area->width;
-  int height = area->height;
-  dst += area->top * screen_width + area->left;
-  for (y = 0; y < height; y++) {
-    for (x = 0; x < width; x++)
+  Gif_OptBounds ob = safe_bounds(area);
+  dst += ob.top * screen_width + ob.left;
+  for (y = 0; y < ob.height; y++) {
+    for (x = 0; x < ob.width; x++)
       dst[x] = value;
     dst += screen_width;
   }
@@ -222,6 +241,7 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
   int i, y, was_compressed = 0;
   uint16_t map[256];
   Gif_Colormap *colormap = gfi->local ? gfi->local : in_global_map;
+  Gif_OptBounds ob = safe_bounds(gfi);
 
   if (!gfi->img) {
     was_compressed = 1;
@@ -240,16 +260,16 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
     replace = 1;
 
   /* map the image */
-  dst += gfi->left + gfi->top * screen_width;
-  for (y = 0; y < gfi->height; y++) {
+  dst += ob.left + ob.top * screen_width;
+  for (y = 0; y < ob.height; y++) {
     uint8_t *gfi_pointer = gfi->img[y];
     int x;
 
     if (replace)
-      for (x = 0; x < gfi->width; x++)
+      for (x = 0; x < ob.width; x++)
 	dst[x] = map[gfi_pointer[x]];
     else
-      for (x = 0; x < gfi->width; x++) {
+      for (x = 0; x < ob.width; x++) {
 	uint16_t new_pixel = map[gfi_pointer[x]];
 	if (new_pixel != TRANSP)
 	    dst[x] = new_pixel;
@@ -288,15 +308,17 @@ static void
 find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
 {
   int lf, rt, lf_min, rt_max, tp, bt, x, y;
+  Gif_OptBounds ob;
 
   /* 1.Aug.99 - use current bounds if possible, since this function is a speed
      bottleneck */
   if (!last || last->disposal == GIF_DISPOSAL_NONE
       || last->disposal == GIF_DISPOSAL_ASIS) {
-    lf_min = gfi->left;
-    rt_max = gfi->left + gfi->width - 1;
-    tp = gfi->top;
-    bt = gfi->top + gfi->height - 1;
+    ob = safe_bounds(gfi);
+    lf_min = ob.left;
+    rt_max = ob.left + ob.width - 1;
+    tp = ob.top;
+    bt = ob.top + ob.height - 1;
   } else {
     lf_min = 0;
     rt_max = screen_width - 1;
@@ -356,8 +378,9 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
   int lf = bounds->left, tp = bounds->top;
   int rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
 
-  int tlf = this_bounds->left, ttp = this_bounds->top;
-  int trt = tlf + this_bounds->width - 1, tbt = ttp + this_bounds->height - 1;
+  Gif_OptBounds ob = safe_bounds(this_bounds);
+  int tlf = ob.left, ttp = ob.top, trt = ob.left + ob.width - 1,
+      tbt = ob.top + ob.height - 1;
 
   if (lf > rt || tp > bt)
     lf = 0, tp = 0, rt = screen_width - 1, bt = screen_height - 1;
@@ -586,10 +609,11 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
     if (image_index > 0)
       find_difference_bounds(subimage, gfi, last_gfi);
     else {
-      subimage->left = gfi->left;
-      subimage->top = gfi->top;
-      subimage->width = gfi->width;
-      subimage->height = gfi->height;
+      Gif_OptBounds ob = safe_bounds(gfi);
+      subimage->left = ob.left;
+      subimage->top = ob.top;
+      subimage->width = ob.width;
+      subimage->height = ob.height;
     }
 
     /* might need to expand difference border if transparent background &
@@ -953,13 +977,13 @@ prepare_colormap(Gif_Image *gfi, uint8_t *need)
 static void
 simple_frame_data(Gif_Image *gfi, uint8_t *map)
 {
-  int top = gfi->top, width = gfi->width, height = gfi->height;
-  int x, y;
+  Gif_OptBounds ob = safe_bounds(gfi);
+  int x, y, scan_width = gfi->width;
 
-  for (y = 0; y < height; y++) {
-    uint16_t *from = this_data + screen_width * (y+top) + gfi->left;
-    uint8_t *into = gfi->image_data + y * width;
-    for (x = 0; x < width; x++)
+  for (y = 0; y < ob.height; y++) {
+    uint16_t *from = this_data + screen_width * (y + ob.top) + ob.left;
+    uint8_t *into = gfi->image_data + y * scan_width;
+    for (x = 0; x < ob.width; x++)
       *into++ = map[*from++];
   }
 }
@@ -971,9 +995,9 @@ simple_frame_data(Gif_Image *gfi, uint8_t *map)
 static void
 transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 {
-  int top = gfi->top, width = gfi->width, height = gfi->height;
-  int x, y;
-  int transparent = gfi->transparent;
+  Gif_OptBounds ob = safe_bounds(gfi);
+  int scan_width = gfi->width;
+  int x, y, transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;
   uint8_t *data, *swit;
@@ -1024,9 +1048,9 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
     transparentizing = 0;
     goto calculate_pointers;
 
-    while (y < height) {
+    while (y < ob.height) {
 	if (transparentizing) {
-	    while (x < width && transparentizing)
+	    while (x < ob.width && transparentizing)
 		if (*cur == *last || map[*cur] == transparent) {
 		    *data = transparent;
 		    data++, last++, cur++, x++;
@@ -1037,7 +1061,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 		    data++, last++, cur++, x++;
 		}
 	} else {
-	    while (x < width && !transparentizing) {
+	    while (x < ob.width && !transparentizing) {
 		*data = map[*cur];
 		if (*data == transparent || (*cur == *last && *swit != *data)) {
 		    transparentizing = 1;
@@ -1052,12 +1076,12 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 	    }
 	}
 
-	if (x >= width) {
+	if (x >= ob.width) {
 	    x = 0;
 	    y++;
 	  calculate_pointers:
-	    last = last_data + screen_width * (y+top) + gfi->left;
-	    cur = this_data + screen_width * (y+top) + gfi->left;
+	    last = last_data + screen_width * (y + ob.top) + ob.left;
+	    cur = this_data + screen_width * (y + ob.top) + ob.left;
 	}
     }
 

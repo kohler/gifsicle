@@ -121,6 +121,17 @@ typedef struct {
 
 
 /*****
+ * helper
+ **/
+
+static inline int
+constrain(int low, int x, int high)
+{
+  return x < low ? low : (x < high ? x : high);
+}
+
+
+/*****
  * error & verbose
  **/
 extern const char *program_name;
