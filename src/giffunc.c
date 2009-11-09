@@ -268,6 +268,7 @@ Gif_Stream *
 Gif_CopyStreamSkeleton(Gif_Stream *gfs)
 {
   Gif_Stream *ngfs = Gif_NewStream();
+  if (!ngfs) return 0;
   ngfs->global = Gif_CopyColormap(gfs->global);
   ngfs->background = gfs->background;
   ngfs->screen_width = gfs->screen_width;

@@ -847,8 +847,10 @@ read_gif(Gif_Reader *grr, int read_flags,
  done:
 
   /* Move comments after last image into stream. */
-  gfs->comment = gfi->comment;
-  gfi->comment = 0;
+  if (gfs && gfi) {
+    gfs->comment = gfi->comment;
+    gfi->comment = 0;
+  }
 
   Gif_DeleteImage(gfi);
   Gif_DeleteArray(last_name);
@@ -856,7 +858,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
 
-  if (gfs->errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
+  if (gfs && gfs->errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
     gif_read_error(&gfc, "trailing garbage after GIF ignored");
     /* but clear error count, since the GIF itself was all right */
     gfs->errors = 0;
