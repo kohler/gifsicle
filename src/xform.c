@@ -205,7 +205,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
  **/
 
 int
-crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
+crop_image(Gif_Image *gfi, Gt_Crop *crop, int preserve_total_crop)
 {
   int x, y, w, h, j;
   uint8_t **img;
@@ -234,12 +234,12 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int first_image)
     gfi->left += x - crop->left_offset;
     gfi->top += y - crop->top_offset;
 
-  } else if (first_image) {
-      w = h = 1;
-      img = Gif_NewArray(uint8_t *, h + 1);
-      img[0] = gfi->img[0];
-      img[1] = 0;
-      gfi->transparent = img[0][0];
+  } else if (preserve_total_crop) {
+    w = h = 1;
+    img = Gif_NewArray(uint8_t *, h + 1);
+    img[0] = gfi->img[0];
+    img[1] = 0;
+    gfi->transparent = img[0][0];
 
   } else {
     /* Empty image */

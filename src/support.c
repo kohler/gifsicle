@@ -1469,9 +1469,18 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     /* Make a copy of the image and crop it if we're cropping */
     if (fr->crop) {
+      int preserve_total_crop;
       srci = Gif_CopyImage(fr->image);
       Gif_UncompressImage(srci);
-      if (!crop_image(srci, fr->crop, dest->nimages == 0)) {
+
+      /* Zero-delay frames are a special case.  You might think it was OK to
+	 get rid of totally-cropped delay-0 frames, but many browsers treat
+	 zero-delay frames as 100ms.  So don't completely crop a zero-delay
+	 frame: leave it around.  Problem reported by Calle Kabo. */
+      preserve_total_crop = (dest->nimages == 0 || fr->delay == 0
+			     || (fr->delay < 0 && srci->delay == 0));
+
+      if (!crop_image(srci, fr->crop, preserve_total_crop)) {
 	/* We cropped the image out of existence! Be careful not to make 0x0
 	   frames. */
 	fix_total_crop(dest, srci, i);
