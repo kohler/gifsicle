@@ -22,7 +22,8 @@ Gif_Stream *
 Gif_NewStream(void)
 {
   Gif_Stream *gfs = Gif_New(Gif_Stream);
-  if (!gfs) return 0;
+  if (!gfs)
+    return 0;
   gfs->global = 0;
   gfs->background = 0;
   gfs->screen_width = gfs->screen_height = 0;
@@ -42,7 +43,8 @@ Gif_Image *
 Gif_NewImage(void)
 {
   Gif_Image *gfi = Gif_New(Gif_Image);
-  if (!gfi) return 0;
+  if (!gfi)
+    return 0;
   gfi->identifier = 0;
   gfi->comment = 0;
   gfi->local = 0;
@@ -68,7 +70,8 @@ Gif_Colormap *
 Gif_NewColormap(void)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm) return 0;
+  if (!gfcm)
+    return 0;
   gfcm->ncol = 0;
   gfcm->capacity = 0;
   gfcm->col = 0;
@@ -82,8 +85,10 @@ Gif_Colormap *
 Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm || capacity <= 0 || count < 0) return 0;
-  if (count > capacity) capacity = count;
+  if (!gfcm || capacity <= 0 || count < 0)
+    return 0;
+  if (count > capacity)
+    capacity = count;
   gfcm->ncol = count;
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
@@ -101,7 +106,8 @@ Gif_Comment *
 Gif_NewComment(void)
 {
   Gif_Comment *gfcom = Gif_New(Gif_Comment);
-  if (!gfcom) return 0;
+  if (!gfcom)
+    return 0;
   gfcom->str = 0;
   gfcom->len = 0;
   gfcom->count = gfcom->cap = 0;
@@ -113,7 +119,8 @@ Gif_Extension *
 Gif_NewExtension(int kind, const char *app_name)
 {
   Gif_Extension *gfex = Gif_New(Gif_Extension);
-  if (!gfex) return 0;
+  if (!gfex)
+    return 0;
   gfex->kind = app_name ? 255 : kind;
   gfex->application = Gif_CopyString(app_name);
   gfex->data = 0;
@@ -134,10 +141,12 @@ Gif_CopyString(const char *s)
 {
   int l;
   char *copy;
-  if (!s) return 0;
+  if (!s)
+    return 0;
   l = strlen(s);
   copy = Gif_NewArray(char, l + 1);
-  if (!copy) return 0;
+  if (!copy)
+    return 0;
   memcpy(copy, s, l + 1);
   return copy;
 }
@@ -147,10 +156,13 @@ int
 Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi)
 {
   if (gfs->nimages >= gfs->imagescap) {
-    if (gfs->imagescap) gfs->imagescap *= 2;
-    else gfs->imagescap = 2;
+    if (gfs->imagescap)
+      gfs->imagescap *= 2;
+    else
+      gfs->imagescap = 2;
     Gif_ReArray(gfs->images, Gif_Image *, gfs->imagescap);
-    if (!gfs->images) return 0;
+    if (!gfs->images)
+      return 0;
   }
   gfs->images[gfs->nimages] = gfi;
   gfs->nimages++;
@@ -176,13 +188,17 @@ int
 Gif_AddCommentTake(Gif_Comment *gfcom, char *x, int xlen)
 {
   if (gfcom->count >= gfcom->cap) {
-    if (gfcom->cap) gfcom->cap *= 2;
-    else gfcom->cap = 2;
+    if (gfcom->cap)
+      gfcom->cap *= 2;
+    else
+      gfcom->cap = 2;
     Gif_ReArray(gfcom->str, char *, gfcom->cap);
     Gif_ReArray(gfcom->len, int, gfcom->cap);
-    if (!gfcom->str || !gfcom->len) return 0;
+    if (!gfcom->str || !gfcom->len)
+      return 0;
   }
-  if (xlen < 0) xlen = strlen(x);
+  if (xlen < 0)
+    xlen = strlen(x);
   gfcom->str[ gfcom->count ] = x;
   gfcom->len[ gfcom->count ] = xlen;
   gfcom->count++;
@@ -194,9 +210,11 @@ int
 Gif_AddComment(Gif_Comment *gfcom, const char *x, int xlen)
 {
   char *new_x;
-  if (xlen < 0) xlen = strlen(x);
+  if (xlen < 0)
+    xlen = strlen(x);
   new_x = Gif_NewArray(char, xlen);
-  if (!new_x) return 0;
+  if (!new_x)
+    return 0;
   memcpy(new_x, x, xlen);
   if (Gif_AddCommentTake(gfcom, new_x, xlen) == 0) {
     Gif_DeleteArray(new_x);
@@ -210,13 +228,16 @@ int
 Gif_AddExtension(Gif_Stream *gfs, Gif_Extension *gfex, int pos)
 {
   Gif_Extension *prev, *trav;
-  if (gfex->stream) return 0;
+  if (gfex->stream)
+    return 0;
   for (prev = 0, trav = gfs->extensions;
        trav && trav->position <= pos;
        prev = trav, trav = trav->next)
     ;
-  if (prev) prev->next = gfex;
-  else gfs->extensions = gfex;
+  if (prev)
+    prev->next = gfex;
+  else
+    gfs->extensions = gfex;
   gfex->next = trav;
   return 1;
 }
@@ -268,7 +289,8 @@ Gif_Stream *
 Gif_CopyStreamSkeleton(Gif_Stream *gfs)
 {
   Gif_Stream *ngfs = Gif_NewStream();
-  if (!ngfs) return 0;
+  if (!ngfs)
+    return 0;
   ngfs->global = Gif_CopyColormap(gfs->global);
   ngfs->background = gfs->background;
   ngfs->screen_width = gfs->screen_width;
@@ -287,7 +309,8 @@ Gif_CopyStreamImages(Gif_Stream *gfs)
 {
   Gif_Stream *ngfs = Gif_CopyStreamSkeleton(gfs);
   int i;
-  if (!ngfs) return 0;
+  if (!ngfs)
+    return 0;
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = Gif_CopyImage(gfs->images[i]);
     if (!gfi || !Gif_AddImage(ngfs, gfi)) {
@@ -304,10 +327,12 @@ Gif_CopyColormap(Gif_Colormap *src)
 {
   int i;
   Gif_Colormap *dest;
-  if (!src) return 0;
+  if (!src)
+    return 0;
 
   dest = Gif_NewFullColormap(src->ncol, src->capacity);
-  if (!dest) return 0;
+  if (!dest)
+    return 0;
 
   for (i = 0; i < src->ncol; i++) {
     dest->col[i] = src->col[i];
@@ -324,16 +349,19 @@ Gif_CopyImage(Gif_Image *src)
   Gif_Image *dest;
   uint8_t *data;
   int i;
-  if (!src) return 0;
+  if (!src)
+    return 0;
 
   dest = Gif_NewImage();
-  if (!dest) return 0;
+  if (!dest)
+    return 0;
 
   dest->identifier = Gif_CopyString(src->identifier);
   if (!dest->identifier && src->identifier) goto failure;
   if (src->comment) {
     dest->comment = Gif_NewComment();
-    if (!dest->comment) goto failure;
+    if (!dest->comment)
+      goto failure;
     for (i = 0; i < src->comment->count; i++)
       if (!Gif_AddComment(dest->comment, src->comment->str[i],
 			  src->comment->len[i]))
@@ -341,7 +369,8 @@ Gif_CopyImage(Gif_Image *src)
   }
 
   dest->local = Gif_CopyColormap(src->local);
-  if (!dest->local && src->local) goto failure;
+  if (!dest->local && src->local)
+    goto failure;
   dest->transparent = src->transparent;
 
   dest->delay = src->delay;
@@ -357,7 +386,8 @@ Gif_CopyImage(Gif_Image *src)
     dest->img = Gif_NewArray(uint8_t *, dest->height + 1);
     dest->image_data = Gif_NewArray(uint8_t, dest->width * dest->height);
     dest->free_image_data = Gif_DeleteArrayFunc;
-    if (!dest->img || !dest->image_data) goto failure;
+    if (!dest->img || !dest->image_data)
+      goto failure;
     for (i = 0, data = dest->image_data; i < dest->height; i++) {
       memcpy(data, src->img[i], dest->width);
       dest->img[i] = data;
@@ -401,8 +431,8 @@ Gif_DeleteStream(Gif_Stream *gfs)
   Gif_Extension *gfex;
   Gif_DeletionHook *hook;
   int i;
-  if (!gfs) return;
-  if (--gfs->refcount > 0) return;
+  if (!gfs || --gfs->refcount > 0)
+    return;
 
   Gif_DeleteColormap(gfs->global);
   Gif_DeleteComment(gfs->comment);
@@ -430,8 +460,8 @@ void
 Gif_DeleteImage(Gif_Image *gfi)
 {
   Gif_DeletionHook *hook;
-  if (!gfi) return;
-  if (--gfi->refcount > 0) return;
+  if (!gfi || --gfi->refcount > 0)
+    return;
 
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_IMAGE)
@@ -455,8 +485,8 @@ void
 Gif_DeleteColormap(Gif_Colormap *gfcm)
 {
   Gif_DeletionHook *hook;
-  if (!gfcm) return;
-  if (--gfcm->refcount > 0) return;
+  if (!gfcm || --gfcm->refcount > 0)
+    return;
 
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_COLORMAP)
@@ -471,7 +501,8 @@ void
 Gif_DeleteComment(Gif_Comment *gfcom)
 {
   int i;
-  if (!gfcom) return;
+  if (!gfcom)
+    return;
   for (i = 0; i < gfcom->count; i++)
     Gif_DeleteArray(gfcom->str[i]);
   Gif_DeleteArray(gfcom->str);
@@ -483,7 +514,8 @@ Gif_DeleteComment(Gif_Comment *gfcom)
 void
 Gif_DeleteExtension(Gif_Extension *gfex)
 {
-  if (!gfex) return;
+  if (!gfex)
+    return;
   if (gfex->data && gfex->free_data)
     (*gfex->free_data)(gfex->data);
   Gif_DeleteArray(gfex->application);
@@ -509,7 +541,8 @@ int
 Gif_AddDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
 {
   Gif_DeletionHook *hook = Gif_New(Gif_DeletionHook);
-  if (!hook) return 0;
+  if (!hook)
+    return 0;
   Gif_RemoveDeletionHook(kind, func, cb);
   hook->kind = kind;
   hook->func = func;
@@ -526,8 +559,10 @@ Gif_RemoveDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
   while (hook) {
     if (hook->kind == kind && hook->func == func
 	&& hook->callback_data == cb) {
-      if (prev) prev->next = hook->next;
-      else all_hooks = hook->next;
+      if (prev)
+	prev->next = hook->next;
+      else
+	all_hooks = hook->next;
       Gif_Delete(hook);
       return;
     }
@@ -566,7 +601,8 @@ Gif_AddColor(Gif_Colormap *gfcm, Gif_Color *c, int look_from)
   if (gfcm->ncol >= gfcm->capacity) {
     gfcm->capacity *= 2;
     Gif_ReArray(gfcm->col, Gif_Color, gfcm->capacity);
-    if (gfcm->col == 0) return -1;
+    if (gfcm->col == 0)
+      return -1;
   }
   i = gfcm->ncol;
   gfcm->ncol++;
@@ -605,7 +641,8 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 Gif_Extension *
 Gif_GetExtension(Gif_Stream *gfs, int id, Gif_Extension *search_from)
 {
-  if (!search_from) search_from = gfs->extensions;
+  if (!search_from)
+    search_from = gfs->extensions;
   while (search_from) {
     if (search_from->kind == id)
       return search_from;
@@ -643,7 +680,8 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
   int new_width = gfi->width, new_height = gfi->height;
   int y;
 
-  if (!gfi->img) return 0;
+  if (!gfi->img)
+    return 0;
 
   if (gfi->left < left) {
     int shift = left - gfi->left;
@@ -667,8 +705,10 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
   if (gfi->top + new_height >= height)
     new_height = height - gfi->top;
 
-  if (new_width < 0) new_width = 0;
-  if (new_height < 0) new_height = 0;
+  if (new_width < 0)
+    new_width = 0;
+  if (new_height < 0)
+    new_height = 0;
   gfi->width = new_width;
   gfi->height = new_height;
   return 1;
@@ -700,10 +740,12 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
   uint8_t **img;
 
   Gif_ReleaseUncompressedImage(gfi);
-  if (!image_data) return 0;
+  if (!image_data)
+    return 0;
 
   img = Gif_NewArray(uint8_t *, height + 1);
-  if (!img) return 0;
+  if (!img)
+    return 0;
 
   if (data_interlaced)
     for (i = 0; i < height; i++)

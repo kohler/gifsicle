@@ -1156,16 +1156,18 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
   assert(dest->nimages > 0);
   prev_image = dest->images[dest->nimages - 1];
   if (merger_index < nmerger - 1)
-      next_fr = merger[merger_index + 1];
+    next_fr = merger[merger_index + 1];
 
   /* Don't save identifiers since the frame that was to be identified, is
      gone. Save comments though. */
   if (!fr->no_comments && srci->comment && next_fr) {
-    if (!next_fr->comment) next_fr->comment = Gif_NewComment();
+    if (!next_fr->comment)
+      next_fr->comment = Gif_NewComment();
     merge_comments(next_fr->comment, srci->comment);
   }
   if (fr->comment && next_fr) {
-    if (!next_fr->comment) next_fr->comment = Gif_NewComment();
+    if (!next_fr->comment)
+      next_fr->comment = Gif_NewComment();
     merge_comments(next_fr->comment, fr->comment);
     Gif_DeleteComment(fr->comment);
     fr->comment = 0;
