@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.57   11.Nov.2009
+
+* gifsicle: Don't throw away totally-cropped frames with 0 delay, since
+  most browsers treat 0-delay frames as 100ms-delay frames.  Reported by
+  Calle Kabo.
+
+
 Version 1.56   18.Oct.2009
 
 * gifsicle: Fix --crop-transparency for animated images; previous versions
