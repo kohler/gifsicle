@@ -592,7 +592,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
       if (!previous_data)
 	previous_data = Gif_NewArray(uint16_t, screen_size);
-      copy_data_area(previous_data, this_data, gfi);
+      memcpy(previous_data, this_data, sizeof(uint16_t) * screen_size);
     }
 
     /* set this_data equal to the current image */
@@ -659,9 +659,9 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
     if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(this_data, background, last_gfi);
     else if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      uint16_t *d = previous_data;
+      uint16_t *temp = previous_data;
       previous_data = this_data;
-      this_data = d;
+      this_data = temp;
     }
   }
 
