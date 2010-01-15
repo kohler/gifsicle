@@ -1,4 +1,4 @@
-GIFSICLE 1.57
+GIFSICLE 1.58
 =============
 
 ABOUT GIFSICLE
@@ -107,7 +107,7 @@ run-length-encoded GIFs.
 
 COPYRIGHT/LICENSE
 -----------------
-   All source code is Copyright (C) 1997-2009 Eddie Kohler.
+   All source code is Copyright (C) 1997-2010 Eddie Kohler.
 
    IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however they
