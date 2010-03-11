@@ -1290,6 +1290,26 @@ finalize_optimizer(Gif_Stream *gfs)
   if (background == TRANSP)
     gfs->background = (uint8_t)gfs->images[0]->transparent;
 
+  /* 11.Mar.2010 - remove entirely transparent frames. */
+  for (i = 1; i < gfs->nimages; ++i) {
+    Gif_Image *gfi = gfs->images[i];
+    if (gfi->width == 1 && gfi->height == 1 && gfi->transparent >= 0
+	&& !gfi->identifier && !gfi->comment
+	&& (gfi->disposal == GIF_DISPOSAL_ASIS
+	    || gfi->disposal == GIF_DISPOSAL_NONE
+	    || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
+	&& gfi->delay && gfs->images[i-1]->delay) {
+      Gif_UncompressImage(gfi);
+      if (gfi->img[0][0] == gfi->transparent) {
+	gfs->images[i-1]->delay += gfi->delay;
+	Gif_DeleteImage(gfi);
+	memmove(&gfs->images[i], &gfs->images[i+1], sizeof(Gif_Image *) * (gfs->nimages - i - 1));
+	--gfs->nimages;
+	--i;
+      }
+    }
+  }
+
   /* 10.Dec.1998 - prefer GIF_DISPOSAL_NONE to GIF_DISPOSAL_ASIS. This is
      semantically "wrong" -- it's better to set the disposal explicitly than
      rely on default behavior -- but will result in smaller GIF files, since

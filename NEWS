@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.59   11.Mar.2010
+
+* gifsicle -O2: Optimize away entirely-transparent frames when possible.
+  Requested by Gerald Johanson.
+
+
 Version 1.58   14.Jan.2010
 
 * gifsicle: Fix optimizer bug reported by Dion Mendel.
