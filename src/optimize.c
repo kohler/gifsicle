@@ -996,7 +996,6 @@ static void
 transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 {
   Gif_OptBounds ob = safe_bounds(gfi);
-  int scan_width = gfi->width;
   int x, y, transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;

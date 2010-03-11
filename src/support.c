@@ -254,7 +254,8 @@ safe_puts(const char *s, uint32_t len, FILE *f)
   for (; len > 0; len--, s++)
     if (*s < ' ' || *s >= 0x7F || *s == '\\') {
       if (last_safe != s) {
-	if (fwrite(last_safe, 1, s - last_safe, f) != s - last_safe)
+	size_t n = s - last_safe;
+	if (fwrite(last_safe, 1, n, f) != n)
 	  return;
       }
       last_safe = s + 1;
@@ -272,7 +273,8 @@ safe_puts(const char *s, uint32_t len, FILE *f)
       }
     }
   if (last_safe != s) {
-    if (fwrite(last_safe, 1, s - last_safe, f) != s - last_safe)
+    size_t n = s - last_safe;
+    if (fwrite(last_safe, 1, n, f) != n)
       return;
   }
 }
@@ -1225,7 +1227,7 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr)
 static void
 analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 {
-  int i, j, nframes = 0;
+  int i, nframes = 0;
   int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
 
   /* count frames to which this crop applies */
