@@ -393,11 +393,11 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
 	int short2 = (io2->ishort ? o2->short_name : -3);
 	int shortx2 = long_as_short(cli, o2, io2, -4);
 	if (short1 == short2)
-	    Clp_OptionError(clp, "CLP internal error: more than 1 option has short name %`%c%'", short1);
+	    Clp_OptionError(clp, "CLP internal error: more than 1 option has short name %<%c%>", short1);
 	else if ((short1 == shortx2 || shortx1 == short2 || shortx1 == shortx2)
 		 && ((io1->ipos && io2->ipos && cli->long1pos)
 		     || (io1->ineg && io2->ineg && cli->long1neg)))
-	    Clp_OptionError(clp, "CLP internal error: 1-char long name conflicts with short name %`%c%'", (short1 == shortx2 ? shortx2 : shortx1));
+	    Clp_OptionError(clp, "CLP internal error: 1-char long name conflicts with short name %<%c%>", (short1 == shortx2 ? shortx2 : shortx1));
     }
 
     /* analyze longest minimum match */
@@ -419,7 +419,7 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
 	if (io2->ilong) {
 	    const char *name2 = o2->long_name + io2->ilongoff;
 	    if (strcmp(name1, name2) == 0)
-		Clp_OptionError(clp, "CLP internal error: duplicate long name %`%s%'", name1);
+		Clp_OptionError(clp, "CLP internal error: duplicate long name %<%s%>", name1);
 	    if (io1->ipos && io2->ipos && !strncmp(name1, name2, io1->lmmpos)
 		&& (!io1->iprefmatch || strncmp(name1, name2, strlen(name1))))
 		io1->lmmpos = min_different_chars(name1, name2);
@@ -448,14 +448,14 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
  * first argument returned by Clp_Next() will be the second argument in @a
  * argv.  Note that this behavior differs from Clp_SetArguments.</li>
  * <li>UTF-8 support is on iff the <tt>LANG</tt> environment variable contains
- * one of the substrings "UTF-8", "UTF8", or "utf8".</li>
+ * one of the substrings "UTF-8", "UTF8", or "utf8".  Override this with
+ * Clp_SetUTF8().</li>
  * <li>The Clp_ValString, Clp_ValStringNotOption, Clp_ValInt, Clp_ValUnsigned,
  * Clp_ValBool, and Clp_ValDouble types are installed.</li>
  * <li>Errors are reported to standard error.</li>
  * </ul>
  *
- * To override these characteristics, either call functions like
- * Clp_SetUTF8(), or create your Clp_Parser with no arguments or options
+ * You may also create a Clp_Parser with no arguments or options
  * (<tt>Clp_NewParser(0, 0, 0, 0)</tt>) and set the arguments and options
  * later.
  *
@@ -471,7 +471,9 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, const Clp_Option *op
     Clp_Parser *clp = (Clp_Parser *)malloc(sizeof(Clp_Parser));
     Clp_Internal *cli = (Clp_Internal *)malloc(sizeof(Clp_Internal));
     Clp_InternOption *iopt = (Clp_InternOption *)malloc(sizeof(Clp_InternOption) * nopt);
-    if (!clp || !cli || !iopt)
+    if (cli)
+	cli->valtype = (Clp_ValType *)malloc(sizeof(Clp_ValType) * Clp_InitialValType);
+    if (!clp || !cli || !iopt || !cli->valtype)
 	goto failed;
 
     clp->negated = 0;
@@ -508,11 +510,7 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, const Clp_Option *op
     cli->long1pos = cli->long1neg = 0;
 
     /* Add default type parsers */
-    cli->valtype = (Clp_ValType *)malloc(sizeof(Clp_ValType) * Clp_InitialValType);
-    if (!cli->valtype)
-	goto failed;
     cli->nvaltype = 0;
-
     Clp_AddType(clp, Clp_ValString, 0, parse_string, 0);
     Clp_AddType(clp, Clp_ValStringNotOption, Clp_DisallowOptions, parse_string, 0);
     Clp_AddType(clp, Clp_ValInt, 0, parse_int, 0);
@@ -612,6 +610,13 @@ Clp_SetUTF8(Clp_Parser *clp, int utf8)
     return old_utf8;
 }
 
+/** @param clp the parser
+ * @param c character
+ * @return option character treatment
+ *
+ * Returns an integer specifying how CLP treats arguments that begin
+ * with character @a c.  See Clp_SetOptionChar for possibilities.
+ */
 int
 Clp_OptionChar(Clp_Parser *clp, int c)
 {
@@ -1088,8 +1093,8 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 	return 1;
     else if (complain) {
 	const char *message = user_data != 0
-	    ? "%`%O%' expects a nonnegative integer, not %`%s%'"
-	    : "%`%O%' expects an integer, not %`%s%'";
+	    ? "%<%O%> expects a nonnegative integer, not %<%s%>"
+	    : "%<%O%> expects an integer, not %<%s%>";
 	return Clp_OptionError(clp, message, arg);
     } else
 	return 0;
@@ -1107,7 +1112,7 @@ parse_double(Clp_Parser *clp, const char *arg, int complain, void *user_data)
     if (*arg != 0 && *val == 0)
 	return 1;
     else if (complain)
-	return Clp_OptionError(clp, "%`%O%' expects a real number, not %`%s%'", arg);
+	return Clp_OptionError(clp, "%<%O%> expects a real number, not %<%s%>", arg);
     else
 	return 0;
 }
@@ -1139,7 +1144,7 @@ parse_bool(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 
   error:
     if (complain)
-	Clp_OptionError(clp, "%`%O%' expects a true-or-false value, not %`%s%'", arg);
+	Clp_OptionError(clp, "%<%O%> expects a true-or-false value, not %<%s%>", arg);
     return 0;
 }
 
@@ -1178,13 +1183,13 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
 	}
 	return ambiguity_error
 	    (clp, ambiguous, ambiguous_values, sl->items, sl->iopt,
-	     "", "option %`%O%' value %`%s%' is %s", arg, complaint);
+	     "", "option %<%O%> value %<%s%> is %s", arg, complaint);
     } else
 	return 0;
 }
 
 
-int
+static int
 finish_string_list(Clp_Parser *clp, int val_type, int flags,
 		   Clp_Option *items, int nitems, int itemscap)
 {
@@ -1844,13 +1849,13 @@ Clp_Next(Clp_Parser *clp)
 	if (cli->ambiguous)
 	    ambiguity_error(clp, cli->ambiguous, cli->ambiguous_values,
 			    cli->opt, cli->iopt, cli->option_chars,
-			    "option %`%s%s%' is ambiguous",
+			    "option %<%s%s%> is ambiguous",
 			    cli->option_chars, cli->xtext);
 	else if (cli->is_short && !cli->could_be_short)
-	    Clp_OptionError(clp, "unrecognized option %`%s%C%'",
+	    Clp_OptionError(clp, "unrecognized option %<%s%C%>",
 			    cli->option_chars, cli->xtext);
 	else
-	    Clp_OptionError(clp, "unrecognized option %`%s%s%'",
+	    Clp_OptionError(clp, "unrecognized option %<%s%s%>",
 			    cli->option_chars, cli->xtext);
 
 	return Clp_BadOption;
@@ -1865,7 +1870,7 @@ Clp_Next(Clp_Parser *clp)
     if (clp->negated
 	|| (!cli->iopt[optno].imandatory && !cli->iopt[optno].ioptional)) {
 	if (clp->have_val) {
-	    Clp_OptionError(clp, "%`%O%' can't take an argument");
+	    Clp_OptionError(clp, "%<%O%> can%,t take an argument");
 	    return Clp_BadOption;
 	} else
 	    return cli->opt[optno].option_id;
@@ -1895,9 +1900,9 @@ Clp_Next(Clp_Parser *clp)
 	    int got_option = cli->xtext != 0;
 	    Clp_RestoreParser(clp, &clpsave);
 	    if (got_option)
-		Clp_OptionError(clp, "%`%O%' requires a non-option argument");
+		Clp_OptionError(clp, "%<%O%> requires a non-option argument");
 	    else
-		Clp_OptionError(clp, "%`%O%' requires an argument");
+		Clp_OptionError(clp, "%<%O%> requires an argument");
 	    return Clp_BadOption;
 	}
 
@@ -2116,11 +2121,14 @@ Clp_VaOptionError(Clp_Parser *clp, Clp_BuildString *bs,
 		*bs->pos++ = '%';
 	    break;
 
-	  case '`':
+	  case '`':		/* backwards compatibility */
+	  case '<':
 	    append_build_string(bs, (cli->utf8 ? "\342\200\230" : "'"), -1);
 	    break;
 
-	  case '\'':
+	  case '\'':		/* backwards compatibility */
+	  case ',':
+	  case '>':
 	    append_build_string(bs, (cli->utf8 ? "\342\200\231" : "'"), -1);
 	    break;
 
@@ -2185,12 +2193,15 @@ do_error(Clp_Parser *clp, Clp_BuildString *bs)
  * current option is defined in the Clp_Parser object itself.</dd>
  * <dt><tt>%%</tt></dt>
  * <dd>Prints a percent character.</dd>
- * <dt><tt>%</tt><tt>`</tt></dt>
- * <dd>In UTF-8 mode, prints a left single quote.  Otherwise prints a single
- * quote.</dd>
- * <dt><tt>%</tt><tt>'</tt></dt>
- * <dd>In UTF-8 mode, prints a right single quote.  Otherwise prints a single
- * quote.</dd>
+ * <dt><tt>%</tt><tt>&lt;</tt></dt>
+ * <dd>Prints an open quote string.  In UTF-8 mode, prints a left single
+ * quote.  Otherwise prints a single quote.</dd>
+ * <dt><tt>%</tt><tt>&gt;</tt></dt>
+ * <dd>Prints a closing quote string.  In UTF-8 mode, prints a right single
+ * quote.  Otherwise prints a single quote.</dd>
+ * <dt><tt>%</tt><tt>,</tt></dt>
+ * <dd>Prints an apostrophe.  In UTF-8 mode, prints a right single quote.
+ * Otherwise prints a single quote.</dd>
  * </dl>
  *
  * Note that no flag characters, precision, or field width characters are

@@ -224,6 +224,9 @@ Clp_ErrorHandler Clp_SetErrorHandler(Clp_Parser *clp, Clp_ErrorHandler errh);
 /** @brief Set @a clp's UTF-8 mode. */
 int Clp_SetUTF8(Clp_Parser *clp, int utf8);
 
+/** @brief Return @a clp's treatment of character @a c. */
+int Clp_OptionChar(Clp_Parser *clp, int c);
+
 /** @brief Set @a clp's treatment of character @a c. */
 int Clp_SetOptionChar(Clp_Parser *clp, int c, int type);
 
