@@ -314,13 +314,17 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     } else if (code == eoi_code)
       break;
 
-    else if (code > next_code && next_code) {
+    else if (code > next_code && next_code && next_code != clear_code) {
       /* code > next_code: a (hopefully recoverable) error.
 
 	 Bug fix, 5/27: Do this even if old_code == clear_code, and set code
 	 to 0 to prevent errors later. (If we didn't zero code, we'd later set
 	 old_code = code; then we had old_code >= next_code; so the prefixes
-	 array got all screwed up!) */
+	 array got all screwed up!)
+
+	 Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
+	 This happens at the end of a large GIF: see the next comment ("If no
+	 meaningful next code should be defined...."). */
       gif_read_error(gfc, "unexpected code");
       code = 0;
     }
