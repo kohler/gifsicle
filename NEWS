@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.60   12.Apr.2010
+
+* GIF reading library: Correct error that could corrupt the reading of
+  certain large images.  Reported by Jernej Simončič.
+
+
 Version 1.59   11.Mar.2010
 
 * gifsicle -O2: Optimize away entirely-transparent frames when possible.
