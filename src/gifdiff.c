@@ -183,7 +183,7 @@ int
 compare(Gif_Stream *s1, Gif_Stream *s2)
 {
   Gif_Colormap *newcm;
-  int imageno, background1, background2;
+  int imageno, background1, background2, nframes;
   char buf1[256], buf2[256];
 
   was_different = 0;
@@ -193,17 +193,19 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   Gif_CalculateScreenSize(s1, 0);
   Gif_CalculateScreenSize(s2, 0);
 
-  if (s1->nimages != s2->nimages)
+  if (s1->nimages != s2->nimages) {
     different("frame counts differ: <%d >%d", s1->nimages, s2->nimages);
+    if (s1->nimages == 0 || s2->nimages == 0)
+      return DIFFERENT;
+  }
+  nframes = s1->nimages < s2->nimages ? s1->nimages : s2->nimages;
+
   if (s1->screen_width != s2->screen_width
-      || s1->screen_height != s2->screen_height)
+      || s1->screen_height != s2->screen_height) {
     different("screen sizes differ: <%dx%d >%dx%d", s1->screen_width,
 	      s1->screen_height, s2->screen_width, s2->screen_height);
-
-  if (was_different)
     return DIFFERENT;
-  else if (s1->nimages == 0)
-    return SAME;
+  }
 
   /* Create arrays for the image data */
   screen_width = s1->screen_width;
@@ -220,7 +222,7 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   newcm = Gif_NewFullColormap(1, 256);
   combine_colormaps(s1->global, newcm);
   combine_colormaps(s2->global, newcm);
-  for (imageno = 0; imageno < s1->nimages; imageno++) {
+  for (imageno = 0; imageno < nframes; imageno++) {
     combine_colormaps(s1->images[imageno]->local, newcm);
     combine_colormaps(s2->images[imageno]->local, newcm);
   }
@@ -247,7 +249,7 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   }
 
   /* Loop over frames, comparing image data and delays */
-  for (imageno = 0; imageno < s1->nimages; imageno++) {
+  for (imageno = 0; imageno < nframes; imageno++) {
     Gif_Image *gfi1 = s1->images[imageno], *gfi2 = s2->images[imageno];
     apply_image(0, s1, gfi1);
     apply_image(1, s2, gfi2);
