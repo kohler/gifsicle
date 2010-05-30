@@ -275,7 +275,7 @@ encode_utf8(char *s, int n, int c)
 }
 
 static int
-decode_utf8(const char *s, char **cp)
+decode_utf8(const char *s, const char **cp)
 {
     int c;
     if ((unsigned char) *s <= 0x7F)		/* 1 byte:  0x000000-0x00007F */
@@ -319,14 +319,14 @@ decode_utf8(const char *s, char **cp)
 	    /* nothing */;
     }
     if (cp)
-	*cp = (char *) s;
+	*cp = s;
     return c;
 }
 
 static int
 utf8_charlen(const char *s)
 {
-    char *sout;
+    const char *sout;
     (void) decode_utf8(s, &sout);
     return sout - s;
 }
@@ -364,7 +364,7 @@ long_as_short(const Clp_Internal *cli, const Clp_Option *o,
     if ((cli->long1pos || cli->long1neg) && io->ilong) {
 	const char *name = o->long_name + io->ilongoff;
 	if (cli->utf8) {
-	    int c = decode_utf8(name, (char **) &name);
+	    int c = decode_utf8(name, &name);
 	    if (!*name && c && c != U_REPLACEMENT)
 		return c;
 	} else if (name[0] && !name[1])
@@ -1073,22 +1073,22 @@ parse_string(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 static int
 parse_int(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 {
-    char *val;
+    const char *val;
     if (*arg == 0 || isspace((unsigned char) *arg)
 	|| (user_data != 0 && *arg == '-'))
-	val = (char *) arg;
+	val = arg;
     else if (user_data != 0) {	/* unsigned */
 #if HAVE_STRTOUL
-	clp->val.u = strtoul(arg, &val, 0);
+	clp->val.u = strtoul(arg, (char **) &val, 0);
 #else
 	/* don't bother really trying to do it right */
 	if (arg[0] == '-')
-	    val = (char *) arg;
+	    val = arg;
 	else
-	    clp->val.u = strtol(arg, &val, 0);
+	    clp->val.u = strtol(arg, (char **) &val, 0);
 #endif
     } else
-	clp->val.i = strtol(arg, &val, 0);
+	clp->val.i = strtol(arg, (char **) &val, 0);
     if (*arg != 0 && *val == 0)
 	return 1;
     else if (complain) {
@@ -1103,12 +1103,12 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 static int
 parse_double(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 {
-    char *val;
+    const char *val;
     (void)user_data;
     if (*arg == 0 || isspace((unsigned char) *arg))
-	val = (char *) arg;
+	val = arg;
     else
-	clp->val.d = strtod(arg, &val);
+	clp->val.d = strtod(arg, (char **) &val);
     if (*arg != 0 && *val == 0)
 	return 1;
     else if (complain)
@@ -1521,7 +1521,7 @@ get_oclass(Clp_Parser *clp, const char *text, int *ocharskip)
 {
     int c;
     if (clp->internal->utf8) {
-	char *s;
+	const char *s;
 	c = decode_utf8(text, &s);
 	*ocharskip = s - text;
     } else {
