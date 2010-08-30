@@ -351,42 +351,50 @@ warning(char *message, ...)
 static int gifread_error_count;
 
 static void
-gifread_error(const char *message, int which_image, void *thunk)
+gifread_error(int is_error, const char *message, int which_image, void *thunk)
 {
+  static int last_is_error = 0;
   static int last_which_image = 0;
-  static const char *last_message = 0;
+  static char last_message[256];
   static int different_error_count = 0;
   static int same_error_count = 0;
   const char *filename = (const char *)thunk;
 
   if (gifread_error_count == 0) {
     last_which_image = -1;
+    last_message[0] = 0;
     different_error_count = 0;
   }
 
   gifread_error_count++;
-  if (last_message && different_error_count <= 10
-      && (message != last_message || last_which_image != which_image)) {
+  if (last_message[0] && different_error_count <= 10
+      && (last_which_image != which_image || message == 0
+	  || strcmp(message, last_message) != 0)) {
+    const char *etype = last_is_error ? "error" : "warning";
+    error("While reading '%s' frame #%d:", filename, last_which_image);
     if (same_error_count == 1)
-      error("  %s", last_message);
+      error("  %s: %s", etype, last_message);
     else if (same_error_count > 0)
-      error("  %s (%d times)", last_message, same_error_count);
+      error("  %s: %s (%d times)", etype, last_message, same_error_count);
     same_error_count = 0;
+    last_message[0] = 0;
   }
 
-  if (message != last_message)
+  if (last_message[0] == 0)
     different_error_count++;
 
   same_error_count++;
-  last_message = message;
-  if (last_which_image != which_image && different_error_count <= 10
-      && message) {
-    error("Error while reading '%s' frame #%d:", filename, which_image);
+  if (message) {
+    strcpy(last_message, message);
     last_which_image = which_image;
-  }
+    last_is_error = is_error;
+  } else
+    last_message[0] = 0;
 
-  if (different_error_count == 11 && message)
+  if (different_error_count == 11 && message) {
     error("(more errors while reading '%s')", filename);
+    different_error_count++;
+  }
 }
 
 static Gif_Stream *
@@ -422,7 +430,7 @@ read_stream(const char **filename)
     }
     gifread_error_count = 0;
     gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, gifread_error, (void *) *filename);
-    gifread_error(0, -1, (void *) *filename); /* print out last error message */
+    gifread_error(-1, 0, -1, (void *) *filename); /* print out last error message */
     if (!gfs)
 	fatal_error("'%s' doesn't seem to contain a GIF", *filename);
     return gfs;

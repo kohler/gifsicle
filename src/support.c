@@ -27,7 +27,6 @@ verror(int seriousness, const char *fmt, va_list val)
 {
   char pattern[BUFSIZ];
   char buffer[BUFSIZ];
-  verbose_endline();
 
   if (seriousness > 2)
     sprintf(pattern, "%s: fatal error: %%s\n", program_name);
@@ -44,6 +43,7 @@ verror(int seriousness, const char *fmt, va_list val)
   /* try and keep error messages together (no interleaving of error messages
      from two gifsicle processes in the same command line) by calling fprintf
      only once */
+  verbose_endline();
   if (strlen(fmt) + strlen(pattern) < BUFSIZ) {
     sprintf(buffer, pattern, fmt);
     vfprintf(stderr, buffer, val);

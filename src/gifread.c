@@ -153,11 +153,11 @@ make_data_reader(Gif_Reader *grr, const uint8_t *data, uint32_t length)
 
 
 static void
-gif_read_error(Gif_Context *gfc, const char *error)
+gif_read_error(Gif_Context *gfc, int is_error, const char *text)
 {
   gfc->stream->errors++;
   if (gfc->handler)
-    gfc->handler(error, gfc->stream->nimages, gfc->handler_thunk);
+      gfc->handler(is_error, text, gfc->stream->nimages, gfc->handler_thunk);
 }
 
 
@@ -173,7 +173,7 @@ one_code(Gif_Context *gfc, Gif_Code code)
   gfc->decodepos += codelength;
   ptr = gfc->image + gfc->decodepos;
   if (ptr > gfc->maximage || !codelength) {
-    gif_read_error(gfc, (!codelength ? "bad code" : "too much image data"));
+    gif_read_error(gfc, 1, (!codelength ? "bad code" : "too much image data"));
     /* 5/26/98 It's not good enough simply to count an error, because in the
        read_image_data function, if code == next_code, we will store a byte in
        gfc->image[gfc->decodepos-1]. Thus, fix decodepos so it's w/in the
@@ -253,10 +253,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   min_code_size = gifgetbyte(grr);
   GIF_DEBUG(("\n\nmin_code_size(%d)", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
-    gif_read_error(gfc, "min_code_size too big");
+    gif_read_error(gfc, 1, "min_code_size too big");
     min_code_size = GIF_MAX_CODE_BITS - 1;
   } else if (min_code_size < 2) {
-    gif_read_error(gfc, "min_code_size too small");
+    gif_read_error(gfc, 1, "min_code_size too small");
     min_code_size = 2;
   }
   clear_code = 1 << min_code_size;
@@ -325,7 +325,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 	 Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
 	 This happens at the end of a large GIF: see the next comment ("If no
 	 meaningful next code should be defined...."). */
-      gif_read_error(gfc, "unexpected code");
+      gif_read_error(gfc, 1, "unexpected code");
       code = 0;
     }
 
@@ -375,9 +375,9 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
  zero_length_block:
 
   if (gfc->image + gfc->decodepos < gfc->maximage)
-    gif_read_error(gfc, "not enough image data for image size");
+    gif_read_error(gfc, 1, "not enough image data for image size");
   else if (gfc->image + gfc->decodepos > gfc->maximage)
-    gif_read_error(gfc, "too much image data for image size");
+    gif_read_error(gfc, 1, "too much image data for image size");
 }
 
 
@@ -617,13 +617,13 @@ read_graphic_control_extension(Gif_Context *gfc, Gif_Image *gfi,
   }
 
   if (len > 0) {
-    gif_read_error(gfc, "odd graphic extension format");
+    gif_read_error(gfc, 1, "odd graphic extension format");
     gifgetblock(crap, len, grr);
   }
 
   len = gifgetbyte(grr);
   while (len > 0) {
-    gif_read_error(gfc, "odd graphic extension format");
+    gif_read_error(gfc, 1, "odd graphic extension format");
     gifgetblock(crap, len, grr);
     len = gifgetbyte(grr);
   }
@@ -709,9 +709,10 @@ read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
       gifgetbyte(grr); /* throw away the 1 */
       gfs->loopcount = gifgetunsigned(grr);
       len = gifgetbyte(grr);
-      if (len) gif_read_error(gfc, "bad loop extension");
+      if (len)
+	gif_read_error(gfc, 1, "bad loop extension");
     } else
-      gif_read_error(gfc, "bad loop extension");
+      gif_read_error(gfc, 1, "bad loop extension");
 
     while (len > 0) {
       gifgetblock(buffer, len, grr);
@@ -839,7 +840,7 @@ read_gif(Gif_Reader *grr, int read_flags,
        if (!unknown_block_type) {
 	 char buf[256];
 	 sprintf(buf, "unknown block type %d at file offset %d", block, gifgetoffset(grr) - 1);
-	 gif_read_error(&gfc, buf);
+	 gif_read_error(&gfc, 1, buf);
 	 unknown_block_type = 1;
        }
        break;
@@ -863,7 +864,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.length);
 
   if (gfs && gfs->errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
-    gif_read_error(&gfc, "trailing garbage after GIF ignored");
+    gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
     /* but clear error count, since the GIF itself was all right */
     gfs->errors = 0;
   }

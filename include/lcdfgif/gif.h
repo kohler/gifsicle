@@ -129,7 +129,10 @@ int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
 #define		Gif_ImageUserData(gfi)		((gfi)->userdata)
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
 
-typedef		void (*Gif_ReadErrorHandler)(const char *, int, void *);
+typedef		void (*Gif_ReadErrorHandler)(int is_error,
+					     const char *error_text,
+					     int frame_number,
+					     void *user_data);
 
 #define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
 int		Gif_FullUncompressImage(Gif_Image*,Gif_ReadErrorHandler,void*);
