@@ -1,3 +1,4 @@
+/* -*- mode: c; c-basic-offset: 2 -*- */
 /* gifwrite.c - Functions to write GIFs.
    Copyright (C) 1997-2011 Eddie Kohler, kohler@cs.ucla.edu
    This file is part of the LCDF GIF library.
@@ -160,19 +161,20 @@ change_node_to_table(Gif_Context *gfc, Gif_Node *work_node,
 
 
 static void
-write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
-		      uint8_t min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+write_compressed_data(uint8_t **img, unsigned width, unsigned height,
+		      int min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
 {
   uint8_t buffer[WRITE_BUFFER_SIZE];
   uint8_t *buf;
 
-  uint16_t xleft;
+  unsigned xleft;
   uint8_t *imageline;
 
-  uint32_t leftover;
-  uint8_t bits_left_over;
+  unsigned leftover;
+  int bits_left_over;
 
   Gif_Node *work_node;
+  int work_depth;
   Gif_Node *next_node;
   Gif_Code next_code;
   Gif_Code output_code;
@@ -181,7 +183,10 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
 #define CUR_BUMP_CODE (1 << cur_code_bits)
   uint8_t suffix;
 
-  uint8_t cur_code_bits;
+  int end_table_avg_depth;
+  int end_table_count;
+
+  int cur_code_bits;
 
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
@@ -193,6 +198,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
   GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
 
   work_node = 0;
+  work_depth = 0;
   output_code = clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
@@ -238,16 +244,22 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
 	gfc->nodes[c].child.s = 0;
       }
 
-    } else if (next_code > CUR_BUMP_CODE) {
-      /* bump up compression size */
-      if (cur_code_bits == GIF_MAX_CODE_BITS) {
-	output_code = clear_code;
-	continue;
-      } else
-	cur_code_bits++;
+      end_table_count = 0;
+      end_table_avg_depth = 0;
 
     } else if (output_code == eoi_code)
       break;
+
+    else if (next_code > CUR_BUMP_CODE) {
+      /* bump up compression size */
+      if (cur_code_bits < GIF_MAX_CODE_BITS)
+	++cur_code_bits;
+      else if (end_table_count > 8 /* totally arbitrary constants */
+	       && end_table_avg_depth < 12 * 128) {
+	output_code = clear_code;
+	continue;
+      }
+    }
 
 
     /*****
@@ -280,40 +292,51 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
       }
 
       if (!next_node) {
-	/* We need to output the current code and add a new one to our
-	   dictionary. First reserve a node for the added code. It's
-	   LINKS_TYPE at first. */
-	next_node = &gfc->nodes[gfc->nodes_pos];
-	gfc->nodes_pos++;
-	next_node->code = next_code;
-	next_code++;
-	next_node->type = LINKS_TYPE;
-	next_node->suffix = suffix;
-	next_node->child.s = 0;
+	/* Output the current code. */
+	if (next_code < GIF_MAX_CODE) {
+	  /* Add a new code to our dictionary. First reserve a node for the
+	     added code. It's LINKS_TYPE at first. */
+	  next_node = &gfc->nodes[gfc->nodes_pos];
+	  gfc->nodes_pos++;
+	  next_node->code = next_code;
+	  next_code++;
+	  next_node->type = LINKS_TYPE;
+	  next_node->suffix = suffix;
+	  next_node->child.s = 0;
 
-	/* link next_node into work_node's set of children */
-	if (work_node->type == TABLE_TYPE)
-	  work_node->child.m[suffix] = next_node;
-	else if (work_node->type < MAX_LINKS_TYPE
-		 || gfc->links_pos + clear_code > LINKS_SIZE) {
-	  next_node->sibling = work_node->child.s;
-	  work_node->child.s = next_node;
-	  work_node->type++;
-	} else
-	  change_node_to_table(gfc, work_node, next_node, clear_code);
+	  /* link next_node into work_node's set of children */
+	  if (work_node->type == TABLE_TYPE)
+	    work_node->child.m[suffix] = next_node;
+	  else if (work_node->type < MAX_LINKS_TYPE
+		   || gfc->links_pos + clear_code > LINKS_SIZE) {
+	    next_node->sibling = work_node->child.s;
+	    work_node->child.s = next_node;
+	    work_node->type++;
+	  } else
+	    change_node_to_table(gfc, work_node, next_node, clear_code);
+	} else {
+	  next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
+	  if (end_table_count < 256)
+	    ++end_table_count;
+	  end_table_avg_depth +=
+	    (work_depth * 128 - end_table_avg_depth) / end_table_count;
+	}
 
 	/* Output the current code. */
 	output_code = work_node->code;
 	work_node = &gfc->nodes[suffix];
+	work_depth = 1;
 	goto found_output_code;
       }
 
       work_node = next_node;
+      ++work_depth;
     }
 
     /* Ran out of data if we get here. */
     output_code = (work_node ? work_node->code : eoi_code);
     work_node = 0;
+    work_depth = 0;
 
    found_output_code: ;
   }

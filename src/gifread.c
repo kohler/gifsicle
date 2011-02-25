@@ -307,6 +307,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
     if (code == clear_code) {
+      GIF_DEBUG(("clear"));
       bits_needed = min_code_size + 1;
       next_code = eoi_code;
       continue;
