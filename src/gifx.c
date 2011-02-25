@@ -702,10 +702,17 @@ Gif_XNextImage(Gif_XContext *gfx, Gif_Stream *gfs, int i, Gif_XFrame *frames)
 
   /* scan forward to produce background */
   gfi = (scani >= 0 ? gfs->images[scani] : 0);
-  if (gfi && (!fullscreen(gfs, gfi, 1)
-	      || gfi->disposal != GIF_DISPOSAL_BACKGROUND))
+  if (gfi && (gfi->disposal != GIF_DISPOSAL_BACKGROUND
+	      || !fullscreen(gfs, gfi, 1))) {
+    /* perhaps we need to create an image (if so, must be fullscreen) */
+    if (frames[scani].pixmap == None) {
+      frames[scani].pixmap = Gif_XImage(gfx, gfs, gfi);
+      if (frames[scani].pixmap == None)
+	goto error_exit;
+    }
     XCopyArea(gfx->display, frames[scani].pixmap, result, gfx->image_gc,
 	      0, 0, gfs->screen_width, gfs->screen_height, 0, 0);
+  }
   if (!gfi || gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
     if (apply_background(gfx, gfs, scani, result) < 0)
       goto error_exit;
