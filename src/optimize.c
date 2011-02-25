@@ -1,5 +1,5 @@
 /* optimize.c - Functions to optimize animated GIFs.
-   Copyright (C) 1997-2008 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2011 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -989,17 +989,38 @@ simple_frame_data(Gif_Image *gfi, uint8_t *map)
 }
 
 
+static void
+try_new_compression(Gif_Stream *gfs, Gif_Image *gfi)
+{
+    uint8_t *old_compressed = gfi->compressed;
+    void (*old_free_compressed)(void *) = gfi->free_compressed;
+    uint32_t old_compressed_len = gfi->compressed_len;
+    gfi->compressed = 0;	/* prevent freeing old_compressed */
+
+    Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+    if (gfi->compressed_len > old_compressed_len) {
+	Gif_ReleaseCompressedImage(gfi);
+	gfi->compressed = old_compressed;
+	gfi->free_compressed = old_free_compressed;
+	gfi->compressed_len = old_compressed_len;
+    } else
+	(*old_free_compressed)(old_compressed);
+}
+
+
 /* transp_frame_data: copy the frame data into the actual image, using
    transparency occasionally according to a heuristic described below */
 
 static void
-transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
+transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
+		  int optimize_level)
 {
   Gif_OptBounds ob = safe_bounds(gfi);
   int x, y, transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;
   uint8_t *data, *swit;
+  uint8_t *t2_data = 0, *last_for_t2;
   int transparentizing;
 
   /* First, try w/o transparency. Compare this to the result using
@@ -1037,13 +1058,17 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
      This simple heuristic does a little better than Gifwizard's (6/97)
      on some images, but does *worse than nothing at all* on others.
 
-     However, it DOES do better than the complicated, greedy algorithm I
-     commented out above; and now we pick either the transparency-optimized
-     version or the normal version, whichever compresses smaller, for the best
-     of both worlds. (9/98) */
+     However, it DOES do better than the complicated, greedy algorithm that
+     preceded it; and now we pick either the transparency-optimized version or
+     the normal version, whichever compresses smaller, for the best of both
+     worlds. (9/98)
+
+     On several images, making SINGLE color runs transparent wins over the
+     previous heuristic, so try both at optimize level 3 or above (the cost is
+     ~30%). (2/11) */
 
     x = y = 0;
-    data = swit = gfi->image_data;
+    data = swit = last_for_t2 = gfi->image_data;
     transparentizing = 0;
     goto calculate_pointers;
 
@@ -1066,6 +1091,15 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 		    transparentizing = 1;
 		    memset(swit, transparent, data - swit);
 		} else {
+		    if (data > swit && *data != *swit && optimize_level > 2) {
+			if (!t2_data)
+			    t2_data = Gif_NewArray(uint8_t, ob.width * ob.height);
+			memcpy(t2_data + (last_for_t2 - gfi->image_data),
+			       last_for_t2, swit - last_for_t2);
+			memset(t2_data + (swit - gfi->image_data),
+			       transparent, data - swit);
+			last_for_t2 = data;
+		    }
 		    if (*cur != *last)
 			swit = data + 1;
 		    else if (*swit != *data)
@@ -1084,23 +1118,19 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map)
 	}
     }
 
+    if (t2_data)
+	memcpy(t2_data + (last_for_t2 - gfi->image_data),
+	       last_for_t2, data - last_for_t2);
 
-  /* Now, try compressed transparent version and pick the better of the two. */
-  {
-    uint8_t *old_compressed = gfi->compressed;
-    void (*old_free_compressed)(void *) = gfi->free_compressed;
-    uint32_t old_compressed_len = gfi->compressed_len;
-    gfi->compressed = 0;	/* prevent freeing old_compressed */
-    Gif_FullCompressImage(gfs, gfi, gif_write_flags);
-    if (gfi->compressed_len > old_compressed_len) {
-      Gif_ReleaseCompressedImage(gfi);
-      gfi->compressed = old_compressed;
-      gfi->free_compressed = old_free_compressed;
-      gfi->compressed_len = old_compressed_len;
-    } else
-      (*old_free_compressed)(old_compressed);
+
+    /* Now, try compressed transparent version(s) and pick the better of the
+       two (or three). */
+    try_new_compression(gfs, gfi);
+    if (t2_data) {
+	Gif_SetUncompressedImage(gfi, t2_data, Gif_DeleteArrayFunc, 0);
+	try_new_compression(gfs, gfi);
+    }
     Gif_ReleaseUncompressedImage(gfi);
-  }
 }
 
 
@@ -1167,7 +1197,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
 
       /* don't use transparency on first frame */
       if (optimize_level > 1 && image_index > 0 && cur_gfi->transparent >= 0)
-	transp_frame_data(gfs, cur_gfi, map);
+	transp_frame_data(gfs, cur_gfi, map, optimize_level);
       else
 	simple_frame_data(cur_gfi, map);
 

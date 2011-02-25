@@ -176,7 +176,7 @@ Animation options: Also --no-OPTION and --same-OPTION.\n\
   -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
   -D, --disposal METHOD         Set frame disposal to METHOD.\n\
   -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
-  -O, --optimize[=LEV]          Optimize output GIFs.\n\
+  -O, --optimize[=LEVEL]        Optimize output GIFs.\n\
   -U, --unoptimize              Unoptimize input GIFs.\n\
 \n");
   printf("\
