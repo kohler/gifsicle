@@ -380,11 +380,10 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     last_message[0] = 0;
   }
 
-  if (last_message[0] == 0)
-    different_error_count++;
-
-  same_error_count++;
   if (message) {
+    if (last_message[0] == 0)
+      different_error_count++;
+    same_error_count++;
     strcpy(last_message, message);
     last_which_image = which_image;
     last_is_error = is_error;
