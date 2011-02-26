@@ -1,5 +1,6 @@
 #ifndef DMALLOC_H
 #define DMALLOC_H
+#include <stddef.h>
 
 void *debug_malloc_id(size_t, const char *, int);
 void *debug_realloc_id(void *, size_t, const char *, int);

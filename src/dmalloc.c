@@ -21,11 +21,11 @@ debug_malloc_id(size_t k, const char *file, int line)
 {
   void *p = malloc(k + sizeof(bucket));
   bucket *b = (bucket *)p;
-  int bnum = (((long)p) >> 4) % NBUCK;
+  int bnum = (((unsigned long)p) >> 4) % NBUCK;
 
   if (p == 0) {
-    fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %d)\n",
-	    file, line, k);
+    fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %ld)\n",
+	    file, line, (long) k);
     abort();
   }
 
@@ -38,8 +38,8 @@ debug_malloc_id(size_t k, const char *file, int line)
   p = (void *)(((char *)p) + sizeof(bucket));
   /* memset(p, 99, b->size); */
   if (verbose_out)
-    fprintf(verbose_out, "%5d: %p +%-7d (%s:%d) ++  %d\n", event_number,
-	    p, b->size, file, line, dmalloc_live_memory);
+    fprintf(verbose_out, "%5d: %p +%-7d (%s:%d) ++  %ld\n", event_number,
+	    p, b->size, file, line, (long) dmalloc_live_memory);
   event_number++;
   return p;
 }
@@ -51,7 +51,7 @@ debug_realloc_id(void *p, size_t k, const char *file, int line)
   bucket *b;
   bucket *prev;
   bucket *new_b;
-  int bnum = (((long)b_in) >> 4) % NBUCK;
+  int bnum = (((unsigned long)b_in) >> 4) % NBUCK;
   if (p == 0) return debug_malloc_id(k, file, line);
 
   for (b = buckets[bnum], prev = 0; b && b != b_in; prev = b, b = b->next)
@@ -63,13 +63,13 @@ debug_realloc_id(void *p, size_t k, const char *file, int line)
 
   dmalloc_live_memory += k - b->size;
   if (verbose_out)
-    fprintf(verbose_out, "%5d: %p +%-7d (%s:%d) >> ", event_number,
-	    p, b->size, b->file, b->line);
+    fprintf(verbose_out, "%5d: %p +%-7ld (%s:%d) >> ", event_number,
+	    p, (long) b->size, b->file, b->line);
 
   new_b = (bucket *)realloc(b, k + sizeof(bucket));
   if (new_b == 0) {
-    fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %d)\n",
-	    file, line, k);
+    fprintf(stderr, "dmalloc:%s:%d: virtual memory exhausted (wanted %ld)\n",
+	    file, line, (long) k);
     abort();
   }
 
@@ -78,7 +78,7 @@ debug_realloc_id(void *p, size_t k, const char *file, int line)
     if (prev) prev->next = new_b->next;
     else buckets[bnum] = new_b->next;
 
-    bnum = (((long)new_b) >> 4) % NBUCK;
+    bnum = (((unsigned long)new_b) >> 4) % NBUCK;
     new_b->next = buckets[bnum];
     buckets[bnum] = new_b;
 
@@ -86,7 +86,7 @@ debug_realloc_id(void *p, size_t k, const char *file, int line)
   }
 
   if (verbose_out)
-    fprintf(verbose_out, "%p +%-7d (%s:%d)\n", p, k, file, line);
+    fprintf(verbose_out, "%p +%-7ld (%s:%d)\n", p, (long) k, file, line);
   event_number++;
   return p;
 }
@@ -99,7 +99,7 @@ debug_free_id(void *p, const char *file, int line)
   bucket *b;
   bucket *prev;
   int chain_length = 0;
-  int bnum = (((long)b_in) >> 4) % NBUCK;
+  int bnum = (((unsigned long)b_in) >> 4) % NBUCK;
   if (p == 0) return;
 
   for (b = buckets[bnum], prev = 0; b && b != b_in; prev = b, b = b->next)
@@ -114,8 +114,9 @@ debug_free_id(void *p, const char *file, int line)
   else buckets[bnum] = b->next;
   /* memset(p, 97, b->size); */
   if (verbose_out)
-    fprintf(verbose_out, "%5d: %p +%-7d (%s:%d) -- %s:%d  %d\n", event_number,
-	    p, b->size, b->file, b->line, file, line, dmalloc_live_memory);
+    fprintf(verbose_out, "%5d: %p +%-7ld (%s:%d) -- %s:%d  %ld\n", event_number,
+	    p, (long) b->size, b->file, b->line, file, line,
+	    (long) dmalloc_live_memory);
   event_number++;
   free(b_in);
 }
@@ -149,7 +150,7 @@ dmalloc_info(void *p)
 {
   bucket *b_in = (bucket *)(((char *)p) - sizeof(bucket));
   bucket *b;
-  int bnum = (((long)b_in) >> 4) % NBUCK;
+  int bnum = (((unsigned long)b_in) >> 4) % NBUCK;
   if (p == 0)
     fprintf(stderr, "dmalloc: 0x0\n");
   else {
@@ -158,8 +159,8 @@ dmalloc_info(void *p)
     if (b == 0) {
       fprintf(stderr, "dmalloc: %p: not my pointer\n", p);
     } else {
-      fprintf(stderr, "dmalloc: %p +%-7d (%s:%d)\n",
-	      p, b->size, b->file, b->line);
+      fprintf(stderr, "dmalloc: %p +%-7ld (%s:%d)\n",
+	      p, (long) b->size, b->file, b->line);
     }
   }
 }
@@ -173,8 +174,8 @@ dmalloc_report(void)
   fprintf(stderr, "dmalloc: %d bytes allocated\n", dmalloc_live_memory);
   for (i = 0; i < NBUCK; i++)
     for (b = buckets[i]; b; b = b->next)
-      fprintf(stderr, "dmalloc: %p +%-7d (%s:%d)\n",
-	      (void *)(((char *)b) + sizeof(bucket)), b->size,
+      fprintf(stderr, "dmalloc: %p +%-7ld (%s:%d)\n",
+	      (void *)(((char *)b) + sizeof(bucket)), (long) b->size,
 	      b->file, b->line);
 }
 
