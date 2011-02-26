@@ -176,15 +176,15 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   Gif_Node *work_node;
   int work_depth;
   Gif_Node *next_node;
-  Gif_Code next_code;
+  Gif_Code next_code = 0;
   Gif_Code output_code;
   Gif_Code clear_code;
   Gif_Code eoi_code;
 #define CUR_BUMP_CODE (1 << cur_code_bits)
   uint8_t suffix;
 
-  int end_table_avg_depth;
-  int end_table_count;
+  int end_table_avg_depth = 0;
+  int end_table_count = 0;
 
   int cur_code_bits;
 
