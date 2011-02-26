@@ -352,8 +352,10 @@ find_difference_bounds(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
   }
 
   /* 19.Aug.1999 - handle case when there's no difference between frames */
-  if (tp > bt)
-    tp = bt = lf = rt = 0;
+  if (tp > bt) {
+    tp = bt = gfi->top;
+    lf = rt = gfi->left;
+  }
 
   bounds->left = lf;
   bounds->top = tp;
@@ -375,12 +377,12 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
 {
   int x, y, expanded = 0;
 
-  int lf = bounds->left, tp = bounds->top;
-  int rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
+  int lf = bounds->left, tp = bounds->top,
+      rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
 
   Gif_OptBounds ob = safe_bounds(this_bounds);
-  int tlf = ob.left, ttp = ob.top, trt = ob.left + ob.width - 1,
-      tbt = ob.top + ob.height - 1;
+  int tlf = ob.left, ttp = ob.top,
+      trt = ob.left + ob.width - 1, tbt = ob.top + ob.height - 1;
 
   if (lf > rt || tp > bt)
     lf = 0, tp = 0, rt = screen_width - 1, bt = screen_height - 1;
