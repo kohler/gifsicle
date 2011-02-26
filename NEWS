@@ -1,5 +1,21 @@
 Gifsicle NEWS
 
+Version 1.61   25.Feb.2011
+
+* gifsicle: Add new -O3 optimization level, which applies several
+  transparency heuristics and picks the one with the best result.  David
+  Jamroga pointed out a file that gifsicle made larger; -O3 shrinks it.
+
+* gifsicle: Correct some optimizer bugs introduced in 1.59 that could lead
+  to visually different output.
+
+* gifdiff: Add -w/--ignore-redundancy option.
+
+* gifview: Correct crash bug.
+
+* gifsicle/gifdiff: Correct occasionally odd error messages.
+
+
 Version 1.60   12.Apr.2010
 
 * GIF reading library: Correct error that could corrupt the reading of
