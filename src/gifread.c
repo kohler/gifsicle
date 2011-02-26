@@ -678,6 +678,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
     gfex = Gif_NewExtension(kind, app_name);
   if (gfex) {
     gfex->data = data;
+    gfex->free_data = Gif_DeleteArrayFunc;
     gfex->length = data_len;
     data[data_len] = 0;
     Gif_AddExtension(gfs, gfex, position);

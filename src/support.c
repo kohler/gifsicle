@@ -1467,6 +1467,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 	Gif_AddExtension(dest, gfex, i);
 	gfex = next;
       }
+      fr->extensions = 0;
     }
 
     /* Make a copy of the image and crop it if we're cropping */
