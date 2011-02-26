@@ -1330,7 +1330,9 @@ finalize_optimizer(Gif_Stream *gfs)
 	    || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
 	&& gfi->delay && gfs->images[i-1]->delay) {
       Gif_UncompressImage(gfi);
-      if (gfi->img[0][0] == gfi->transparent) {
+      if (gfi->img[0][0] == gfi->transparent
+	  && (gfs->images[i-1]->disposal == GIF_DISPOSAL_ASIS
+	      || gfs->images[i-1]->disposal == GIF_DISPOSAL_NONE)) {
 	gfs->images[i-1]->delay += gfi->delay;
 	Gif_DeleteImage(gfi);
 	memmove(&gfs->images[i], &gfs->images[i+1], sizeof(Gif_Image *) * (gfs->nimages - i - 1));
