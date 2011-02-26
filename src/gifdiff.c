@@ -25,11 +25,13 @@
 #define QUIET_OPT		300
 #define HELP_OPT		301
 #define VERSION_OPT		302
+#define IGNORE_REDUNDANCY_OPT	303
 
 const Clp_Option options[] = {
   { "help", 'h', HELP_OPT, 0, 0 },
   { "brief", 'q', QUIET_OPT, 0, Clp_Negate },
-  { "version", 'v', VERSION_OPT, 0, 0 },
+  { "ignore-redundancy", 'w', IGNORE_REDUNDANCY_OPT, 0, Clp_Negate },
+  { "version", 'v', VERSION_OPT, 0, 0 }
 };
 
 static const char *program_name;
@@ -40,12 +42,13 @@ static const char *filename2;
 static int screen_width, screen_height;
 #define TRANSP (0)
 
-static uint16_t *data1;
-static uint16_t *data2;
-static uint16_t *last1;
-static uint16_t *last2;
+static uint16_t *gdata[2];
+static uint16_t *glast[2];
+static uint16_t *scratch;
+static uint16_t *line;
 
 static int brief;
+static int ignore_redundancy;
 
 
 static void
@@ -62,23 +65,49 @@ combine_colormaps(Gif_Colormap *gfcm, Gif_Colormap *newcm)
 static void
 fill_area(uint16_t *data, int l, int t, int w, int h, uint16_t val)
 {
-  int x, y;
-  for (y = t; y < t+h; y++) {
-    uint16_t *d = data + screen_width * y + l;
-    for (x = 0; x < w; x++)
-      *d++ = val;
+  int x;
+  data += screen_width * t + l;
+  for (; h > 0; --h) {
+    for (x = w; x > 0; --x)
+      *data++ = val;
+    data += screen_width - w;
   }
 }
 
+static void
+copy_area(uint16_t *dst, const uint16_t *src, int l, int t, int w, int h)
+{
+  dst += screen_width * t + l;
+  src += screen_width * t + l;
+  for (; h > 0; --h, dst += screen_width, src += screen_width)
+    memcpy(dst, src, sizeof(uint16_t) * w);
+}
 
 static void
-apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
+expand_bounds(int *lf, int *tp, int *rt, int *bt, const Gif_Image *gfi)
 {
-  int i, x, y;
+  int empty = (*lf >= *rt || *tp >= *bt);
+  if (empty || gfi->left < *lf)
+    *lf = gfi->left;
+  if (empty || gfi->top < *tp)
+    *tp = gfi->top;
+  if (empty || gfi->left + gfi->width > *rt)
+    *rt = gfi->left + gfi->width;
+  if (empty || gfi->top + gfi->height > *bt)
+    *bt = gfi->top + gfi->height;
+}
+
+
+static int
+apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
+{
+  int i, x, y, any_change;
+  Gif_Image *gfi = gfs->images[imageno];
+  Gif_Image *pgfi = imageno ? gfs->images[imageno - 1] : 0;
   int width = gfi->width;
   uint16_t map[256];
-  uint16_t *data = (is_second ? data2 : data1);
-  uint16_t *last = (is_second ? last2 : last1);
+  uint16_t *data = gdata[is_second];
+  uint16_t *last = glast[is_second];
   Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
 
   /* set up colormap */
@@ -90,42 +119,62 @@ apply_image(int is_second, Gif_Stream *gfs, Gif_Image *gfi)
   if (gfi->transparent >= 0 && gfi->transparent < 256)
     map[gfi->transparent] = TRANSP;
 
-  /* copy image over */
+  /* if this image's disposal is 'previous', save the post-disposal version in
+     'scratch' */
+  if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+    copy_area(scratch, data, gfi->left, gfi->top, gfi->width, gfi->height);
+    if (pgfi && pgfi->disposal == GIF_DISPOSAL_PREVIOUS)
+      copy_area(scratch, last, pgfi->left, pgfi->top, pgfi->width, pgfi->height);
+    else if (pgfi && pgfi->disposal == GIF_DISPOSAL_BACKGROUND)
+      fill_area(scratch, pgfi->left, pgfi->top, pgfi->width, pgfi->height, background);
+  }
+
+  /* uncompress and clip */
   Gif_UncompressImage(gfi);
   Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
-  for (y = 0; y < gfi->height; y++) {
-    uint16_t *outd = data + screen_width * (y + gfi->top) + gfi->left;
-    uint8_t *ind = gfi->img[y];
-    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-      memcpy(last + screen_width * y + gfi->left, outd,
-	     sizeof(uint16_t) * width);
-    for (x = 0; x < width; x++, outd++, ind++)
-      if (map[*ind] != TRANSP)
-	*outd = map[*ind];
+
+  any_change = imageno == 0;
+  {
+    int lf = 0, tp = 0, rt = 0, bt = 0;
+    expand_bounds(&lf, &tp, &rt, &bt, gfi);
+    if (pgfi && pgfi->disposal == GIF_DISPOSAL_PREVIOUS)
+      expand_bounds(&lf, &tp, &rt, &bt, pgfi);
+    else if (pgfi && pgfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+      expand_bounds(&lf, &tp, &rt, &bt, pgfi);
+      fill_area(last, pgfi->left, pgfi->top, pgfi->width, pgfi->height, background);
+    } else
+      pgfi = 0;
+    for (y = tp; y < bt; ++y) {
+      uint16_t *outd = data + screen_width * y + lf;
+      if (!any_change)
+	memcpy(line, outd, (rt - lf) * sizeof(uint16_t));
+      if (pgfi && y >= pgfi->top && y < pgfi->top + pgfi->height)
+	memcpy(outd + pgfi->left - lf,
+	       last + screen_width * y + pgfi->left,
+	       pgfi->width * sizeof(uint16_t));
+      if (y >= gfi->top && y < gfi->top + gfi->height) {
+	uint16_t *xoutd = outd + gfi->left - lf;
+	const uint8_t *ind = gfi->img[y - gfi->top];
+	for (x = 0; x < width; ++x, ++ind, ++xoutd)
+	  if (map[*ind] != TRANSP)
+	    *xoutd = map[*ind];
+      }
+      if (!any_change && memcmp(line, outd, (rt - lf) * sizeof(uint16_t)) != 0)
+	any_change = 1;
+    }
   }
+
   Gif_ReleaseUncompressedImage(gfi);
   Gif_ReleaseCompressedImage(gfi);
-}
 
-static void
-apply_image_disposal(int is_second, Gif_Image *gfi,
-		     uint16_t background)
-{
-  int x, y, width = gfi->width;
-  uint16_t *data = (is_second ? data2 : data1);
-  uint16_t *last = (is_second ? last2 : last1);
+  /* switch 'glast' with 'scratch' if necessary */
+  if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+    uint16_t *x = scratch;
+    scratch = glast[is_second];
+    glast[is_second] = x;
+  }
 
-  if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-    for (y = gfi->top; y < gfi->top + gfi->height; y++)
-      memcpy(data + screen_width * y + gfi->left,
-	     last + screen_width * y + gfi->left,
-	     sizeof(uint16_t) * width);
-  else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-    for (y = gfi->top; y < gfi->top + gfi->height; y++) {
-      uint16_t *d = data + screen_width * y + gfi->left;
-      for (x = 0; x < gfi->width; x++)
-	*d++ = background;
-    }
+  return any_change;
 }
 
 
@@ -183,8 +232,8 @@ int
 compare(Gif_Stream *s1, Gif_Stream *s2)
 {
   Gif_Colormap *newcm;
-  int imageno, background1, background2, nframes;
-  char buf1[256], buf2[256];
+  int imageno1, imageno2, background1, background2;
+  char buf1[256], buf2[256], fbuf[256];
 
   was_different = 0;
 
@@ -193,12 +242,11 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   Gif_CalculateScreenSize(s1, 0);
   Gif_CalculateScreenSize(s2, 0);
 
-  if (s1->nimages != s2->nimages) {
-    different("frame counts differ: <%d >%d", s1->nimages, s2->nimages);
-    if (s1->nimages == 0 || s2->nimages == 0)
-      return DIFFERENT;
+  if (s1->nimages != s2->nimages
+      && (s1->nimages == 0 || s2->nimages == 0)) {
+    different("frame counts differ: <#%d >#%d", s1->nimages, s2->nimages);
+    return DIFFERENT;
   }
-  nframes = s1->nimages < s2->nimages ? s1->nimages : s2->nimages;
 
   if (s1->screen_width != s2->screen_width
       || s1->screen_height != s2->screen_height) {
@@ -211,10 +259,12 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   screen_width = s1->screen_width;
   screen_height = s1->screen_height;
 
-  data1 = Gif_NewArray(uint16_t, screen_width * screen_height);
-  data2 = Gif_NewArray(uint16_t, screen_width * screen_height);
-  last1 = Gif_NewArray(uint16_t, screen_width * screen_height);
-  last2 = Gif_NewArray(uint16_t, screen_width * screen_height);
+  gdata[0] = Gif_NewArray(uint16_t, screen_width * screen_height);
+  gdata[1] = Gif_NewArray(uint16_t, screen_width * screen_height);
+  glast[0] = Gif_NewArray(uint16_t, screen_width * screen_height);
+  glast[1] = Gif_NewArray(uint16_t, screen_width * screen_height);
+  scratch = Gif_NewArray(uint16_t, screen_width * screen_height);
+  line = Gif_NewArray(uint16_t, screen_width);
 
   /* Merge all distinct colors from the two images into one colormap, setting
      the 'pixel' slots in the images' colormaps to the corresponding values
@@ -222,10 +272,10 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   newcm = Gif_NewFullColormap(1, 256);
   combine_colormaps(s1->global, newcm);
   combine_colormaps(s2->global, newcm);
-  for (imageno = 0; imageno < nframes; imageno++) {
-    combine_colormaps(s1->images[imageno]->local, newcm);
-    combine_colormaps(s2->images[imageno]->local, newcm);
-  }
+  for (imageno1 = 0; imageno1 < s1->nimages; ++imageno1)
+    combine_colormaps(s1->images[imageno1]->local, newcm);
+  for (imageno2 = 0; imageno2 < s2->nimages; ++imageno2)
+    combine_colormaps(s2->images[imageno2]->local, newcm);
 
   /* Choose the background values and clear the image data arrays */
   if (s1->images[0]->transparent >= 0 || !s1->global)
@@ -238,8 +288,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   else
     background2 = s2->global->col[ s2->background ].pixel;
 
-  fill_area(data1, 0, 0, screen_width, screen_height, background1);
-  fill_area(data2, 0, 0, screen_width, screen_height, background2);
+  fill_area(gdata[0], 0, 0, screen_width, screen_height, background1);
+  fill_area(gdata[1], 0, 0, screen_width, screen_height, background2);
 
   /* Loopcounts differ? */
   if (s1->loopcount != s2->loopcount) {
@@ -249,41 +299,70 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   }
 
   /* Loop over frames, comparing image data and delays */
-  for (imageno = 0; imageno < nframes; imageno++) {
-    Gif_Image *gfi1 = s1->images[imageno], *gfi2 = s2->images[imageno];
-    apply_image(0, s1, gfi1);
-    apply_image(1, s2, gfi2);
+  apply_image(0, s1, 0, background1);
+  apply_image(1, s2, 0, background2);
+  imageno1 = imageno2 = 0;
+  while (imageno1 != s1->nimages && imageno2 != s2->nimages) {
+    int fi1 = imageno1, fi2 = imageno2,
+      delay1 = s1->images[fi1]->delay, delay2 = s2->images[fi2]->delay;
 
-    if (memcmp(data1, data2, screen_width * screen_height * sizeof(uint16_t))
-	!= 0) {
+    /* get message right */
+    if (imageno1 == imageno2)
+      sprintf(fbuf, "#%d", imageno1);
+    else
+      sprintf(fbuf, "<#%d >#%d", imageno1, imageno2);
+
+    /* compare pixels */
+    if (memcmp(gdata[0], gdata[1],
+	       screen_width * screen_height * sizeof(uint16_t)) != 0) {
       int d, c = screen_width * screen_height;
-      uint16_t *d1 = data1, *d2 = data2;
+      uint16_t *d1 = gdata[0], *d2 = gdata[1];
       for (d = 0; d < c; d++, d1++, d2++)
 	if (*d1 != *d2) {
 	  name_color(*d1, newcm, buf1);
 	  name_color(*d2, newcm, buf2);
-	  different("frame #%d pixels differ: %d,%d <%s >%s",
-		    imageno, d % screen_width, d / screen_width, buf1, buf2);
+	  different("frame %s pixels differ: %d,%d <%s >%s",
+		    fbuf, d % screen_width, d / screen_width, buf1, buf2);
 	  break;
 	}
     }
 
-    if (gfi1->delay != gfi2->delay) {
-      name_delay(gfi1->delay, buf1);
-      name_delay(gfi2->delay, buf2);
-      different("frame #%d delays differ: <%s >%s", imageno, buf1, buf2);
+    /* move to next images, skipping redundancy */
+    for (++imageno1;
+	 imageno1 < s1->nimages && !apply_image(0, s1, imageno1, background1);
+	 ++imageno1)
+      delay1 += s1->images[imageno1]->delay;
+    for (++imageno2;
+	 imageno2 < s2->nimages && !apply_image(1, s2, imageno2, background2);
+	 ++imageno2)
+      delay2 += s2->images[imageno2]->delay;
+
+    if (!ignore_redundancy) {
+      fi1 = (imageno1 - fi1) - (imageno2 - fi2);
+      for (; fi1 > 0; --fi1)
+	different("extra redundant frame: <#%d", imageno1 - fi1);
+      for (; fi1 < 0; ++fi1)
+	different("extra redundant frame: >#%d", imageno2 + fi1);
     }
 
-    apply_image_disposal(0, gfi1, background1);
-    apply_image_disposal(1, gfi2, background2);
+    if (delay1 != delay2) {
+      name_delay(delay1, buf1);
+      name_delay(delay2, buf2);
+      different("frame %s delays differ: <%s >%s", fbuf, buf1, buf2);
+    }
   }
+
+  if (imageno1 != s1->nimages || imageno2 != s2->nimages)
+    different("frame counts differ: <#%d >#%d", s1->nimages, s2->nimages);
 
   /* That's it! */
   Gif_DeleteColormap(newcm);
-  Gif_DeleteArray(data1);
-  Gif_DeleteArray(data2);
-  Gif_DeleteArray(last1);
-  Gif_DeleteArray(last2);
+  Gif_DeleteArray(gdata[0]);
+  Gif_DeleteArray(gdata[1]);
+  Gif_DeleteArray(glast[0]);
+  Gif_DeleteArray(glast[1]);
+  Gif_DeleteArray(scratch);
+  Gif_DeleteArray(line);
 
   return was_different ? DIFFERENT : SAME;
 }
@@ -310,6 +389,7 @@ Usage: %s [OPTION]... FILE1 FILE2\n\
 \n\
 Options:\n\
   -q, --brief                   Don't report detailed differences.\n\
+  -w, --ignore-redundancy       Ignore differences in redundant frames.\n\
   -h, --help                    Print this message and exit.\n\
   -v, --version                 Print version number and exit.\n\
 \n\
@@ -469,6 +549,10 @@ particular purpose.\n");
 
      case QUIET_OPT:
       brief = !clp->negated;
+      break;
+
+     case IGNORE_REDUNDANCY_OPT:
+      ignore_redundancy = !clp->negated;
       break;
 
      case Clp_NotOption:

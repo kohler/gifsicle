@@ -1,5 +1,5 @@
 .\" -*- mode: nroff -*-
-.ds V 1.60
+.ds V 1.61
 .ds E " \-\- 
 .if t .ds E \(em
 .de Op
@@ -46,6 +46,13 @@ there were some differences, and 2 if there was trouble.
 .Op \-\-brief ", " \-q
 '
 Report only whether the GIFs differ, not the details of the differences.
+'
+.Sp
+.TP 5
+.Op \-\-ignore\-redundancy ", " \-w
+'
+Do not report differences in the numbers of redundant frames (frames which
+do not change the displayed image).
 '
 .Sp
 .TP 5
