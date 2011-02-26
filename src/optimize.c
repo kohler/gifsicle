@@ -807,6 +807,20 @@ create_out_global_map(Gif_Stream *gfs)
  * CREATE COLOR MAPPING FOR A PARTICULAR IMAGE
  **/
 
+/* sort_colormap_permutation_rgb: for canonicalizing local colormaps by
+   arranging them in RGB order */
+
+static int
+colormap_rgb_permutation_sorter(const void *v1, const void *v2)
+{
+  const Gif_Color *col1 = (const Gif_Color *)v1;
+  const Gif_Color *col2 = (const Gif_Color *)v2;
+  int value1 = (col1->red << 16) | (col1->green << 8) | col1->blue;
+  int value2 = (col2->red << 16) | (col2->green << 8) | col2->blue;
+  return value1 - value2;
+}
+
+
 /* prepare_colormap_map: Create and return an array of bytes mapping from
    global pixel values to pixel values for this image. It may add colormap
    cells to 'into'; if there isn't enough room in 'into', it will return 0. It
@@ -851,11 +865,18 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 	goto error;
       val = ncol;
       col[val] = all_col[i];
+      col[val].pixel = i;
       ncol++;
     }
 
     map[i] = val;
     into_used[val] = 1;
+  }
+
+  if (!is_global) {
+    qsort(col, ncol, sizeof(Gif_Color), colormap_rgb_permutation_sorter);
+    for (i = 0; i < ncol; ++i)
+      map[col[i].pixel] = i;
   }
 
   /* now check for transparency */
@@ -906,20 +927,6 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 }
 
 
-/* sort_colormap_permutation_rgb: for canonicalizing local colormaps by
-   arranging them in RGB order */
-
-static int
-colormap_rgb_permutation_sorter(const void *v1, const void *v2)
-{
-  const Gif_Color *col1 = (const Gif_Color *)v1;
-  const Gif_Color *col2 = (const Gif_Color *)v2;
-  int value1 = (col1->red << 16) | (col1->green << 8) | col1->blue;
-  int value2 = (col2->red << 16) | (col2->green << 8) | col2->blue;
-  return value1 - value2;
-}
-
-
 /* prepare_colormap: make a colormap up from the image data by fitting any
    used colors into a colormap. Returns a map from global color index to index
    in this image's colormap. May set a local colormap on 'gfi'. */
@@ -936,33 +943,8 @@ prepare_colormap(Gif_Image *gfi, uint8_t *need)
 
   if (!map) {
     /* that didn't work; add a local colormap. */
-    uint8_t permutation[256];
-    Gif_Color *local_col;
-    int i;
-
     gfi->local = Gif_NewFullColormap(0, 256);
     map = prepare_colormap_map(gfi, gfi->local, need);
-
-    /* The global colormap has already been canonicalized; we should
-       canonicalize the local colormaps as well. Do that here */
-    local_col = gfi->local->col;
-    for (i = 0; i < gfi->local->ncol; i++)
-      local_col[i].pixel = i;
-
-    qsort(local_col, gfi->local->ncol, sizeof(Gif_Color),
-	  colormap_rgb_permutation_sorter);
-
-    for (i = 0; i < gfi->local->ncol; i++)
-      permutation[local_col[i].pixel] = i;
-    /* 1.Aug.1999 - we might not have added space for gfi->transparent */
-    if (gfi->transparent >= gfi->local->ncol)
-      permutation[gfi->transparent] = gfi->transparent;
-
-    for (i = 0; i < all_colormap->ncol; i++)
-      map[i] = permutation[map[i]];
-
-    if (gfi->transparent >= 0)
-      gfi->transparent = map[TRANSP];
   }
 
   return map;
