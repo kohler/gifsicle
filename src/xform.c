@@ -166,16 +166,16 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   errno = 0;
   status = pclose(f);
   if (status < 0) {
-    error("color transformation error: %s", strerror(errno));
+    error(1, "color transformation error: %s", strerror(errno));
     goto done;
   } else if (status > 0) {
-    error("color transformation command failed");
+    error(1, "color transformation command failed");
     goto done;
   }
 
   f = fopen(tmp_file, "r");
   if (!f || feof(f)) {
-    error("color transformation command generated no output", command);
+    error(1, "color transformation command generated no output", command);
     if (f) fclose(f);
     goto done;
   }
@@ -186,9 +186,9 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
     int nc = new_cm->ncol;
     if (nc < gfcm->ncol) {
       nc = gfcm->ncol;
-      warning("too few colors in color transformation results");
+      warning(1, "too few colors in color transformation results");
     } else if (nc > gfcm->ncol)
-      warning("too many colors in color transformation results");
+      warning(1, "too many colors in color transformation results");
     for (i = 0; i < nc; i++)
       col[i] = new_cm->col[i];
   }

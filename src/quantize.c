@@ -257,7 +257,7 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
   if (adapt_size >= nhist) {
-    warning("trivial adaptive palette (only %d colors in source)", nhist);
+    warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
     adapt_size = nhist;
   }
 
@@ -395,7 +395,7 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
   if (adapt_size > nhist) {
-    warning("trivial adaptive palette (only %d colors in source)", nhist);
+    warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
     adapt_size = nhist;
   }
 

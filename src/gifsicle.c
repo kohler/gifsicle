@@ -47,15 +47,8 @@ int warn_local_colormaps = 1;
 static Gt_ColorTransform *input_transforms;
 static Gt_ColorTransform *output_transforms;
 
-#define BLANK_MODE	0
-#define MERGING		1
-#define BATCHING	2
-#define EXPLODING	3
-#define INFOING		4
-#define DELETING	5
-#define INSERTING	6
-static int mode = BLANK_MODE;
-static int nested_mode = 0;
+int mode = BLANK_MODE;
+int nested_mode = 0;
 
 static int infoing = 0;
 int verbosing = 0;
@@ -452,11 +445,11 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
       && (last_which_image != which_image || message == 0
 	  || strcmp(message, last_message) != 0)) {
     const char *etype = last_is_error ? "error" : "warning";
-    error("While reading '%s' frame #%d:", filename, last_which_image);
+    error(0, "While reading '%s' frame #%d:", filename, last_which_image);
     if (same_error_count == 1)
-      error("  %s: %s", etype, last_message);
+      error(0, "  %s: %s", etype, last_message);
     else if (same_error_count > 0)
-      error("  %s: %s (%d times)", etype, last_message, same_error_count);
+      error(0, "  %s: %s (%d times)", etype, last_message, same_error_count);
     same_error_count = 0;
     last_message[0] = 0;
   }
@@ -472,7 +465,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     last_message[0] = 0;
 
   if (different_error_count == 11 && message) {
-    error("(more errors while reading '%s')", filename);
+    error(0, "(more errors while reading '%s')", filename);
     different_error_count++;
   }
 }
@@ -495,7 +488,7 @@ open_giffile(const char *name)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdin))) {
-      error("<stdin>: is a terminal");
+      error(0, "<stdin>: is a terminal");
       return NULL;
     }
 #endif
@@ -523,7 +516,7 @@ open_giffile(const char *name)
     stored_files = sf;
     strcpy(sf->name, name);
   } else if (!f)
-    error("%s: %s", name, strerror(errno));
+    error(0, "%s: %s", name, strerror(errno));
 
   return f;
 }
@@ -602,9 +595,9 @@ input_stream(const char *name)
   i = getc(f);
   if (i == EOF) {
     if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
-      error("%s: empty file", name);
+      error(0, "%s: empty file", name);
     else if (nextfile)
-      error("%s: no more images in file", name);
+      error(0, "%s: no more images in file", name);
     close_giffile(f, 1);
     return;
   }
@@ -621,9 +614,9 @@ input_stream(const char *name)
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
-      error("%s: not a GIF image", name);
+      error(0, "%s: file not in GIF format", name);
     else
-      error("%s: trailing garbage ignored", main_name);
+      error(0, "%s: trailing garbage ignored", main_name);
     Gif_DeleteStream(gfs);
     if (verbosing)
       verbose_close('>');
@@ -699,10 +692,10 @@ input_stream(const char *name)
   if (unoptimizing)
     if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
       static int context = 0;
-      warning("'%s' is too complex to unoptimize", name);
+      warning(1, "GIF too complex to unoptimize", name);
       if (!context) {
-	warncontext("(The reason was local color tables or complex transparency.");
-	warncontext("Try running the GIF through 'gifsicle --colors=255' first.)");
+	warncontext(1, "(The reason was local color tables or complex transparency.");
+	warncontext(1, "Try running the GIF through 'gifsicle --colors=255' first.)");
       }
       context = 1;
     }
@@ -800,7 +793,7 @@ do_colormap_change(Gif_Stream *gfs)
 	  any_locals = 1;
       hist = histogram(gfs, &nhist);
       if (nhist <= active_output_data.colormap_size && !any_locals) {
-	warning("trivial adaptive palette (only %d colors in source)", nhist);
+	warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
 	return;
       }
     }
@@ -848,7 +841,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdout))) {
-      error("<stdout>: is a terminal");
+      error(0, "<stdout>: is a terminal");
       return;
     }
 #endif
@@ -868,7 +861,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
     fclose(f);
     any_output_successful = 1;
   } else
-    error("%s: %s", output_name, strerror(errno));
+    error(0, "%s: %s", output_name, strerror(errno));
 }
 
 static void
@@ -931,7 +924,7 @@ output_information(const char *outfile)
   else {
     f = fopen(outfile, "w");
     if (!f) {
-      error("%s: %s", outfile, strerror(errno));
+      error(0, "%s: %s", outfile, strerror(errno));
       return;
     }
   }
@@ -1195,11 +1188,11 @@ static void
 redundant_option_warning(const char *option_type)
 {
   static int context = 0;
-  warning("redundant %s option", option_type);
+  warning(0, "redundant %s option", option_type);
   if (!context) {
-    warncontext("(The %s option was overridden by another %s option",
+    warncontext(0, "(The %s option was overridden by another %s option",
 		option_type, option_type);
-    warncontext("before it had any effect.)");
+    warncontext(0, "before it had any effect.)");
   }
   context = 1;
 }
@@ -1212,9 +1205,9 @@ print_useless_options(const char *type_name, int value, const char *names[])
   if (!value) return;
   for (i = 0; i < 32; i++)
     if (CHANGED(value, i)) {
-      warning("useless %s-related %s option", names[i], type_name);
+      warning(0, "useless %s-related %s option", names[i], type_name);
       if (!explanation_printed)
-	warncontext("(It didn't affect any %s.)", type_name);
+	warncontext(0, "(It didn't affect any %s.)", type_name);
       explanation_printed = 1;
     }
 }
@@ -1571,7 +1564,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_frame.disposal = GIF_DISPOSAL_NONE;
       else if (clp->val.i < 0 || clp->val.i > 7)
-	error("disposal must be between 0 and 7");
+	error(0, "disposal must be between 0 and 7");
       else
 	def_frame.disposal = clp->val.i;
       break;
@@ -1622,7 +1615,7 @@ main(int argc, char *argv[])
 	 input_transforms = delete_color_transforms
 	   (input_transforms, &color_change_transformer);
        else if (parsed_color2.haspixel)
-	 error("COLOR2 must be in RGB format in '--change-color COLOR1 COLOR2'");
+	 error(0, "COLOR2 must be in RGB format in '--change-color COLOR1 COLOR2'");
        else
 	 input_transforms = append_color_change
 	   (input_transforms, parsed_color, parsed_color2);
@@ -1677,7 +1670,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error("one of W and H must be positive in '--resize WxH'");
+	error(0, "one of W and H must be positive in '--resize WxH'");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1691,7 +1684,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (clp->val.u == 0) {
-	error("'--resize-width' argument must be positive");
+	error(0, "'--resize-width' argument must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1705,7 +1698,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (clp->val.u == 0) {
-	error("'--resize-height' argument must be positive");
+	error(0, "'--resize-height' argument must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 1; /* use resize dimensions */
@@ -1719,7 +1712,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = 0;
       else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
-	error("'--scale' X and Y factors must be positive");
+	error(0, "'--scale' X and Y factors must be positive");
 	def_output_data.scaling = 0;
       } else {
 	def_output_data.scaling = 2; /* use scale factor */

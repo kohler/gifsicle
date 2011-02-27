@@ -141,9 +141,9 @@ extern int no_warnings;
 extern int gif_write_flags;
 
 void fatal_error(const char *message, ...) NORETURN;
-void warning(const char *message, ...);
-void warncontext(const char *message, ...);
-void error(const char *message, ...);
+void warning(int need_file, const char *message, ...);
+void warncontext(int need_file, const char *message, ...);
+void error(int need_file, const char *message, ...);
 void clp_error_handler(Clp_Parser *clp, const char *clp_message);
 void usage(void);
 void short_usage(void);
@@ -276,3 +276,17 @@ Gif_Stream *	merge_frame_interval(Gt_Frameset *, int f1, int f2,
 				     Gt_OutputData *, int compress, int *huge);
 void		clear_frameset(Gt_Frameset *, int from);
 void		blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);
+
+/*****
+ * mode
+ **/
+#define BLANK_MODE	0
+#define MERGING		1
+#define BATCHING	2
+#define EXPLODING	3
+#define INFOING		4
+#define DELETING	5
+#define INSERTING	6
+
+extern int mode;
+extern int nested_mode;

@@ -23,17 +23,36 @@ int no_warnings = 0;
 
 
 static void
-verror(int seriousness, const char *fmt, va_list val)
+verror(int need_file, int seriousness, const char *fmt, va_list val)
 {
   char pattern[BUFSIZ];
   char buffer[BUFSIZ];
+  static char *printed_file = 0;
+  static int just_printed_context = 0;
+  const char *iname = input_name ? input_name : "<stdin>", *prefix = "";
+
+  if (printed_file && strcmp(printed_file, iname) != 0) {
+      free(printed_file);
+      printed_file = 0;
+  }
+  if (need_file && !printed_file) {
+      if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
+	  fprintf(stderr, "%s: While processing '%s':\n", program_name, iname);
+      printed_file = malloc(strlen(iname) + 1);
+      strcpy(printed_file, iname);
+      prefix = "  ";
+      just_printed_context = 1;
+  } else if (just_printed_context && seriousness == 0)
+      prefix = "  ";
+  else
+      just_printed_context = 0;
 
   if (seriousness > 2)
-    sprintf(pattern, "%s: fatal error: %%s\n", program_name);
+      sprintf(pattern, "%s:%s fatal error: %%s\n", program_name, prefix);
   else if (seriousness == 1)
-    sprintf(pattern, "%s: warning: %%s\n", program_name);
+      sprintf(pattern, "%s:%s warning: %%s\n", program_name, prefix);
   else
-    sprintf(pattern, "%s: %%s\n", program_name);
+      sprintf(pattern, "%s:%s %%s\n", program_name, prefix);
 
   if (seriousness > 1)
     error_count++;
@@ -60,35 +79,35 @@ fatal_error(const char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(3, message, val);
+  verror(0, 3, message, val);
   va_end(val);
   exit(EXIT_USER_ERR);
 }
 
 void
-error(const char *message, ...)
+error(int need_file, const char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(2, message, val);
+  verror(need_file, 2, message, val);
   va_end(val);
 }
 
 void
-warning(const char *message, ...)
+warning(int need_file, const char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(1, message, val);
+  verror(need_file, 1, message, val);
   va_end(val);
 }
 
 void
-warncontext(const char *message, ...)
+warncontext(int need_file, const char *message, ...)
 {
   va_list val;
   va_start(val, message);
-  verror(0, message, val);
+  verror(need_file, 0, message, val);
   va_end(val);
 }
 
@@ -833,7 +852,7 @@ read_text_colormap(FILE *f, const char *name)
       if (green > 255) green = 255;
       if (blue > 255) blue = 255;
       if (ncol >= 256) {
-	error("%s: maximum 256 colors allowed in colormap", name);
+	error(0, "%s: maximum 256 colors allowed in colormap", name);
 	break;
       } else {
 	col[ncol].red = red;
@@ -852,7 +871,7 @@ read_text_colormap(FILE *f, const char *name)
   }
 
   if (ncol == 0) {
-    error("'%s' doesn't seem to contain a colormap", name);
+    error(0, "%s: file not in colormap format", name);
     Gif_DeleteColormap(cm);
     return 0;
   } else {
@@ -877,7 +896,7 @@ read_colormap_file(const char *name, FILE *f)
     else
       f = fopen(name, "rb");
     if (!f) {
-      error("%s: %s", name, strerror(errno));
+      error(0, "%s: %s", name, strerror(errno));
       return 0;
     }
   }
@@ -890,12 +909,12 @@ read_colormap_file(const char *name, FILE *f)
   if (c == 'G') {
     Gif_Stream *gfs = Gif_ReadFile(f);
     if (!gfs)
-      error("'%s' doesn't seem to contain a GIF", name);
+      error(0, "%s: file not in GIF format", name);
     else if (!gfs->global)
-      error("can't use '%s' as a palette (no global color table)", name);
+      error(0, "%s: can't use as palette (no global color table)", name);
     else {
       if (gfs->errors)
-	warning("there were errors reading '%s'", name);
+	warning(0, "%s: there were errors reading this GIF", name);
       cm = Gif_CopyColormap(gfs->global);
     }
 
@@ -1054,14 +1073,14 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
       return color->pixel;
     else {
       if (color_context)
-	  error("%s color out of range", color_context);
+	  error(0, "%s color out of range", color_context);
       return -1;
     }
   }
 
   index = Gif_FindColor(gfcm, color);
   if (index < 0 && color_context)
-    error("%s color not in colormap", color_context);
+    error(0, "%s color not in colormap", color_context);
   return index;
 }
 
@@ -1083,10 +1102,10 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     if (output_data->background.haspixel) {
 	if (gfs->images[0]->transparent >= 0) {
 	    static int context = 0;
-	    warning("irrelevant background color");
+	    warning(1, "irrelevant background color");
 	    if (!context) {
-		warncontext("(The background will appear transparent because");
-		warncontext("the first image contains transparency.)");
+		warncontext(1, "(The background will appear transparent because");
+		warncontext(1, "the first image contains transparency.)");
 		context = 1;
 	    }
 	}
@@ -1127,9 +1146,9 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* Report conflicts. */
     if (conflict || (want_transparent && gfs->images[0]->transparent < 0)) {
 	static int context = 0;
-	warning("input images have conflicting background colors");
+	warning(1, "input images have conflicting background colors");
 	if (!context) {
-	  warncontext("(This means some animation frames may appear incorrect.)");
+	  warncontext(1, "(This means some animation frames may appear incorrect.)");
 	  context = 1;
 	}
     }
@@ -1272,7 +1291,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
       || crop->x + crop->w > r || crop->y + crop->h > b) {
-    error("cropping dimensions don't fit image");
+    error(1, "cropping dimensions don't fit image");
     crop->ready = 2;
   } else
     crop->ready = 1;
@@ -1386,7 +1405,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   nmerger = 0;
   merger_flatten(fset, f1, f2);
   if (nmerger == 0) {
-    error("empty output GIF not written");
+    error(1, "empty output GIF not written");
     return 0;
   }
 
@@ -1397,7 +1416,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       s += ((merger[i]->image->width * merger[i]->image->height) / 1024) + 1;
     *huge_stream = (s > 200 * 1024); /* 200 MB */
     if (*huge_stream && !compress_immediately) {
-      warning("huge GIF, conserving memory (processing may take a while)");
+      warning(1, "huge GIF, conserving memory (processing may take a while)");
       compress_immediately = 1;
     }
   }
