@@ -62,8 +62,8 @@ Without options,
 acts like a filter: you feed it a GIF on standard input, and it writes that
 GIF on standard output. That means these two commands do the same thing:
 .Es
-% \fBgifsicle < in.gif > out.gif\fR
-% \fBgifsicle < in.gif | gifsicle | gifsicle > out.gif\fR
+\fBgifsicle < in.gif > out.gif\fR
+\fBgifsicle < in.gif | gifsicle | gifsicle > out.gif\fR
 .Ee
 Not too interesting. Most times you'll tell
 .B gifsicle
@@ -71,7 +71,7 @@ to alter its inputs by giving it command line options. The
 .Op \-i
 option, for example, tells it to interlace its input files:
 .Es
-% \fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
+\fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
 To modify GIF files in place, you should use the
@@ -83,7 +83,7 @@ will modify the files you specify instead of writing a new file to the
 standard output. To interlace all the GIFs in the current directory, you
 could say:
 .Es
-% \fBgifsicle \-\-batch \-i *.gif
+\fBgifsicle \-\-batch \-i *.gif
 .Ee
 .PP
 .B gifsicle
@@ -92,7 +92,7 @@ create an animation is to give more than one input file, which
 .B gifsicle
 will combine to create a ``flipbook'' animation:
 .Es
-% \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
+\fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
 Use options like
 .Op \-\-delay ", " \-\-loopcount ", and " \-\-optimize
@@ -1035,7 +1035,7 @@ is commonly used.
 .PP
 First, let's create an animation, `anim.gif':
 .Es
-% \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif\fR
+\fBgifsicle a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 This animation will move very quickly: since we didn't specify a delay, a
 browser will cycle through the frames as fast as it can. Let's slow it down
@@ -1043,12 +1043,12 @@ and pause .5 seconds between frames, using the
 .Op \-\-delay
 option.
 .Es
-% \fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif\fR
+\fBgifsicle \-\-delay 50 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 If we also want the GIF to loop three times, we can use
 .Op \-\-loopcount :
 .Es
-% \fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif\fR
+\fBgifsicle \-d 50 \-\-loop=3 a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
 (Rather than type
 .Op \-\-delay
@@ -1064,19 +1064,19 @@ which is OK since no other option starts with `loop'.)
 .PP
 To explode `anim.gif' into its component frames:
 .Es
-% \fBgifsicle \-\-explode anim.gif\fR
+\fBgifsicle \-\-explode anim.gif\fR
 .br
-% \fBls anim.gif*\fR
+\fBls anim.gif*\fR
 .br
 anim.gif      anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
 .Ee
 To optimize `anim.gif':
 .Es
-% \fBgifsicle \-b \-O2 anim.gif\fR
+\fBgifsicle \-b \-O2 anim.gif\fR
 .Ee
 To change the second frame of `anim.gif' to `x.gif':
 .Es
-% \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace "#1" x.gif\fR
+\fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace "#1" x.gif\fR
 .Ee
 .Op \-\-unoptimize
 is used since `anim.gif' was optimized in the last step. Editing
@@ -1101,30 +1101,26 @@ GIF files.
 .PP
 To print information about the first and fourth frames of `anim.gif':
 .Es
-% \fBgifsicle \-I "#0" "#3" < anim.gif\fR
-.br
-(information printed)
+\fBgifsicle \-I "#0" "#3" < anim.gif\fR
 .Ee
 To make black the transparent color in all the GIFs in the current
 directory, and also print information about each:
 .Es
-% \fBgifsicle \-bII \-\-trans "#000000" *.gif\fR
-.br
-(information printed)
+\fBgifsicle \-bII \-\-trans "#000000" *.gif\fR
 .Ee
 Giving
 .Op \-I
 twice forces normal output to occur. With only one
 .Op \-I ,
-the GIFs would not have changed on disk.
+the GIFs would not be modified.
 .PP
 To change `anim.gif' to use a 64-color subset of the Web-safe palette:
 .Es
-% \fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
+\fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
 .Ee
 To make a dithered black-and-white version of `anim.gif':
 .Es
-% \fBgifsicle \-\-dither \-\-use\-col=bw anim.gif > anim-bw.gif\fR
+\fBgifsicle \-\-dither \-\-use\-col=bw anim.gif > anim-bw.gif\fR
 .Ee
 .PP
 To overlay one GIF atop another\*Eproducing a one-frame output GIF that
@@ -1132,7 +1128,7 @@ looks like the superposition of the two inputs\*Euse
 .B gifsicle
 twice:
 .Es
-% \fBgifsicle bottom.gif top.gif | gifsicle -U "#1" > result.gif\fR
+\fBgifsicle bottom.gif top.gif | gifsicle -U "#1" > result.gif\fR
 .Ee
 '
 .SH BUGS
