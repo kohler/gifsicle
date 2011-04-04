@@ -1,9 +1,9 @@
 Summary:	GIF image and animation manipulator
 
 Name:		gifsicle
-Version:	1.61
+Version:	1.62
 Release:	1
-Source:		http://www.lcdf.org/gifsicle/gifsicle-1.61.tar.gz
+Source:		http://www.lcdf.org/gifsicle/gifsicle-1.62.tar.gz
 
 Icon:		logo1.gif
 URL:		http://www.lcdf.org/gifsicle/

@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.62   4.Apr.2011
+
+* gifsicle: -O3 optimization level tries even harder, so that now gifsicle
+  -O3 should never produce larger results than gifsicle-1.60 -O2.  Jernej
+  Simončič report.
+
+
 Version 1.61   25.Feb.2011
 
 * gifsicle: Add new -O3 optimization level, which applies several
