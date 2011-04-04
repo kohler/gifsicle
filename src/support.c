@@ -36,12 +36,13 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
       printed_file = 0;
   }
   if (need_file && !printed_file) {
-      if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
+      if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING) {
 	  fprintf(stderr, "%s: While processing '%s':\n", program_name, iname);
+	  just_printed_context = 1;
+	  prefix = "  ";
+      }
       printed_file = malloc(strlen(iname) + 1);
       strcpy(printed_file, iname);
-      prefix = "  ";
-      just_printed_context = 1;
   } else if (just_printed_context && seriousness == 0)
       prefix = "  ";
   else
