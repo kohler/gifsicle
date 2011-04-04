@@ -974,14 +974,14 @@ simple_frame_data(Gif_Image *gfi, uint8_t *map)
 
 
 static void
-try_new_compression(Gif_Stream *gfs, Gif_Image *gfi)
+try_new_compression(Gif_Stream *gfs, Gif_Image *gfi, int write_flags)
 {
     uint8_t *old_compressed = gfi->compressed;
     void (*old_free_compressed)(void *) = gfi->free_compressed;
     uint32_t old_compressed_len = gfi->compressed_len;
     gfi->compressed = 0;	/* prevent freeing old_compressed */
 
-    Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+    Gif_FullCompressImage(gfs, gfi, write_flags);
     if (gfi->compressed_len > old_compressed_len) {
 	Gif_ReleaseCompressedImage(gfi);
 	gfi->compressed = old_compressed;
@@ -1006,11 +1006,14 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
   uint8_t *data, *swit;
   uint8_t *t2_data = 0, *last_for_t2;
   int transparentizing;
+  int write_flags = gif_write_flags;
+  if (optimize_level >= 3)
+      write_flags |= GIF_WRITE_OPTIMIZE;
 
   /* First, try w/o transparency. Compare this to the result using
      transparency and pick the better of the two. */
   simple_frame_data(gfi, map);
-  Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+  Gif_FullCompressImage(gfs, gfi, write_flags);
 
   /* Actually copy data to frame.
 
@@ -1109,10 +1112,10 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
 
     /* Now, try compressed transparent version(s) and pick the better of the
        two (or three). */
-    try_new_compression(gfs, gfi);
+    try_new_compression(gfs, gfi, write_flags);
     if (t2_data) {
 	Gif_SetUncompressedImage(gfi, t2_data, Gif_DeleteArrayFunc, 0);
-	try_new_compression(gfs, gfi);
+	try_new_compression(gfs, gfi, write_flags);
     }
     Gif_ReleaseUncompressedImage(gfi);
 }

@@ -81,6 +81,7 @@ typedef struct Gif_Writer {
   int global_size;
   int local_size;
   int errors;
+  int cleared;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(uint8_t *, uint16_t, struct Gif_Writer *);
 
@@ -192,6 +193,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   gifputbyte(min_code_bits, grr);
   clear_code = 1 << min_code_bits;
   eoi_code = clear_code + 1;
+  grr->cleared = 0;
 
   cur_code_bits = min_code_bits + 1;
   /* next_code set by first runthrough of output clear_code */
@@ -254,9 +256,11 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       /* bump up compression size */
       if (cur_code_bits < GIF_MAX_CODE_BITS)
 	++cur_code_bits;
-      else if (end_table_count > 8 /* totally arbitrary constants */
-	       && end_table_avg_depth < 12 * 128) {
+      else if ((end_table_count > 8 /* totally arbitrary constants */
+		&& end_table_avg_depth < 12 * 128)
+	       || (grr->flags & GIF_WRITE_EAGER_CLEAR)) {
 	output_code = clear_code;
+	grr->cleared = 1;
 	continue;
       }
     }
@@ -463,6 +467,23 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 
   min_code_bits = calculate_min_code_bits(gfs, gfi, &grr);
   ok = write_image_data(gfi, min_code_bits, &gfc, &grr);
+
+  if ((flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR)) == GIF_WRITE_OPTIMIZE
+      && grr.cleared && ok) {
+    uint8_t *old_v = grr.v;
+    uint32_t old_pos = grr.pos;
+    grr.v = Gif_NewArray(uint8_t, grr.cap);
+    grr.pos = 0;
+    grr.flags = flags | GIF_WRITE_EAGER_CLEAR;
+    if (grr.v && write_image_data(gfi, min_code_bits, &gfc, &grr)
+	&& grr.pos < old_pos) {
+      Gif_DeleteArray(old_v);
+      goto done;
+    }
+    Gif_DeleteArray(grr.v);
+    grr.v = old_v;
+    grr.pos = old_pos;
+  }
 
  done:
   if (!ok) {
