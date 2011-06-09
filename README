@@ -75,7 +75,7 @@ BUGS, SUGGESTIONS, ETC.
 you have suggestions or patches.
 
 	Eddie Kohler
-	kohler@cs.ucla.edu
+	ekohler@gmail.com
 	http://www.cs.ucla.edu/~kohler/
 
 GIFSICLE HOME PAGE
@@ -100,10 +100,9 @@ This idea was first implemented independently by Toshio Kuratomi
 <badger@prtr-13.ucsc.edu> and Hutchison Avenue Software Corporation
 (http://www.hasc.com/, <info@hasc.com>). Turn this on by giving
 './configure' the '--enable-ungif' switch. Now that the patents have
-expired there is no good reason to turn on this switch, which inflates GIF
-sizes often by a factor of 2 or more. If your copy of gifsicle says
-'(ungif)' when you run 'gifsicle --version', it is writing
-run-length-encoded GIFs.
+expired there is no good reason to turn on this switch, which can make
+GIFs a factor of 2 larger or more. If your copy of gifsicle says '(ungif)'
+when you run 'gifsicle --version', it is writing run-length-encoded GIFs.
 
 COPYRIGHT/LICENSE
 -----------------
