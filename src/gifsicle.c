@@ -1825,5 +1825,6 @@ particular purpose.\n");
 #ifdef DMALLOC
   dmalloc_report();
 #endif
+  Clp_DeleteParser(clp);
   return (error_count ? EXIT_ERR : EXIT_OK);
 }
