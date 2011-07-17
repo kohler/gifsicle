@@ -1605,8 +1605,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       /* only 1 reference ==> the reference is from the input stream itself */
       Gif_ReleaseUncompressedImage(srci);
       Gif_ReleaseCompressedImage(srci);
-      fr->image = 0;
     }
+    fr->image = 0;
 
     /* 5/26/98 Destroy the stream now to help with memory. Assumes that
        all frames are added with add_frame() which properly increments the
