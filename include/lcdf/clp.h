@@ -165,6 +165,8 @@ typedef void (*Clp_ErrorHandler)(Clp_Parser *clp, const char *message);
  * value types, and current arguments.
  * @sa Clp_NewParser, Clp_SetOptions, Clp_SetArguments */
 struct Clp_Parser {
+    int opt;			/**< The last option. */
+
     int negated;		/**< Whether the last option was negated. */
 
     int have_val;		/**< Whether the last option had a value. */
