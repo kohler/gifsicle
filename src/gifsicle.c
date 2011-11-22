@@ -176,6 +176,9 @@ static const char *output_option_types[] = {
 #define CONSERVE_MEMORY_OPT	361
 #define MULTIFILE_OPT		362
 #define NEXTFILE_OPT		363
+#define RESIZE_FIT_OPT		364
+#define RESIZE_FIT_WIDTH_OPT	365
+#define RESIZE_FIT_HEIGHT_OPT	366
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -255,6 +258,11 @@ const Clp_Option options[] = {
   { "resiz", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resi", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "res", 0, RESIZE_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-fit", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-fit-width", 0, RESIZE_FIT_WIDTH_OPT, Clp_ValUnsigned, Clp_Negate },
+  { "resize-fit-height", 0, RESIZE_FIT_HEIGHT_OPT, Clp_ValUnsigned, Clp_Negate },
+  { "resize-fi", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-f", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
@@ -890,12 +898,15 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
 			     compress_immediately, &huge_stream);
 
   if (out) {
-    if (active_output_data.scaling == 1)
+    if (active_output_data.scaling == GT_SCALING_RESIZE)
       resize_stream(out, active_output_data.resize_width,
-		    active_output_data.resize_height);
-    else if (active_output_data.scaling == 2)
+		    active_output_data.resize_height, 0);
+    else if (active_output_data.scaling == GT_SCALING_SCALE)
       resize_stream(out, active_output_data.scale_x * out->screen_width,
-		    active_output_data.scale_y * out->screen_height);
+		    active_output_data.scale_y * out->screen_height, 0);
+    else if (active_output_data.scaling == GT_SCALING_RESIZE_FIT)
+      resize_stream(out, active_output_data.resize_width,
+		    active_output_data.resize_height, 1);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -1126,7 +1137,7 @@ initialize_def_frame(void)
   def_output_data.colormap_dither = 0;
 
   def_output_data.optimizing = 0;
-  def_output_data.scaling = 0;
+  def_output_data.scaling = GT_SCALING_NONE;
 
   def_output_data.conserve_memory = 0;
 
@@ -1640,7 +1651,7 @@ main(int argc, char *argv[])
 	def_output_data.colormap_size = clp->val.i;
 	if (def_output_data.colormap_size < 2
 	    || def_output_data.colormap_size > 256) {
-	  Clp_OptionError(clp, "argument to '%O' must be between 2 and 256");
+	  Clp_OptionError(clp, "argument to %O must be between 2 and 256");
 	  def_output_data.colormap_size = 0;
 	}
       }
@@ -1665,55 +1676,50 @@ main(int argc, char *argv[])
       def_output_data.colormap_dither = !clp->negated;
       break;
 
-     case RESIZE_OPT:
+    case RESIZE_OPT:
+    case RESIZE_FIT_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = 0;
+	def_output_data.scaling = GT_SCALING_NONE;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error(0, "one of W and H must be positive in '--resize WxH'");
-	def_output_data.scaling = 0;
+	error(0, "one of W and H must be positive in '%s WxH'", Clp_CurOptionName(clp));
+	def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	def_output_data.scaling = 1; /* use resize dimensions */
+	def_output_data.scaling = (opt == RESIZE_FIT_OPT ? GT_SCALING_RESIZE_FIT : GT_SCALING_RESIZE);
 	def_output_data.resize_width = dimensions_x;
 	def_output_data.resize_height = dimensions_y;
       }
       break;
 
-     case RESIZE_WIDTH_OPT:
+    case RESIZE_WIDTH_OPT:
+    case RESIZE_HEIGHT_OPT:
+    case RESIZE_FIT_WIDTH_OPT:
+    case RESIZE_FIT_HEIGHT_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = 0;
+	def_output_data.scaling = GT_SCALING_NONE;
       else if (clp->val.u == 0) {
-	error(0, "'--resize-width' argument must be positive");
-	def_output_data.scaling = 0;
+	error(0, "%s argument must be positive", Clp_CurOptionName(clp));
+	def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	def_output_data.scaling = 1; /* use resize dimensions */
-	def_output_data.resize_width = clp->val.u;
-	def_output_data.resize_height = 0;
-      }
-      break;
-
-     case RESIZE_HEIGHT_OPT:
-      MARK_CH(output, CH_RESIZE);
-      if (clp->negated)
-	def_output_data.scaling = 0;
-      else if (clp->val.u == 0) {
-	error(0, "'--resize-height' argument must be positive");
-	def_output_data.scaling = 0;
-      } else {
-	def_output_data.scaling = 1; /* use resize dimensions */
-	def_output_data.resize_width = 0;
-	def_output_data.resize_height = clp->val.u;
+	unsigned dimen[2] = {0, 0};
+	dimen[(opt == RESIZE_HEIGHT_OPT || opt == RESIZE_FIT_HEIGHT_OPT)] = clp->val.u;
+	if (opt == RESIZE_FIT_WIDTH_OPT || opt == RESIZE_FIT_HEIGHT_OPT)
+	  def_output_data.scaling = GT_SCALING_RESIZE_FIT;
+	else
+	  def_output_data.scaling = GT_SCALING_RESIZE;
+	def_output_data.resize_width = dimen[0];
+	def_output_data.resize_height = dimen[1];
       }
       break;
 
      case SCALE_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = 0;
+	def_output_data.scaling = GT_SCALING_NONE;
       else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
-	error(0, "'--scale' X and Y factors must be positive");
-	def_output_data.scaling = 0;
+	error(0, "%s X and Y factors must be positive", Clp_CurOptionName(clp));
+	def_output_data.scaling = GT_SCALING_NONE;
       } else {
 	def_output_data.scaling = 2; /* use scale factor */
 	def_output_data.scale_x = parsed_scale_factor_x;

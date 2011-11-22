@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.64   22.Nov.2011
+
+* gifsicle: Add --resize-fit options.  Tom Glenne request.
+
+
 Version 1.63   17.Jul.2011
 
 * gifsicle: Avoid crash on frame selections where frames are repeated.

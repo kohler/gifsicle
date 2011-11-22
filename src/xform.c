@@ -426,19 +426,30 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 }
 
 void
-resize_stream(Gif_Stream *gfs, int new_width, int new_height)
+resize_stream(Gif_Stream *gfs, int new_width, int new_height, int fit)
 {
   double xfactor, yfactor;
   int i;
 
-  if (new_width <= 0)
-    new_width = (int)(((double)gfs->screen_width / gfs->screen_height) * new_height);
-  if (new_height <= 0)
-    new_height = (int)(((double)gfs->screen_height / gfs->screen_width) * new_width);
-
   Gif_CalculateScreenSize(gfs, 0);
-  xfactor = (double)new_width / gfs->screen_width;
-  yfactor = (double)new_height / gfs->screen_height;
+  xfactor = (double) new_width / gfs->screen_width;
+  yfactor = (double) new_height / gfs->screen_height;
+
+  if (new_width <= 0 && new_height <= 0)
+    /* do nothing */
+    return;
+  else if (new_width <= 0)
+    new_width = (int) (gfs->screen_width * (xfactor = yfactor));
+  else if (new_height <= 0)
+    new_height = (int) (gfs->screen_height * (yfactor = xfactor));
+  if (fit && new_width >= gfs->screen_width && new_height >= gfs->screen_height)
+    /* do nothing */
+    return;
+  else if (fit && xfactor < yfactor)
+    new_height = (int) (gfs->screen_height * (yfactor = xfactor));
+  else if (fit && yfactor < xfactor)
+    new_width = (int) (gfs->screen_width * (xfactor = yfactor));
+
   for (i = 0; i < gfs->nimages; i++)
     scale_image(gfs, gfs->images[i], xfactor, yfactor);
 

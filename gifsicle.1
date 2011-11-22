@@ -957,16 +957,43 @@ quality; for best-looking results you will need to use other tools.
 .Sp
 .TP
 .Oa \-\-resize\-width width
-'
-Same as
-.Oa \-\-resize width x_.
-'
-.Sp
 .TP
 .Oa \-\-resize\-height height
 '
-Same as
-.Oa \-\-resize "" _x height .
+Like
+.Oa \-\-resize width x_
+and
+.Oa \-\-resize "" _x height
+respectively.
+'
+.Sp
+.TP
+.Oa \-\-resize\-fit width x height
+'
+Like
+.Op \-\-resize ,
+but resizes the output GIF to fit
+.I within
+a rectangle with dimensions
+.IR width x height .
+The GIF's aspect ratio remains unchanged. No resize is performed if the GIF already
+fits within the given rectangle. Either
+.I width
+or
+.I height
+may be an underscore `_', which is treated as infinity.
+'
+.Sp
+.TP
+.Oa \-\-resize\-fit\-width width
+.TP
+.Oa \-\-resize\-fit\-height height
+'
+Like
+.Oa \-\-resize\-fit width x_
+and
+.Oa \-\-resize\-fit "" _x height
+respectively.
 '
 .Sp
 .TP
