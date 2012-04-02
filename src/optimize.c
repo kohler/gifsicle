@@ -1062,7 +1062,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
 	cur = this_data + screen_width * (y + ob.top) + ob.left;
 	for (x = 0; x < ob.width; ++x) {
 	    if (*cur != *last && map[*cur] != transparent) {
-		if (nsame == 1 && optimize_level > 2) {
+		if (nsame == 1 && data[-1] != transparent && optimize_level > 2) {
 		    if (!t2_data)
 			t2_data = Gif_NewArray(uint8_t, ob.width * ob.height);
 		    memcpy(t2_data + (last_for_t2 - gfi->image_data),
