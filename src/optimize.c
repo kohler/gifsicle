@@ -1003,9 +1003,9 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
   int x, y, transparent = gfi->transparent;
   uint16_t *last = 0;
   uint16_t *cur = 0;
-  uint8_t *data, *swit;
+  uint8_t *data, *begin_same;
   uint8_t *t2_data = 0, *last_for_t2;
-  int transparentizing;
+  int nsame;
   int write_flags = gif_write_flags;
   if (optimize_level >= 3)
       write_flags |= GIF_WRITE_OPTIMIZE;
@@ -1054,54 +1054,36 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
      previous heuristic, so try both at optimize level 3 or above (the cost is
      ~30%). (2/11) */
 
-    x = y = 0;
-    data = swit = last_for_t2 = gfi->image_data;
-    transparentizing = 0;
-    goto calculate_pointers;
+    data = begin_same = last_for_t2 = gfi->image_data;
+    nsame = 0;
 
-    while (y < ob.height) {
-	if (transparentizing) {
-	    while (x < ob.width && transparentizing)
-		if (*cur == *last || map[*cur] == transparent) {
-		    *data = transparent;
-		    data++, last++, cur++, x++;
-		} else {
-		    *data = map[*cur];
-		    transparentizing = 0;
-		    swit = data + 1;
-		    data++, last++, cur++, x++;
+    for (y = 0; y < ob.height; ++y) {
+	last = last_data + screen_width * (y + ob.top) + ob.left;
+	cur = this_data + screen_width * (y + ob.top) + ob.left;
+	for (x = 0; x < ob.width; ++x) {
+	    if (*cur != *last && map[*cur] != transparent) {
+		if (nsame == 1 && optimize_level > 2) {
+		    if (!t2_data)
+			t2_data = Gif_NewArray(uint8_t, ob.width * ob.height);
+		    memcpy(t2_data + (last_for_t2 - gfi->image_data),
+			   last_for_t2, begin_same - last_for_t2);
+		    memset(t2_data + (begin_same - gfi->image_data),
+			   transparent, data - begin_same);
+		    last_for_t2 = data;
 		}
-	} else {
-	    while (x < ob.width && !transparentizing) {
-		*data = map[*cur];
-		if (*data == transparent || (*cur == *last && *swit != *data)) {
-		    transparentizing = 1;
-		    memset(swit, transparent, data - swit);
-		} else {
-		    if (data > swit && *data != *swit && optimize_level > 2) {
-			if (!t2_data)
-			    t2_data = Gif_NewArray(uint8_t, ob.width * ob.height);
-			memcpy(t2_data + (last_for_t2 - gfi->image_data),
-			       last_for_t2, swit - last_for_t2);
-			memset(t2_data + (swit - gfi->image_data),
-			       transparent, data - swit);
-			last_for_t2 = data;
-		    }
-		    if (*cur != *last)
-			swit = data + 1;
-		    else if (*swit != *data)
-			swit = data;
-		    data++, last++, cur++, x++;
-		}
+		nsame = 0;
+	    } else if (nsame == 0) {
+		begin_same = data;
+		++nsame;
+	    } else if (nsame == 1 && map[*cur] != data[-1]) {
+		memset(begin_same, transparent, data - begin_same);
+		++nsame;
 	    }
-	}
-
-	if (x >= ob.width) {
-	    x = 0;
-	    y++;
-	  calculate_pointers:
-	    last = last_data + screen_width * (y + ob.top) + ob.left;
-	    cur = this_data + screen_width * (y + ob.top) + ob.left;
+	    if (nsame > 1)
+		*data = transparent;
+	    else
+		*data = map[*cur];
+	    ++data, ++cur, ++last;
 	}
     }
 
