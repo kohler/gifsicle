@@ -1176,15 +1176,18 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
     }
 
     if (complain) {
-	const char *complaint = (ambiguous ? "ambiguous" : "invalid");
-	if (!ambiguous) {
+	const char *complaint;
+	if (ambiguous)
+	    complaint = "ambiguous value %<%s%> for option %<%O%>";
+	else {
+	    complaint = "unknown value %<%s%> for option %<%O%>";
 	    ambiguous = sl->nitems_invalid_report;
 	    for (idx = 0; idx < ambiguous; idx++)
 		ambiguous_values[idx] = idx;
 	}
 	return ambiguity_error
 	    (clp, ambiguous, ambiguous_values, sl->items, sl->iopt,
-	     "", "option %<%O%> value %<%s%> is %s", arg, complaint);
+	     "", complaint, arg);
     } else
 	return 0;
 }
@@ -1910,10 +1913,12 @@ Clp_Next(Clp_Parser *clp)
 	}
 
     } else if (cli->is_short && !clp->have_val
-	       && cli->xtext[clp_utf8_charlen(cli, cli->xtext)])
+	       && cli->xtext[clp_utf8_charlen(cli, cli->xtext)]) {
 	/* The -[option]argument case:
 	   Assume that the rest of the current string is the argument. */
 	next_argument(clp, 1);
+	complain = 1;
+    }
 
     /* Parse the argument */
     if (clp->have_val) {
@@ -1921,7 +1926,7 @@ Clp_Next(Clp_Parser *clp)
 	if (atr->func(clp, clp->vstr, complain, atr->user_data) <= 0) {
 	    /* parser failed */
 	    clp->have_val = 0;
-	    if (cli->iopt[optno].imandatory)
+	    if (complain)
 		return (clp->opt = Clp_BadOption);
 	    else
 		Clp_RestoreParser(clp, &clpsave);
