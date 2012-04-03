@@ -1,5 +1,15 @@
 Gifsicle NEWS
 
+Version 1.65   2.Apr.2012
+
+* gifsicle: Several users (Kornel Lesiński and others) reported "bugs" with
+  Gifsicle-optimized images and Mac programs like Safari. The bug is in
+  Safari, but add --careful to work around it.
+
+* Improve -O3 a bit (although for some images, the new -O3 is bigger than
+  the old).
+
+
 Version 1.64   22.Nov.2011
 
 * gifsicle: Add --resize-fit options.  Tom Glenne request.
