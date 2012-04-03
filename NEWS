@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.66   2.Apr.2012
+
+* gifsicle: Add -Okeep-empty for Gerald Johanson.
+
+
 Version 1.65   2.Apr.2012
 
 * gifsicle: Several users (Kornel Lesiński and others) reported "bugs" with
