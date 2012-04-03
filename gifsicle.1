@@ -43,7 +43,7 @@
 .fi
 .RE
 ..
-.TH GIFSICLE 1 "4 Apr 2011" "Version \*V"
+.TH GIFSICLE 1 "2 Apr 2012" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 .SH SYNOPSIS
@@ -88,7 +88,7 @@ could say:
 .PP
 .B gifsicle
 is good at creating and manipulating GIF animations. The simplest way to
-create an animation is to give more than one input file, which 
+create an animation is to give more than one input file, which
 .B gifsicle
 will combine to create a ``flipbook'' animation:
 .Es
@@ -207,7 +207,7 @@ Modify each GIF input in place by reading and writing to the same filename.
 '
 Create an output GIF for each frame of each input file. The output GIFs are
 named `xxx.000', `xxx.001', and so on, where `xxx' is the name of the input
-file (or whatever you specified with 
+file (or whatever you specified with
 .Qo \-\-output )
 and the numeric extension is the frame number.
 '
@@ -271,7 +271,7 @@ output, or whatever file you specify with
 .Op \-o .
 This option suppresses normal output, and cannot be combined with mode
 options like
-.Op \-\-batch . 
+.Op \-\-batch .
 If you give two
 .Op \-\-info
 or
@@ -491,7 +491,7 @@ form turns off the feature, and the
 .Qo \-\-same\-X
 form means that the feature's value is copied from each input. The default
 is always
-.Qo \-\-same\-X . 
+.Qo \-\-same\-X .
 For example,
 .Op \-background= """#0000FF"""
 sets the background color to blue,
@@ -592,7 +592,7 @@ is a synonym for
 .TP
 .Oa \-\-position x\fR,\fIy
 '
-Set the following frames' positions to 
+Set the following frames' positions to
 .RI ( x , y ).
 .Op \-\-no\-position
 means
@@ -730,7 +730,7 @@ sets the delays of frames 0 and 1 to 50, and frames 2 and 3 to 100.
 .Oa \-\-delay time
 '
 Set the delay between frames to
-.IR time 
+.IR time
 in hundredths of a second.
 '
 .Sp
@@ -814,6 +814,13 @@ Also uses transparency to shrink the file further.
 Try several optimization methods (usually slower, sometimes better results).
 .Sp
 .PP
+Other optimization flags provide finer-grained control.
+.Sp
+.TP 5
+.Op \-Okeep-empty
+Preserve empty transparent frames (they are dropped by default).
+.Sp
+.PP
 There is no
 .Op \-\-same\-optimize
 option.
@@ -827,7 +834,7 @@ option.
 '
 Unoptimize GIF animations into an easy-to-edit form.
 .Sp
-GIF animations are often optimized (see 
+GIF animations are often optimized (see
 .Op \-\-optimize )
 to make them smaller and faster to load, which unfortunately makes them
 difficult to edit.
@@ -869,7 +876,7 @@ Change
 .I color1
 to
 .I color2
-in the following input GIFs. (The 
+in the following input GIFs. (The
 .I color
 arguments have the same forms as in the
 .Op \-t
@@ -890,7 +897,7 @@ cancels all color changes.
 Reduce the number of distinct colors in each output GIF to
 .I num
 or less.
-.I Num 
+.I Num
 must be between 2 and 256. This can be used to shrink output GIFs or
 eliminate any local color tables.
 .Sp
@@ -1025,7 +1032,7 @@ instead.
 .TP
 .Oa \-\-use\-colormap colormap
 '
-Set the image's colormap to 
+Set the image's colormap to
 .IR colormap .
 .I Colormap
 can be
@@ -1033,7 +1040,7 @@ can be
 for the 216-color ``Web-safe palette'';
 .BR gray
 for grayscale;
-.BR bw 
+.BR bw
 for black-and-white; or the name of a file. That file should either be a
 text file (the format is described below) or a GIF file, whose global
 colormap will be used. If
@@ -1197,7 +1204,7 @@ Adaptive tree method for GIF writing.
 .PP
 http://www.lcdf.org/gifsicle/
 .br
-The 
+The
 .B gifsicle
 home page.
 '

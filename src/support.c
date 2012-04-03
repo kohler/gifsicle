@@ -1444,7 +1444,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
      Schumm <phong@phong.org>. */
   if (output_data->colormap_size > 0
       || output_data->colormap_fixed
-      || output_data->optimizing > 0
+      || (output_data->optimizing & GT_OPT_MASK)
       || output_data->scaling > 0)
     all_same_compressed_ok = 1;
   else

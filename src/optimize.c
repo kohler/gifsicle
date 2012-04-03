@@ -566,7 +566,7 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
  **/
 
 static void
-create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
+create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
 {
   int screen_size;
   Gif_Image *last_gfi;
@@ -638,7 +638,7 @@ create_subimages(Gif_Stream *gfs, int optimize_level, int save_uncompressed)
 
     /* set map of used colors */
     {
-      int use_transparency = optimize_level > 1 && image_index > 0;
+      int use_transparency = (optimize_flags & GT_OPT_MASK) > 1 && image_index > 0;
       if (image_index == 0 && background == TRANSP)
 	use_transparency = 2;
       get_used_colors(subimage, use_transparency);
@@ -997,7 +997,7 @@ try_new_compression(Gif_Stream *gfs, Gif_Image *gfi, int write_flags)
 
 static void
 transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
-		  int optimize_level)
+		  int optimize_flags)
 {
   Gif_OptBounds ob = safe_bounds(gfi);
   int x, y, transparent = gfi->transparent;
@@ -1007,6 +1007,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
   uint8_t *t2_data = 0, *last_for_t2;
   int nsame;
   int write_flags = gif_write_flags;
+  int optimize_level = optimize_flags & GT_OPT_MASK;
   if (optimize_level >= 3)
       write_flags |= GIF_WRITE_OPTIMIZE;
 
@@ -1117,7 +1118,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
    === apply U1 + dispose U1 + ... + apply Uk */
 
 static void
-create_new_image_data(Gif_Stream *gfs, int optimize_level)
+create_new_image_data(Gif_Stream *gfs, int optimize_flags)
 {
   Gif_Image cur_unopt_gfi;	/* placehoder; maintains pre-optimization
 				   image size so we can apply background
@@ -1165,8 +1166,9 @@ create_new_image_data(Gif_Stream *gfs, int optimize_level)
       Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
 
       /* don't use transparency on first frame */
-      if (optimize_level > 1 && image_index > 0 && cur_gfi->transparent >= 0)
-	transp_frame_data(gfs, cur_gfi, map, optimize_level);
+      if ((optimize_flags & GT_OPT_MASK) > 1 && image_index > 0
+	  && cur_gfi->transparent >= 0)
+	transp_frame_data(gfs, cur_gfi, map, optimize_flags);
       else
 	simple_frame_data(cur_gfi, map);
 
@@ -1282,7 +1284,7 @@ initialize_optimizer(Gif_Stream *gfs)
 }
 
 static void
-finalize_optimizer(Gif_Stream *gfs)
+finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
 {
   int i;
 
@@ -1290,7 +1292,7 @@ finalize_optimizer(Gif_Stream *gfs)
     gfs->background = (uint8_t)gfs->images[0]->transparent;
 
   /* 11.Mar.2010 - remove entirely transparent frames. */
-  for (i = 1; i < gfs->nimages; ++i) {
+  for (i = 1; i < gfs->nimages && !(optimize_flags & GT_OPT_KEEPEMPTY); ++i) {
     Gif_Image *gfi = gfs->images[i];
     if (gfi->width == 1 && gfi->height == 1 && gfi->transparent >= 0
 	&& !gfi->identifier && !gfi->comment
@@ -1332,14 +1334,14 @@ finalize_optimizer(Gif_Stream *gfs)
 /* the interface function! */
 
 void
-optimize_fragments(Gif_Stream *gfs, int optimize_level, int huge_stream)
+optimize_fragments(Gif_Stream *gfs, int optimize_flags, int huge_stream)
 {
   if (!initialize_optimizer(gfs))
     return;
 
-  create_subimages(gfs, optimize_level, !huge_stream);
+  create_subimages(gfs, optimize_flags, !huge_stream);
   create_out_global_map(gfs);
-  create_new_image_data(gfs, optimize_level);
+  create_new_image_data(gfs, optimize_flags);
 
-  finalize_optimizer(gfs);
+  finalize_optimizer(gfs, optimize_flags);
 }

@@ -124,6 +124,9 @@ typedef struct {
 #define GT_SCALING_SCALE	2
 #define GT_SCALING_RESIZE_FIT	3
 
+#define GT_OPT_MASK		0xFFFF
+#define GT_OPT_KEEPEMPTY	0x10000
+
 
 /*****
  * helper

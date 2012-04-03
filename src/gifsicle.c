@@ -190,6 +190,7 @@ static const char *output_option_types[] = {
 #define TWO_COLORS_TYPE		(Clp_ValFirstUser + 7)
 #define COLORMAP_ALG_TYPE	(Clp_ValFirstUser + 8)
 #define SCALE_FACTOR_TYPE	(Clp_ValFirstUser + 9)
+#define OPTIMIZE_TYPE		(Clp_ValFirstUser + 10)
 
 const Clp_Option options[] = {
 
@@ -246,7 +247,7 @@ const Clp_Option options[] = {
   { "nextfile", 0, NEXTFILE_OPT, 0, Clp_Negate },
   { "no-names", 'n', NO_NAME_OPT, 0, 0 },
 
-  { "optimize", 'O', OPTIMIZE_OPT, Clp_ValInt, Clp_Negate | Clp_Optional },
+  { "optimize", 'O', OPTIMIZE_OPT, OPTIMIZE_TYPE, Clp_Negate | Clp_Optional },
   { "output", 'o', OUTPUT_OPT, Clp_ValStringNotOption, 0 },
 
   { "position", 'p', POSITION_OPT, POSITION_TYPE, Clp_Negate },
@@ -890,7 +891,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   compress_immediately = 1;
   if (!active_output_data.conserve_memory
       && (active_output_data.scaling
-	  || active_output_data.optimizing > 0
+	  || (active_output_data.optimizing & GT_OPT_MASK)
 	  || colormap_change))
     compress_immediately = 0;
 
@@ -911,7 +912,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       do_colormap_change(out);
     if (output_transforms)
       apply_color_transforms(output_transforms, out);
-    if (active_output_data.optimizing > 0)
+    if (active_output_data.optimizing & GT_OPT_MASK)
       optimize_fragments(out, active_output_data.optimizing, huge_stream);
     write_stream(outfile, out);
     Gif_DeleteStream(out);
@@ -1265,6 +1266,13 @@ main(int argc, char *argv[])
      "blend-diversity", COLORMAP_BLEND_DIVERSITY,
      "median-cut", COLORMAP_MEDIAN_CUT,
      (const char*) 0);
+  Clp_AddStringListType
+    (clp, OPTIMIZE_TYPE, Clp_AllowNumbers,
+     "keep-empty", GT_OPT_KEEPEMPTY + 1,
+     "no-keep-empty", GT_OPT_KEEPEMPTY,
+     "drop-empty", GT_OPT_KEEPEMPTY,
+     "no-drop-empty", GT_OPT_KEEPEMPTY + 1,
+     (const char*) 0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
   Clp_AddType(clp, SCALE_FACTOR_TYPE, 0, parse_scale_factor, 0);
@@ -1597,13 +1605,21 @@ main(int argc, char *argv[])
       def_output_data.loopcount = -2;
       break;
 
-     case OPTIMIZE_OPT:
-      MARK_CH(output, CH_OPTIMIZE);
-      if (clp->negated)
-	def_output_data.optimizing = 0;
+    case OPTIMIZE_OPT: {
+      int o;
+      UNCHECKED_MARK_CH(output, CH_OPTIMIZE);
+      if (clp->negated || (clp->have_val && clp->val.i < 0))
+	o = 0;
       else
-	def_output_data.optimizing = (clp->have_val ? clp->val.i : 1);
+	o = (clp->have_val ? clp->val.i : 1);
+      if (o > GT_OPT_MASK && (o & 1))
+	def_output_data.optimizing |= o - 1;
+      else if (o > GT_OPT_MASK)
+	def_output_data.optimizing &= ~o;
+      else
+	def_output_data.optimizing = (def_output_data.optimizing & ~GT_OPT_MASK) | o;
       break;
+    }
 
      case UNOPTIMIZE_OPT:
       UNCHECKED_MARK_CH(input, CH_UNOPTIMIZE);
