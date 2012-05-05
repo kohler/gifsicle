@@ -339,6 +339,11 @@ set_frame_change(int kind)
   }
   assert(!nested_mode);
   nested_mode = mode;
+  if (frame_spec_1 > frame_spec_2) {
+    i = frame_spec_1;
+    frame_spec_1 = frame_spec_2;
+    frame_spec_2 = i;
+  }
 
   switch (kind) {
 
@@ -1044,8 +1049,8 @@ frame_argument(Clp_Parser *clp, const char *arg)
   if (val == -97)
     return 0;
   else if (val > 0) {
-    int i;
-    for (i = frame_spec_1; i <= frame_spec_2; i++)
+    int i, delta = (frame_spec_1 <= frame_spec_2 ? 1 : -1);
+    for (i = frame_spec_1; i != frame_spec_2 + delta; i += delta)
       show_frame(i, frame_spec_name != 0);
     if (next_output)
       combine_output_options();

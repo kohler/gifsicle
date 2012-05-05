@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.67   5.May.2012
+
+* gifsicle: Frame specifications like "#2-0" are allowed; they insert
+  frames in reverse order. Feature request from Leon Arnott.
+
+* gifview: Add --min-delay option.
+
+
 Version 1.66   2.Apr.2012
 
 * gifsicle: Add -Okeep-empty for Gerald Johanson.

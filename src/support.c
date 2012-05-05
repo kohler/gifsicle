@@ -542,12 +542,8 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   /* Get a number range (#x, #x-y, or #x-). First, read x. */
   if (isdigit(c[0]))
     frame_spec_1 = frame_spec_2 = strtol(c, &c, 10);
-  else if (c[0] == '-' && isdigit(c[1])) {
+  else if (c[0] == '-' && isdigit(c[1]))
     frame_spec_1 = frame_spec_2 = Gif_ImageCount(input) + strtol(c, &c, 10);
-    if (frame_spec_1 < 0)
-      return complain ? Clp_OptionError(clp, "there are only %d frames",
-					Gif_ImageCount(input)) : 0;
-  }
 
   /* Then, if the next character is a dash, read y. Be careful to prevent
      #- from being interpreted as a frame range. */
@@ -574,26 +570,18 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
                                    frame numbers.' */
       return -97;		/* Return -97 on bad frame name. */
     else if (complain)
-      return Clp_OptionError(clp, "no frame named '#%s'", arg);
+      return Clp_OptionError(clp, "no frame named %<#%s%>", arg);
     else
       return 0;
 
   } else {
-    if (frame_spec_1 >= 0 && frame_spec_1 <= frame_spec_2
-	&& frame_spec_2 < Gif_ImageCount(input))
+    if (frame_spec_1 >= 0 && frame_spec_1 < Gif_ImageCount(input)
+	&& frame_spec_2 >= 0 && frame_spec_2 < Gif_ImageCount(input))
       return 1;
     else if (!complain)
       return 0;
-
-    if (frame_spec_1 == frame_spec_2)
-      return Clp_OptionError(clp, "no frame number #%d", frame_spec_1);
-    else if (frame_spec_1 < 0)
-      return Clp_OptionError(clp, "frame numbers can't be negative");
-    else if (frame_spec_1 > frame_spec_2)
-      return Clp_OptionError(clp, "empty frame range");
     else
-      return Clp_OptionError(clp, "there are only %d frames",
-			     Gif_ImageCount(input));
+      return Clp_OptionError(clp, "frame %<#%s%> out of range, image has %d frames", arg, Gif_ImageCount(input));
   }
 }
 
