@@ -91,7 +91,7 @@ static const char *input_option_types[] = {
 
 /* output option types */
 static Gt_OutputData def_output_data;
-static Gt_OutputData active_output_data;
+Gt_OutputData active_output_data;
 static int next_output = 0;
 static int active_next_output = 0;
 static int any_output_successful = 0;
@@ -891,6 +891,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   assert(!nested_mode);
   if (verbosing)
     verbose_open('[', outfile ? outfile : "#stdout#");
+  active_output_data.active_output_name = outfile;
 
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
@@ -927,6 +928,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   }
 
   if (verbosing) verbose_close(']');
+  active_output_data.active_output_name = 0;
 }
 
 static void

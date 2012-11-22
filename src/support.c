@@ -29,31 +29,44 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
   char buffer[BUFSIZ];
   static char *printed_file = 0;
   static int just_printed_context = 0;
-  const char *iname = input_name ? input_name : "<stdin>", *prefix = "";
+  const char *initial_prefix = program_name;
+  const char *prefix = "";
+  const char *iname = input_name;
+  if (!iname)
+    iname = "<stdin>";
+  if (mode == EXPLODING && active_output_data.active_output_name)
+    iname = active_output_data.active_output_name;
 
   if (printed_file && strcmp(printed_file, iname) != 0) {
       free(printed_file);
       printed_file = 0;
   }
-  if (need_file && !printed_file) {
+  if (need_file == 2 && !printed_file)
+      initial_prefix = iname;
+  else if (need_file && !printed_file) {
       if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING) {
 	  fprintf(stderr, "%s: While processing '%s':\n", program_name, iname);
 	  just_printed_context = 1;
 	  prefix = "  ";
+	  initial_prefix = "";
       }
       printed_file = malloc(strlen(iname) + 1);
       strcpy(printed_file, iname);
-  } else if (just_printed_context && seriousness == 0)
+  } else if (just_printed_context && seriousness == 0) {
       prefix = "  ";
-  else
+      initial_prefix = "";
+  } else
       just_printed_context = 0;
 
   if (seriousness > 2)
-      sprintf(pattern, "%s:%s fatal error: %%s\n", program_name, prefix);
+      sprintf(pattern, "%s%s%s fatal error: %%s\n",
+	      initial_prefix, *initial_prefix ? ":" : "", prefix);
   else if (seriousness == 1)
-      sprintf(pattern, "%s:%s warning: %%s\n", program_name, prefix);
+      sprintf(pattern, "%s%s%s warning: %%s\n",
+	      initial_prefix, *initial_prefix ? ":" : "", prefix);
   else
-      sprintf(pattern, "%s:%s %%s\n", program_name, prefix);
+      sprintf(pattern, "%s%s%s %%s\n",
+	      initial_prefix, *initial_prefix ? ":" : "", prefix);
 
   if (seriousness > 1)
     error_count++;
@@ -1071,7 +1084,7 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
 
   index = Gif_FindColor(gfcm, color);
   if (index < 0 && color_context)
-    error(0, "%s color not in colormap", color_context);
+    error(2, "%s color not in colormap", color_context);
   return index;
 }
 

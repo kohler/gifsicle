@@ -94,6 +94,7 @@ struct Gt_ColorTransform {
 typedef struct {
 
   const char *output_name;
+  const char *active_output_name;
 
   int screen_width;
   int screen_height;
@@ -117,6 +118,8 @@ typedef struct {
   int conserve_memory;
 
 } Gt_OutputData;
+
+extern Gt_OutputData active_output_data;
 
 #define GT_SCALING_NONE		0
 #define GT_SCALING_RESIZE	1
