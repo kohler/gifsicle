@@ -48,7 +48,6 @@ extern "C" {
 #define LINKS_TYPE		1
 #define MAX_LINKS_TYPE		5
 typedef struct Gif_Node {
-
   Gif_Code code;
   uint8_t type;
   uint8_t suffix;
@@ -57,22 +56,18 @@ typedef struct Gif_Node {
     struct Gif_Node *s;
     struct Gif_Node **m;
   } child;
-
 } Gif_Node;
 
 
 typedef struct Gif_Context {
-
   Gif_Node *nodes;
   int nodes_pos;
   Gif_Node **links;
   int links_pos;
-
 } Gif_Context;
 
 
 typedef struct Gif_Writer {
-
   FILE *f;
   uint8_t *v;
   uint32_t pos;
@@ -84,7 +79,6 @@ typedef struct Gif_Writer {
   int cleared;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(uint8_t *, uint16_t, struct Gif_Writer *);
-
 } Gif_Writer;
 
 
@@ -169,9 +163,10 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   uint8_t *buf;
 
   unsigned xleft;
+  unsigned ypos;
   uint8_t *imageline;
 
-  unsigned leftover;
+  uint32_t leftover;
   int bits_left_over;
 
   Gif_Node *work_node;
@@ -179,8 +174,6 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   Gif_Node *next_node;
   Gif_Code next_code = 0;
   Gif_Code output_code;
-  Gif_Code clear_code;
-  Gif_Code eoi_code;
 #define CUR_BUMP_CODE (1 << cur_code_bits)
   uint8_t suffix;
 
@@ -191,17 +184,17 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
-  clear_code = 1 << min_code_bits;
-  eoi_code = clear_code + 1;
+#define CLEAR_CODE	((Gif_Code) (1 << min_code_bits))
+#define EOI_CODE	((Gif_Code) (CLEAR_CODE + 1))
   grr->cleared = 0;
 
   cur_code_bits = min_code_bits + 1;
   /* next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)", CLEAR_CODE, EOI_CODE, cur_code_bits));
 
   work_node = 0;
   work_depth = 0;
-  output_code = clear_code;
+  output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
 
@@ -209,7 +202,8 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   leftover = 0;
   buf = buffer;
   xleft = width;
-  imageline = img[0];
+  ypos = 0;
+  imageline = (ypos != height ? img[ypos] : 0);
 
   while (1) {
 
@@ -229,17 +223,17 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       }
     }
 
-    if (output_code == clear_code) {
+    if (output_code == CLEAR_CODE) {
       /* Clear data and prepare gfc */
       Gif_Code c;
 
       cur_code_bits = min_code_bits + 1;
-      next_code = eoi_code + 1;
+      next_code = EOI_CODE + 1;
 
       /* The first clear_code nodes are reserved for single-pixel codes */
-      gfc->nodes_pos = clear_code;
+      gfc->nodes_pos = CLEAR_CODE;
       gfc->links_pos = 0;
-      for (c = 0; c < clear_code; c++) {
+      for (c = 0; c < CLEAR_CODE; c++) {
 	gfc->nodes[c].code = c;
 	gfc->nodes[c].type = LINKS_TYPE;
 	gfc->nodes[c].suffix = c;
@@ -249,7 +243,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       end_table_count = 0;
       end_table_avg_depth = 0;
 
-    } else if (output_code == eoi_code)
+    } else if (output_code == EOI_CODE)
       break;
 
     else if (next_code > CUR_BUMP_CODE) {
@@ -259,7 +253,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       else if ((end_table_count > 8 /* totally arbitrary constants */
 		&& end_table_avg_depth < 12 * 128)
 	       || (grr->flags & GIF_WRITE_EAGER_CLEAR)) {
-	output_code = clear_code;
+	output_code = CLEAR_CODE;
 	grr->cleared = 1;
 	continue;
       }
@@ -271,9 +265,9 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 
     /* If height is 0 -- no more pixels to write -- we output work_node next
        time around. */
-    while (height != 0) {
+    while (imageline) {
       suffix = *imageline;
-      if (suffix >= clear_code)
+      if (suffix >= CLEAR_CODE)
 	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
 	suffix = 0;
       if (!work_node)
@@ -290,9 +284,8 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       xleft--;
       if (xleft == 0) {
 	xleft = width;
-	height--;
-	img++;
-	imageline = img[0];
+	++ypos;
+	imageline = (ypos != height ? img[ypos] : 0);
       }
 
       if (!next_node) {
@@ -312,12 +305,12 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 	  if (work_node->type == TABLE_TYPE)
 	    work_node->child.m[suffix] = next_node;
 	  else if (work_node->type < MAX_LINKS_TYPE
-		   || gfc->links_pos + clear_code > LINKS_SIZE) {
+		   || gfc->links_pos + CLEAR_CODE > LINKS_SIZE) {
 	    next_node->sibling = work_node->child.s;
 	    work_node->child.s = next_node;
 	    work_node->type++;
 	  } else
-	    change_node_to_table(gfc, work_node, next_node, clear_code);
+	    change_node_to_table(gfc, work_node, next_node, CLEAR_CODE);
 	} else {
 	  next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
 	  if (end_table_count < 256)
@@ -338,7 +331,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
     }
 
     /* Ran out of data if we get here. */
-    output_code = (work_node ? work_node->code : eoi_code);
+    output_code = (work_node ? work_node->code : EOI_CODE);
     work_node = 0;
     work_depth = 0;
 
