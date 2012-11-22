@@ -9,10 +9,10 @@
 .IR "\fB\\$1\& \|\fI\\$2" "\\$3" "\\$4" "\\$5" "\\$6"
 ..
 .de Qo
-.RB ` "\\$1" "'\\$2"
+.RB \(oq "\\$1" "\(cq\\$2"
 ..
 .de Qa
-.BI "\fR`\fB\\$1" " \\$2" " \\$3" " \\$4" "\fR'\\$5"
+.BI "\fR\(oq\fB\\$1" " \\$2" " \\$3" " \\$4" "\fR\(cq\\$5"
 ..
 .de Sp
 .if n .sp
@@ -90,7 +90,7 @@ could say:
 is good at creating and manipulating GIF animations. The simplest way to
 create an animation is to give more than one input file, which
 .B gifsicle
-will combine to create a ``flipbook'' animation:
+will combine to create a \(lqflipbook\(rq animation:
 .Es
 \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
 .Ee
@@ -98,14 +98,11 @@ Use options like
 .Op \-\-delay ", " \-\-loopcount ", and " \-\-optimize
 to tune your animations; see their descriptions for more details.
 .PP
-The bulk of this manual page indexes
-.BR gifsicle 's
-options and describes them in gory detail. New users may want to skip to
+New users may want to skip to
 the Examples section at the end.
 '
 .SH CONCEPT INDEX
 '
-This index is meant to help you find options that do what you want.
 Concepts are on the left, relevant
 .B gifsicle
 options are on the right.
@@ -149,7 +146,7 @@ with a number sign (#). Anything else is a GIF input file.
 .PP
 .B gifsicle
 reads and processes GIF input files in order. If no GIF input file is
-given, or you give the special filename `\-',
+given, or you give the special filename \(oq\-\(cq,
 it reads from the standard input.
 .PP
 .B gifsicle
@@ -206,7 +203,7 @@ Modify each GIF input in place by reading and writing to the same filename.
 .Op \-\-explode ", " \-e
 '
 Create an output GIF for each frame of each input file. The output GIFs are
-named `xxx.000', `xxx.001', and so on, where `xxx' is the name of the input
+named \(oqxxx.000\(cq, \(oqxxx.001\(cq, and so on, where \(oqxxx\(cq is the name of the input
 file (or whatever you specified with
 .Qo \-\-output )
 and the numeric extension is the frame number.
@@ -216,8 +213,8 @@ and the numeric extension is the frame number.
 '
 Same as
 .Op \-\-explode ","
-but write any named frames to files `xxx.\fIname\fR' instead of
-`xxx.\fIframe-number\fR'.  Frames are named using the
+but write any named frames to files \(oqxxx.\fIname\fR\(cq instead of
+\(oqxxx.\fIframe-number\fR\(cq.  Frames are named using the
 .Qo \-\-name
 option.
 '
@@ -287,7 +284,7 @@ printed on standard error, and you can supply a mode option.
 '
 Send output to
 .IR file .
-The special filename `-' means the standard output.
+The special filename \(oq-\(cq means the standard output.
 '
 .Sp
 .TP
@@ -377,7 +374,7 @@ Select frames \fInum1\fR through the last frame.
 Select the frame named \fIname\fR.
 .PD
 .PP
-The `#' character has special meaning for many shells, so you generally
+The \(oq#\(cq character has special meaning for many shells, so you generally
 need to quote it.
 .PP
 For example,
@@ -392,7 +389,7 @@ uses its first three frames; and
 .Xs
 \fBgifsicle happy.gif "#-1-0"\fR
 .Xe
-uses `happy.gif's frames in reverse order (starting from frame #-1\*Ethe
+uses \(oqhappy.gif\(cqs frames in reverse order (starting from frame #-1\*Ethe
 last frame\*Eand ending at frame #0\*Ethe first).
 .PP
 The action performed with the selected frames depends on the current
@@ -451,13 +448,13 @@ The
 arguments are frame selections (see above). These arguments always refer to
 frames from the
 .I original
-input GIF. So, if `a.gif' has 3 frames and `b.gif' has one, this
+input GIF. So, if \(oqa.gif\(cq has 3 frames and \(oqb.gif\(cq has one, this
 command
 .Xs
 \fBgifsicle a.gif \-\-delete "#0" \-\-replace "#2" b.gif\fR
 .Xe
-will produce an output animation with 2 frames: `a.gif' frame 1, then
-`b.gif'.
+will produce an output animation with 2 frames: \(oqa.gif\(cq frame 1, then
+\(oqb.gif\(cq.
 .PP
 The
 .I other-GIFs
@@ -466,13 +463,13 @@ These images are combined in merge mode and added to the input GIF.
 The
 .I other-GIFs
 last until the next frame change option, so this command replaces the
-first frame of `in.gif' with the merge of `a.gif' and `b.gif':
+first frame of \(oqin.gif\(cq with the merge of \(oqa.gif\(cq and \(oqb.gif\(cq:
 .Xs
 \fBgifsicle \-b in.gif \-\-replace "#0" a.gif b.gif\fR
 .Xe
 .PP
-This command, however, replaces the first frame of `in.gif' with
-`a.gif' and then processes `b.gif' separately:
+This command, however, replaces the first frame of \(oqin.gif\(cq with
+\(oqa.gif\(cq and then processes \(oqb.gif\(cq separately:
 .Xs
 \fBgifsicle \-b in.gif \-\-replace "#0" a.gif \-\-done b.gif\fR
 .Xe
@@ -509,7 +506,7 @@ multiple times; for example,
 .Xs
 \fBgifsicle \-b \-O2 \-i a.gif \-\-same\-interlace b.gif c.gif\fR
 .Xe
-will make `a.gif' interlaced, but leave `b.gif' and `c.gif' interlaced only
+will make \(oqa.gif\(cq interlaced, but leave \(oqb.gif\(cq and \(oqc.gif\(cq interlaced only
 if they were already.
 '
 .Sp
@@ -683,7 +680,7 @@ and with the value
 .I extension
 to the output GIF.
 .I Number
-can be in decimal, octal, hex, or it can be a single character like `n',
+can be in decimal, octal, hex, or it can be a single character like \(oqn\(cq,
 whose ASCII value is used.
 .Sp
 .Op \-\-no\-extensions
@@ -956,7 +953,7 @@ Either
 .I width
 or
 .I height
-may be an underscore `_'. If the argument is
+may be an underscore \(oq_\(cq. If the argument is
 .IR width x_,
 then the output GIF is scaled to
 .I width
@@ -994,7 +991,7 @@ fits within the given rectangle. Either
 .I width
 or
 .I height
-may be an underscore `_', which is treated as infinity.
+may be an underscore \(oq_\(cq, which is treated as infinity.
 '
 .Sp
 .TP
@@ -1043,7 +1040,7 @@ Set the image's colormap to
 .I Colormap
 can be
 .BR web
-for the 216-color ``Web-safe palette'';
+for the 216-color \(lqWeb-safe palette\(rq;
 .BR gray
 for grayscale;
 .BR bw
@@ -1073,7 +1070,7 @@ Here are a bunch of examples showing how
 .B gifsicle
 is commonly used.
 .PP
-First, let's create an animation, `anim.gif':
+First, let's create an animation, \(oqanim.gif\(cq:
 .Es
 \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif\fR
 .Ee
@@ -1095,14 +1092,14 @@ If we also want the GIF to loop three times, we can use
 again, we used its short form,
 .Op \-d .
 Many options have short forms; you can see them by running
-.RB ` "gifsicle \-\-help" '.
+.RB \(oq "gifsicle \-\-help" \(cq.
 We also abbreviated
 .Op \-\-loopcount
 to
 .Op \-\-loop ,
-which is OK since no other option starts with `loop'.)
+which is OK since no other option starts with \(oqloop\(cq.)
 .PP
-To explode `anim.gif' into its component frames:
+To explode \(oqanim.gif\(cq into its component frames:
 .Es
 \fBgifsicle \-\-explode anim.gif\fR
 .br
@@ -1110,16 +1107,16 @@ To explode `anim.gif' into its component frames:
 .br
 anim.gif      anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
 .Ee
-To optimize `anim.gif':
+To optimize \(oqanim.gif\(cq:
 .Es
 \fBgifsicle \-b \-O2 anim.gif\fR
 .Ee
-To change the second frame of `anim.gif' to `x.gif':
+To change the second frame of \(oqanim.gif\(cq to \(oqx.gif\(cq:
 .Es
 \fBgifsicle \-b \-\-unoptimize \-O2 anim.gif \-\-replace "#1" x.gif\fR
 .Ee
 .Op \-\-unoptimize
-is used since `anim.gif' was optimized in the last step. Editing
+is used since \(oqanim.gif\(cq was optimized in the last step. Editing
 individual frames in optimized GIFs is dangerous without
 .Op \-\-unoptimize ;
 frames following the changed frame could be corrupted by the change.
@@ -1139,7 +1136,7 @@ affects
 .I output
 GIF files.
 .PP
-To print information about the first and fourth frames of `anim.gif':
+To print information about the first and fourth frames of \(oqanim.gif\(cq:
 .Es
 \fBgifsicle \-I "#0" "#3" < anim.gif\fR
 .Ee
@@ -1154,11 +1151,11 @@ twice forces normal output to occur. With only one
 .Op \-I ,
 the GIFs would not be modified.
 .PP
-To change `anim.gif' to use a 64-color subset of the Web-safe palette:
+To change \(oqanim.gif\(cq to use a 64-color subset of the Web-safe palette:
 .Es
 \fBgifsicle \-b \-\-colors=64 \-\-use\-col=web anim.gif\fR
 .Ee
-To make a dithered black-and-white version of `anim.gif':
+To make a dithered black-and-white version of \(oqanim.gif\(cq:
 .Es
 \fBgifsicle \-\-dither \-\-use\-col=bw anim.gif > anim-bw.gif\fR
 .Ee
