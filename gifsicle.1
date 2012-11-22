@@ -231,36 +231,6 @@ can be turned off with
 .Sp
 .PD 0
 .TP 5
-.Op \-\-color\-info
-'
-Like
-.Op \%\-\-info ,
-but also print information about input files' colormaps.
-.Op \%\-\-cinfo
-is a synonym for
-.Op \%\-\-color\-info .
-'
-.Sp
-.TP 5
-.Op \-\-extension\-info
-'
-Like
-.Op \%\-\-info ,
-but also print any unrecognized GIF extensions in a
-.BR hexdump (1)-like
-format.
-.Op \%\-\-xinfo
-is a synonym for
-.Op \%\-\-extension\-info .
-'
-.Sp
-.TP 5
-.Op \-\-help ", " \-h
-'
-Print usage information and exit.
-'
-.Sp
-.TP 5
 .Op \-\-info ", " \-I
 '
 Print a human-readable description of each input GIF to the standard
@@ -273,8 +243,40 @@ If you give two
 .Op \-\-info
 or
 .Op \-I
-options, however, normal output is not suppressed; information will be
-printed on standard error, and you can supply a mode option.
+options, however, information is printed to standard error, and normal
+output takes place as usual.
+'
+.Sp
+.TP 5
+.Op \-\-color\-info ", " \-\-cinfo
+'
+Like
+.Op \%\-\-info ,
+but also print information about input files' colormaps.
+'
+.Sp
+.TP 5
+.Op \-\-extension\-info ", " \-\-xinfo
+'
+Like
+.Op \%\-\-info ,
+but also print any unrecognized GIF extensions in a
+.BR hexdump (1)-like
+format.
+'
+.Sp
+.TP 5
+.Op \-\-size\-info ", " \-\-sinfo
+'
+Like
+.Op \%\-\-info ,
+but also print information about compressed image sizes.
+'
+.Sp
+.TP 5
+.Op \-\-help ", " \-h
+'
+Print usage information and exit.
 '
 .Sp
 .TP

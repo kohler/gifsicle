@@ -153,6 +153,7 @@ General options: Also --no-OPTION for info and verbose.\n\
                                 normal output is not suppressed.\n\
       --color-info, --cinfo     --info plus colormap details.\n\
       --extension-info, --xinfo --info plus extension details.\n\
+      --size-info, --sinfo      --info plus compression information.\n\
   -V, --verbose                 Prints progress information.\n\
   -h, --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
@@ -384,13 +385,13 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 
 
 void
-stream_info(FILE *where, Gif_Stream *gfs, const char *filename,
-	    int colormaps, int extensions)
+stream_info(FILE *where, Gif_Stream *gfs, const char *filename, int flags)
 {
   Gif_Extension *gfex;
   int n;
 
-  if (!gfs) return;
+  if (!gfs)
+    return;
 
   verbose_endline();
   fprintf(where, "* %s %d image%s\n", (filename ? filename : "<stdin>"),
@@ -400,7 +401,8 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename,
 
   if (gfs->global) {
     fprintf(where, "  global color table [%d]\n", gfs->global->ncol);
-    if (colormaps) colormap_info(where, gfs->global, "  |");
+    if (flags & INFO_COLORMAPS)
+      colormap_info(where, gfs->global, "  |");
     fprintf(where, "  background %d\n", gfs->background);
   }
 
@@ -413,9 +415,9 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename,
     fprintf(where, "  loop count %u\n", (unsigned)gfs->loopcount);
 
   for (n = 0, gfex = gfs->extensions; gfex; gfex = gfex->next, n++)
-    if (extensions)
+    if (flags & INFO_EXTENSIONS)
       extension_info(where, gfs, gfex, n);
-  if (n && !extensions)
+  if (n && !(flags & INFO_EXTENSIONS))
     fprintf(where, "  extensions %d\n", n);
 }
 
@@ -425,10 +427,11 @@ static char *disposal_names[] = {
 };
 
 void
-image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
+image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int flags)
 {
   int num;
-  if (!gfs || !gfi) return;
+  if (!gfs || !gfi)
+    return;
   num = Gif_ImageNumber(gfs, gfi);
 
   verbose_endline();
@@ -446,19 +449,18 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int colormaps)
   if (gfi->transparent >= 0)
     fprintf(where, " transparent %d", gfi->transparent);
 
-#if defined(PRINT_SIZE)
-  if (gfi->compressed)
-    fprintf(where, " compressed size %u min_code_size %d", gfi->compressed_len, *gfi->compressed);
-#endif
-
   fprintf(where, "\n");
+
+  if ((flags & INFO_SIZES) && gfi->compressed)
+    fprintf(where, "    compressed size %u\n", gfi->compressed_len);
 
   if (gfi->comment)
     comment_info(where, gfi->comment, "    comment ");
 
   if (gfi->local) {
     fprintf(where, "    local color table [%d]\n", gfi->local->ncol);
-    if (colormaps) colormap_info(where, gfi->local, "    |");
+    if (flags & INFO_COLORMAPS)
+      colormap_info(where, gfi->local, "    |");
   }
 
   if (gfi->disposal || gfi->delay) {

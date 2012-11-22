@@ -179,6 +179,7 @@ static const char *output_option_types[] = {
 #define RESIZE_FIT_OPT		364
 #define RESIZE_FIT_WIDTH_OPT	365
 #define RESIZE_FIT_HEIGHT_OPT	366
+#define SIZE_INFO_OPT		367
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -269,8 +270,6 @@ const Clp_Option options[] = {
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
   { "no-rotate", 0, NO_ROTATE_OPT, 0, 0 },
 
-  { "scale", 0, SCALE_OPT, SCALE_FACTOR_TYPE, Clp_Negate },
-  { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-bg", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-clip", 0, SAME_CROP_OPT, 0, 0 },
@@ -286,6 +285,10 @@ const Clp_Option options[] = {
   { "same-position", 0, SAME_POSITION_OPT, 0, 0 },
   { "same-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
+  { "scale", 0, SCALE_OPT, SCALE_FACTOR_TYPE, Clp_Negate },
+  { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "sinfo", 0, SIZE_INFO_OPT, 0, Clp_Negate },
+  { "size-info", 0, SIZE_INFO_OPT, 0, Clp_Negate },
 
   { "transform-colormap", 0, COLOR_TRANSFORM_OPT, Clp_ValStringNotOption,
     Clp_Negate },
@@ -954,12 +957,11 @@ output_information(const char *outfile)
       fr = &FRAME(frames, i);
       gfs = fr->stream;
       gfs->userflags = 0;
-      stream_info(f, gfs, fr->input_filename, fr->colormap_info,
-		  fr->extensions_info);
+      stream_info(f, gfs, fr->input_filename, fr->info_flags);
       for (j = i; j < frames->count; j++)
 	if (FRAME(frames, j).stream == gfs) {
 	  fr = &FRAME(frames, j);
-	  image_info(f, gfs, fr->image, fr->colormap_info);
+	  image_info(f, gfs, fr->image, fr->info_flags);
 	}
     }
 
@@ -1345,9 +1347,9 @@ main(int argc, char *argv[])
 
      case COLOR_INFO_OPT:
       if (clp->negated)
-	def_frame.colormap_info = 0;
+	def_frame.info_flags &= ~INFO_COLORMAPS;
       else {
-	def_frame.colormap_info = 1;
+	def_frame.info_flags |= INFO_COLORMAPS;
 	if (!infoing)
 	  infoing = 1;
       }
@@ -1355,9 +1357,19 @@ main(int argc, char *argv[])
 
      case EXTENSION_INFO_OPT:
       if (clp->negated)
-	def_frame.extensions_info = 0;
+	def_frame.info_flags &= ~INFO_EXTENSIONS;
       else {
-	def_frame.extensions_info = 1;
+	def_frame.info_flags |= INFO_EXTENSIONS;
+	if (!infoing)
+	  infoing = 1;
+      }
+      break;
+
+     case SIZE_INFO_OPT:
+      if (clp->negated)
+	def_frame.info_flags &= ~INFO_SIZES;
+      else {
+	def_frame.info_flags |= INFO_SIZES;
 	if (!infoing)
 	  infoing = 1;
       }

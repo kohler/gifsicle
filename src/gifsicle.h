@@ -48,8 +48,7 @@ typedef struct Gt_Frame {
 
   unsigned flip_horizontal: 1;
   unsigned flip_vertical: 1;
-  unsigned colormap_info: 1;
-  unsigned extensions_info: 1;
+  unsigned info_flags: 3;
   unsigned position_is_offset: 1;
   unsigned total_crop: 1;
   unsigned rotation;
@@ -167,9 +166,11 @@ void verbose_endline(void);
 /*****
  * info &c
  **/
-void stream_info(FILE *, Gif_Stream *, const char *,
-		 int colormaps, int extensions);
-void image_info(FILE *, Gif_Stream *, Gif_Image *, int colormaps);
+#define INFO_COLORMAPS	1
+#define INFO_EXTENSIONS	2
+#define INFO_SIZES	4
+void stream_info(FILE *f, Gif_Stream *gfs, const char *filename, int flags);
+void image_info(FILE *f, Gif_Stream *gfs, Gif_Image *gfi, int flags);
 
 char *explode_filename(const char *filename, int number,
 		       const char *name, int max_nimg);
