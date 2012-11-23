@@ -1578,7 +1578,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* compress immediately if possible to save on memory */
     if (desti->img) {
       if (compress_immediately > 0) {
-	Gif_FullCompressImage(dest, desti, gif_write_flags);
+	Gif_FullCompressImage(dest, desti, &gif_write_info);
 	Gif_ReleaseUncompressedImage(desti);
       } else if (desti->compressed)
 	Gif_ReleaseCompressedImage(desti);

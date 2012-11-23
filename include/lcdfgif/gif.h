@@ -30,6 +30,11 @@ typedef struct Gif_Comment	Gif_Comment;
 typedef struct Gif_Extension	Gif_Extension;
 typedef struct Gif_Record	Gif_Record;
 
+typedef uint16_t Gif_Code;
+#define GIF_MAX_CODE_BITS	12
+#define GIF_MAX_CODE		0x1000
+#define GIF_MAX_BLOCK		255
+
 
 /** GIF_STREAM **/
 
@@ -113,15 +118,15 @@ struct Gif_Image {
 #define		GIF_DISPOSAL_PREVIOUS		3
 
 Gif_Image *	Gif_NewImage(void);
-void		Gif_DeleteImage(Gif_Image *);
+void		Gif_DeleteImage(Gif_Image *gfi);
 
-int		Gif_AddImage(Gif_Stream *, Gif_Image *);
-void		Gif_RemoveImage(Gif_Stream *, int);
-Gif_Image *	Gif_CopyImage(Gif_Image *);
+int		Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi);
+void		Gif_RemoveImage(Gif_Stream *gfs, int i);
+Gif_Image *	Gif_CopyImage(Gif_Image *gfi);
 
-Gif_Image *	Gif_GetImage(Gif_Stream *, int);
-Gif_Image *	Gif_GetNamedImage(Gif_Stream *, const char *);
-int		Gif_ImageNumber(Gif_Stream *, Gif_Image *);
+Gif_Image *	Gif_GetImage(Gif_Stream *gfs, int i);
+Gif_Image *	Gif_GetNamedImage(Gif_Stream *gfs, const char *name);
+int		Gif_ImageNumber(Gif_Stream *gfs, Gif_Image *gfi);
 
 #define		Gif_ImageWidth(gfi)		((gfi)->width)
 #define		Gif_ImageHeight(gfi)		((gfi)->height)
@@ -134,17 +139,25 @@ typedef		void (*Gif_ReadErrorHandler)(int is_error,
 					     int frame_number,
 					     void *user_data);
 
-#define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
-int		Gif_FullUncompressImage(Gif_Image*,Gif_ReadErrorHandler,void*);
-int		Gif_CompressImage(Gif_Stream *, Gif_Image *);
-int		Gif_FullCompressImage(Gif_Stream *, Gif_Image *, int);
-void		Gif_ReleaseUncompressedImage(Gif_Image *);
-void		Gif_ReleaseCompressedImage(Gif_Image *);
-int		Gif_SetUncompressedImage(Gif_Image *, uint8_t *data,
-			void (*free_data)(void *), int data_interlaced);
-int		Gif_CreateUncompressedImage(Gif_Image *);
+typedef struct {
+    int flags;
+    void *padding[7];
+} Gif_CompressInfo;
 
-int		Gif_ClipImage(Gif_Image *, int l, int t, int w, int h);
+#define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
+int		Gif_FullUncompressImage(Gif_Image *gfs,Gif_ReadErrorHandler,void*);
+int		Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi);
+int		Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
+				      const Gif_CompressInfo *gcinfo);
+void		Gif_ReleaseUncompressedImage(Gif_Image *gfi);
+void		Gif_ReleaseCompressedImage(Gif_Image *gfi);
+int		Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *data,
+			void (*free_data)(void *), int data_interlaced);
+int		Gif_CreateUncompressedImage(Gif_Image *gfi);
+
+int		Gif_ClipImage(Gif_Image *gfi, int l, int t, int w, int h);
+
+void		Gif_InitCompressInfo(Gif_CompressInfo *gcinfo);
 
 
 /** GIF_COLORMAP **/
@@ -244,8 +257,9 @@ Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
 Gif_Stream *	Gif_ReadRecord(const Gif_Record *);
 Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
 				   Gif_ReadErrorHandler, void *);
-int		Gif_WriteFile(Gif_Stream *, FILE *);
-int		Gif_FullWriteFile(Gif_Stream *, int flags, FILE *);
+int		Gif_WriteFile(Gif_Stream *gfs, FILE *f);
+int		Gif_FullWriteFile(Gif_Stream *gfs,
+				  const Gif_CompressInfo *gcinfo, FILE *f);
 
 #define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)
 #define	Gif_ReadRecord(r)	Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED,0,0)
@@ -271,11 +285,6 @@ void		Gif_Debug(char *x, ...);
 #else
 #define		GIF_DEBUG(x)
 #endif
-
-typedef uint16_t Gif_Code;
-#define GIF_MAX_CODE_BITS	12
-#define GIF_MAX_CODE		0x1000
-#define GIF_MAX_BLOCK		255
 
 #ifndef Gif_New
 # ifndef xmalloc

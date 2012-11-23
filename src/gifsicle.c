@@ -37,7 +37,7 @@ static int unoptimizing = 0;
 
 static int gif_read_flags = 0;
 static int nextfile = 0;
-int gif_write_flags = 0;
+Gif_CompressInfo gif_write_info;
 
 static int frames_done = 0;
 static int files_given = 0;
@@ -874,7 +874,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
   }
 
   if (f) {
-    Gif_FullWriteFile(gfs, gif_write_flags, f);
+    Gif_FullWriteFile(gfs, &gif_write_info, f);
     fclose(f);
     any_output_successful = 1;
   } else
@@ -1296,6 +1296,7 @@ main(int argc, char *argv[])
 
   frames = new_frameset(16);
   initialize_def_frame();
+  Gif_InitCompressInfo(&gif_write_info);
 
 #ifdef DMALLOC
   dmalloc_verbose("fudge");
@@ -1649,9 +1650,9 @@ main(int argc, char *argv[])
 
      case CAREFUL_OPT: {
        if (clp->negated)
-	 gif_write_flags = 0;
+	 gif_write_info.flags = 0;
        else
-	 gif_write_flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE | GIF_WRITE_EAGER_CLEAR;
+	 gif_write_info.flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE | GIF_WRITE_EAGER_CLEAR;
        break;
      }
 

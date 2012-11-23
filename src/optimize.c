@@ -974,14 +974,15 @@ simple_frame_data(Gif_Image *gfi, uint8_t *map)
 
 
 static void
-try_new_compression(Gif_Stream *gfs, Gif_Image *gfi, int write_flags)
+try_new_compression(Gif_Stream *gfs, Gif_Image *gfi,
+		    Gif_CompressInfo *gcinfo)
 {
     uint8_t *old_compressed = gfi->compressed;
     void (*old_free_compressed)(void *) = gfi->free_compressed;
     uint32_t old_compressed_len = gfi->compressed_len;
     gfi->compressed = 0;	/* prevent freeing old_compressed */
 
-    Gif_FullCompressImage(gfs, gfi, write_flags);
+    Gif_FullCompressImage(gfs, gfi, gcinfo);
     if (gfi->compressed_len > old_compressed_len) {
 	Gif_ReleaseCompressedImage(gfi);
 	gfi->compressed = old_compressed;
@@ -997,7 +998,7 @@ try_new_compression(Gif_Stream *gfs, Gif_Image *gfi, int write_flags)
 
 static void
 transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
-		  int optimize_flags)
+		  int optimize_flags, Gif_CompressInfo *gcinfo)
 {
   Gif_OptBounds ob = safe_bounds(gfi);
   int x, y, transparent = gfi->transparent;
@@ -1006,15 +1007,11 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
   uint8_t *data, *begin_same;
   uint8_t *t2_data = 0, *last_for_t2;
   int nsame;
-  int write_flags = gif_write_flags;
-  int optimize_level = optimize_flags & GT_OPT_MASK;
-  if (optimize_level >= 3)
-      write_flags |= GIF_WRITE_OPTIMIZE;
 
   /* First, try w/o transparency. Compare this to the result using
      transparency and pick the better of the two. */
   simple_frame_data(gfi, map);
-  Gif_FullCompressImage(gfs, gfi, write_flags);
+  Gif_FullCompressImage(gfs, gfi, gcinfo);
 
   /* Actually copy data to frame.
 
@@ -1063,7 +1060,8 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
 	cur = this_data + screen_width * (y + ob.top) + ob.left;
 	for (x = 0; x < ob.width; ++x) {
 	    if (*cur != *last && map[*cur] != transparent) {
-		if (nsame == 1 && data[-1] != transparent && optimize_level > 2) {
+		if (nsame == 1 && data[-1] != transparent
+		    && (optimize_flags & GT_OPT_MASK) > 2) {
 		    if (!t2_data)
 			t2_data = Gif_NewArray(uint8_t, ob.width * ob.height);
 		    memcpy(t2_data + (last_for_t2 - gfi->image_data),
@@ -1095,10 +1093,10 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
 
     /* Now, try compressed transparent version(s) and pick the better of the
        two (or three). */
-    try_new_compression(gfs, gfi, write_flags);
+    try_new_compression(gfs, gfi, gcinfo);
     if (t2_data) {
 	Gif_SetUncompressedImage(gfi, t2_data, Gif_DeleteArrayFunc, 0);
-	try_new_compression(gfs, gfi, write_flags);
+	try_new_compression(gfs, gfi, gcinfo);
     }
     Gif_ReleaseUncompressedImage(gfi);
 }
@@ -1125,6 +1123,9 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
 				   disposal */
   int screen_size = screen_width * screen_height;
   uint16_t *previous_data = 0;
+  Gif_CompressInfo gcinfo = gif_write_info;
+  if ((optimize_flags & GT_OPT_MASK) >= 3)
+      gcinfo.flags |= GIF_WRITE_OPTIMIZE;
 
   gfs->global = out_global_map;
 
@@ -1157,7 +1158,8 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
     cur_gfi->width = opt->width;
     cur_gfi->height = opt->height;
     cur_gfi->disposal = opt->disposal;
-    if (image_index > 0) cur_gfi->interlace = 0;
+    if (image_index > 0)
+	cur_gfi->interlace = 0;
 
     /* find the new image's colormap and then make new data */
     {
@@ -1168,13 +1170,13 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
       /* don't use transparency on first frame */
       if ((optimize_flags & GT_OPT_MASK) > 1 && image_index > 0
 	  && cur_gfi->transparent >= 0)
-	transp_frame_data(gfs, cur_gfi, map, optimize_flags);
+	transp_frame_data(gfs, cur_gfi, map, optimize_flags, &gcinfo);
       else
 	simple_frame_data(cur_gfi, map);
 
       if (cur_gfi->img) {
-	if (was_compressed) {
-	  Gif_FullCompressImage(gfs, cur_gfi, gif_write_flags);
+	if (was_compressed || (optimize_flags & GT_OPT_MASK) > 1) {
+	  Gif_FullCompressImage(gfs, cur_gfi, &gcinfo);
 	  Gif_ReleaseUncompressedImage(cur_gfi);
 	} else			/* bug fix 22.May.2001 */
 	  Gif_ReleaseCompressedImage(cur_gfi);

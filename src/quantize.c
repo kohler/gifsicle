@@ -970,7 +970,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
 
       if (only_compressed) {
-	Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+	Gif_FullCompressImage(gfs, gfi, &gif_write_info);
 	Gif_ReleaseUncompressedImage(gfi);
       }
 
@@ -1061,7 +1061,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 	gfi->transparent = map[gfi->transparent];
 
       if (only_compressed) {
-	Gif_FullCompressImage(gfs, gfi, gif_write_flags);
+	Gif_FullCompressImage(gfs, gfi, &gif_write_info);
 	Gif_ReleaseUncompressedImage(gfi);
       }
     }

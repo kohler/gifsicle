@@ -38,7 +38,7 @@ typedef struct Gif_Writer {
   uint8_t *v;
   uint32_t pos;
   uint32_t cap;
-  int flags;
+  Gif_CompressInfo gcinfo;
   int global_size;
   int local_size;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
@@ -356,7 +356,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
   int colors_used = -1, min_code_bits, i;
 
-  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+  if (grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
     /* calculate m_c_b based on colormap */
     if (grr->local_size > 0)
       colors_used = grr->local_size;
@@ -391,11 +391,11 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
     i *= 2;
   }
 
-  if ((grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
+  if ((grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
     if (Gif_UncompressImage(gfi))
-      Gif_FullCompressImage(gfs, gfi, grr->flags);
+      Gif_FullCompressImage(gfs, gfi, grr->gcinfo.flags);
   }
 
   return min_code_bits;
@@ -430,7 +430,7 @@ write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
 static int get_color_table_size(Gif_Stream *, Gif_Image *, Gif_Writer *);
 
 int
-Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
+Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, Gif_CompressInfo *gcinfo)
 {
   int ok = 0;
   uint8_t min_code_bits;
@@ -452,7 +452,10 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
   grr.cap = 1024;
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
-  grr.flags = flags;
+  if (gcinfo)
+    grr.gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr.gcinfo);
   grr.global_size = get_color_table_size(gfs, 0, &grr);
   grr.local_size = get_color_table_size(gfs, gfi, &grr);
 
@@ -489,7 +492,7 @@ get_color_table_size(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 
   /* Possibly bump up 'ncol' based on 'transparent' values, if
      careful_min_code_bits */
-  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+  if (grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
     if (gfi && gfi->transparent >= ncol)
       ncol = gfi->transparent + 1;
     else if (!gfi)
@@ -768,13 +771,16 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
 
 int
-Gif_FullWriteFile(Gif_Stream *gfs, int flags, FILE *f)
+Gif_FullWriteFile(Gif_Stream *gfs, Gif_CompressInfo *gcinfo, FILE *f)
 {
   Gif_Writer grr;
   grr.f = f;
   grr.byte_putter = file_byte_putter;
   grr.block_putter = file_block_putter;
-  grr.flags = flags;
+  if (gcinfo)
+    grr.gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr.gcinfo);
   return write_gif(gfs, &grr);
 }
 

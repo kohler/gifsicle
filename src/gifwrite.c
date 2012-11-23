@@ -72,7 +72,7 @@ typedef struct Gif_Writer {
   uint8_t *v;
   uint32_t pos;
   uint32_t cap;
-  int flags;
+  Gif_CompressInfo gcinfo;
   int global_size;
   int local_size;
   int errors;
@@ -252,7 +252,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 	++cur_code_bits;
       else if ((end_table_count > 8 /* totally arbitrary constants */
 		&& end_table_avg_depth < 12 * 128)
-	       || (grr->flags & GIF_WRITE_EAGER_CLEAR)) {
+	       || (grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR)) {
 	output_code = CLEAR_CODE;
 	grr->cleared = 1;
 	continue;
@@ -356,7 +356,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
   int colors_used = -1, min_code_bits, i;
 
-  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+  if (grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
     /* calculate m_c_b based on colormap */
     if (grr->local_size > 0)
       colors_used = grr->local_size;
@@ -391,11 +391,11 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
     i *= 2;
   }
 
-  if ((grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
+  if ((grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
     if (Gif_UncompressImage(gfi))
-      Gif_FullCompressImage(gfs, gfi, grr->flags);
+      Gif_FullCompressImage(gfs, gfi, &grr->gcinfo);
   }
 
   return min_code_bits;
@@ -427,10 +427,12 @@ write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
 }
 
 
-static int get_color_table_size(Gif_Stream *, Gif_Image *, Gif_Writer *);
+static int get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi,
+				Gif_Writer *grr);
 
 int
-Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
+Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
+		      const Gif_CompressInfo *gcinfo)
 {
   int ok = 0;
   uint8_t min_code_bits;
@@ -450,7 +452,10 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
   grr.cap = 1024;
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
-  grr.flags = flags;
+  if (gcinfo)
+    grr.gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr.gcinfo);
   grr.global_size = get_color_table_size(gfs, 0, &grr);
   grr.local_size = get_color_table_size(gfs, gfi, &grr);
   grr.errors = 0;
@@ -461,13 +466,14 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
   min_code_bits = calculate_min_code_bits(gfs, gfi, &grr);
   ok = write_image_data(gfi, min_code_bits, &gfc, &grr);
 
-  if ((flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR)) == GIF_WRITE_OPTIMIZE
+  if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
+      == GIF_WRITE_OPTIMIZE
       && grr.cleared && ok) {
     uint8_t *old_v = grr.v;
     uint32_t old_pos = grr.pos;
     grr.v = Gif_NewArray(uint8_t, grr.cap);
     grr.pos = 0;
-    grr.flags = flags | GIF_WRITE_EAGER_CLEAR;
+    grr.gcinfo.flags = grr.gcinfo.flags | GIF_WRITE_EAGER_CLEAR;
     if (grr.v && write_image_data(gfi, min_code_bits, &gfc, &grr)
 	&& grr.pos < old_pos) {
       Gif_DeleteArray(old_v);
@@ -493,7 +499,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, int flags)
 
 
 static int
-get_color_table_size(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
+get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
   Gif_Colormap *gfcm = (gfi ? gfi->local : gfs->global);
   int ncol, totalcol, i;
@@ -506,7 +512,7 @@ get_color_table_size(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 
   /* Possibly bump up 'ncol' based on 'transparent' values, if
      careful_min_code_bits */
-  if (grr->flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
+  if (grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE) {
     if (gfi && gfi->transparent >= ncol)
       ncol = gfi->transparent + 1;
     else if (!gfi)
@@ -787,13 +793,17 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
 
 int
-Gif_FullWriteFile(Gif_Stream *gfs, int flags, FILE *f)
+Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
+		  FILE *f)
 {
   Gif_Writer grr;
   grr.f = f;
   grr.byte_putter = file_byte_putter;
   grr.block_putter = file_block_putter;
-  grr.flags = flags;
+  if (gcinfo)
+    grr.gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr.gcinfo);
   grr.errors = 0;
   return write_gif(gfs, &grr);
 }

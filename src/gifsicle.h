@@ -148,7 +148,7 @@ extern const char *program_name;
 extern int verbosing;
 extern int error_count;
 extern int no_warnings;
-extern int gif_write_flags;
+extern Gif_CompressInfo gif_write_info;
 
 void fatal_error(const char *message, ...) NORETURN;
 void warning(int need_file, const char *message, ...);

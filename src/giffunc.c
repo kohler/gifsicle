@@ -770,6 +770,12 @@ Gif_CreateUncompressedImage(Gif_Image *gfi)
 				  gfi->interlace);
 }
 
+void
+Gif_InitCompressInfo(Gif_CompressInfo *gcinfo)
+{
+    gcinfo->flags = 0;
+}
+
 
 void
 Gif_Debug(char *x, ...)
