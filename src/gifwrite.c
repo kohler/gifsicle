@@ -59,12 +59,13 @@ typedef struct Gif_Node {
 } Gif_Node;
 
 
-typedef struct Gif_Context {
+typedef struct Gif_CodeTable {
   Gif_Node *nodes;
   int nodes_pos;
   Gif_Node **links;
   int links_pos;
-} Gif_Context;
+  int clear_code;
+} Gif_CodeTable;
 
 
 typedef struct Gif_Writer {
@@ -134,17 +135,56 @@ memory_block_putter(uint8_t *data, uint16_t len, Gif_Writer *grr)
 }
 
 
+static int
+gfc_init(Gif_CodeTable *gfc)
+{
+  gfc->nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
+  gfc->links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
+  return gfc->nodes && gfc->links;
+}
+
+static inline void
+gfc_clear(Gif_CodeTable *gfc, Gif_Code clear_code)
+{
+  int c;
+  /* The first clear_code nodes are reserved for single-pixel codes */
+  gfc->nodes_pos = clear_code;
+  gfc->links_pos = 0;
+  for (c = 0; c < clear_code; c++) {
+    gfc->nodes[c].code = c;
+    gfc->nodes[c].type = LINKS_TYPE;
+    gfc->nodes[c].suffix = c;
+    gfc->nodes[c].child.s = 0;
+  }
+  gfc->clear_code = clear_code;
+}
+
+static inline Gif_Node *
+gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
+{
+  if (!node)
+    return &gfc->nodes[suffix];
+  else if (node->type == TABLE_TYPE)
+    return node->child.m[suffix];
+  else {
+    for (node = node->child.s; node; node = node->sibling)
+      if (node->suffix == suffix)
+        return node;
+    return NULL;
+  }
+}
+
 static void
-change_node_to_table(Gif_Context *gfc, Gif_Node *work_node,
-		     Gif_Node *next_node, Gif_Code clear_code)
+gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
+                         Gif_Node *next_node)
 {
   /* change links node to table node */
   Gif_Code c;
   Gif_Node **table = &gfc->links[gfc->links_pos];
   Gif_Node *n;
-  gfc->links_pos += clear_code;
+  gfc->links_pos += gfc->clear_code;
 
-  for (c = 0; c < clear_code; c++)
+  for (c = 0; c < gfc->clear_code; c++)
     table[c] = 0;
   table[next_node->suffix] = next_node;
   for (n = work_node->child.s; n; n = n->sibling)
@@ -154,10 +194,34 @@ change_node_to_table(Gif_Context *gfc, Gif_Node *work_node,
   work_node->child.m = table;
 }
 
+static inline void
+gfc_define(Gif_CodeTable *gfc, Gif_Node *work_node, uint8_t suffix,
+           Gif_Code next_code)
+{
+  /* Add a new code to our dictionary. First reserve a node for the
+     added code. It's LINKS_TYPE at first. */
+  Gif_Node *next_node = &gfc->nodes[gfc->nodes_pos];
+  gfc->nodes_pos++;
+  next_node->code = next_code;
+  next_node->type = LINKS_TYPE;
+  next_node->suffix = suffix;
+  next_node->child.s = 0;
+
+  /* link next_node into work_node's set of children */
+  if (work_node->type == TABLE_TYPE)
+    work_node->child.m[suffix] = next_node;
+  else if (work_node->type < MAX_LINKS_TYPE
+           || gfc->links_pos + gfc->clear_code > LINKS_SIZE) {
+    next_node->sibling = work_node->child.s;
+    work_node->child.s = next_node;
+    work_node->type++;
+  } else
+    gfc_change_node_to_table(gfc, work_node, next_node);
+}
 
 static void
 write_compressed_data(uint8_t **img, unsigned width, unsigned height,
-		      int min_code_bits, Gif_Context *gfc, Gif_Writer *grr)
+		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
 {
   uint8_t buffer[WRITE_BUFFER_SIZE];
   uint8_t *buf;
@@ -225,23 +289,11 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 
     if (output_code == CLEAR_CODE) {
       /* Clear data and prepare gfc */
-      Gif_Code c;
-
       cur_code_bits = min_code_bits + 1;
       next_code = EOI_CODE + 1;
+      gfc_clear(gfc, CLEAR_CODE);
 
-      /* The first clear_code nodes are reserved for single-pixel codes */
-      gfc->nodes_pos = CLEAR_CODE;
-      gfc->links_pos = 0;
-      for (c = 0; c < CLEAR_CODE; c++) {
-	gfc->nodes[c].code = c;
-	gfc->nodes[c].type = LINKS_TYPE;
-	gfc->nodes[c].suffix = c;
-	gfc->nodes[c].child.s = 0;
-      }
-
-      end_table_count = 0;
-      end_table_avg_depth = 0;
+      GIF_DEBUG(("\n"));
 
     } else if (output_code == EOI_CODE)
       break;
@@ -267,18 +319,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
        time around. */
     while (imageline) {
       suffix = *imageline;
-      if (suffix >= CLEAR_CODE)
-	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
-	suffix = 0;
-      if (!work_node)
-	next_node = &gfc->nodes[suffix];
-      else if (work_node->type == TABLE_TYPE)
-	next_node = work_node->child.m[suffix];
-      else
-	for (next_node = work_node->child.s; next_node;
-	     next_node = next_node->sibling)
-	  if (next_node->suffix == suffix)
-	    break;
+      next_node = gfc_lookup(gfc, work_node, suffix);
 
       imageline++;
       xleft--;
@@ -291,26 +332,8 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       if (!next_node) {
 	/* Output the current code. */
 	if (next_code < GIF_MAX_CODE) {
-	  /* Add a new code to our dictionary. First reserve a node for the
-	     added code. It's LINKS_TYPE at first. */
-	  next_node = &gfc->nodes[gfc->nodes_pos];
-	  gfc->nodes_pos++;
-	  next_node->code = next_code;
-	  next_code++;
-	  next_node->type = LINKS_TYPE;
-	  next_node->suffix = suffix;
-	  next_node->child.s = 0;
-
-	  /* link next_node into work_node's set of children */
-	  if (work_node->type == TABLE_TYPE)
-	    work_node->child.m[suffix] = next_node;
-	  else if (work_node->type < MAX_LINKS_TYPE
-		   || gfc->links_pos + CLEAR_CODE > LINKS_SIZE) {
-	    next_node->sibling = work_node->child.s;
-	    work_node->child.s = next_node;
-	    work_node->type++;
-	  } else
-	    change_node_to_table(gfc, work_node, next_node, CLEAR_CODE);
+          gfc_define(gfc, work_node, suffix, next_code);
+          next_code++;
 	} else {
 	  next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
 	  if (end_table_count < 256)
@@ -352,7 +375,8 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 
 
 static int
-calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
+calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi,
+                        const Gif_Writer *grr)
 {
   int colors_used = -1, min_code_bits, i;
 
@@ -403,7 +427,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 
 static int
 write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
-		 Gif_Context *gfc, Gif_Writer *grr)
+		 Gif_CodeTable *gfc, Gif_Writer *grr)
 {
   uint8_t **img = gfi->img;
   uint16_t width = gfi->width, height = gfi->height;
@@ -437,15 +461,14 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   int ok = 0;
   uint8_t min_code_bits;
   Gif_Writer grr;
-  Gif_Context gfc;
+  Gif_CodeTable gfc;
 
   if (gfi->compressed && gfi->free_compressed) {
     (*gfi->free_compressed)((void *)gfi->compressed);
     gfi->compressed = 0;
   }
 
-  gfc.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
-  gfc.links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
+  gfc_init(&gfc);
 
   grr.v = Gif_NewArray(uint8_t, 1024);
   grr.pos = 0;
@@ -553,7 +576,8 @@ write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
 
 
 static int
-write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Context *gfc, Gif_Writer *grr)
+write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
+            Gif_Writer *grr)
 {
   uint8_t min_code_bits, packed = 0;
   grr->local_size = get_color_table_size(gfs, gfi, grr);
@@ -731,10 +755,9 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   int i;
   Gif_Image *gfi;
   Gif_Extension *gfex = gfs->extensions;
-  Gif_Context gfc;
+  Gif_CodeTable gfc;
 
-  gfc.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
-  gfc.links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
+  gfc_init(&gfc);
   if (!gfc.nodes || !gfc.links)
     goto done;
 
