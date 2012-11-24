@@ -219,8 +219,19 @@ gfc_define(Gif_CodeTable *gfc, Gif_Node *work_node, uint8_t suffix,
     gfc_change_node_to_table(gfc, work_node, next_node);
 }
 
-static void
-write_compressed_data(uint8_t **img, unsigned width, unsigned height,
+static inline const uint8_t *
+gif_imageline(Gif_Image *gfi, int y)
+{
+  if (y == gfi->height)
+    return NULL;
+  else if (!gfi->interlace)
+    return gfi->img[y];
+  else
+    return gfi->img[Gif_InterlaceLine(y, gfi->height)];
+}
+
+static int
+write_compressed_data(Gif_Image *gfi,
 		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
 {
   uint8_t buffer[WRITE_BUFFER_SIZE];
@@ -228,7 +239,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
 
   unsigned xleft;
   unsigned ypos;
-  uint8_t *imageline;
+  const uint8_t *imageline;
 
   uint32_t leftover;
   int bits_left_over;
@@ -265,9 +276,9 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   bits_left_over = 0;
   leftover = 0;
   buf = buffer;
-  xleft = width;
+  xleft = gfi->width;
   ypos = 0;
-  imageline = (ypos != height ? img[ypos] : 0);
+  imageline = gif_imageline(gfi, ypos);
 
   while (1) {
 
@@ -324,9 +335,9 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
       imageline++;
       xleft--;
       if (xleft == 0) {
-	xleft = width;
+	xleft = gfi->width;
 	++ypos;
-	imageline = (ypos != height ? img[ypos] : 0);
+        imageline = gif_imageline(gfi, ypos);
       }
 
       if (!next_node) {
@@ -371,6 +382,7 @@ write_compressed_data(uint8_t **img, unsigned width, unsigned height,
   }
 
   gifputbyte(0, grr);
+  return 1;
 }
 
 
@@ -425,31 +437,6 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi,
   return min_code_bits;
 }
 
-static int
-write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
-		 Gif_CodeTable *gfc, Gif_Writer *grr)
-{
-  uint8_t **img = gfi->img;
-  uint16_t width = gfi->width, height = gfi->height;
-
-  if (gfi->interlace) {
-    uint16_t y;
-    uint8_t **nimg = Gif_NewArray(uint8_t *, height + 1);
-    if (!nimg) return 0;
-
-    for (y = 0; y < height; y++)
-      nimg[y] = img[Gif_InterlaceLine(y, height)];
-    nimg[height] = 0;
-
-    write_compressed_data(nimg, width, height, min_code_bits, gfc, grr);
-
-    Gif_DeleteArray(nimg);
-  } else
-    write_compressed_data(img, width, height, min_code_bits, gfc, grr);
-
-  return 1;
-}
-
 
 static int get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi,
 				Gif_Writer *grr);
@@ -487,7 +474,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
     goto done;
 
   min_code_bits = calculate_min_code_bits(gfs, gfi, &grr);
-  ok = write_image_data(gfi, min_code_bits, &gfc, &grr);
+  ok = write_compressed_data(gfi, min_code_bits, &gfc, &grr);
 
   if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
       == GIF_WRITE_OPTIMIZE
@@ -497,7 +484,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
     grr.v = Gif_NewArray(uint8_t, grr.cap);
     grr.pos = 0;
     grr.gcinfo.flags = grr.gcinfo.flags | GIF_WRITE_EAGER_CLEAR;
-    if (grr.v && write_image_data(gfi, min_code_bits, &gfc, &grr)
+    if (grr.v && write_compressed_data(gfi, min_code_bits, &gfc, &grr)
 	&& grr.pos < old_pos) {
       Gif_DeleteArray(old_v);
       goto done;
@@ -619,7 +606,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
     }
 
   } else
-    write_image_data(gfi, min_code_bits, gfc, grr);
+    write_compressed_data(gfi, min_code_bits, gfc, grr);
 
   return 1;
 }
