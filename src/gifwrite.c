@@ -606,7 +606,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
     write_color_table(gfi->local, grr->local_size, grr);
 
   /* calculate min_code_bits here (because calculation may involve
-     recompression, if GIF_WRITE_CAREFUL_MIN_CODE_BITS is true) */
+     recompression, if GIF_WRITE_CAREFUL_MIN_CODE_SIZE is true) */
   min_code_bits = calculate_min_code_bits(gfs, gfi, grr);
 
   /* use existing compressed data if it exists. This will tend to whip

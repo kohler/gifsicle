@@ -196,7 +196,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
     else {
       output_code = suffix = *imageline;
       if (output_code >= clear_code)
-	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+	/* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_SIZE */
 	output_code = suffix = 0;
       goto next_pixel;
 
