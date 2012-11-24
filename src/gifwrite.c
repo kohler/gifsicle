@@ -17,6 +17,7 @@
 #include <lcdfgif/gif.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -162,6 +163,8 @@ gfc_clear(Gif_CodeTable *gfc, Gif_Code clear_code)
 static inline Gif_Node *
 gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
 {
+  assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
+  assert(suffix < gfc->clear_code);
   if (!node)
     return &gfc->nodes[suffix];
   else if (node->type == TABLE_TYPE)
@@ -214,7 +217,8 @@ gfc_define(Gif_CodeTable *gfc, Gif_Node *work_node, uint8_t suffix,
            || gfc->links_pos + gfc->clear_code > LINKS_SIZE) {
     next_node->sibling = work_node->child.s;
     work_node->child.s = next_node;
-    work_node->type++;
+    if (work_node->type < MAX_LINKS_TYPE)
+      work_node->type++;
   } else
     gfc_change_node_to_table(gfc, work_node, next_node);
 }
