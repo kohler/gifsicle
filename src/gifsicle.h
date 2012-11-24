@@ -183,6 +183,8 @@ char *explode_filename(const char *filename, int number,
  **/
 void	unmark_colors(Gif_Colormap *);
 void	unmark_colors_2(Gif_Colormap *);
+void	mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
+                         int compress_immediately);
 int	find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int	merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 

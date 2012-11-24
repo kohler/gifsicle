@@ -1403,6 +1403,22 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 }
 
 
+static inline int
+apply_frame_transparent(Gif_Image *gfi, Gt_Frame *fr)
+{
+    int old_transparent = gfi->transparent;
+    if (fr->transparent.haspixel == 255)
+        gfi->transparent = -1;
+    else if (fr->transparent.haspixel) {
+        gfi->transparent =
+            find_color_or_error(&fr->transparent, fr->stream, gfi,
+                                "transparent");
+        if (gfi->transparent < 0)
+            fr->transparent.haspixel = 0;
+    }
+    return old_transparent;
+}
+
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 		     Gt_OutputData *output_data, int compress_immediately,
@@ -1473,6 +1489,14 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (merger[i]->crop && !merger[i]->crop->ready)
       analyze_crop(nmerger, merger[i]->crop, compress_immediately);
 
+  /* mark used colors */
+  for (i = 0; i < nmerger; ++i) {
+      int old_transp = apply_frame_transparent(merger[i]->image, merger[i]);
+      mark_used_colors(merger[i]->stream, merger[i]->image, merger[i]->crop,
+                       compress_immediately);
+      merger[i]->image->transparent = old_transp;
+  }
+
   /* copy stream-wide information from output_data */
   if (output_data->loopcount > -2)
     dest->loopcount = output_data->loopcount;
@@ -1483,7 +1507,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     Gt_Frame *fr = merger[i];
     Gif_Image *srci;
     Gif_Image *desti;
-    int old_transparent;
+    int old_transp;
 
     /* First, check for extensions */
     {
@@ -1531,12 +1555,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     /* It was pretty stupid to remove this code, which I did between 1.2b6 and
        1.2 */
-    old_transparent = srci->transparent;
-    if (fr->transparent.haspixel == 255)
-      srci->transparent = -1;
-    else if (fr->transparent.haspixel)
-      srci->transparent =
-	find_color_or_error(&fr->transparent, fr->stream, srci, "transparent");
+    old_transp = apply_frame_transparent(srci, fr);
 
     /* Is it ok to use the old image's compressed version? */
     /* 11.Feb.2003 -- It is NOT ok to use the old image's compressed version
@@ -1549,7 +1568,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     desti = merge_image(dest, fr->stream, srci, same_compressed_ok);
 
-    srci->transparent = old_transparent; /* restore real transparent value */
+    srci->transparent = old_transp; /* restore real transparent value */
 
     /* Flipping and rotating, and also setting the screen size */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
