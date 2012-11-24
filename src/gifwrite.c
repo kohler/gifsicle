@@ -79,7 +79,7 @@ typedef struct Gif_Writer {
   int errors;
   int cleared;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
-  void (*block_putter)(uint8_t *, uint16_t, struct Gif_Writer *);
+  void (*block_putter)(const uint8_t *, uint16_t, struct Gif_Writer *);
 } Gif_Writer;
 
 
@@ -101,7 +101,7 @@ file_byte_putter(uint8_t b, Gif_Writer *grr)
 }
 
 static void
-file_block_putter(uint8_t *block, uint16_t size, Gif_Writer *grr)
+file_block_putter(const uint8_t *block, uint16_t size, Gif_Writer *grr)
 {
   if (fwrite(block, 1, size, grr->f) != size)
     grr->errors = 1;
@@ -122,7 +122,7 @@ memory_byte_putter(uint8_t b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(uint8_t *data, uint16_t len, Gif_Writer *grr)
+memory_block_putter(const uint8_t *data, uint16_t len, Gif_Writer *grr)
 {
   if (grr->pos + len >= grr->cap) {
     grr->cap *= 2;
@@ -680,7 +680,7 @@ write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
 
 
 static void
-blast_data(uint8_t *data, int len, Gif_Writer *grr)
+blast_data(const uint8_t *data, int len, Gif_Writer *grr)
 {
   while (len > 0) {
     int s = len > 255 ? 255 : len;
@@ -709,7 +709,7 @@ write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
   for (i = 0; i < gfcom->count; i++) {
     gifputbyte('!', grr);
     gifputbyte(0xFE, grr);
-    blast_data((uint8_t *)gfcom->str[i], gfcom->len[i], grr);
+    blast_data((const uint8_t *)gfcom->str[i], gfcom->len[i], grr);
   }
 }
 
@@ -717,7 +717,7 @@ write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
 static void
 write_netscape_loop_extension(uint16_t value, Gif_Writer *grr)
 {
-  gifputblock((uint8_t *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
+  gifputblock((const uint8_t *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
   gifputunsigned(value, grr);
   gifputbyte(0, grr);
 }
@@ -735,7 +735,7 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
     int len = gfex->application ? strlen(gfex->application) : 0;
     if (len) {
       gifputbyte(len, grr);
-      gifputblock((uint8_t *)gfex->application, len, grr);
+      gifputblock((const uint8_t *)gfex->application, len, grr);
     }
   }
   while (pos + 255 < gfex->length) {
@@ -776,9 +776,9 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 	isgif89a = 1;
     }
     if (isgif89a)
-      gifputblock((uint8_t *)"GIF89a", 6, grr);
+      gifputblock((const uint8_t *)"GIF89a", 6, grr);
     else
-      gifputblock((uint8_t *)"GIF87a", 6, grr);
+      gifputblock((const uint8_t *)"GIF87a", 6, grr);
   }
 
   write_logical_screen_descriptor(gfs, grr);
