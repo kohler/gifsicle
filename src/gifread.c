@@ -521,7 +521,7 @@ Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
   /* return right away if image is already uncompressed. this might screw over
      people who expect re-uncompressing to restore the compressed version. */
   if (gfi->img)
-    return 1;
+    return 2;
   if (gfi->image_data)
     /* we have uncompressed data, but not an 'img' array;
        this shouldn't happen */
