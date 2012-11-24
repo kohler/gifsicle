@@ -234,15 +234,14 @@ static int
 write_compressed_data(Gif_Image *gfi,
 		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
 {
-  uint8_t buffer[WRITE_BUFFER_SIZE];
-  uint8_t *buf;
+  uint8_t stack_buffer[232];
+  uint8_t *buf = stack_buffer;
+  unsigned bufpos = 0;
+  unsigned bufcap = sizeof(stack_buffer) * 8;
 
   unsigned xleft;
   unsigned ypos;
   const uint8_t *imageline;
-
-  uint32_t leftover;
-  int bits_left_over;
 
   Gif_Node *work_node;
   int work_depth;
@@ -273,9 +272,6 @@ write_compressed_data(Gif_Image *gfi,
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
 
-  bits_left_over = 0;
-  leftover = 0;
-  buf = buffer;
   xleft = gfi->width;
   ypos = 0;
   imageline = gif_imageline(gfi, ypos);
@@ -283,20 +279,35 @@ write_compressed_data(Gif_Image *gfi,
   while (1) {
 
     /*****
-     * Output 'output_code' to the data stream. */
+     * Output 'output_code' to the memory buffer. */
+    {
+      unsigned startpos = bufpos;
+      do {
+        if (bufpos == bufcap) {
+          unsigned ncap = bufcap * 2 + (24 << 3);
+          uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
+          if (!nbuf)
+            return 0;
+          memcpy(nbuf, buf, bufcap >> 3);
+          if (buf != stack_buffer)
+            Gif_DeleteArray(buf);
+          buf = nbuf;
+          bufcap = ncap;
+        }
 
-    leftover |= output_code << bits_left_over;
-    bits_left_over += cur_code_bits;
-    while (bits_left_over >= 8) {
-      *buf++ = leftover & 0xFF;
-      leftover = (leftover >> 8) & 0x00FFFFFF;
-      bits_left_over -= 8;
-      if (buf == buffer + WRITE_BUFFER_SIZE) {
-	gifputbyte(WRITE_BUFFER_SIZE, grr);
-	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
-	buf = buffer;
-      }
+        if (bufpos & 7)
+          buf[bufpos >> 3] |= output_code << (bufpos & 7);
+        else
+          buf[bufpos >> 3] = output_code >> (bufpos - startpos);
+
+        bufpos += 8 - (bufpos & 7);
+      } while (bufpos < startpos + cur_code_bits);
+      bufpos = startpos + cur_code_bits;
     }
+
+
+    /*****
+     * Handle special codes. */
 
     if (output_code == CLEAR_CODE) {
       /* Clear data and prepare gfc */
@@ -372,16 +383,22 @@ write_compressed_data(Gif_Image *gfi,
    found_output_code: ;
   }
 
-  if (bits_left_over > 0)
-    *buf++ = leftover;
-
-  if (buf != buffer) {
-    GIF_DEBUG(("imageblock(%d)", buf - buffer));
-    gifputbyte(buf - buffer, grr);
-    gifputblock(buffer, buf - buffer, grr);
+  /* Output memory buffer to stream. */
+  {
+    bufpos = (bufpos + 7) >> 3;
+    unsigned outpos = 0;
+    while (outpos < bufpos) {
+      unsigned w = (bufpos - outpos > 255 ? 255 : bufpos - outpos);
+      gifputbyte(w, grr);
+      gifputblock(buf + outpos, w, grr);
+      outpos += w;
+    }
+    gifputbyte(0, grr);
   }
 
-  gifputbyte(0, grr);
+  if (buf != stack_buffer)
+    Gif_DeleteArray(buf);
+
   return 1;
 }
 
