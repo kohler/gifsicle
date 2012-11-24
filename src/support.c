@@ -850,7 +850,19 @@ read_text_colormap(FILE *f, const char *name)
       blue = (unsigned)(fblue + .5);
       goto found;
 
-    } else if (sscanf(buf, "#%2x%2x%2x", &red, &green, &blue) == 3) {
+    } else if (buf[0] == '#'
+               && strspn(buf + 1, "0123456789abcdefABCDEF") == 3
+               && (!buf[4] || isspace((unsigned char) buf[4]))) {
+      sscanf(buf + 1, "%1x%1x%1x", &red, &green, &blue);
+      red += red << 4;
+      green += green << 4;
+      blue += blue << 4;
+      goto found;
+
+    } else if (buf[0] == '#'
+               && strspn(buf + 1, "0123456789abcdefABCDEF") == 6
+               && (!buf[7] || isspace((unsigned char) buf[7]))) {
+      sscanf(buf + 1, "%2x%2x%2x", &red, &green, &blue);
      found:
       if (red > 255) red = 255;
       if (green > 255) green = 255;

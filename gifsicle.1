@@ -122,7 +122,8 @@ options are on the right.
 .Ix "Comments" "\fB\-\-comment\fP"
 .Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
 .Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
-.Ix "Image transformations"
+.TP 30
+Image transformations
 .Ix "\ \ \ cropping" "\fB\-\-crop\fP, \fB\-\-crop\-transparency\fP"
 .Ix "\ \ \ flipping" "\fB\-\-flip\-*\fP"
 .Ix "\ \ \ resizing" "\fB\-\-resize\fP, \fB\-\-scale\fP"
@@ -306,6 +307,17 @@ Suppress all warning messages.
 .Op \-\-version
 '
 Print the version number and some short non-warranty information and exit.
+'
+.Sp
+.PD 0
+.TP 5
+.Op \-\-careful
+'
+Write slightly larger GIFs that avoid bugs in some other GIF
+implementations. Some Java and Internet Explorer versions cannot display
+the correct, minimal GIFs that Gifsicle produces. Use the
+.Op \-\-careful
+option if you are having problems with a particular image.
 '
 .Sp
 .TP
@@ -856,97 +868,15 @@ option.
 .PD
 '
 .\" -----------------------------------------------------------------
-.SS Whole-GIF Options
-
-Whole-GIF options effect entire GIFs as they are read or written. They can
-be turned off with
+.SS Image Transformation Options
+'
+Image transformation options apply to entire GIFs as they are read or
+written. They can be turned off with
 .Qo \-\-no\-option .
-.Sp
-.PD 0
-.TP 5
-.Op \-\-careful
-'
-Write slightly larger GIFs that avoid bugs in some other GIF
-implementations. Some Java and Internet Explorer versions cannot display
-the correct, minimal GIFs that Gifsicle produces. Use the
-.Op \-\-careful
-option if you are having problems with a particular image.
 '
 .Sp
 .PD 0
 .TP 5
-.Oa \-\-change\-color color1 " " color2
-'
-Change
-.I color1
-to
-.I color2
-in the following input GIFs. (The
-.I color
-arguments have the same forms as in the
-.Op \-t
-option.) You can change multiple colors by giving the option multiple
-times. Color changes don't interfere with one another, so you can safely
-swap two colors with
-.Qa \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
-They all take effect as an input GIF is read.
-.Op \-\-no\-change\-color
-cancels all color changes.
-'
-.Sp
-.TP
-.Oa \-k num
-.TP
-.Oa \-\-colors num
-'
-Reduce the number of distinct colors in each output GIF to
-.I num
-or less.
-.I Num
-must be between 2 and 256. This can be used to shrink output GIFs or
-eliminate any local color tables.
-.Sp
-Unless you give
-.Op \-\-use\-colormap ,
-an adaptive group of colors is chosen from the existing color table.
-You can affect this process with the
-.Op \-\-color\-method
-option. Gifsicle may need to add an additional color (making
-.IR num +1
-in all) if there is transparency in the image.
-'
-.Sp
-.TP
-.Oa \-\-color\-method method
-'
-Determine how a smaller colormap is chosen. There are three choices:
-.BR diversity ,
-the default, is
-.BR xv (1)'s
-diversity algorithm, which uses a strict subset of the existing colors.
-.B blend\-diversity
-is a modification of this: some color values are blended from a group of
-the existing colors.
-.B median\-cut
-is the median cut algorithm described by Heckbert.
-.Op \-\-method
-is a synonym for
-.Op \-\-color\-method .
-'
-.Sp
-.TP
-.Oa \-f
-.TP
-.Oa \-\-dither
-'
-This option only matters if the colormap was changed. With
-.Op \-\-dither
-on, Floyd-Steinberg error diffusion is used to approximate any colors that
-were removed. This looks better, but makes bigger files and can cause
-animation artifacts, so it is off by default.
-'
-.Sp
-.TP
 .Oa \-\-resize width x height
 '
 Resize the output GIF to
@@ -1019,6 +949,87 @@ is not given, it defaults to
 .IR Xfactor .
 Scaling happens after all input frames have been combined and before
 optimization.
+.PD
+'
+.\" -----------------------------------------------------------------
+.SS Color Options
+'
+Color options apply to entire GIFs as they are read or
+written. They can be turned off with
+.Qo \-\-no\-option .
+.Sp
+.PD 0
+.TP 5
+.Oa \-k num
+.TP
+.Oa \-\-colors num
+'
+Reduce the number of distinct colors in each output GIF to
+.I num
+or less.
+.I Num
+must be between 2 and 256. This can be used to shrink output GIFs or
+eliminate any local color tables.
+.Sp
+Unless you give
+.Op \-\-use\-colormap ,
+an adaptive group of colors is chosen from the existing color table.
+You can affect this process with the
+.Op \-\-color\-method
+option. Gifsicle may need to add an additional color (making
+.IR num +1
+in all) if there is transparency in the image.
+'
+.Sp
+.TP
+.Oa \-\-color\-method method
+'
+Determine how a smaller colormap is chosen. There are three choices:
+.BR diversity ,
+the default, is
+.BR xv (1)'s
+diversity algorithm, which uses a strict subset of the existing colors.
+.B blend\-diversity
+is a modification of this: some color values are blended from a group of
+the existing colors.
+.B median\-cut
+is the median cut algorithm described by Heckbert.
+.Op \-\-method
+is a synonym for
+.Op \-\-color\-method .
+'
+.Sp
+.TP 5
+.Oa \-f
+.TP
+.Oa \-\-dither
+'
+This option only matters if the colormap was changed. With
+.Op \-\-dither
+on, Floyd-Steinberg error diffusion is used to approximate any colors that
+were removed. This looks better, but makes bigger files and can cause
+animation artifacts, so it is off by default.
+'
+.Sp
+.PD 0
+.TP
+.Oa \-\-change\-color color1 " " color2
+'
+Change
+.I color1
+to
+.I color2
+in the following input GIFs. (The
+.I color
+arguments have the same forms as in the
+.Op \-t
+option.) You can change multiple colors by giving the option multiple
+times. Color changes don't interfere with one another, so you can safely
+swap two colors with
+.Qa \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
+They all take effect as an input GIF is read.
+.Op \-\-no\-change\-color
+cancels all color changes.
 '
 .Sp
 .TP
@@ -1037,8 +1048,14 @@ instead.
 .TP
 .Oa \-\-use\-colormap colormap
 '
-Set the image's colormap to
+Change the image to use
 .IR colormap .
+Each pixel in the image is changed to the closest match in
+.I colormap
+(or, if
+.Op \-\-dither
+is on, to a dithered combination of colors in
+.IR colormap ")."
 .I Colormap
 can be
 .BR web
@@ -1056,22 +1073,22 @@ subset of
 .I colormap
 will be used.
 .Sp
-Text colormap files have a very simple format:
+Text colormap files use this format:
 .Es
-# each non-comment line represents one color, "red green blue"
-# each component should be between 0 and 255
-0 0 0            # like this
+; each non-comment line represents one color, "red green blue"
+; each component should be between 0 and 255
+0 0 0            ; like this
 255 255 255
+; or use web hex notation
+#ffffff          ; like this
 .Ee
 '
 .PD
+.PP
+.br
 '
 .SH EXAMPLES
-
-Here are a bunch of examples showing how
-.B gifsicle
-is commonly used.
-.PP
+'
 First, let's create an animation, \(oqanim.gif\(cq:
 .Es
 \fBgifsicle a.gif b.gif c.gif d.gif > anim.gif\fR
