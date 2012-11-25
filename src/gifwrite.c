@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -295,21 +296,21 @@ write_compressed_data(Gif_Image *gfi,
 
     /*****
      * Output 'output_code' to the memory buffer. */
+    if (bufpos + cur_code_bits >= bufcap) {
+      unsigned ncap = bufcap * 2 + (24 << 3);
+      uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
+      if (!nbuf)
+        return 0;
+      memcpy(nbuf, buf, bufcap >> 3);
+      if (buf != stack_buffer)
+        Gif_DeleteArray(buf);
+      buf = nbuf;
+      bufcap = ncap;
+    }
+
     {
       unsigned startpos = bufpos;
       do {
-        if (bufpos == bufcap) {
-          unsigned ncap = bufcap * 2 + (24 << 3);
-          uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
-          if (!nbuf)
-            return 0;
-          memcpy(nbuf, buf, bufcap >> 3);
-          if (buf != stack_buffer)
-            Gif_DeleteArray(buf);
-          buf = nbuf;
-          bufcap = ncap;
-        }
-
         if (bufpos & 7)
           buf[bufpos >> 3] |= output_code << (bufpos & 7);
         else
@@ -373,15 +374,13 @@ write_compressed_data(Gif_Image *gfi,
           if (!do_clear) {
             unsigned pixels_left = gfi->width * gfi->height - pos;
             if (pixels_left) {
-              /* inverse of # runs left in image */
-              unsigned run_inv = run_ewma / pixels_left;
-
               /* Always clear if run_ewma gets small relative to
-                 min_code_bits. Otherwise, clear if run_inv is smaller than an
-                 empirical threshold, meaning it will take more than 3000
-                 or so average runs to complete the image. */
+                 min_code_bits. Otherwise, clear if #images/run is smaller
+                 than an empirical threshold, meaning it will take more than
+                 3000 or so average runs to complete the image. */
               if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
-                  || run_inv < RUN_INV_THRESH)
+                  || pixels_left > UINT_MAX / RUN_INV_THRESH
+                  || run_ewma < pixels_left * RUN_INV_THRESH)
                 do_clear = 1;
             }
           }
