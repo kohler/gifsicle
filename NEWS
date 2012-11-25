@@ -1,5 +1,20 @@
 Gifsicle NEWS
 
+Version 1.68   24.Nov.2012
+
+* gifsicle: Alberto Nannini reported some images that are optimized
+  beyond what Gifsicle can do. In fact, Gifsicle's GIF writer was
+  limited enough that even when running without optimization, it
+  seriously expanded the input images. Some improvements to Gifsicle's
+  writing procedure avoid this problem; now `gifsicle IMAGE` will
+  produce large results less often, and when it does generate larger
+  results, they're larger by hundreds of bytes, not hundreds of
+  thousands. However, due to restrictions in the current optimizer (and
+  on my time), I was unable to improve `gifsicle -O3`'s handling of
+  these images. The optimizer that produced the images must be doing
+  something pretty clever. (Is it SuperGIF?)
+
+
 Version 1.67   5.May.2012
 
 * gifsicle: Frame specifications like "#2-0" are allowed; they insert
