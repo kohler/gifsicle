@@ -113,7 +113,7 @@ static void
 memory_byte_putter(uint8_t b, Gif_Writer *grr)
 {
   if (grr->pos >= grr->cap) {
-    grr->cap *= 2;
+    grr->cap = (grr->cap ? grr->cap * 2 : 1024);
     Gif_ReArray(grr->v, uint8_t, grr->cap);
   }
   if (grr->v) {
@@ -125,8 +125,8 @@ memory_byte_putter(uint8_t b, Gif_Writer *grr)
 static void
 memory_block_putter(const uint8_t *data, uint16_t len, Gif_Writer *grr)
 {
-  if (grr->pos + len >= grr->cap) {
-    grr->cap *= 2;
+  while (grr->pos + len >= grr->cap) {
+    grr->cap = (grr->cap ? grr->cap * 2 : 1024);
     Gif_ReArray(grr->v, uint8_t, grr->cap);
   }
   if (grr->v) {
@@ -454,8 +454,7 @@ write_compressed_data(Gif_Image *gfi,
 
 
 static int
-calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi,
-                        const Gif_Writer *grr)
+calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
 {
   int colors_used = -1, min_code_bits, i;
 
@@ -495,11 +494,9 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi,
   }
 
   if ((grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
-      && gfi->compressed && gfi->compressed[0] != min_code_bits) {
+      && gfi->compressed && gfi->compressed[0] != min_code_bits)
     /* if compressed image disagrees with careful min_code_bits, recompress */
-    if (Gif_UncompressImage(gfi))
-      Gif_FullCompressImage(gfs, gfi, &grr->gcinfo);
-  }
+    Gif_ReleaseUncompressedImage(gfi);
 
   return min_code_bits;
 }
@@ -524,9 +521,8 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
 
   gfc_init(&gfc);
 
-  grr.v = Gif_NewArray(uint8_t, 1024);
-  grr.pos = 0;
-  grr.cap = 1024;
+  grr.v = NULL;
+  grr.pos = grr.cap = 0;
   grr.byte_putter = memory_byte_putter;
   grr.block_putter = memory_block_putter;
   if (gcinfo)
@@ -537,10 +533,10 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   grr.local_size = get_color_table_size(gfs, gfi, &grr);
   grr.errors = 0;
 
-  if (!gfc.nodes || !gfc.links || !grr.v)
+  if (!gfc.nodes || !gfc.links)
     goto done;
 
-  min_code_bits = calculate_min_code_bits(gfs, gfi, &grr);
+  min_code_bits = calculate_min_code_bits(gfi, &grr);
   ok = write_compressed_data(gfi, min_code_bits, &gfc, &grr);
 
   if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
@@ -657,7 +653,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
 
   /* calculate min_code_bits here (because calculation may involve
      recompression, if GIF_WRITE_CAREFUL_MIN_CODE_SIZE is true) */
-  min_code_bits = calculate_min_code_bits(gfs, gfi, grr);
+  min_code_bits = calculate_min_code_bits(gfi, grr);
 
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
