@@ -250,6 +250,7 @@ struct Gif_Record {
 #define GIF_WRITE_CAREFUL_MIN_CODE_SIZE	1
 #define GIF_WRITE_EAGER_CLEAR		2
 #define GIF_WRITE_OPTIMIZE		4
+#define GIF_WRITE_SHRINK		8
 
 Gif_Stream *	Gif_ReadFile(FILE *);
 Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,

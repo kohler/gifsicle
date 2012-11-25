@@ -465,10 +465,6 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
     else if (grr->global_size > 0)
       colors_used = grr->global_size;
 
-  } else if (gfi->compressed) {
-    /* take m_c_b from compressed image */
-    colors_used = 1 << gfi->compressed[0];
-
   } else if (gfi->img) {
     /* calculate m_c_b from uncompressed data */
     int x, y, width = gfi->width, height = gfi->height;
@@ -480,6 +476,10 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
 	  colors_used = *data;
     }
     colors_used++;
+
+  } else if (gfi->compressed) {
+    /* take m_c_b from compressed image */
+    colors_used = 1 << gfi->compressed[0];
 
   } else {
     /* should never happen */
@@ -493,17 +493,31 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
     i *= 2;
   }
 
-  if ((grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
-      && gfi->compressed && gfi->compressed[0] != min_code_bits)
-    /* if compressed image disagrees with careful min_code_bits, recompress */
-    Gif_ReleaseUncompressedImage(gfi);
-
   return min_code_bits;
 }
 
 
 static int get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi,
 				Gif_Writer *grr);
+
+static void
+save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
+{
+  if (!(grr->gcinfo.flags & GIF_WRITE_SHRINK)
+      || (ok && (!gfi->compressed || gfi->compressed_len > grr->pos))) {
+    if (gfi->compressed)
+      (*gfi->free_compressed)((void *) gfi->compressed);
+    if (ok) {
+      gfi->compressed = grr->v;
+      gfi->compressed_len = grr->pos;
+      gfi->free_compressed = Gif_DeleteArrayFunc;
+      grr->v = 0;
+      grr->cap = 0;
+    } else
+      gfi->compressed = 0;
+  }
+  grr->pos = 0;
+}
 
 int
 Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
@@ -513,11 +527,6 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   uint8_t min_code_bits;
   Gif_Writer grr;
   Gif_CodeTable gfc;
-
-  if (gfi->compressed && gfi->free_compressed) {
-    (*gfi->free_compressed)((void *)gfi->compressed);
-    gfi->compressed = 0;
-  }
 
   gfc_init(&gfc);
 
@@ -533,38 +542,26 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   grr.local_size = get_color_table_size(gfs, gfi, &grr);
   grr.errors = 0;
 
-  if (!gfc.nodes || !gfc.links)
+  if (!gfc.nodes || !gfc.links) {
+    if (!(grr.gcinfo.flags & GIF_WRITE_SHRINK))
+      Gif_ReleaseCompressedImage(gfi);
     goto done;
+  }
 
   min_code_bits = calculate_min_code_bits(gfi, &grr);
   ok = write_compressed_data(gfi, min_code_bits, &gfc, &grr);
+  save_compression_result(gfi, &grr, ok);
 
   if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
       == GIF_WRITE_OPTIMIZE
       && grr.cleared && ok) {
-    uint8_t *old_v = grr.v;
-    uint32_t old_pos = grr.pos;
-    grr.v = Gif_NewArray(uint8_t, grr.cap);
-    grr.pos = 0;
-    grr.gcinfo.flags = grr.gcinfo.flags | GIF_WRITE_EAGER_CLEAR;
-    if (grr.v && write_compressed_data(gfi, min_code_bits, &gfc, &grr)
-	&& grr.pos < old_pos) {
-      Gif_DeleteArray(old_v);
-      goto done;
-    }
-    Gif_DeleteArray(grr.v);
-    grr.v = old_v;
-    grr.pos = old_pos;
+    grr.gcinfo.flags |= GIF_WRITE_EAGER_CLEAR | GIF_WRITE_SHRINK;
+    if (write_compressed_data(gfi, min_code_bits, &gfc, &grr))
+      save_compression_result(gfi, &grr, 1);
   }
 
  done:
-  if (!ok) {
-    Gif_DeleteArray(grr.v);
-    grr.v = 0;
-  }
-  gfi->compressed = grr.v;
-  gfi->compressed_len = grr.pos;
-  gfi->free_compressed = Gif_DeleteArrayFunc;
+  Gif_DeleteArray(grr.v);
   Gif_DeleteArray(gfc.nodes);
   Gif_DeleteArray(gfc.links);
   return grr.v != 0;
@@ -658,7 +655,9 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
   /* use existing compressed data if it exists. This will tend to whip
      people's asses who uncompress an image, keep the compressed data around,
      but modify the uncompressed data anyway. That sucks. */
-  if (gfi->compressed) {
+  if (gfi->compressed
+      && (!(grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
+          || gfi->compressed[0] == min_code_bits)) {
     uint8_t *compressed = gfi->compressed;
     uint32_t compressed_len = gfi->compressed_len;
     while (compressed_len > 0) {
