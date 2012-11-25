@@ -395,7 +395,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
     if (Gif_UncompressImage(gfi))
-      Gif_FullCompressImage(gfs, gfi, grr->gcinfo.flags);
+      Gif_FullCompressImage(gfs, gfi, &grr->gcinfo);
   }
 
   return min_code_bits;
@@ -430,7 +430,8 @@ write_image_data(Gif_Image *gfi, uint8_t min_code_bits,
 static int get_color_table_size(Gif_Stream *, Gif_Image *, Gif_Writer *);
 
 int
-Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi, Gif_CompressInfo *gcinfo)
+Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
+                      const Gif_CompressInfo *gcinfo)
 {
   int ok = 0;
   uint8_t min_code_bits;
@@ -771,7 +772,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
 
 int
-Gif_FullWriteFile(Gif_Stream *gfs, Gif_CompressInfo *gcinfo, FILE *f)
+Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo, FILE *f)
 {
   Gif_Writer grr;
   grr.f = f;
