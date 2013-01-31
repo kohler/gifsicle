@@ -105,7 +105,7 @@ file_byte_putter(uint8_t b, Gif_Writer *grr)
 static void
 file_block_putter(const uint8_t *block, uint16_t size, Gif_Writer *grr)
 {
-  if (fwrite(block, 1, size, grr->f) != size)
+  if (fwrite(block, 1, size, grr->f) != (size_t) size)
     grr->errors = 1;
 }
 
@@ -228,7 +228,7 @@ static inline const uint8_t *
 gif_imageline(Gif_Image *gfi, unsigned pos)
 {
   unsigned y = pos / gfi->width, x = pos - y * gfi->width;
-  if (y == gfi->height)
+  if (y == (unsigned) gfi->height)
     return NULL;
   else if (!gfi->interlace)
     return gfi->img[y] + x;
@@ -434,8 +434,8 @@ write_compressed_data(Gif_Image *gfi,
 
   /* Output memory buffer to stream. */
   {
-    bufpos = (bufpos + 7) >> 3;
     unsigned outpos = 0;
+    bufpos = (bufpos + 7) >> 3;
     while (outpos < bufpos) {
       unsigned w = (bufpos - outpos > 255 ? 255 : bufpos - outpos);
       gifputbyte(w, grr);
