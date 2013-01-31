@@ -214,6 +214,7 @@ Gt_ColorTransform *append_color_change
 
 void	pipe_color_transformer(Gif_Colormap *, void *);
 
+void	combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi);
 int	crop_image(Gif_Image *, Gt_Crop *, int preserve_total_crop);
 
 void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);

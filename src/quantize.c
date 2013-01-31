@@ -1014,6 +1014,8 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
      only that subset, just as if we'd piped the output of 'gifsicle
      --use-colormap=X' through 'gifsicle' another time. */
   gfs->global = Gif_CopyColormap(new_cm);
+  for (j = 0; j < new_cm->ncol; ++j)
+      gfs->global->col[j].haspixel = 0;
   if (compress_new_cm) {
     /* only bother to recompress if we'll get anything out of it */
     compress_new_cm = 0;

@@ -60,14 +60,22 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
     if (nleft == 0)
         return;
 
-    if (Gif_UncompressImage(gfi) == 2)
+    if (gfi->img || Gif_UncompressImage(gfi) == 2)
         compress_immediately = 0;
 
     /* Loop over every pixel (until we've seen all colors) */
-    l = crop ? crop->x : 0;
-    t = crop ? crop->y : 0;
-    r = crop ? l + crop->w : gfi->width;
-    b = crop ? t + crop->h : gfi->height;
+    if (crop) {
+	Gt_Crop c;
+	combine_crop(&c, crop, gfi);
+	l = c.x;
+	t = c.y;
+	r = l + c.w;
+	b = t + c.h;
+    } else {
+	l = t = 0;
+	r = gfi->width;
+	b = gfi->height;
+    }
 
     for (j = t; j != b; ++j) {
         uint8_t *data = gfi->img[j] + l;

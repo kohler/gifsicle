@@ -204,53 +204,60 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
  * crop image; returns true if the image exists
  **/
 
+void
+combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi)
+{
+    dstcrop->x = srccrop->x - gfi->left;
+    dstcrop->y = srccrop->y - gfi->top;
+    dstcrop->w = srccrop->w;
+    dstcrop->h = srccrop->h;
+
+    /* Check that the rectangle actually intersects with the image. */
+    if (dstcrop->x < 0)
+	dstcrop->w += dstcrop->x, dstcrop->x = 0;
+    if (dstcrop->y < 0)
+	dstcrop->h += dstcrop->y, dstcrop->y = 0;
+    if (dstcrop->x + dstcrop->w > gfi->width)
+	dstcrop->w = gfi->width - dstcrop->x;
+    if (dstcrop->y + dstcrop->h > gfi->height)
+	dstcrop->h = gfi->height - dstcrop->y;
+}
+
 int
 crop_image(Gif_Image *gfi, Gt_Crop *crop, int preserve_total_crop)
 {
-  int x, y, w, h, j;
-  uint8_t **img;
+    Gt_Crop c;
+    int j;
+    uint8_t **img;
 
-  x = crop->x - gfi->left;
-  y = crop->y - gfi->top;
-  w = crop->w;
-  h = crop->h;
+    combine_crop(&c, crop, gfi);
 
-  /* Check that the rectangle actually intersects with the image. */
-  if (x < 0)
-      w += x, x = 0;
-  if (y < 0)
-      h += y, y = 0;
-  if (x + w > gfi->width)
-      w = gfi->width - x;
-  if (y + h > gfi->height)
-      h = gfi->height - y;
+  if (c.w > 0 && c.h > 0) {
+    img = Gif_NewArray(uint8_t *, c.h + 1);
+    for (j = 0; j < c.h; j++)
+      img[j] = gfi->img[c.y + j] + c.x;
+    img[c.h] = 0;
 
-  if (w > 0 && h > 0) {
-    img = Gif_NewArray(uint8_t *, h + 1);
-    for (j = 0; j < h; j++)
-      img[j] = gfi->img[y + j] + x;
-    img[h] = 0;
-
-    gfi->left += x - crop->left_offset;
-    gfi->top += y - crop->top_offset;
+    gfi->left += c.x - crop->left_offset;
+    gfi->top += c.y - crop->top_offset;
 
   } else if (preserve_total_crop) {
-    w = h = 1;
-    img = Gif_NewArray(uint8_t *, h + 1);
+    c.w = c.h = 1;
+    img = Gif_NewArray(uint8_t *, c.h + 1);
     img[0] = gfi->img[0];
     img[1] = 0;
     gfi->transparent = img[0][0];
 
   } else {
     /* Empty image */
-    w = h = 0;
+    c.w = c.h = 0;
     img = 0;
   }
 
   Gif_DeleteArray(gfi->img);
   gfi->img = img;
-  gfi->width = w;
-  gfi->height = h;
+  gfi->width = c.w;
+  gfi->height = c.h;
   return gfi->img != 0;
 }
 

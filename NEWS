@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.70   31.Jan.2013
+
+* Fix `--crop` bug introduced in version 1.68, visible in images
+  containing local color tables. Bug reported by Alberto Nannini.
+
+
 Version 1.69   31.Jan.2013
 
 * Minor bug fix release.

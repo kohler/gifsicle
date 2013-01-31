@@ -325,7 +325,6 @@ Gif_CopyStreamImages(Gif_Stream *gfs)
 Gif_Colormap *
 Gif_CopyColormap(Gif_Colormap *src)
 {
-  int i;
   Gif_Colormap *dest;
   if (!src)
     return 0;
@@ -334,11 +333,7 @@ Gif_CopyColormap(Gif_Colormap *src)
   if (!dest)
     return 0;
 
-  for (i = 0; i < src->ncol; i++) {
-    dest->col[i] = src->col[i];
-    dest->col[i].haspixel = 0;
-  }
-
+  memcpy(dest->col, src->col, sizeof(src->col[0]) * src->ncol);
   return dest;
 }
 
