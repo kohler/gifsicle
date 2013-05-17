@@ -71,7 +71,7 @@ to alter its inputs by giving it command line options. The
 .Op \-i
 option, for example, tells it to interlace its input files:
 .Es
-\fBgifsicle -i < pic.gif > interlaced-pic.gif\fR
+\fBgifsicle \-i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
 To modify GIF files in place, you should use the
@@ -1184,7 +1184,7 @@ looks like the superposition of the two inputs\*Euse
 .B gifsicle
 twice:
 .Es
-\fBgifsicle bottom.gif top.gif | gifsicle -U "#1" > result.gif\fR
+\fBgifsicle bottom.gif top.gif | gifsicle \-U "#1" > result.gif\fR
 .Ee
 '
 .SH BUGS
