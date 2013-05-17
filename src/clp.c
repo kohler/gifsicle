@@ -2,18 +2,22 @@
 /* clp.c - Complete source code for CLP.
  * This file is part of CLP, the command line parser package.
  *
- * Copyright (c) 1997-2012 Eddie Kohler, ekohler@gmail.com
+ * Copyright (c) 1997-2013 Eddie Kohler, ekohler@gmail.com
+ *
+ * CLP is free software. It is distributed under the GNU General Public
+ * License, Version 2, or, alternatively and at your discretion, under the
+ * more permissive (BSD-like) Click LICENSE file as described below.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, subject to the conditions
- * listed in the Click LICENSE file, which is available in full at
- * http://www.pdos.lcs.mit.edu/click/license.html. The conditions include: you
- * must preserve this copyright notice, and you cannot mention the copyright
- * holders in advertising related to the Software without their permission.
- * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Click LICENSE file; the license in that file is
- * legally binding. */
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, subject to the
+ * conditions listed in the Click LICENSE file, which is available in full at
+ * http://github.com/kohler/click/blob/master/LICENSE. The conditions
+ * include: you must preserve this copyright notice, and you cannot mention
+ * the copyright holders in advertising related to the Software without
+ * their permission. The Software is provided WITHOUT ANY WARRANTY, EXPRESS
+ * OR IMPLIED. This notice is a summary of the Click LICENSE file; the
+ * license in that file is binding. */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

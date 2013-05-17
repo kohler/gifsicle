@@ -4,7 +4,7 @@
    This file is part of gifview, in the gifsicle package.
 
    Gifview is free software. It is distributed under the GNU Public License,
-   version 2 or later; you can copy, distribute, or alter it at will, as long
+   version 2; you can copy, distribute, or alter it at will, as long
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 

@@ -6,11 +6,11 @@ extern "C" {
 #endif
 
 /* gifx.h - Functions to turn GIFs in memory into X Pixmaps.
-   Copyright (C) 1997-2011 Eddie Kohler, kohler@cs.ucla.edu
+   Copyright (C) 1997-2013 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software*. It is distributed under the GNU
-   General Public License, version 2 or later; you can copy, distribute, or
+   General Public License, version 2; you can copy, distribute, or
    alter it at will, as long as this notice is kept intact and this source
    code is made available. There is no warranty, express or implied. */
 
