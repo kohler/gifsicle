@@ -340,9 +340,10 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  * scale
  **/
 
-#define SCALE(d)	((d) << 10)
-#define UNSCALE(d)	((d) >> 10)
-#define SCALE_FACTOR	SCALE(1)
+#define SCALE(d)		((d) << 10)
+#define UNSCALE_NOROUND(d)	((d) >> 10)
+#define UNSCALE(d)		UNSCALE_NOROUND((d) + (1 << 9))
+#define SCALE_FACTOR		SCALE(1)
 
 void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
@@ -378,7 +379,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 
   if (new_width <= 0) new_width = 1, new_right = new_left + 1;
   if (new_height <= 0) new_height = 1, new_bottom = new_top + 1;
-  if (new_width > UNSCALE(INT_MAX) || new_height > UNSCALE(INT_MAX))
+  if (new_width > UNSCALE_NOROUND(INT_MAX) || new_height > UNSCALE_NOROUND(INT_MAX))
     fatal_error("new image size is too big for me to handle");
 
   if (was_compressed)
@@ -445,17 +446,24 @@ resize_stream(Gif_Stream *gfs, int new_width, int new_height, int fit)
   if (new_width <= 0 && new_height <= 0)
     /* do nothing */
     return;
-  else if (new_width <= 0)
-    new_width = (int) (gfs->screen_width * (xfactor = yfactor));
-  else if (new_height <= 0)
-    new_height = (int) (gfs->screen_height * (yfactor = xfactor));
+  else if (new_width <= 0) {
+    xfactor = yfactor;
+    new_width = (int) (gfs->screen_width * xfactor + 0.5);
+  } else if (new_height <= 0) {
+    yfactor = xfactor;
+    new_height = (int) (gfs->screen_height * yfactor + 0.5);
+  }
+
   if (fit && new_width >= gfs->screen_width && new_height >= gfs->screen_height)
     /* do nothing */
     return;
-  else if (fit && xfactor < yfactor)
-    new_height = (int) (gfs->screen_height * (yfactor = xfactor));
-  else if (fit && yfactor < xfactor)
-    new_width = (int) (gfs->screen_width * (xfactor = yfactor));
+  else if (fit && xfactor < yfactor) {
+    yfactor = xfactor;
+    new_height = (int) (gfs->screen_height * yfactor + 0.5);
+  } else if (fit && yfactor < xfactor) {
+    xfactor = yfactor;
+    new_width = (int) (gfs->screen_width * xfactor + 0.5);
+  }
 
   for (i = 0; i < gfs->nimages; i++)
     scale_image(gfs, gfs->images[i], xfactor, yfactor);
