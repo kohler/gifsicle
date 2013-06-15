@@ -317,13 +317,18 @@ static void redundant_option_warning(const char *);
 static void
 set_mode(int newmode)
 {
-  if (mode == BLANK_MODE)
-    mode = newmode;
-  else if (mode == newmode)
-    /* do nothing */;
-  else if (newmode == INFOING)
+  if (mode == BLANK_MODE) {
+    if (newmode != BLANK_MODE)
+      mode = newmode;
+    else if (infoing == 1)
+      mode = INFOING;
+    else
+      mode = MERGING;
+  }
+
+  if (mode != INFOING && infoing == 1)
     fatal_error("'--info' suppresses normal output, can't use with an\n  output mode like '--merge' or '--batch'.\n  (Try '-II', which doesn't suppress normal output.)");
-  else
+  if (newmode != BLANK_MODE && newmode != mode)
     fatal_error("too late to change modes");
 }
 
@@ -334,8 +339,7 @@ set_frame_change(int kind)
   int i;
   Gt_Frameset *fset;
 
-  if (mode == BLANK_MODE)
-    set_mode(infoing == 1 ? INFOING : MERGING);
+  set_mode(BLANK_MODE);
   if (mode < DELETING && frames_done) {
     fatal_error("frame selection and frame changes don't mix");
     return;
@@ -586,8 +590,7 @@ input_stream(const char *name)
     combine_output_options();
   files_given++;
 
-  if (infoing == 1)
-    set_mode(INFOING);
+  set_mode(BLANK_MODE);
 
   f = open_giffile(name);
   if (!f)
@@ -651,8 +654,7 @@ input_stream(const char *name)
   input = gfs;
 
   /* Processing when we've got a new input frame */
-  if (mode == BLANK_MODE)
-    set_mode(MERGING);
+  set_mode(BLANK_MODE);
 
   if (active_output_data.output_name == 0) {
     /* Don't override explicit output names.
