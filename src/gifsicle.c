@@ -385,7 +385,7 @@ set_frame_change(int kind)
   }
 }
 
-void
+static void
 frame_change_done(void)
 {
   if (nested_mode)
@@ -397,7 +397,7 @@ frame_change_done(void)
 }
 
 
-void
+static void
 show_frame(int imagenumber, int usename)
 {
   Gif_Image *gfi;
@@ -412,15 +412,12 @@ show_frame(int imagenumber, int usename)
    case INSERTING:
    case EXPLODING:
    case INFOING:
+   case BATCHING:
     if (!frames_done)
       clear_frameset(frames, first_input_frame);
     frame = add_frame(frames, -1, input, gfi);
     if (usename)
       frame->explode_by_name = 1;
-    break;
-
-   case BATCHING:
-    add_frame(frames, first_input_frame + imagenumber, input, gfi);
     break;
 
    case DELETING:
