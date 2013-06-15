@@ -5,7 +5,7 @@ SUBDIRS = src
 
 man_MANS = gifsicle.1 @OTHERMANS@
 
-EXTRA_DIST = COPYING gifsicle.spec \
+EXTRA_DIST = COPYING README.md gifsicle.spec \
 	include/lcdf/clp.h include/lcdf/inttypes.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
@@ -24,7 +24,6 @@ versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" $(top_srcdir)/gifsicle.1 $(top_srcdir)/gifview.1 $(top_srcdir)/gifdiff.1
 	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" $(top_srcdir)/gifsicle.spec
 	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" $(top_srcdir)/src/win32cfg.h
-	perl -pi -e "s/GIFSICLE [\d.]+/GIFSICLE $(VERSION)/;" $(top_srcdir)/README
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \

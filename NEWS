@@ -1,6 +1,8 @@
 Gifsicle NEWS
 
-Version 1.71
+Version 1.71   15.Jun.2013
+
+* Avoid rounding errors in `--resize`. Reported by Paul Kane.
 
 * Report error when `-I` is combined with `-b`. Reported by Frank
   Dana.
