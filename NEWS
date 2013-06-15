@@ -1,5 +1,14 @@
 Gifsicle NEWS
 
+Version 1.71
+
+* Report error when `-I` is combined with `-b`. Reported by Frank
+  Dana.
+
+* Frame selections also apply in batch mode. Reported by LOU Yu Hong
+  Leo.
+
+
 Version 1.70   31.Jan.2013
 
 * Fix `--crop` bug introduced in version 1.68, visible in images
