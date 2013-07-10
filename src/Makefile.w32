@@ -2,7 +2,7 @@
 # Updates by Eddie Kohler <ekohler@gmail.com> and
 # Steven Marthouse <comments@vrml3d.com>
 
-# This makefile will work under Win32 (95/98/NT/whatever).
+# This makefile will work under Win32 (95/98/NT/whatever) or Win64.
 # It should work out-of-the-box with Visual C++ 5.
 #
 # C:\GIFSICLE> nmake -f Makefile.w32
@@ -27,7 +27,7 @@ GIFWRITE_OBJ = gifwrite.obj
 SETARGV_OBJ = $(MSDEVDIR)\lib\setargv.obj
 
 CC = cl
-CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -DWIN32 -D_CONSOLE /W3 /ML -O2
+CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /ML -O2
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
 	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \

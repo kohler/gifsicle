@@ -167,19 +167,10 @@ fi
 if test $have_inttypes_h = yes -o "$ac_cv_uint_t" = yes; then
     :
 elif test "$ac_cv_u_int_t" = yes; then
-    AC_DEFINE(HAVE_U_INT_TYPES, 1, [Define if you have u_intXX_t types but not uintXX_t types.])
-else
-    AC_MSG_WARN([
-=========================================
-
-Neither uint32_t nor u_int32_t defined by <inttypes.h> or <sys/types.h>!
-Assuming "short" has 16 bits and "int" has 32 bits.
-
-=========================================])
-    AC_DEFINE(HAVE_FAKE_INT_TYPES, 1, [Define if intXX_t types are not available.])
+    AC_DEFINE([HAVE_U_INT_TYPES], [1], [Define if you have u_intXX_t types but not uintXX_t types.])
 fi
 
-AC_CHECK_TYPES(uintptr_t, [], [],
+AC_CHECK_TYPES([uintptr_t], [], [],
 [#if HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
@@ -188,9 +179,9 @@ AC_CHECK_TYPES(uintptr_t, [], [],
 #endif
 ])
 
-AC_CHECK_SIZEOF(void *)
-AC_CHECK_SIZEOF(unsigned long)
-AC_CHECK_SIZEOF(unsigned int)
+AC_CHECK_SIZEOF([unsigned int])
+AC_CHECK_SIZEOF([unsigned long])
+AC_CHECK_SIZEOF([void *])
 
 
 dnl

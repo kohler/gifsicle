@@ -1,5 +1,6 @@
 /* Hand-edited file based on config.h.in */
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
 #ifndef GIFSICLE_CONFIG_H
 #define GIFSICLE_CONFIG_H
 
@@ -11,9 +12,6 @@
 
 /* Define if GIF LZW compression is off. */
 /* #undef GIF_UNGIF */
-
-/* Define if intXX_t types are not available. */
-#define HAVE_FAKE_INT_TYPES 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 /* #undef HAVE_INTTYPES_H */
@@ -70,16 +68,19 @@
 #define PACKAGE_BUGREPORT ""
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME ""
+#define PACKAGE_NAME "gifsicle"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING ""
+#define PACKAGE_STRING "gifsicle 1.71"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME ""
+#define PACKAGE_TARNAME "gifsicle"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION ""
+#define PACKAGE_VERSION "1.71"
 
 /* Pathname separator character ('/' on Unix). */
 #define PATHNAME_SEPARATOR '\\'
@@ -87,14 +88,22 @@
 /* Define to a function that returns a random number. */
 #define RANDOM rand
 
-/* The size of a `unsigned int', as computed by sizeof. */
+/* The size of `unsigned int', as computed by sizeof. */
 #define SIZEOF_UNSIGNED_INT 4
 
-/* The size of a `unsigned long', as computed by sizeof. */
+/* The size of `unsigned long', as computed by sizeof. */
+#ifdef _WIN64
+#define SIZEOF_UNSIGNED_LONG 8
+#else
 #define SIZEOF_UNSIGNED_LONG 4
+#endif
 
-/* The size of a `void *', as computed by sizeof. */
+/* The size of `void *', as computed by sizeof. */
+#ifdef _WIN64
+#define SIZEOF_VOID_P 8
+#else
 #define SIZEOF_VOID_P 4
+#endif
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -102,16 +111,18 @@
 /* Version number of package */
 #define VERSION "1.71 (Windows)"
 
-/* Define if the X Window System is missing or not being used.  */
+/* Define if X is not available. */
 #define X_DISPLAY_MISSING 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
 
-/* Define as __inline if that's what the C compiler calls it, or to nothing if
-   it is not supported. */
-#ifndef inline
-# define inline __inline
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+# ifndef inline
+#  define inline __inline
+# endif
 #endif
 
 /* Windows doesn't have popen, but it does have _popen. */

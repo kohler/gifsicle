@@ -23,7 +23,7 @@ srclinks:
 versionize:
 	perl -pi -e "s/^\\.ds V.*/.ds V $(VERSION)/;" $(top_srcdir)/gifsicle.1 $(top_srcdir)/gifview.1 $(top_srcdir)/gifdiff.1
 	perl -pi -e "s/^Version:(\s+).*/Version:"'$$'"{1}$(VERSION)/; s/$(PACKAGE)-[\w.]+\.tar\.gz/$(PACKAGE)-$(VERSION).tar.gz/;" $(top_srcdir)/gifsicle.spec
-	perl -pi -e "s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" $(top_srcdir)/src/win32cfg.h
+	perl -pi -e "s/gifsicle [\d.]+/gifsicle $(VERSION)/; s/VERSION \"[\w.]+/VERSION \"$(VERSION)/;" $(top_srcdir)/src/win32cfg.h
 
 rpm: dist
 	buildarch=`rpm --showrc | awk '/^build arch/ { print $$4; }'` ; \
