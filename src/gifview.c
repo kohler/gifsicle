@@ -167,6 +167,7 @@ static int unoptimizing = 0;
 static int install_colormap = 0;
 static int interactive = 1;
 static int min_delay = 0;
+static int fallback_delay = 0;
 
 static struct timeval preparation_time;
 
@@ -185,6 +186,7 @@ static struct timeval preparation_time;
 #define NEW_WINDOW_OPT		311
 #define TITLE_OPT		312
 #define MIN_DELAY_OPT		313
+#define FALLBACK_DELAY_OPT	314
 
 #define WINDOW_TYPE		(Clp_ValFirstUser)
 
@@ -198,6 +200,7 @@ const Clp_Option options[] = {
   { "interactive", 'e', INTERACTIVE_OPT, 0, Clp_Negate },
   { "help", 0, HELP_OPT, 0, 0 },
   { "min-delay", 0, MIN_DELAY_OPT, Clp_ValInt, Clp_Negate },
+  { "fallback-delay", 0, FALLBACK_DELAY_OPT, Clp_ValInt, Clp_Negate },
   { "name", 0, NAME_OPT, Clp_ValString, 0 },
   { "title", 'T', TITLE_OPT, Clp_ValString, 0 },
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
@@ -271,6 +274,7 @@ Options are:\n\
   -i, --install-colormap        Use a private colormap.\n\
   --bg, --background COLOR      Use COLOR for transparent pixels.\n\
       --min-delay DELAY         Set minimum frame delay to DELAY/100 sec.\n\
+      --fallback-delay DELAY    Set fallback frame delay to DELAY/100 sec.\n\
   +e, --no-interactive          Ignore buttons and keystrokes.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
@@ -631,6 +635,8 @@ schedule_next_frame(Gt_Viewer *viewer)
   struct timeval interval;
   int delay = viewer->im[viewer->im_pos]->delay;
   int next_pos = viewer->im_pos + 1;
+  if (delay < 1)
+    delay = fallback_delay;
   if (delay < min_delay)
     delay = min_delay;
   if (next_pos == viewer->nim)
@@ -1311,6 +1317,10 @@ main(int argc, char *argv[])
 
     case MIN_DELAY_OPT:
       min_delay = clp->negated ? 0 : clp->val.i;
+      break;
+
+    case FALLBACK_DELAY_OPT:
+      fallback_delay = clp->negated ? 0 : clp->val.i;
       break;
 
      case VERSION_OPT:
