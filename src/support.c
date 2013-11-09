@@ -1654,7 +1654,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   if (merger[0]->crop && merger[0]->crop == merger[nmerger - 1]->crop) {
     /* Adjust positions */
     int l = 0x7FFFFFFF, t = 0x7FFFFFFF;
-    for (i = 0; i < dest->nimages && l && t; i++) {
+    for (i = 0; i < dest->nimages && (l || t); i++) {
       Gif_Image *gfi = dest->images[i];
       if (gfi->left < l) l = gfi->left;
       if (gfi->top < t) t = gfi->top;

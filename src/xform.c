@@ -217,10 +217,14 @@ combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi)
 	dstcrop->w += dstcrop->x, dstcrop->x = 0;
     if (dstcrop->y < 0)
 	dstcrop->h += dstcrop->y, dstcrop->y = 0;
-    if (dstcrop->x + dstcrop->w > gfi->width)
+    if (dstcrop->w > 0 && dstcrop->x + dstcrop->w > gfi->width)
 	dstcrop->w = gfi->width - dstcrop->x;
-    if (dstcrop->y + dstcrop->h > gfi->height)
+    if (dstcrop->h > 0 && dstcrop->y + dstcrop->h > gfi->height)
 	dstcrop->h = gfi->height - dstcrop->y;
+    if (dstcrop->w < 0)
+        dstcrop->w = 0;
+    if (dstcrop->h < 0)
+        dstcrop->h = 0;
 }
 
 int
