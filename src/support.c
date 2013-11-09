@@ -1656,8 +1656,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     int l = 0x7FFFFFFF, t = 0x7FFFFFFF;
     for (i = 0; i < dest->nimages && (l || t); i++) {
       Gif_Image *gfi = dest->images[i];
-      if (gfi->left < l) l = gfi->left;
-      if (gfi->top < t) t = gfi->top;
+      if (gfi->left < l)
+        l = gfi->left;
+      if (gfi->top < t)
+        t = gfi->top;
     }
     for (i = 0; i < dest->nimages; i++) {
       Gif_Image *gfi = dest->images[i];
