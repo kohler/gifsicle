@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.72   9.Nov.2013
+
+* Fix crash bugs on some combinations of `--crop` and `--resize`
+  (prevalent on images whose first frame didn't cover the whole
+  logical screen). Reported by Bryan Stillwell.
+
+
 Version 1.71   15.Jun.2013
 
 * Avoid rounding errors in `--resize`. Reported by Paul Kane.
