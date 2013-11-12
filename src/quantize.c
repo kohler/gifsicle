@@ -1045,14 +1045,23 @@ static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
     }
 
     qsort(&items[l], r - l, sizeof(kd3_item), kd3_item_compars[aindex]);
+
+    /* pick pivot: a color component to split */
     m = l + ((r - l) >> 1);
     while (m > l && items[m].k.a[aindex] == items[m-1].k.a[aindex])
         --m;
+    if (m == l) { /* don't split entirely to the right (infinite loop) */
+        m = l + ((r - l) >> 1);
+        while (m < r && items[m].k.a[aindex] == items[m-1].k.a[aindex])
+            ++m;
+    }
     if (m == l)
         kd3->tree[n].pivot = items[m].k.a[aindex];
     else
         kd3->tree[n].pivot = items[m-1].k.a[aindex]
             + ((items[m].k.a[aindex] - items[m-1].k.a[aindex]) >> 1);
+
+    /* recurse */
     int nl = kd3_build_range(kd3, items, l, m, n+1, depth+1);
     kd3->tree[n].offset = 1+nl;
     int nr = kd3_build_range(kd3, items, m, r, n+1+nl, depth+1);
