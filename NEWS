@@ -1,5 +1,26 @@
 Gifsicle NEWS
 
+Version 1.77
+
+* Major improvements to color selection (important when reducing
+  colormap size). Use gamma-corrected colors in selection and
+  dithering; this greatly improves image quality. Also, when reducing
+  colors with dithering, prefer to select colors that dithering can't
+  approximate.
+
+* Add ordered dithering modes, which avoid animation artifacts. The
+  default ordered dithering mode (`--dither=ordered`) is a novel mode
+  that combines some of the visual advantages of error diffusion with
+  the artifact avoidance of ordered dithering.
+
+* gifview: Improved cache memory management for better animations.
+  Collect memory for old frames based on an explicit --memory-limit
+  (default 40MB).
+
+* gifview: Add `--fallback-delay` option, to specify a fallback delay
+  for frames with delay 0. Thanks to Sung Pae.
+
+
 Version 1.76   20.Nov.2013
 
 * Fix `-O2` crashes introduced with `--resize` improvements. Reported
