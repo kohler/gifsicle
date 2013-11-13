@@ -237,6 +237,14 @@ typedef struct Clp_StringList {
 } Clp_StringList;
 
 
+static const Clp_Option clp_option_sentinel[] = {
+    {"", 0, Clp_NotOption, 0, 0},
+    {"", 0, Clp_Done, 0, 0},
+    {"", 0, Clp_BadOption, 0, 0},
+    {"", 0, Clp_Error, 0, 0}
+};
+
+
 static int parse_string(Clp_Parser *, const char *, int, void *);
 static int parse_int(Clp_Parser *, const char *, int, void *);
 static int parse_bool(Clp_Parser *, const char *, int, void *);
@@ -434,6 +442,18 @@ compare_options(Clp_Parser *clp, const Clp_Option *o1, Clp_InternOption *io1,
     }
 }
 
+static void
+calculate_lmm(Clp_Parser *clp, const Clp_Option *opt, Clp_InternOption *iopt, int nopt)
+{
+    int i, j;
+    for (i = 0; i < nopt; ++i) {
+	iopt[i].lmmpos = iopt[i].lmmneg = 1;
+	iopt[i].lmmpos_short = iopt[i].lmmneg_short = 0;
+	for (j = 0; j < nopt; ++j)
+	    compare_options(clp, &opt[i], &iopt[i], &opt[j], &iopt[j]);
+    }
+}
+
 /** @param argc number of arguments
  * @param argv argument array
  * @param nopt number of option definitions
@@ -480,7 +500,7 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, const Clp_Option *op
     if (!clp || !cli || !iopt || !cli->valtype)
 	goto failed;
 
-    clp->opt = -1;
+    clp->option = &clp_option_sentinel[-Clp_Done];
     clp->negated = 0;
     clp->have_val = 0;
     clp->vstr = 0;
@@ -603,15 +623,9 @@ int
 Clp_SetUTF8(Clp_Parser *clp, int utf8)
 {
     Clp_Internal *cli = clp->internal;
-    int i, j, old_utf8 = cli->utf8;
+    int old_utf8 = cli->utf8;
     cli->utf8 = utf8;
-    for (i = 0; i < cli->nopt; ++i) {
-	cli->iopt[i].lmmpos = cli->iopt[i].lmmneg = 1;
-	cli->iopt[i].lmmpos_short = cli->iopt[i].lmmneg_short = 0;
-	for (j = 0; j < cli->nopt; ++j)
-	    compare_options(clp, &cli->opt[i], &cli->iopt[i],
-			    &cli->opt[j], &cli->iopt[j]);
-    }
+    calculate_lmm(clp, cli->opt, cli->iopt, cli->nopt);
     return old_utf8;
 }
 
@@ -683,7 +697,7 @@ Clp_OptionChar(Clp_Parser *clp, int c)
 int
 Clp_SetOptionChar(Clp_Parser *clp, int c, int type)
 {
-    int i, j, long1pos, long1neg;
+    int i, long1pos, long1neg;
     int old = Clp_OptionChar(clp, c);
     Clp_Internal *cli = clp->internal;
 
@@ -722,13 +736,7 @@ Clp_SetOptionChar(Clp_Parser *clp, int c, int type)
 	/* Must recheck option set */
 	cli->long1pos = long1pos;
 	cli->long1neg = long1neg;
-	for (i = 0; i < cli->nopt; ++i) {
-	    cli->iopt[i].lmmpos = cli->iopt[i].lmmneg = 1;
-	    cli->iopt[i].lmmpos_short = cli->iopt[i].lmmneg_short = 0;
-	    for (j = 0; j < cli->nopt; ++j)
-		compare_options(clp, &cli->opt[i], &cli->iopt[i],
-				&cli->opt[j], &cli->iopt[j]);
-	}
+	calculate_lmm(clp, cli->opt, cli->iopt, cli->nopt);
     }
 
     return old;
@@ -766,7 +774,7 @@ Clp_SetOptions(Clp_Parser *clp, int nopt, const Clp_Option *opt)
 {
     Clp_Internal *cli = clp->internal;
     Clp_InternOption *iopt;
-    int i, j;
+    int i;
     static unsigned opt_generation = 0;
 
     if (nopt > cli->nopt) {
@@ -823,12 +831,7 @@ Clp_SetOptions(Clp_Parser *clp, int nopt, const Clp_Option *opt)
     }
 
     /* Check option set */
-    for (i = 0; i < nopt; ++i) {
-	iopt[i].lmmpos = iopt[i].lmmneg = 1;
-	iopt[i].lmmpos_short = iopt[i].lmmneg_short = 0;
-	for (j = 0; j < nopt; ++j)
-	    compare_options(clp, &opt[i], &iopt[i], &opt[j], &iopt[j]);
-    }
+    calculate_lmm(clp, opt, iopt, nopt);
 
     return 0;
 }
@@ -1180,18 +1183,15 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
     }
 
     if (complain) {
-	const char *complaint;
-	if (ambiguous)
-	    complaint = "ambiguous value %<%s%> for option %<%O%>";
-	else {
-	    complaint = "unknown value %<%s%> for option %<%O%>";
+	const char *complaint = (ambiguous ? "ambiguous" : "invalid");
+	if (!ambiguous) {
 	    ambiguous = sl->nitems_invalid_report;
 	    for (idx = 0; idx < ambiguous; idx++)
 		ambiguous_values[idx] = idx;
 	}
 	return ambiguity_error
 	    (clp, ambiguous, ambiguous_values, sl->items, sl->iopt,
-	     "", complaint, arg);
+	     "", "option %<%O%> value %<%s%> is %s", arg, complaint);
     } else
 	return 0;
 }
@@ -1201,7 +1201,7 @@ static int
 finish_string_list(Clp_Parser *clp, int val_type, int flags,
 		   Clp_Option *items, int nitems, int itemscap)
 {
-    int i, j;
+    int i;
     Clp_StringList *clsl = (Clp_StringList *)malloc(sizeof(Clp_StringList));
     Clp_InternOption *iopt = (Clp_InternOption *)malloc(sizeof(Clp_InternOption) * nitems);
     if (!clsl || !iopt)
@@ -1223,12 +1223,8 @@ finish_string_list(Clp_Parser *clp, int val_type, int flags,
     for (i = 0; i < nitems; i++) {
 	iopt[i].ilong = iopt[i].ipos = 1;
 	iopt[i].ishort = iopt[i].ineg = iopt[i].ilongoff = iopt[i].iprefmatch = 0;
-	iopt[i].lmmpos = 1;
-	iopt[i].lmmpos_short = 0;
     }
-    for (i = 0; i < nitems; i++)
-	for (j = 0; j < nitems; j++)
-	    compare_options(clp, &items[i], &iopt[i], &items[j], &iopt[j]);
+    calculate_lmm(clp, items, iopt, nitems);
 
     if (Clp_AddType(clp, val_type, 0, parse_string_list, clsl) >= 0)
 	return 0;
@@ -1763,8 +1759,10 @@ find_short(Clp_Parser *clp, const char *text)
 
     for (i = 0; i < cli->nopt; i++)
 	if (iopt[i].ishort && opt[i].short_name == c
-	    && (clp->negated ? iopt[i].ineg : iopt[i].ipos))
+            && (!clp->negated || iopt[i].ineg)) {
+            clp->negated = clp->negated || !iopt[i].ipos;
 	    return i;
+        }
 
     return -1;
 }
@@ -1828,8 +1826,9 @@ Clp_Next(Clp_Parser *clp)
     /* Get the next argument or option */
     if (!next_argument(clp, cli->option_processing ? 0 : 2)) {
 	clp->val.s = clp->vstr;
-	clp->opt = clp->have_val ? Clp_NotOption : Clp_Done;
-	return clp->opt;
+	optno = clp->have_val ? Clp_NotOption : Clp_Done;
+	clp->option = &clp_option_sentinel[-optno];
+	return optno;
     }
 
     clp->negated = cli->whole_negated;
@@ -1867,7 +1866,8 @@ Clp_Next(Clp_Parser *clp)
 	    Clp_OptionError(clp, "unrecognized option %<%s%s%>",
 			    cli->option_chars, cli->xtext);
 
-	return (clp->opt = Clp_BadOption);
+	clp->option = &clp_option_sentinel[-Clp_BadOption];
+	return Clp_BadOption;
     }
 
     /* Set the current option */
@@ -1880,20 +1880,27 @@ Clp_Next(Clp_Parser *clp)
 	|| (!cli->iopt[optno].imandatory && !cli->iopt[optno].ioptional)) {
 	if (clp->have_val) {
 	    Clp_OptionError(clp, "%<%O%> can%,t take an argument");
-	    clp->opt = Clp_BadOption;
-	} else
-	    clp->opt = cli->opt[optno].option_id;
-	return clp->opt;
+	    clp->option = &clp_option_sentinel[-Clp_BadOption];
+	    return Clp_BadOption;
+	} else {
+	    clp->option = &cli->opt[optno];
+	    return cli->opt[optno].option_id;
+	}
     }
 
     /* Get an argument if we need one, or if it's optional */
     /* Sanity-check the argument type. */
     opt = &cli->opt[optno];
-    if (opt->val_type <= 0)
-	return (clp->opt = Clp_Error);
+    if (opt->val_type <= 0) {
+	clp->option = &clp_option_sentinel[-Clp_Error];
+	return Clp_Error;
+    }
     vtpos = val_type_binsearch(cli, opt->val_type);
-    if (vtpos == cli->nvaltype || cli->valtype[vtpos].val_type != opt->val_type)
-	return (clp->opt = Clp_Error);
+    if (vtpos == cli->nvaltype
+	|| cli->valtype[vtpos].val_type != opt->val_type) {
+	clp->option = &clp_option_sentinel[-Clp_Error];
+	return Clp_Error;
+    }
 
     /* complain == 1 only if the argument was explicitly given,
        or it is mandatory. */
@@ -1913,16 +1920,15 @@ Clp_Next(Clp_Parser *clp)
 		Clp_OptionError(clp, "%<%O%> requires a non-option argument");
 	    else
 		Clp_OptionError(clp, "%<%O%> requires an argument");
-	    return (clp->opt = Clp_BadOption);
+	    clp->option = &clp_option_sentinel[-Clp_BadOption];
+	    return Clp_BadOption;
 	}
 
     } else if (cli->is_short && !clp->have_val
-	       && cli->xtext[clp_utf8_charlen(cli, cli->xtext)]) {
+	       && cli->xtext[clp_utf8_charlen(cli, cli->xtext)])
 	/* The -[option]argument case:
 	   Assume that the rest of the current string is the argument. */
 	next_argument(clp, 1);
-	complain = 1;
-    }
 
     /* Parse the argument */
     if (clp->have_val) {
@@ -1930,14 +1936,16 @@ Clp_Next(Clp_Parser *clp)
 	if (atr->func(clp, clp->vstr, complain, atr->user_data) <= 0) {
 	    /* parser failed */
 	    clp->have_val = 0;
-	    if (complain)
-		return (clp->opt = Clp_BadOption);
-	    else
+	    if (cli->iopt[optno].imandatory) {
+		clp->option = &clp_option_sentinel[-Clp_BadOption];
+		return Clp_BadOption;
+	    } else
 		Clp_RestoreParser(clp, &clpsave);
 	}
     }
 
-    return (clp->opt = opt->option_id);
+    clp->option = opt;
+    return opt->option_id;
 }
 
 
