@@ -545,9 +545,6 @@ get_used_colors(Gif_OptData *bounds, int use_transparency)
 	  need[i] = REQUIRED;
       count[REQUIRED] += count[REPLACE_TRANSP];
     }
-    /* If too many "actually used" pixels, fail miserably */
-    if (count[REQUIRED] > 256)
-      fatal_error("more than 256 colors required in a frame", count[REQUIRED]);
     /* If we can afford to have transparency, and we want to use it, then
        include it */
     if (count[REQUIRED] < 256 && use_transparency && !need[TRANSP]) {
@@ -572,6 +569,7 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
   Gif_Image *last_gfi;
   int next_data_valid;
   uint16_t *previous_data = 0;
+  int local_color_tables = 0;
 
   screen_size = screen_width * screen_height;
 
@@ -583,15 +581,22 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
   erase_screen(this_data);
   last_gfi = 0;
 
-  /* PRECONDITION: last_data, previous_data -- garbage
-     this_data -- equal to image data after disposal of previous image
-     next_data -- equal to image data for next image if next_image_valid */
+  /* PRECONDITION:
+     previous_data -- garbage
+     last_data -- optimized image after disposal of previous optimized frame
+     this_data -- input image after disposal of previous input frame
+     next_data -- input image after application of current input frame,
+                  if next_image_valid */
   for (image_index = 0; image_index < gfs->nimages; image_index++) {
     Gif_Image *gfi = gfs->images[image_index];
     Gif_OptData *subimage = new_opt_data();
+    if (gfi->local)
+        local_color_tables = 1;
 
     /* save previous data if necessary */
-    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS
+        || (local_color_tables && image_index > 0
+            && last_gfi->disposal == GIF_DISPOSAL_PREVIOUS)) {
       if (!previous_data)
 	previous_data = Gif_NewArray(uint16_t, screen_size);
       memcpy(previous_data, this_data, sizeof(uint16_t) * screen_size);
@@ -606,6 +611,7 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
     } else
       apply_frame(this_data, gfi, 0, save_uncompressed);
 
+ retry_frame:
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
     if (image_index > 0)
@@ -638,10 +644,28 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
 
     /* set map of used colors */
     {
-      int use_transparency = (optimize_flags & GT_OPT_MASK) > 1 && image_index > 0;
+      int use_transparency = (optimize_flags & GT_OPT_MASK) > 1
+          && image_index > 0;
       if (image_index == 0 && background == TRANSP)
 	use_transparency = 2;
       get_used_colors(subimage, use_transparency);
+      /* Gifsicle's optimization strategy normally creates frames with ASIS
+         or BACKGROUND disposal (not PREVIOUS disposal). However, there are
+         cases when PREVIOUS disposal is strictly required, or a frame would
+         require more than 256 colors. Detect this case and try to recover. */
+      if (subimage->required_color_count > 256) {
+          if (image_index > 0 && local_color_tables) {
+              Gif_OptData *subimage = (Gif_OptData*) last_gfi->user_data;
+              if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS
+                  && subimage->disposal != GIF_DISPOSAL_PREVIOUS) {
+                  subimage->disposal = GIF_DISPOSAL_PREVIOUS;
+                  memcpy(last_data, previous_data, sizeof(uint16_t) * screen_size);
+                  goto retry_frame;
+              }
+          }
+          fatal_error("%d colors required in a frame (256 is max)",
+                      subimage->required_color_count);
+      }
     }
 
     gfi->user_data = subimage;
@@ -1123,7 +1147,8 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
 
     /* save previous data if necessary */
     if (cur_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-      previous_data = Gif_NewArray(uint16_t, screen_size);
+      if (!previous_data)
+          previous_data = Gif_NewArray(uint16_t, screen_size);
       copy_data_area(previous_data, this_data, cur_gfi);
     }
 
@@ -1178,16 +1203,17 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
       copy_data_area(last_data, this_data, cur_gfi);
     else if (cur_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(last_data, background, cur_gfi);
-    else
+    else if (cur_gfi->disposal != GIF_DISPOSAL_PREVIOUS)
       assert(0 && "optimized frame has strange disposal");
 
     if (cur_unopt_gfi.disposal == GIF_DISPOSAL_BACKGROUND)
       fill_data_area(this_data, background, &cur_unopt_gfi);
-    else if (cur_unopt_gfi.disposal == GIF_DISPOSAL_PREVIOUS) {
+    else if (cur_unopt_gfi.disposal == GIF_DISPOSAL_PREVIOUS)
       copy_data_area(this_data, previous_data, &cur_unopt_gfi);
-      Gif_DeleteArray(previous_data);
-    }
   }
+
+  if (previous_data)
+      Gif_DeleteArray(previous_data);
 }
 
 
