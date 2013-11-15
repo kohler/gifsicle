@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.73   15.Nov.2013
+
+* Fix bug where `-O2` would refuse to optimize some images with local
+  color tables, claiming that "more than 256 colors were required".
+  What was really required is previous disposal. Reported by Bryan
+  Stillwell.
+
+
 Version 1.72   9.Nov.2013
 
 * Fix crash bugs on some combinations of `--crop` and `--resize`
