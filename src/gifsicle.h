@@ -219,8 +219,8 @@ int	crop_image(Gif_Image *, Gt_Crop *, int preserve_total_crop);
 
 void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
 void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);
-void	scale_image(Gif_Stream *, Gif_Image *, double xfactor, double yfactor);
-void	resize_stream(Gif_Stream *, int new_width, int new_height, int fit);
+void	resize_stream(Gif_Stream *, double new_width, double new_height,
+                      int fit);
 
 /*****
  * quantization

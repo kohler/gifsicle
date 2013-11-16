@@ -73,6 +73,8 @@ Gif_Stream *	Gif_CopyStreamImages(Gif_Stream *);
 #define		Gif_ImageCount(gfs)		((gfs)->nimages)
 
 #define		GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL	1
+#define         GIF_MAX_SCREEN_WIDTH                    65535
+#define         GIF_MAX_SCREEN_HEIGHT                   65535
 
 void		Gif_CalculateScreenSize(Gif_Stream *, int force);
 int		Gif_Unoptimize(Gif_Stream *);

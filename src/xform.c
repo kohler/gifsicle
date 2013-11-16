@@ -344,14 +344,13 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  * scale
  **/
 
-void
-scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
+static void
+scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
 {
-  uint8_t *new_data;
-  int new_left, new_top, new_right, new_bottom, new_width, new_height;
+  uint8_t *new_data, *in_line, *out_data;
+  int new_width, new_height;
   int was_compressed = (gfi->img == 0);
-
-  int i, j, new_x, new_y;
+  int i, j, k;
 
   /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled from
      left edge of the *subimage* to right edge of the subimage, causing
@@ -363,15 +362,8 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
      the scale factors because it avoids roundoff inconsistencies between
      frames on animated GIFs. Don't allow 0-width or 0-height images; GIF
      doesn't support them well. */
-  new_left = (int) (xfactor * gfi->left + 0.5);
-  new_top = (int) (yfactor * gfi->top + 0.5);
-  new_right = (int) (xfactor * (gfi->left + gfi->width) + 0.5);
-  new_bottom = (int) (yfactor * (gfi->top + gfi->height) + 0.5);
-  new_width = new_right - new_left;
-  new_height = new_bottom - new_top;
-
-  if (new_width <= 0 || new_height <= 0) {
-      new_left = new_top = 0;
+  if (xoff[gfi->left + gfi->width] <= xoff[gfi->left]
+      || yoff[gfi->top + gfi->height] <= yoff[gfi->top]) {
       new_width = new_height = 1;
       gfi->transparent = 0;
       new_data = Gif_NewArray(uint8_t, 1);
@@ -379,41 +371,33 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
       goto done;
   }
 
+  xoff += gfi->left;
+  yoff += gfi->top;
+  new_width = xoff[gfi->width] - xoff[0];
+  new_height = yoff[gfi->height] - yoff[0];
+
   if (was_compressed)
     Gif_UncompressImage(gfi);
+
   new_data = Gif_NewArray(uint8_t, new_width * new_height);
-  new_y = new_top;
-
-  for (j = 0; j < gfi->height; j++) {
-    uint8_t *in_line = gfi->img[j];
-    uint8_t *out_data;
-    int x_delta, y_delta, yinc;
-
-    y_delta = (int) (yfactor * (gfi->top + j + 1) + 0.5) - new_y;
-    if (y_delta == 0)
-        continue;
-
-    new_x = new_left;
-    out_data = &new_data[(new_y - new_top) * new_width];
-
-    for (i = 0; i < gfi->width; i++) {
-        x_delta = (int) (xfactor * (gfi->left + i + 1) + 0.5) - new_x;
-        new_x += x_delta;
-        for (; x_delta != 0; --x_delta, ++out_data)
-            for (yinc = 0; yinc != y_delta; ++yinc)
-                out_data[yinc * new_width] = in_line[i];
-    }
-
-    new_y += y_delta;
-  }
+  out_data = new_data;
+  for (j = 0; j < gfi->height; ++j)
+      if (yoff[j] != yoff[j+1]) {
+          in_line = gfi->img[j];
+          for (i = 0; i < gfi->width; ++i, ++in_line)
+              for (k = xoff[i]; k != xoff[i+1]; ++k, ++out_data)
+                  *out_data = *in_line;
+          for (i = yoff[j] + 1; i != yoff[j+1]; ++i, out_data += new_width)
+              memcpy(out_data, out_data - new_width, new_width);
+      }
 
  done:
   Gif_ReleaseUncompressedImage(gfi);
   Gif_ReleaseCompressedImage(gfi);
+  gfi->left = xoff[0];
+  gfi->top = yoff[0];
   gfi->width = new_width;
   gfi->height = new_height;
-  gfi->left = new_left;
-  gfi->top = new_top;
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
   if (was_compressed) {
     Gif_FullCompressImage(gfs, gfi, &gif_write_info);
@@ -422,40 +406,54 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 }
 
 void
-resize_stream(Gif_Stream *gfs, int new_width, int new_height, int fit)
+resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
 {
-  double xfactor, yfactor;
-  int i;
+    double xfactor, yfactor;
+    uint16_t* xarr;
+    int i, nw, nh;
 
-  Gif_CalculateScreenSize(gfs, 0);
-  xfactor = (double) new_width / gfs->screen_width;
-  yfactor = (double) new_height / gfs->screen_height;
+    Gif_CalculateScreenSize(gfs, 0);
 
-  if (new_width <= 0 && new_height <= 0)
-    /* do nothing */
-    return;
-  else if (new_width <= 0) {
-    xfactor = yfactor;
-    new_width = (int) (gfs->screen_width * xfactor + 0.5);
-  } else if (new_height <= 0) {
-    yfactor = xfactor;
-    new_height = (int) (gfs->screen_height * yfactor + 0.5);
-  }
+    if (new_width < 0.5 && new_height < 0.5)
+        /* do nothing */
+        return;
+    else if (new_width < 0.5)
+        new_width = (int)
+            (gfs->screen_width * new_height / gfs->screen_height + 0.5);
+    else if (new_height < 0.5)
+        new_height = (int)
+            (gfs->screen_height * new_width / gfs->screen_width + 0.5);
 
-  if (fit && new_width >= gfs->screen_width && new_height >= gfs->screen_height)
-    /* do nothing */
-    return;
-  else if (fit && xfactor < yfactor) {
-    yfactor = xfactor;
-    new_height = (int) (gfs->screen_height * yfactor + 0.5);
-  } else if (fit && yfactor < xfactor) {
-    xfactor = yfactor;
-    new_width = (int) (gfs->screen_width * xfactor + 0.5);
-  }
+    if (new_width >= GIF_MAX_SCREEN_WIDTH + 0.5
+        || new_height >= GIF_MAX_SCREEN_HEIGHT + 0.5)
+        fatal_error("new image is too large (max size 65535x65535)");
 
-  for (i = 0; i < gfs->nimages; i++)
-    scale_image(gfs, gfs->images[i], xfactor, yfactor);
+    nw = (int) (new_width + 0.5);
+    nh = (int) (new_height + 0.5);
+    xfactor = (double) nw / gfs->screen_width;
+    yfactor = (double) nh / gfs->screen_height;
 
-  gfs->screen_width = new_width;
-  gfs->screen_height = new_height;
+    if (fit && nw >= gfs->screen_width && nh >= gfs->screen_height)
+        return;
+    else if (fit && xfactor < yfactor) {
+        nh = (int) (gfs->screen_height * xfactor + 0.5);
+        yfactor = (double) nh / gfs->screen_height;
+    } else if (fit && yfactor < xfactor) {
+        nw = (int) (gfs->screen_width * yfactor + 0.5);
+        xfactor = (double) nw / gfs->screen_width;
+    }
+
+    xarr = Gif_NewArray(uint16_t, gfs->screen_width + gfs->screen_height + 2);
+    for (i = 0; i != gfs->screen_width + 1; ++i)
+        xarr[i] = (int) (i * xfactor + 0.5);
+    for (i = 0; i != gfs->screen_height + 1; ++i)
+        xarr[gfs->screen_width + 1 + i] = (int) (i * yfactor + 0.5);
+
+    for (i = 0; i < gfs->nimages; i++)
+        scale_image(gfs, gfs->images[i],
+                    &xarr[0], &xarr[gfs->screen_width + 1]);
+
+    Gif_DeleteArray(xarr);
+    gfs->screen_width = nw;
+    gfs->screen_height = nh;
 }
