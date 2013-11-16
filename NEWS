@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.74   16.Nov.2013
+
+* Improve `--resize` behavior: avoid animation artifacts due to
+  different rounding decisions. Also speed it up. Reported by Bryan
+  Stillwell.
+
+
 Version 1.73   15.Nov.2013
 
 * Fix bug where `-O2` would refuse to optimize some images with local
