@@ -24,7 +24,7 @@
 # include <io.h>
 #endif
 
-#define static_assert(x, ...) switch ((int) (x)) case 0: case !!((int) (x)):
+#define static_assert(x, msg) switch ((int) (x)) case 0: case !!((int) (x)):
 
 
 Gt_Frame def_frame;
