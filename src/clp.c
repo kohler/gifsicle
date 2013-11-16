@@ -29,6 +29,12 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <ctype.h>
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 
 /* By default, assume we have strtoul. */
 #if !defined(HAVE_STRTOUL) && !defined(HAVE_CONFIG_H)
