@@ -344,11 +344,6 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  * scale
  **/
 
-#define SCALE(d)		((d) << 10)
-#define UNSCALE_NOROUND(d)	((d) >> 10)
-#define UNSCALE(d)		UNSCALE_NOROUND((d) + (1 << 9))
-#define SCALE_FACTOR		SCALE(1)
-
 void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
 {
@@ -357,79 +352,68 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, double xfactor, double yfactor)
   int was_compressed = (gfi->img == 0);
 
   int i, j, new_x, new_y;
-  int scaled_xstep, scaled_ystep, scaled_new_x, scaled_new_y;
 
   /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled from
      left edge of the *subimage* to right edge of the subimage, causing
      consistency problems when several subimages overlap. Solution: always use
      scale factors relating to the *whole image* (the screen size). */
 
-  /* use fixed-point arithmetic */
-  scaled_xstep = (int)(SCALE_FACTOR * xfactor + 0.5);
-  scaled_ystep = (int)(SCALE_FACTOR * yfactor + 0.5);
-
   /* calculate new width and height based on the four edges (left, right, top,
      bottom). This is better than simply multiplying the width and height by
      the scale factors because it avoids roundoff inconsistencies between
      frames on animated GIFs. Don't allow 0-width or 0-height images; GIF
      doesn't support them well. */
-  new_left = UNSCALE(scaled_xstep * gfi->left);
-  new_top = UNSCALE(scaled_ystep * gfi->top);
-  new_right = UNSCALE(scaled_xstep * (gfi->left + gfi->width));
-  new_bottom = UNSCALE(scaled_ystep * (gfi->top + gfi->height));
-
+  new_left = (int) (xfactor * gfi->left + 0.5);
+  new_top = (int) (yfactor * gfi->top + 0.5);
+  new_right = (int) (xfactor * (gfi->left + gfi->width) + 0.5);
+  new_bottom = (int) (yfactor * (gfi->top + gfi->height) + 0.5);
   new_width = new_right - new_left;
   new_height = new_bottom - new_top;
 
-  if (new_width <= 0) new_width = 1, new_right = new_left + 1;
-  if (new_height <= 0) new_height = 1, new_bottom = new_top + 1;
-  if (new_width > UNSCALE_NOROUND(INT_MAX) || new_height > UNSCALE_NOROUND(INT_MAX))
-    fatal_error("new image size is too big for me to handle");
+  if (new_width <= 0 || new_height <= 0) {
+      new_left = new_top = 0;
+      new_width = new_height = 1;
+      gfi->transparent = 0;
+      new_data = Gif_NewArray(uint8_t, 1);
+      new_data[0] = 0;
+      goto done;
+  }
 
   if (was_compressed)
     Gif_UncompressImage(gfi);
   new_data = Gif_NewArray(uint8_t, new_width * new_height);
-
   new_y = new_top;
-  scaled_new_y = scaled_ystep * gfi->top;
 
   for (j = 0; j < gfi->height; j++) {
     uint8_t *in_line = gfi->img[j];
     uint8_t *out_data;
     int x_delta, y_delta, yinc;
 
-    scaled_new_y += scaled_ystep;
-    /* account for images which should've had 0 height but don't */
-    if (j == gfi->height - 1) scaled_new_y = SCALE(new_bottom);
-
-    if (scaled_new_y < SCALE(new_y + 1)) continue;
-    y_delta = UNSCALE(scaled_new_y - SCALE(new_y));
+    y_delta = (int) (yfactor * (gfi->top + j + 1) + 0.5) - new_y;
+    if (y_delta == 0)
+        continue;
 
     new_x = new_left;
-    scaled_new_x = scaled_xstep * gfi->left;
-    out_data = &new_data[(new_y - new_top) * new_width + (new_x - new_left)];
+    out_data = &new_data[(new_y - new_top) * new_width];
 
     for (i = 0; i < gfi->width; i++) {
-      scaled_new_x += scaled_xstep;
-      /* account for images which should've had 0 width but don't */
-      if (i == gfi->width - 1) scaled_new_x = SCALE(new_right);
-
-      x_delta = UNSCALE(scaled_new_x - SCALE(new_x));
-
-      for (; x_delta > 0; new_x++, x_delta--, out_data++)
-	for (yinc = 0; yinc < y_delta; yinc++)
-	  out_data[yinc * new_width] = in_line[i];
+        x_delta = (int) (xfactor * (gfi->left + i + 1) + 0.5) - new_x;
+        new_x += x_delta;
+        for (; x_delta != 0; --x_delta, ++out_data)
+            for (yinc = 0; yinc != y_delta; ++yinc)
+                out_data[yinc * new_width] = in_line[i];
     }
 
     new_y += y_delta;
   }
 
+ done:
   Gif_ReleaseUncompressedImage(gfi);
   Gif_ReleaseCompressedImage(gfi);
   gfi->width = new_width;
   gfi->height = new_height;
-  gfi->left = UNSCALE(scaled_xstep * gfi->left);
-  gfi->top = UNSCALE(scaled_ystep * gfi->top);
+  gfi->left = new_left;
+  gfi->top = new_top;
   Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
   if (was_compressed) {
     Gif_FullCompressImage(gfs, gfi, &gif_write_info);
