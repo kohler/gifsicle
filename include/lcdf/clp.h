@@ -69,16 +69,20 @@ struct Clp_Option {
 
 		Accepts an optional "+" or "-" sign, followed by one or more
 		digits.  The digits may be include a "0x" or "0X" prefix, for
-		a hexidecimal number, or a "0" prefix, for an octal number;
+		a hexadecimal number, or a "0" prefix, for an octal number;
 		otherwise it is decimal. */
 #define Clp_ValUnsigned		5	/**< @brief Option value is an
 					     unsigned int.
 
 		Accepts an optional "+" sign, followed by one or more
 		digits.  The digits may be include a "0x" or "0X" prefix, for
-		a hexidecimal number, or a "0" prefix, for an octal number;
+		a hexadecimal number, or a "0" prefix, for an octal number;
 		otherwise it is decimal. */
-#define Clp_ValDouble		6	/**< @brief Option value is a
+#define Clp_ValLong             6       /**< @brief Option value is a
+                                             signed long. */
+#define Clp_ValUnsignedLong     7       /**< @brief Option value is an
+                                             unsigned long. */
+#define Clp_ValDouble		8	/**< @brief Option value is a
 					     double.
 		Accepts a real number as defined by strtod(). */
 #define Clp_ValFirstUser	10	/**< @brief Value types >=
@@ -180,6 +184,8 @@ struct Clp_Parser {
     union {
 	int i;
 	unsigned u;
+        long l;
+        unsigned long ul;
 	double d;
 	const char *s;
 	void *pv;
@@ -257,9 +263,11 @@ int Clp_AddType(Clp_Parser *clp, int val_type, int flags,
 
 
 #define Clp_AllowNumbers	(1<<0)	/**< @brief String list flag: allow
-					   explicit numbers.
+					     explicit numbers.
 
 		See Clp_AddStringListType() and Clp_AddStringListTypeVec(). */
+#define Clp_StringListLong      (1<<1)  /**< @brief String list flag: values
+                                             have long type. */
 
 /** @brief Define a new string list value type for @a clp. */
 int Clp_AddStringListTypeVec(Clp_Parser *clp, int val_type, int flags,

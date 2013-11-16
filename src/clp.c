@@ -226,14 +226,13 @@ struct Clp_ParserState {
 
 
 typedef struct Clp_StringList {
-
     Clp_Option *items;
     Clp_InternOption *iopt;
     int nitems;
 
-    int allow_int;
+    unsigned char allow_int;
+    unsigned char val_long;
     int nitems_invalid_report;
-
 } Clp_StringList;
 
 
@@ -475,7 +474,8 @@ calculate_lmm(Clp_Parser *clp, const Clp_Option *opt, Clp_InternOption *iopt, in
  * one of the substrings "UTF-8", "UTF8", or "utf8".  Override this with
  * Clp_SetUTF8().</li>
  * <li>The Clp_ValString, Clp_ValStringNotOption, Clp_ValInt, Clp_ValUnsigned,
- * Clp_ValBool, and Clp_ValDouble types are installed.</li>
+ * Clp_ValLong, Clp_ValUnsignedLong, Clp_ValBool, and Clp_ValDouble types are
+ * installed.</li>
  * <li>Errors are reported to standard error.</li>
  * </ul>
  *
@@ -538,8 +538,10 @@ Clp_NewParser(int argc, const char * const *argv, int nopt, const Clp_Option *op
     cli->nvaltype = 0;
     Clp_AddType(clp, Clp_ValString, 0, parse_string, 0);
     Clp_AddType(clp, Clp_ValStringNotOption, Clp_DisallowOptions, parse_string, 0);
-    Clp_AddType(clp, Clp_ValInt, 0, parse_int, 0);
-    Clp_AddType(clp, Clp_ValUnsigned, 0, parse_int, (void *)cli);
+    Clp_AddType(clp, Clp_ValInt, 0, parse_int, (void*) (uintptr_t) 0);
+    Clp_AddType(clp, Clp_ValUnsigned, 0, parse_int, (void*) (uintptr_t) 1);
+    Clp_AddType(clp, Clp_ValLong, 0, parse_int, (void*) (uintptr_t) 2);
+    Clp_AddType(clp, Clp_ValUnsignedLong, 0, parse_int, (void*) (uintptr_t) 3);
     Clp_AddType(clp, Clp_ValBool, 0, parse_bool, 0);
     Clp_AddType(clp, Clp_ValDouble, 0, parse_double, 0);
 
@@ -1079,28 +1081,31 @@ parse_string(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 }
 
 static int
-parse_int(Clp_Parser *clp, const char *arg, int complain, void *user_data)
+parse_int(Clp_Parser *clp, const char *arg, int complain, void* user_data)
 {
     const char *val;
+    uintptr_t type = (uintptr_t) user_data;
     if (*arg == 0 || isspace((unsigned char) *arg)
-	|| (user_data != 0 && *arg == '-'))
+	|| ((type & 1) && *arg == '-'))
 	val = arg;
-    else if (user_data != 0) {	/* unsigned */
+    else if (type & 1) { // unsigned
 #if HAVE_STRTOUL
-	clp->val.u = strtoul(arg, (char **) &val, 0);
+	clp->val.ul = strtoul(arg, (char **) &val, 0);
 #else
 	/* don't bother really trying to do it right */
 	if (arg[0] == '-')
 	    val = arg;
 	else
-	    clp->val.u = strtol(arg, (char **) &val, 0);
+	    clp->val.l = strtol(arg, (char **) &val, 0);
 #endif
     } else
-	clp->val.i = strtol(arg, (char **) &val, 0);
+	clp->val.l = strtol(arg, (char **) &val, 0);
+    if (type <= 1)
+        clp->val.u = (unsigned) clp->val.ul;
     if (*arg != 0 && *val == 0)
 	return 1;
     else if (complain) {
-	const char *message = user_data != 0
+	const char *message = type & 1
 	    ? "%<%O%> expects a nonnegative integer, not %<%s%>"
 	    : "%<%O%> expects an integer, not %<%s%>";
 	return Clp_OptionError(clp, message, arg);
@@ -1174,11 +1179,13 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
 	 &ambiguous, ambiguous_values);
     if (idx >= 0) {
 	clp->val.i = sl->items[idx].option_id;
-	return 1;
+        if (sl->val_long)
+            clp->val.l = clp->val.i;
+        return 1;
     }
 
     if (sl->allow_int) {
-	if (parse_int(clp, arg, 0, 0))
+	if (parse_int(clp, arg, 0, (void*) (uintptr_t) (sl->val_long ? 2 : 0)))
 	    return 1;
     }
 
@@ -1211,6 +1218,7 @@ finish_string_list(Clp_Parser *clp, int val_type, int flags,
     clsl->iopt = iopt;
     clsl->nitems = nitems;
     clsl->allow_int = (flags & Clp_AllowNumbers) != 0;
+    clsl->val_long = (flags & Clp_StringListLong) != 0;
 
     if (nitems < MAX_AMBIGUOUS_VALUES && nitems < itemscap && clsl->allow_int) {
 	items[nitems].long_name = "any integer";
@@ -1281,7 +1289,12 @@ Clp_AddStringListType(Clp_Parser *clp, int val_type, int flags, ...)
 	char *name = va_arg(val, char *);
 	if (!name)
 	    break;
-	value = va_arg(val, int);
+        if (flags & Clp_StringListLong) {
+            long lvalue = va_arg(val, long);
+            value = (int) lvalue;
+            assert(value == lvalue);
+        } else
+            value = va_arg(val, int);
 
 	if (nitems >= itemscap) {
 	    Clp_Option *new_items;
@@ -1931,6 +1944,7 @@ Clp_Next(Clp_Parser *clp)
 	next_argument(clp, 1);
 
     /* Parse the argument */
+    clp->option = opt;
     if (clp->have_val) {
 	Clp_ValType *atr = &cli->valtype[vtpos];
 	if (atr->func(clp, clp->vstr, complain, atr->user_data) <= 0) {
@@ -1939,12 +1953,13 @@ Clp_Next(Clp_Parser *clp)
 	    if (cli->iopt[optno].imandatory) {
 		clp->option = &clp_option_sentinel[-Clp_BadOption];
 		return Clp_BadOption;
-	    } else
+	    } else {
 		Clp_RestoreParser(clp, &clpsave);
+                clp->option = opt;
+            }
 	}
     }
 
-    clp->option = opt;
     return opt->option_id;
 }
 

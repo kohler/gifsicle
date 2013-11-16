@@ -1246,8 +1246,8 @@ main(int argc, char *argv[])
                   sizeof(options) / sizeof(options[0]), options);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   Clp_AddStringListType
-    (clp, WINDOW_TYPE, Clp_AllowNumbers,
-     "root", -1,
+    (clp, WINDOW_TYPE, Clp_AllowNumbers | Clp_StringListLong,
+     "root", (long) -1,
      (const char*) 0);
   program_name = cur_resource_name = cur_window_title = Clp_ProgramName(clp);
 
@@ -1296,12 +1296,12 @@ main(int argc, char *argv[])
       break;
 
      case WINDOW_OPT:
-      cur_use_window = clp->val.u;
+      cur_use_window = clp->val.ul;
       cur_use_window_new = 0;
       break;
 
      case NEW_WINDOW_OPT:
-      cur_use_window = clp->val.u;
+      cur_use_window = clp->val.ul;
       cur_use_window_new = 1;
       break;
 
