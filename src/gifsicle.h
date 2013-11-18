@@ -234,17 +234,15 @@ Gif_Colormap *colormap_blend_diversity(Gif_Color *, int, int);
 Gif_Colormap *colormap_flat_diversity(Gif_Color *, int, int);
 Gif_Colormap *colormap_median_cut(Gif_Color *, int, int);
 
-typedef struct color_hash_item color_hash_item;
+typedef struct colormap_hash colormap_hash;
 typedef void (*colormap_image_func)
-     (Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
-      color_hash_item **, uint32_t *);
+     (Gif_Image *, uint8_t *, Gif_Colormap *,
+      colormap_hash*, uint32_t *);
 
 void	colormap_image_posterize
-	(Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
-	 color_hash_item **, uint32_t *);
+        (Gif_Image*, uint8_t*, Gif_Colormap*, colormap_hash*, uint32_t*);
 void	colormap_image_floyd_steinberg
-	(Gif_Image *, uint8_t *, Gif_Colormap *, Gif_Colormap *,
-	 color_hash_item **, uint32_t *);
+        (Gif_Image*, uint8_t*, Gif_Colormap*, colormap_hash*, uint32_t*);
 void	colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
 
 /*****

@@ -536,155 +536,172 @@ colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size)
 }
 
 
-struct color_hash_item {
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
-  uint32_t pixel;
-  color_hash_item *next;
-};
-#define COLOR_HASH_SIZE 20023
-#define COLOR_HASH_CODE(r, g, b)	((uint32_t)(r * 33023 + g * 30013 + b * 27011) % COLOR_HASH_SIZE)
-
-
 /*****
- * color_hash_item allocation and deallocation
+ * color_hash allocation and deallocation
  **/
 
-static color_hash_item *hash_item_alloc_list;
-static int hash_item_alloc_left;
-#define HASH_ITEM_ALLOC_AMOUNT 512
+typedef struct colormap_hash_item {
+    uint32_t color; // (1<<24) | (red<<16) | (green<<8) | (blue)
+    uint32_t pixel;
+} colormap_hash_item;
 
-static color_hash_item **
-new_color_hash(void)
-{
-  int i;
-  color_hash_item **hash = Gif_NewArray(color_hash_item *, COLOR_HASH_SIZE);
-  for (i = 0; i < COLOR_HASH_SIZE; i++)
-    hash[i] = 0;
-  return hash;
+#define COLORMAP_HASH_NLAST 4
+
+struct colormap_hash {
+    colormap_hash_item* hash;
+    int nhash;
+    int hashfull;
+    Gif_Color* col;
+    int ncol;
+    int grayscale;
+};
+
+static int colormap_hash_sizes[] = {
+    1021, 4093, 16381, 65521, 262139, 1048571, 4194301
+};
+
+#define COLORMAP_HASHCOLOR(r, g, b) \
+    ((1U << 24) | ((uint8_t) r << 16) | ((uint8_t) g << 8) | ((uint8_t) b))
+
+static inline int colormap_hash_bucket(const colormap_hash* ch,
+                                       int r, int g, int b) {
+    uint32_t color = COLORMAP_HASHCOLOR(r, g, b);
+    int bk = color % ch->nhash;
+    while (ch->hash[bk].color && ch->hash[bk].color != color) {
+        ++bk;
+        bk = (bk == ch->nhash ? 0 : bk);
+    }
+    return bk;
 }
 
-
-static color_hash_item *
-new_color_hash_item(uint8_t red, uint8_t green, uint8_t blue)
-{
-  color_hash_item *chi;
-  if (hash_item_alloc_left <= 0) {
-    color_hash_item *new_alloc =
-      Gif_NewArray(color_hash_item, HASH_ITEM_ALLOC_AMOUNT);
-    new_alloc[HASH_ITEM_ALLOC_AMOUNT-1].next = hash_item_alloc_list;
-    hash_item_alloc_list = new_alloc;
-    hash_item_alloc_left = HASH_ITEM_ALLOC_AMOUNT - 1;
-  }
-
-  --hash_item_alloc_left;
-  chi = &hash_item_alloc_list[hash_item_alloc_left];
-  chi->red = red;
-  chi->green = green;
-  chi->blue = blue;
-  chi->next = 0;
-  return chi;
+static inline uint32_t color_distance(const Gif_Color* c, int r, int g, int b) {
+    return (c->red - r) * (c->red - r)
+        + (c->green - g) * (c->green - g)
+        + (c->blue - b) * (c->blue - b);
 }
 
-static void
-free_all_color_hash_items(void)
-{
-  while (hash_item_alloc_list) {
-    color_hash_item *next =
-      hash_item_alloc_list[HASH_ITEM_ALLOC_AMOUNT - 1].next;
-    Gif_DeleteArray(hash_item_alloc_list);
-    hash_item_alloc_list = next;
-  }
-  hash_item_alloc_left = 0;
+void colormap_hash_populate(colormap_hash* ch) {
+    int i, bk;
+    ch->grayscale = 1;
+    for (i = 0; i != ch->ncol; ++i) {
+        const Gif_Color* c = &ch->col[i];
+        ch->grayscale = ch->grayscale && c->red == c->green && c->green == c->blue;
+        bk = colormap_hash_bucket(ch, c->red, c->green, c->blue);
+        if (!ch->hash[bk].color) {
+            ch->hash[bk].color = COLORMAP_HASHCOLOR(c->red, c->green, c->blue);
+            ch->hash[bk].pixel = i;
+            ++ch->hashfull;
+        }
+    }
 }
 
+void colormap_hash_init(colormap_hash* ch, const Gif_Colormap* gfcm) {
+    ch->nhash = colormap_hash_sizes[0];
+    ch->hash = Gif_NewArray(colormap_hash_item, ch->nhash);
+    memset(ch->hash, 0, sizeof(colormap_hash_item) * ch->nhash);
+    ch->hashfull = 0;
+    ch->col = gfcm->col;
+    ch->ncol = gfcm->ncol;
+    colormap_hash_populate(ch);
+}
 
-static int
-hash_color(int red, int green, int blue,
-	   color_hash_item **hash, Gif_Colormap *new_cm)
-{
-  uint32_t hash_code = COLOR_HASH_CODE(red, green, blue);
-  color_hash_item *prev = 0, *trav;
+void colormap_hash_cleanup(colormap_hash* ch) {
+    Gif_DeleteArray(ch->hash);
+}
 
-  /* Is new_cm grayscale? We cache the answer here. */
-  static Gif_Colormap *cached_new_cm;
-  static int new_cm_grayscale;
-
-  for (trav = hash[hash_code]; trav; prev = trav, trav = trav->next)
-    if (trav->red == red && trav->green == green && trav->blue == blue)
-      return trav->pixel;
-
-  trav = new_color_hash_item(red, green, blue);
-  if (prev)
-    prev->next = trav;
-  else
-    hash[hash_code] = trav;
-
-  /* calculate whether new_cm is grayscale */
-  if (new_cm != cached_new_cm) {
-    int i;
-    Gif_Color *col = new_cm->col;
-    cached_new_cm = new_cm;
-    new_cm_grayscale = 1;
-    for (i = 0; i < new_cm->ncol && new_cm_grayscale; i++)
-      if (col[i].red != col[i].green || col[i].green != col[i].blue
-	  || col[i].blue != col[i].red)
-	new_cm_grayscale = 0;
-  }
-
-  /* find the closest color in the new colormap */
-  {
-    Gif_Color *col = new_cm->col;
-    int ncol = new_cm->ncol, i, found;
+int closest_color_rgb_linear(Gif_Color* col, int ncol, int r, int g, int b) {
+    int i, found = 0;
     uint32_t min_dist = 0xFFFFFFFFU;
 
-    if (new_cm_grayscale) {
-      /* If the new colormap is 100% grayscale, then use distance in luminance
-	 space instead of distance in RGB space. The weights for the R,G,B
-	 components in luminance space are 0.299,0.587,0.114. We calculate a
-	 gray value for the input color first and compare that against the
-	 available grays in the colormap. Thanks to Christian Kumpf,
-	 <kumpf@igd.fhg.de>, for providing a patch.
-
-	 Note on the calculation of 'gray': Using the factors 306, 601, and
-	 117 (proportional to 0.299,0.587,0.114) we get a scaled gray value
-	 between 0 and 255 * 1024. */
-      int gray = 306 * red + 601 * green + 117 * blue;
-      for (i = 0; i < ncol; i++)
+    /* Use straight-line Euclidean distance in RGB space */
+    for (i = 0; i < ncol; i++)
 	if (col[i].haspixel != 255) {
-	  int in_gray = 1024 * col[i].red;
-	  uint32_t dist = abs(gray - in_gray);
-	  if (dist < min_dist) {
-	    min_dist = dist;
-	    found = i;
-	  }
+            uint32_t dist = color_distance(&col[i], r, g, b);
+            if (dist < min_dist) {
+                min_dist = dist;
+                found = i;
+            }
 	}
 
-    } else {
-      /* Use straight-line Euclidean distance in RGB space */
-      for (i = 0; i < ncol; i++)
+    return found;
+}
+
+int closest_color_grayscale_luminance(Gif_Color* col, int ncol,
+                                      int r, int g, int b) {
+    int i, found = 0;
+    uint32_t min_dist = 0xFFFFFFFFU;
+    /* If the new colormap is 100% grayscale, then use distance in luminance
+       space instead of distance in RGB space. The weights for the R,G,B
+       components in luminance space are 0.299,0.587,0.114. We calculate a
+       gray value for the input color first and compare that against the
+       available grays in the colormap. Thanks to Christian Kumpf,
+       <kumpf@igd.fhg.de>, for providing a patch.
+
+       Note on the calculation of 'gray': Using the factors 306, 601, and
+       117 (proportional to 0.299,0.587,0.114) we get a scaled gray value
+       between 0 and 255 * 1024. */
+    int gray = 306 * r + 601 * g + 117 * b;
+
+    for (i = 0; i < ncol; i++)
 	if (col[i].haspixel != 255) {
-	  uint32_t dist = (red - col[i].red) * (red - col[i].red)
-	    + (green - col[i].green) * (green - col[i].green)
-	    + (blue - col[i].blue) * (blue - col[i].blue);
-	  if (dist < min_dist) {
-	    min_dist = dist;
-	    found = i;
-	  }
+            int in_gray = 1024 * col[i].red;
+            uint32_t dist = abs(gray - in_gray);
+            if (dist < min_dist) {
+                min_dist = dist;
+                found = i;
+            }
 	}
+
+    return found;
+}
+
+void colormap_hash_grow(colormap_hash* ch) {
+    size_t nhashsizes = sizeof(colormap_hash_sizes)/sizeof(colormap_hash_sizes[0]);
+    int sizeindex;
+    for (sizeindex = 0; sizeindex < (int) nhashsizes
+             && colormap_hash_sizes[sizeindex] <= ch->nhash; ++sizeindex)
+        /* do nothing */;
+    if (sizeindex < (int) nhashsizes) {
+        Gif_DeleteArray(ch->hash);
+        ch->nhash = colormap_hash_sizes[sizeindex];
+        ch->hash = Gif_NewArray(colormap_hash_item, ch->nhash);
+    }
+    memset(ch->hash, 0, sizeof(colormap_hash_item) * ch->nhash);
+    ch->hashfull = 0;
+    colormap_hash_populate(ch);
+}
+
+int colormap_hash_lookup(colormap_hash* ch, int r, int g, int b) {
+    int bk;
+
+    bk = colormap_hash_bucket(ch, r, g, b);
+    if (ch->hash[bk].color)
+        goto done;
+
+    if (ch->hashfull + (ch->hashfull >> 1) > ch->nhash) {
+        colormap_hash_grow(ch);
+        bk = colormap_hash_bucket(ch, r, g, b);
     }
 
-    trav->pixel = found;
-    return found;
-  }
+    /* find the closest color in the new colormap */
+    ch->hash[bk].color = COLORMAP_HASHCOLOR(r, g, b);
+    if (ch->grayscale)
+        ch->hash[bk].pixel =
+            closest_color_grayscale_luminance(ch->col, ch->ncol, r, g, b);
+    else
+        ch->hash[bk].pixel =
+            closest_color_rgb_linear(ch->col, ch->ncol, r, g, b);
+    ++ch->hashfull;
+
+ done:
+    return ch->hash[bk].pixel;
 }
 
 
 void
 colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
-			 Gif_Colormap *old_cm, Gif_Colormap *new_cm,
-			 color_hash_item **hash, uint32_t *histogram)
+			 Gif_Colormap *old_cm, colormap_hash* ch,
+			 uint32_t *histogram)
 {
   int ncol = old_cm->ncol;
   Gif_Color *col = old_cm->col;
@@ -698,7 +715,7 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
       map[i] = col[i].pixel;
     else {
       map[i] = col[i].pixel =
-	hash_color(col[i].red, col[i].green, col[i].blue, hash, new_cm);
+          colormap_hash_lookup(ch, col[i].red, col[i].green, col[i].blue);
       col[i].haspixel = 1;
     }
 
@@ -720,8 +737,8 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
 
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
-			       Gif_Colormap *old_cm, Gif_Colormap *new_cm,
-			       color_hash_item **hash, uint32_t *histogram)
+			       Gif_Colormap *old_cm,
+                               colormap_hash* ch, uint32_t *histogram)
 {
   static int32_t *random_values = 0;
 
@@ -731,7 +748,6 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int i, j;
   int32_t *r_err, *g_err, *b_err, *r_err1, *g_err1, *b_err1;
   Gif_Color *col = old_cm->col;
-  Gif_Color *new_col = new_cm->col;
 
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
@@ -794,14 +810,14 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       use_g = max(use_g, 0);  use_g = min(use_g, 255);
       use_b = max(use_b, 0);  use_b = min(use_b, 255);
 
-      *new_data = hash_color(use_r, use_g, use_b, hash, new_cm);
+      *new_data = colormap_hash_lookup(ch, use_r, use_g, use_b);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
 	 Assume that, with a large scale (1024), we don't need to worry about
 	 image artifacts caused by error accumulation (the fact that the
 	 error terms might not sum to the error). */
-      e = (use_r - new_col[*new_data].red) * DITHER_SCALE;
+      e = (use_r - ch->col[*new_data].red) * DITHER_SCALE;
       if (e) {
 	r_err [x+d0] += (e * 7) / 16;
 	r_err1[x+d1] += (e * 3) / 16;
@@ -809,7 +825,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	r_err1[x+d3] += e / 16;
       }
 
-      e = (use_g - new_col[*new_data].green) * DITHER_SCALE;
+      e = (use_g - ch->col[*new_data].green) * DITHER_SCALE;
       if (e) {
 	g_err [x+d0] += (e * 7) / 16;
 	g_err1[x+d1] += (e * 3) / 16;
@@ -817,7 +833,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	g_err1[x+d3] += e / 16;
       }
 
-      e = (use_b - new_col[*new_data].blue) * DITHER_SCALE;
+      e = (use_b - ch->col[*new_data].blue) * DITHER_SCALE;
       if (e) {
 	b_err [x+d0] += (e * 7) / 16;
 	b_err1[x+d1] += (e * 3) / 16;
@@ -921,7 +937,7 @@ void
 colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 		colormap_image_func image_changer)
 {
-  color_hash_item **hash = new_color_hash();
+  colormap_hash hash;
   int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
   int new_ncol = new_cm->ncol;
@@ -942,6 +958,9 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   for (j = 0; j < 256; j++)
     new_col[j].pixel = 0;
 
+  /* initialize hash */
+  colormap_hash_init(&hash, new_cm);
+
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
@@ -958,8 +977,9 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 	Gif_UncompressImage(gfi);
 
       do {
-	for (j = 0; j < 256; j++) histogram[j] = 0;
-	image_changer(gfi, new_data, gfcm, new_cm, hash, histogram);
+	for (j = 0; j < 256; j++)
+            histogram[j] = 0;
+	image_changer(gfi, new_data, gfcm, &hash, histogram);
       } while (try_assign_transparency(gfi, gfcm, new_data, new_cm, &new_ncol,
 				       histogram));
 
@@ -1004,11 +1024,12 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
     gfs->background = gfs->images[0]->transparent;
   else if (gfs->global && gfs->background < gfs->global->ncol) {
     Gif_Color *c = &gfs->global->col[ gfs->background ];
-    gfs->background = hash_color(c->red, c->green, c->blue, hash, new_cm);
+    gfs->background = colormap_hash_lookup(&hash, c->red, c->green, c->blue);
     new_col[gfs->background].pixel++;
   }
 
   Gif_DeleteColormap(gfs->global);
+  colormap_hash_cleanup(&hash);
 
   /* We may have used only a subset of the colors in new_cm. We try to store
      only that subset, just as if we'd piped the output of 'gifsicle
@@ -1068,8 +1089,4 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       }
     }
   }
-
-  /* free storage */
-  free_all_color_hash_items();
-  Gif_DeleteArray(hash);
 }
