@@ -761,6 +761,10 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
 #define DITHER_SCALE_M1	(DITHER_SCALE-1)
 #define N_RANDOM_VALUES	512
 
+typedef struct color_erritem {
+    int32_t a[3];
+} color_erritem;
+
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 			       Gif_Colormap *old_cm,
@@ -771,8 +775,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int width = gfi->width;
   int dither_direction = 0;
   int transparent = gfi->transparent;
-  int i, j;
-  int32_t *r_err, *g_err, *b_err, *r_err1, *g_err1, *b_err1;
+  int i, j, k;
+  color_erritem *err, *err1;
   Gif_Color *col = old_cm->col;
 
   /* Initialize distances */
@@ -789,12 +793,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
   /* Initialize Floyd-Steinberg error vectors to small random values, so we
      don't get artifacts on the top row */
-  r_err = Gif_NewArray(int32_t, width + 2);
-  g_err = Gif_NewArray(int32_t, width + 2);
-  b_err = Gif_NewArray(int32_t, width + 2);
-  r_err1 = Gif_NewArray(int32_t, width + 2);
-  g_err1 = Gif_NewArray(int32_t, width + 2);
-  b_err1 = Gif_NewArray(int32_t, width + 2);
+  err = Gif_NewArray(color_erritem, width + 2);
+  err1 = Gif_NewArray(color_erritem, width + 2);
   /* Use the same random values on each call in an attempt to minimize
      "jumping dithering" effects on animations */
   if (!random_values) {
@@ -803,12 +803,11 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       random_values[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
   }
   for (i = 0; i < gfi->width + 2; i++) {
-    int j = (i + gfi->left) * 3;
-    r_err[i] = random_values[ (j + 0) % N_RANDOM_VALUES ];
-    g_err[i] = random_values[ (j + 1) % N_RANDOM_VALUES ];
-    b_err[i] = random_values[ (j + 2) % N_RANDOM_VALUES ];
+    j = (i + gfi->left) * 3;
+    for (k = 0; k < 3; ++k)
+        err[i].a[k] = random_values[ (j + k) % N_RANDOM_VALUES ];
   }
-  /* *_err1 initialized below */
+  /* err1 initialized below */
 
   /* Do the image! */
   for (j = 0; j < gfi->height; j++) {
@@ -827,57 +826,43 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
     new_data = all_new_data + j * width + x;
 
     for (i = 0; i < width + 2; i++)
-      r_err1[i] = g_err1[i] = b_err1[i] = 0;
+      err1[i].a[0] = err1[i].a[1] = err1[i].a[2] = 0;
 
     /* Do a single row */
     while (x >= 0 && x < width) {
-      int e, use_r, use_g, use_b;
+      int e;
+      color_erritem use;
 
       /* the transparent color never gets adjusted */
       if (*data == transparent)
 	goto next;
 
       /* use Floyd-Steinberg errors to adjust actual color */
-      use_r = col[*data].gfc_red + r_err[x+1] / DITHER_SCALE;
-      use_g = col[*data].gfc_green + g_err[x+1] / DITHER_SCALE;
-      use_b = col[*data].gfc_blue + b_err[x+1] / DITHER_SCALE;
-      use_r = max(use_r, 0);  use_r = min(use_r, 255);
-      use_g = max(use_g, 0);  use_g = min(use_g, 255);
-      use_b = max(use_b, 0);  use_b = min(use_b, 255);
+      for (k = 0; k < 3; ++k) {
+          use.a[k] = col[*data].gfc_array[k] + err[x+1].a[k] / DITHER_SCALE;
+          use.a[k] = max(use.a[k], 0);
+          use.a[k] = min(use.a[k], 255);
+      }
 
       e = col[*data].pixel;
-      if (color_distance(&ch->col[e], use_r, use_g, use_b) < ch->colmindist[e])
+      if (color_distance(&ch->col[e], use.a[0], use.a[1], use.a[2]) < ch->colmindist[e])
           *new_data = e;
       else
-          *new_data = colormap_hash_lookup(ch, use_r, use_g, use_b);
+          *new_data = colormap_hash_lookup(ch, use.a[0], use.a[1], use.a[2]);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
 	 Assume that, with a large scale (1024), we don't need to worry about
 	 image artifacts caused by error accumulation (the fact that the
 	 error terms might not sum to the error). */
-      e = (use_r - ch->col[*new_data].gfc_red) * DITHER_SCALE;
-      if (e) {
-	r_err [x+d0] += (e * 7) / 16;
-	r_err1[x+d1] += (e * 3) / 16;
-	r_err1[x+d2] += (e * 5) / 16;
-	r_err1[x+d3] += e / 16;
-      }
-
-      e = (use_g - ch->col[*new_data].gfc_green) * DITHER_SCALE;
-      if (e) {
-	g_err [x+d0] += (e * 7) / 16;
-	g_err1[x+d1] += (e * 3) / 16;
-	g_err1[x+d2] += (e * 5) / 16;
-	g_err1[x+d3] += e / 16;
-      }
-
-      e = (use_b - ch->col[*new_data].gfc_blue) * DITHER_SCALE;
-      if (e) {
-	b_err [x+d0] += (e * 7) / 16;
-	b_err1[x+d1] += (e * 3) / 16;
-	b_err1[x+d2] += (e * 5) / 16;
-	b_err1[x+d3] += e / 16;
+      for (k = 0; k < 3; ++k) {
+          e = (use.a[k] - ch->col[*new_data].gfc_array[k]) * DITHER_SCALE;
+          if (e) {
+              err [x+d0].a[k] += (e * 7) / 16;
+              err1[x+d1].a[k] += (e * 3) / 16;
+              err1[x+d2].a[k] += (e * 5) / 16;
+              err1[x+d3].a[k] += e / 16;
+          }
       }
 
      next:
@@ -890,21 +875,16 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
     /* change dithering directions */
     {
-      int32_t *temp;
-      temp = r_err; r_err = r_err1; r_err1 = temp;
-      temp = g_err; g_err = g_err1; g_err1 = temp;
-      temp = b_err; b_err = b_err1; b_err1 = temp;
+      color_erritem *temp = err1;
+      err1 = err;
+      err = temp;
       dither_direction = !dither_direction;
     }
   }
 
   /* delete temporary storage */
-  Gif_DeleteArray(r_err);
-  Gif_DeleteArray(g_err);
-  Gif_DeleteArray(b_err);
-  Gif_DeleteArray(r_err1);
-  Gif_DeleteArray(g_err1);
-  Gif_DeleteArray(b_err1);
+  Gif_DeleteArray(err);
+  Gif_DeleteArray(err1);
 }
 
 
