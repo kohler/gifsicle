@@ -561,15 +561,19 @@ static int colormap_hash_sizes[] = {
 };
 
 #define COLORMAP_HASHCOLOR(r, g, b) \
-    ((1U << 24) | ((uint8_t) r << 16) | ((uint8_t) g << 8) | ((uint8_t) b))
+    ((1U << 24) | ((uint8_t) b << 16) | ((uint8_t) g << 8) | ((uint8_t) r))
 
 static inline int colormap_hash_bucket(const colormap_hash* ch,
                                        int r, int g, int b) {
     uint32_t color = COLORMAP_HASHCOLOR(r, g, b);
-    int bk = color % ch->nhash;
+    int bk = color % ch->nhash, step = 0;
     while (ch->hash[bk].color && ch->hash[bk].color != color) {
-        ++bk;
-        bk = (bk == ch->nhash ? 0 : bk);
+        if (!step)
+            step = (((uint8_t) g << 16) | ((uint8_t) r << 8) | ((uint8_t) b))
+                % 1024 + 1;
+        bk += step;
+        if (bk >= ch->nhash)
+            bk -= ch->nhash;
     }
     return bk;
 }
@@ -678,7 +682,7 @@ int colormap_hash_lookup(colormap_hash* ch, int r, int g, int b) {
     if (ch->hash[bk].color)
         goto done;
 
-    if (ch->hashfull + (ch->hashfull >> 1) > ch->nhash) {
+    if (ch->hashfull + ch->hashfull > ch->nhash) {
         colormap_hash_grow(ch);
         bk = colormap_hash_bucket(ch, r, g, b);
     }
