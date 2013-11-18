@@ -391,9 +391,9 @@ read_color_table(int size, Gif_Reader *grr)
 
   GIF_DEBUG(("colormap(%d)", size));
   for (c = gfcm->col; size; size--, c++) {
-    c->red = gifgetbyte(grr);
-    c->green = gifgetbyte(grr);
-    c->blue = gifgetbyte(grr);
+    c->gfc_red = gifgetbyte(grr);
+    c->gfc_green = gifgetbyte(grr);
+    c->gfc_blue = gifgetbyte(grr);
     c->haspixel = 0;
   }
 

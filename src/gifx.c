@@ -63,9 +63,9 @@ load_closest(Gif_XContext *gfx)
   for (i = 0; i < ncolor; i++) {
     Gif_Color *c = &gfx->closest[i];
     c->haspixel = 1;
-    c->red = color[i].red >> 8;
-    c->green = color[i].green >> 8;
-    c->blue = color[i].blue >> 8;
+    c->gfc_red = color[i].red >> 8;
+    c->gfc_green = color[i].green >> 8;
+    c->gfc_blue = color[i].blue >> 8;
     c->pixel = color[i].pixel;
   }
   gfx->nclosest = ncolor;
@@ -85,9 +85,9 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
   load_closest(gfx);
 
   for (i = 0, closer = gfx->closest; i < gfx->nclosest; i++, closer++) {
-    int redd = c->red - closer->red;
-    int greend = c->green - closer->green;
-    int blued = c->blue - closer->blue;
+    int redd = c->gfc_red - closer->gfc_red;
+    int greend = c->gfc_green - closer->gfc_green;
+    int blued = c->gfc_blue - closer->gfc_blue;
     uint32_t d = redd * redd + greend * greend + blued * blued;
     if (d < distance) {
       distance = d;
@@ -98,9 +98,9 @@ allocate_closest(Gif_XContext *gfx, Gif_Color *c)
   if (!got) return 0;
   if (!got->haspixel) {
     XColor xcol;
-    xcol.red = got->red | (got->red << 8);
-    xcol.green = got->green | (got->green << 8);
-    xcol.blue = got->blue | (got->blue << 8);
+    xcol.red = got->gfc_red | (got->gfc_red << 8);
+    xcol.green = got->gfc_green | (got->gfc_green << 8);
+    xcol.blue = got->gfc_blue | (got->gfc_blue << 8);
     if (XAllocColor(gfx->display, gfx->colormap, &xcol) == 0) {
       /* Probably was a read/write color cell. Get rid of it!! */
       *got = gfx->closest[gfx->nclosest - 1];
@@ -127,9 +127,9 @@ allocate_colors(Gif_XColormap *gfxc)
   if (!gfxc->allocated) {
     if (size > gfxc->npixels) size = gfxc->npixels;
     for (i = 0; i < size; i++, c++) {
-      xcol.red = c->red | (c->red << 8);
-      xcol.green = c->green | (c->green << 8);
-      xcol.blue = c->blue | (c->blue << 8);
+      xcol.red = c->gfc_red | (c->gfc_red << 8);
+      xcol.green = c->gfc_green | (c->gfc_green << 8);
+      xcol.blue = c->gfc_blue | (c->gfc_blue << 8);
       if (XAllocColor(gfx->display, gfx->colormap, &xcol))
 	pixels[i] = xcol.pixel;
       else

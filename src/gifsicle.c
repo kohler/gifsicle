@@ -756,9 +756,9 @@ set_new_fixed_colormap(const char *name)
     Gif_Colormap *cm = Gif_NewFullColormap(216, 256);
     Gif_Color *col = cm->col;
     for (i = 0; i < 216; i++) {
-      col[i].red = (i / 36) * 0x33;
-      col[i].green = ((i / 6) % 6) * 0x33;
-      col[i].blue = (i % 6) * 0x33;
+      col[i].gfc_red = (i / 36) * 0x33;
+      col[i].gfc_green = ((i / 6) % 6) * 0x33;
+      col[i].gfc_blue = (i % 6) * 0x33;
     }
     def_output_data.colormap_fixed = cm;
 
@@ -767,13 +767,13 @@ set_new_fixed_colormap(const char *name)
     Gif_Colormap *cm = Gif_NewFullColormap(256, 256);
     Gif_Color *col = cm->col;
     for (i = 0; i < 256; i++)
-      col[i].red = col[i].green = col[i].blue = i;
+      col[i].gfc_red = col[i].gfc_green = col[i].gfc_blue = i;
     def_output_data.colormap_fixed = cm;
 
   } else if (name && strcmp(name, "bw") == 0) {
     Gif_Colormap *cm = Gif_NewFullColormap(2, 256);
-    cm->col[0].red = cm->col[0].green = cm->col[0].blue = 0;
-    cm->col[1].red = cm->col[1].green = cm->col[1].blue = 255;
+    cm->col[0].gfc_red = cm->col[0].gfc_green = cm->col[0].gfc_blue = 0;
+    cm->col[1].gfc_red = cm->col[1].gfc_green = cm->col[1].gfc_blue = 255;
     def_output_data.colormap_fixed = cm;
 
   } else

@@ -839,8 +839,8 @@ colormap_rgb_permutation_sorter(const void *v1, const void *v2)
 {
   const Gif_Color *col1 = (const Gif_Color *)v1;
   const Gif_Color *col2 = (const Gif_Color *)v2;
-  int value1 = (col1->red << 16) | (col1->green << 8) | col1->blue;
-  int value2 = (col2->red << 16) | (col2->green << 8) | col2->blue;
+  int value1 = (col1->gfc_red << 16) | (col1->gfc_green << 8) | col1->gfc_blue;
+  int value2 = (col2->gfc_red << 16) | (col2->gfc_green << 8) | col2->gfc_blue;
   return value1 - value2;
 }
 
@@ -1231,9 +1231,9 @@ initialize_optimizer(Gif_Stream *gfs)
 
   /* combine colormaps */
   all_colormap = Gif_NewFullColormap(1, 384);
-  all_colormap->col[0].red = 255;
-  all_colormap->col[0].green = 255;
-  all_colormap->col[0].blue = 255;
+  all_colormap->col[0].gfc_red = 255;
+  all_colormap->col[0].gfc_green = 255;
+  all_colormap->col[0].gfc_blue = 255;
 
   in_global_map = gfs->global;
   if (!in_global_map) {
@@ -1241,7 +1241,7 @@ initialize_optimizer(Gif_Stream *gfs)
     in_global_map = Gif_NewFullColormap(256, 256);
     col = in_global_map->col;
     for (i = 0; i < 256; i++, col++)
-      col->red = col->green = col->blue = i;
+      col->gfc_red = col->gfc_green = col->gfc_blue = i;
   }
 
   {

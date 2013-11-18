@@ -165,14 +165,21 @@ void		Gif_InitCompressInfo(Gif_CompressInfo *gcinfo);
 /** GIF_COLORMAP **/
 
 typedef struct {
-
     uint8_t haspixel;
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
+    union {
+        struct {
+            uint8_t red;
+            uint8_t green;
+            uint8_t blue;
+        } comp;
+        uint8_t a[3];
+    } c;
+#define gfc_red   c.comp.red
+#define gfc_green c.comp.green
+#define gfc_blue  c.comp.blue
+#define gfc_array c.a
 
     uint32_t pixel;
-
 } Gif_Color;
 
 
@@ -194,7 +201,8 @@ Gif_Colormap *	Gif_CopyColormap(Gif_Colormap *);
 
 int		Gif_ColorEq(Gif_Color *, Gif_Color *);
 #define		GIF_COLOREQ(c1, c2) \
-((c1)->red==(c2)->red && (c1)->green==(c2)->green && (c1)->blue==(c2)->blue)
+((c1)->gfc_red==(c2)->gfc_red && (c1)->gfc_green==(c2)->gfc_green && \
+ (c1)->gfc_blue==(c2)->gfc_blue)
 
 int		Gif_FindColor(Gif_Colormap *, Gif_Color *);
 int		Gif_AddColor(Gif_Colormap *, Gif_Color *, int look_from);

@@ -161,7 +161,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   Gif_DeleteArray(new_command);
 
   for (i = 0; i < gfcm->ncol; i++)
-    fprintf(f, "%d %d %d\n", col[i].red, col[i].green, col[i].blue);
+    fprintf(f, "%d %d %d\n", col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
 
   errno = 0;
   status = pclose(f);

@@ -339,8 +339,8 @@ colormap_info(FILE *where, Gif_Colormap *gfcm, char *prefix)
     fputs(prefix, where);
     for (i = 0; i < COLORMAP_COLS && which < gfcm->ncol; i++, which += nrows) {
       if (i) fputs("    ", where);
-      fprintf(where, " %3d: #%02X%02X%02X", which, gfcm->col[which].red,
-	      gfcm->col[which].green, gfcm->col[which].blue);
+      fprintf(where, " %3d: #%02X%02X%02X", which, gfcm->col[which].gfc_red,
+	      gfcm->col[which].gfc_green, gfcm->col[which].gfc_blue);
     }
     fputc('\n', where);
   }
@@ -789,9 +789,9 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (red < 0 || green < 0 || blue < 0
       || red > 255 || green > 255 || blue > 255)
     goto error;
-  parsed_color.red = red;
-  parsed_color.green = green;
-  parsed_color.blue = blue;
+  parsed_color.gfc_red = red;
+  parsed_color.gfc_green = green;
+  parsed_color.gfc_blue = blue;
   parsed_color.haspixel = 0;
   return 1;
 
@@ -871,9 +871,9 @@ read_text_colormap(FILE *f, const char *name)
 	error(0, "%s: maximum 256 colors allowed in colormap", name);
 	break;
       } else {
-	col[ncol].red = red;
-	col[ncol].green = green;
-	col[ncol].blue = blue;
+	col[ncol].gfc_red = red;
+	col[ncol].gfc_green = green;
+	col[ncol].gfc_blue = blue;
 	ncol++;
       }
     }

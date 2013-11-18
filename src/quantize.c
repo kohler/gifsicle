@@ -12,6 +12,12 @@
 #include <assert.h>
 #include <string.h>
 
+static inline uint32_t color_distance(const Gif_Color* c, int r, int g, int b) {
+    return (c->gfc_red - r) * (c->gfc_red - r)
+        + (c->gfc_green - g) * (c->gfc_green - g)
+        + (c->gfc_blue - b) * (c->gfc_blue - b);
+}
+
 typedef struct Gif_Histogram {
   Gif_Color *c;
   int n;
@@ -48,14 +54,13 @@ add_histogram_color(Gif_Color *color, Gif_Histogram *hist, unsigned long count)
 {
   Gif_Color *hc = hist->c;
   int hcap = hist->cap - 1;
-  int i = (((color->red & 0xF0) << 4) | (color->green & 0xF0)
-	   | (color->blue >> 4)) & hcap;
-  int hash2 = ((((color->red & 0x0F) << 8) | ((color->green & 0x0F) << 4)
-		| (color->blue & 0x0F)) & hcap) | 1;
+  int i = (((color->gfc_red & 0xF0) << 4) | (color->gfc_green & 0xF0)
+	   | (color->gfc_blue >> 4)) & hcap;
+  int hash2 = ((((color->gfc_red & 0x0F) << 8) | ((color->gfc_green & 0x0F) << 4)
+		| (color->gfc_blue & 0x0F)) & hcap) | 1;
 
   for (; hc[i].haspixel; i = (i + hash2) & hcap)
-    if (hc[i].red == color->red && hc[i].green == color->green
-	&& hc[i].blue == color->blue) {
+    if (GIF_COLOREQ(&hc[i], color)) {
       hc[i].pixel += count;
       color->haspixel = 1;
       color->pixel = i;
@@ -204,7 +209,7 @@ red_sort_compare(const void *va, const void *vb)
 {
   const Gif_Color *a = (const Gif_Color *)va;
   const Gif_Color *b = (const Gif_Color *)vb;
-  return a->red - b->red;
+  return a->gfc_red - b->gfc_red;
 }
 
 static int
@@ -212,7 +217,7 @@ green_sort_compare(const void *va, const void *vb)
 {
   const Gif_Color *a = (const Gif_Color *)va;
   const Gif_Color *b = (const Gif_Color *)vb;
-  return a->green - b->green;
+  return a->gfc_green - b->gfc_green;
 }
 
 static int
@@ -220,7 +225,7 @@ blue_sort_compare(const void *va, const void *vb)
 {
   const Gif_Color *a = (const Gif_Color *)va;
   const Gif_Color *b = (const Gif_Color *)vb;
-  return a->blue - b->blue;
+  return a->gfc_blue - b->gfc_blue;
 }
 
 
@@ -307,21 +312,21 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
       Gif_Color *trav = slice;
       minc = maxc = *trav;
       for (i = 1, trav++; i < split->count; i++, trav++) {
-	minc.red = min(minc.red, trav->red);
-	maxc.red = max(maxc.red, trav->red);
-	minc.green = min(minc.green, trav->green);
-	maxc.green = max(maxc.green, trav->green);
-	minc.blue = min(minc.blue, trav->blue);
-	maxc.blue = max(maxc.blue, trav->blue);
+	minc.gfc_red = min(minc.gfc_red, trav->gfc_red);
+	maxc.gfc_red = max(maxc.gfc_red, trav->gfc_red);
+	minc.gfc_green = min(minc.gfc_green, trav->gfc_green);
+	maxc.gfc_green = max(maxc.gfc_green, trav->gfc_green);
+	minc.gfc_blue = min(minc.gfc_blue, trav->gfc_blue);
+	maxc.gfc_blue = max(maxc.gfc_blue, trav->gfc_blue);
       }
     }
 
     /* 2.3. decide how to split it. use the luminance method. also sort the
        colors. */
     {
-      double red_diff = 0.299 * (maxc.red - minc.red);
-      double green_diff = 0.587 * (maxc.green - minc.green);
-      double blue_diff = 0.114 * (maxc.blue - minc.blue);
+      double red_diff = 0.299 * (maxc.gfc_red - minc.gfc_red);
+      double green_diff = 0.587 * (maxc.gfc_green - minc.gfc_green);
+      double blue_diff = 0.114 * (maxc.gfc_blue - minc.gfc_blue);
       if (red_diff >= green_diff && red_diff >= blue_diff)
 	qsort(slice, split->count, sizeof(Gif_Color), red_sort_compare);
       else if (green_diff >= blue_diff)
@@ -361,13 +366,13 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
     double red_total = 0, green_total = 0, blue_total = 0;
     Gif_Color *slice = &hist[ slots[i].first ];
     for (j = 0; j < slots[i].count; j++) {
-      red_total += slice[j].red * slice[j].pixel;
-      green_total += slice[j].green * slice[j].pixel;
-      blue_total += slice[j].blue * slice[j].pixel;
+      red_total += slice[j].gfc_red * slice[j].pixel;
+      green_total += slice[j].gfc_green * slice[j].pixel;
+      blue_total += slice[j].gfc_blue * slice[j].pixel;
     }
-    adapt[i].red = (uint8_t)(red_total / slots[i].pixel);
-    adapt[i].green = (uint8_t)(green_total / slots[i].pixel);
-    adapt[i].blue = (uint8_t)(blue_total / slots[i].pixel);
+    adapt[i].gfc_red = (uint8_t)(red_total / slots[i].pixel);
+    adapt[i].gfc_green = (uint8_t)(green_total / slots[i].pixel);
+    adapt[i].gfc_blue = (uint8_t)(blue_total / slots[i].pixel);
     adapt[i].haspixel = 0;
   }
 
@@ -454,14 +459,12 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 
     /* 2.3. adjust the min_dist array */
     {
-      int red = hist[chosen].red, green = hist[chosen].green,
-	blue = hist[chosen].blue;
+      int red = hist[chosen].gfc_red, green = hist[chosen].gfc_green,
+	blue = hist[chosen].gfc_blue;
       Gif_Color *h = hist;
       for (i = 0; i < nhist; i++, h++)
 	if (min_dist[i]) {
-	  uint32_t dist = (h->red - red) * (h->red - red)
-	    + (h->green - green) * (h->green - green)
-	    + (h->blue - blue) * (h->blue - blue);
+          uint32_t dist = color_distance(h, red, green, blue);
 	  if (dist < min_dist[i]) {
 	    min_dist[i] = dist;
 	    closest[i] = nadapt;
@@ -487,9 +490,9 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
       for (j = 0; j < nhist; j++)
 	if (closest[j] == i) {
 	  uint32_t pixel = hist[j].pixel;
-	  red_total += hist[j].red * pixel;
-	  green_total += hist[j].green * pixel;
-	  blue_total += hist[j].blue * pixel;
+	  red_total += hist[j].gfc_red * pixel;
+	  green_total += hist[j].gfc_green * pixel;
+	  blue_total += hist[j].gfc_blue * pixel;
 	  pixel_total += pixel;
 	  if (min_dist[j])
 	    mismatch_pixel_total += pixel;
@@ -504,13 +507,13 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 	/* Favor, by a smallish amount, the color the plain diversity
            algorithm would pick. */
 	uint32_t pixel = hist[match].pixel * 2;
-	red_total += hist[match].red * pixel;
-	green_total += hist[match].green * pixel;
-	blue_total += hist[match].blue * pixel;
+	red_total += hist[match].gfc_red * pixel;
+	green_total += hist[match].gfc_green * pixel;
+	blue_total += hist[match].gfc_blue * pixel;
 	pixel_total += pixel;
-	adapt[i].red = (uint8_t)(red_total / pixel_total);
-	adapt[i].green = (uint8_t)(green_total / pixel_total);
-	adapt[i].blue = (uint8_t)(blue_total / pixel_total);
+	adapt[i].gfc_red = (uint8_t)(red_total / pixel_total);
+	adapt[i].gfc_green = (uint8_t)(green_total / pixel_total);
+	adapt[i].gfc_blue = (uint8_t)(blue_total / pixel_total);
       }
       adapt[i].haspixel = 0;
     }
@@ -579,21 +582,16 @@ static inline int colormap_hash_bucket(const colormap_hash* ch,
     return bk;
 }
 
-static inline uint32_t color_distance(const Gif_Color* c, int r, int g, int b) {
-    return (c->red - r) * (c->red - r)
-        + (c->green - g) * (c->green - g)
-        + (c->blue - b) * (c->blue - b);
-}
-
 void colormap_hash_populate(colormap_hash* ch) {
     int i, bk;
     ch->grayscale = 1;
     for (i = 0; i != ch->ncol; ++i) {
         const Gif_Color* c = &ch->col[i];
-        ch->grayscale = ch->grayscale && c->red == c->green && c->green == c->blue;
-        bk = colormap_hash_bucket(ch, c->red, c->green, c->blue);
+        ch->grayscale = ch->grayscale && c->gfc_red == c->gfc_green
+            && c->gfc_green == c->gfc_blue;
+        bk = colormap_hash_bucket(ch, c->gfc_red, c->gfc_green, c->gfc_blue);
         if (!ch->hash[bk].color) {
-            ch->hash[bk].color = COLORMAP_HASHCOLOR(c->red, c->green, c->blue);
+            ch->hash[bk].color = COLORMAP_HASHCOLOR(c->gfc_red, c->gfc_green, c->gfc_blue);
             ch->hash[bk].pixel = i;
             ++ch->hashfull;
         }
@@ -626,7 +624,7 @@ void colormap_hash_set_colmindist(colormap_hash* ch) {
     for (i = 0; i != ch->ncol; ++i)
         for (j = i + 1; j != ch->ncol; ++j) {
             const Gif_Color* ci = &ch->col[i], *cj = &ch->col[j];
-            uint32_t dist = color_distance(ci, cj->red, cj->green, cj->blue);
+            uint32_t dist = color_distance(ci, cj->gfc_red, cj->gfc_green, cj->gfc_blue);
             // That's the squared distance; we want the square of 1/2 the
             // distance
             dist /= 4;
@@ -672,7 +670,7 @@ int closest_color_grayscale_luminance(Gif_Color* col, int ncol,
 
     for (i = 0; i < ncol; i++)
 	if (col[i].haspixel != 255) {
-            int in_gray = 1024 * col[i].red;
+            int in_gray = 1024 * col[i].gfc_red;
             uint32_t dist = abs(gray - in_gray);
             if (dist < min_dist) {
                 min_dist = dist;
@@ -743,7 +741,7 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
       map[i] = col[i].pixel;
     else {
       map[i] = col[i].pixel =
-          colormap_hash_lookup(ch, col[i].red, col[i].green, col[i].blue);
+          colormap_hash_lookup(ch, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
       col[i].haspixel = 1;
     }
 
@@ -782,7 +780,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   for (i = 0; i < old_cm->ncol; ++i)
       if (!col[i].haspixel) {
           col[i].pixel =
-              colormap_hash_lookup(ch, col[i].red, col[i].green, col[i].blue);
+              colormap_hash_lookup(ch, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
           col[i].haspixel = 1;
       }
 
@@ -840,9 +838,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	goto next;
 
       /* use Floyd-Steinberg errors to adjust actual color */
-      use_r = col[*data].red + r_err[x+1] / DITHER_SCALE;
-      use_g = col[*data].green + g_err[x+1] / DITHER_SCALE;
-      use_b = col[*data].blue + b_err[x+1] / DITHER_SCALE;
+      use_r = col[*data].gfc_red + r_err[x+1] / DITHER_SCALE;
+      use_g = col[*data].gfc_green + g_err[x+1] / DITHER_SCALE;
+      use_b = col[*data].gfc_blue + b_err[x+1] / DITHER_SCALE;
       use_r = max(use_r, 0);  use_r = min(use_r, 255);
       use_g = max(use_g, 0);  use_g = min(use_g, 255);
       use_b = max(use_b, 0);  use_b = min(use_b, 255);
@@ -858,7 +856,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	 Assume that, with a large scale (1024), we don't need to worry about
 	 image artifacts caused by error accumulation (the fact that the
 	 error terms might not sum to the error). */
-      e = (use_r - ch->col[*new_data].red) * DITHER_SCALE;
+      e = (use_r - ch->col[*new_data].gfc_red) * DITHER_SCALE;
       if (e) {
 	r_err [x+d0] += (e * 7) / 16;
 	r_err1[x+d1] += (e * 3) / 16;
@@ -866,7 +864,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	r_err1[x+d3] += e / 16;
       }
 
-      e = (use_g - ch->col[*new_data].green) * DITHER_SCALE;
+      e = (use_g - ch->col[*new_data].gfc_green) * DITHER_SCALE;
       if (e) {
 	g_err [x+d0] += (e * 7) / 16;
 	g_err1[x+d1] += (e * 3) / 16;
@@ -874,7 +872,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	g_err1[x+d3] += e / 16;
       }
 
-      e = (use_b - ch->col[*new_data].blue) * DITHER_SCALE;
+      e = (use_b - ch->col[*new_data].gfc_blue) * DITHER_SCALE;
       if (e) {
 	b_err [x+d0] += (e * 7) / 16;
 	b_err1[x+d1] += (e * 3) / 16;
@@ -1065,7 +1063,7 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
     gfs->background = gfs->images[0]->transparent;
   else if (gfs->global && gfs->background < gfs->global->ncol) {
     Gif_Color *c = &gfs->global->col[ gfs->background ];
-    gfs->background = colormap_hash_lookup(&hash, c->red, c->green, c->blue);
+    gfs->background = colormap_hash_lookup(&hash, c->gfc_red, c->gfc_green, c->gfc_blue);
     new_col[gfs->background].pixel++;
   }
 
