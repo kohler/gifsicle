@@ -554,6 +554,7 @@ struct colormap_hash {
     Gif_Color* col;
     int ncol;
     int grayscale;
+    uint32_t* colmindist;
 };
 
 static int colormap_hash_sizes[] = {
@@ -607,10 +608,33 @@ void colormap_hash_init(colormap_hash* ch, const Gif_Colormap* gfcm) {
     ch->col = gfcm->col;
     ch->ncol = gfcm->ncol;
     colormap_hash_populate(ch);
+    ch->colmindist = (uint32_t*) NULL;
 }
 
 void colormap_hash_cleanup(colormap_hash* ch) {
     Gif_DeleteArray(ch->hash);
+    Gif_DeleteArray(ch->colmindist);
+}
+
+void colormap_hash_set_colmindist(colormap_hash* ch) {
+    int i, j;
+    if (ch->colmindist)
+        return;
+    ch->colmindist = Gif_NewArray(uint32_t, ch->ncol);
+    for (i = 0; i != ch->ncol; ++i)
+        ch->colmindist[i] = (uint32_t) -1;
+    for (i = 0; i != ch->ncol; ++i)
+        for (j = i + 1; j != ch->ncol; ++j) {
+            const Gif_Color* ci = &ch->col[i], *cj = &ch->col[j];
+            uint32_t dist = color_distance(ci, cj->red, cj->green, cj->blue);
+            // That's the squared distance; we want the square of 1/2 the
+            // distance
+            dist /= 4;
+            if (dist < ch->colmindist[i])
+                ch->colmindist[i] = dist;
+            if (dist < ch->colmindist[j])
+                ch->colmindist[j] = dist;
+        }
 }
 
 int closest_color_rgb_linear(Gif_Color* col, int ncol, int r, int g, int b) {
@@ -753,6 +777,15 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int32_t *r_err, *g_err, *b_err, *r_err1, *g_err1, *b_err1;
   Gif_Color *col = old_cm->col;
 
+  /* Initialize distances */
+  colormap_hash_set_colmindist(ch);
+  for (i = 0; i < old_cm->ncol; ++i)
+      if (!col[i].haspixel) {
+          col[i].pixel =
+              colormap_hash_lookup(ch, col[i].red, col[i].green, col[i].blue);
+          col[i].haspixel = 1;
+      }
+
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
 
@@ -814,7 +847,11 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       use_g = max(use_g, 0);  use_g = min(use_g, 255);
       use_b = max(use_b, 0);  use_b = min(use_b, 255);
 
-      *new_data = colormap_hash_lookup(ch, use_r, use_g, use_b);
+      e = col[*data].pixel;
+      if (color_distance(&ch->col[e], use_r, use_g, use_b) < ch->colmindist[e])
+          *new_data = e;
+      else
+          *new_data = colormap_hash_lookup(ch, use_r, use_g, use_b);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
