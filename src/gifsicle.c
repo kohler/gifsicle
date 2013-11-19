@@ -800,7 +800,7 @@ do_colormap_change(Gif_Stream *gfs)
   if (active_output_data.colormap_size > 0) {
     int nhist;
     Gif_Color *hist;
-    Gif_Colormap *(*adapt_func)(Gif_Color *, int, int);
+    Gif_Colormap *(*adapt_func)(Gif_Color *, int, int, int);
     Gif_Colormap *new_cm;
 
     /* set up the histogram */
@@ -810,7 +810,9 @@ do_colormap_change(Gif_Stream *gfs)
 	if (gfs->images[i]->local)
 	  any_locals = 1;
       hist = histogram(gfs, &nhist);
-      if (nhist <= active_output_data.colormap_size && !any_locals) {
+      if (nhist <= active_output_data.colormap_size
+          && !any_locals
+          && !active_output_data.colormap_fixed) {
 	warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
 	return;
       }
@@ -835,7 +837,8 @@ do_colormap_change(Gif_Stream *gfs)
 
     }
 
-    new_cm = (*adapt_func)(hist, nhist, active_output_data.colormap_size);
+    new_cm = (*adapt_func)(hist, nhist, active_output_data.colormap_size,
+                           !active_output_data.colormap_fixed);
     do_set_colormap(gfs, new_cm);
 
     Gif_DeleteArray(hist);

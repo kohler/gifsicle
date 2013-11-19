@@ -248,7 +248,7 @@ typedef struct {
 } adaptive_slot;
 
 Gif_Colormap *
-colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
+colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size, int complain)
 {
   adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
   Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
@@ -261,10 +261,10 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
 
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size >= nhist) {
+  if (adapt_size >= nhist && complain)
     warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
+  if (adapt_size >= nhist)
     adapt_size = nhist;
-  }
 
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
@@ -384,7 +384,8 @@ colormap_median_cut(Gif_Color *hist, int nhist, int adapt_size)
 
 
 static Gif_Colormap *
-colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
+colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int complain,
+                   int blend)
 {
   uint32_t *min_dist = Gif_NewArray(uint32_t, nhist);
   int *closest = Gif_NewArray(int, nhist);
@@ -399,10 +400,10 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size > nhist) {
+  if (adapt_size > nhist && complain)
     warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
+  if (adapt_size > nhist)
     adapt_size = nhist;
-  }
 
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
@@ -527,15 +528,17 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int blend)
 
 
 Gif_Colormap *
-colormap_blend_diversity(Gif_Color *hist, int nhist, int adapt_size)
+colormap_blend_diversity(Gif_Color *hist, int nhist, int adapt_size,
+                         int complain)
 {
-  return colormap_diversity(hist, nhist, adapt_size, 1);
+    return colormap_diversity(hist, nhist, adapt_size, complain, 1);
 }
 
 Gif_Colormap *
-colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size)
+colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size,
+                        int complain)
 {
-  return colormap_diversity(hist, nhist, adapt_size, 0);
+    return colormap_diversity(hist, nhist, adapt_size, complain, 0);
 }
 
 
