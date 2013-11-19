@@ -1,5 +1,15 @@
 Gifsicle NEWS
 
+Version 1.75   18.Nov.2013
+
+* Improve `--careful` (fewer crashes). Reported by Bryan Stillwell.
+
+* Improve `-O2`: again, don't refuse to optimize images with local
+  color tables. Reported by Bryan Stillwell.
+
+* Greatly improve `--dither` speed.
+
+
 Version 1.74   16.Nov.2013
 
 * Improve `--resize` behavior: avoid animation artifacts due to
