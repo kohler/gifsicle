@@ -519,9 +519,9 @@ write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
   int i, ncol = gfcm->ncol;
 
   for (i = 0; i < ncol && i < totalcol; i++, c++) {
-    gifputbyte(c->red, grr);
-    gifputbyte(c->green, grr);
-    gifputbyte(c->blue, grr);
+    gifputbyte(c->gfc_red, grr);
+    gifputbyte(c->gfc_green, grr);
+    gifputbyte(c->gfc_blue, grr);
   }
 
   /* Pad out colormap with black. */
