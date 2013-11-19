@@ -596,7 +596,7 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
     /* save previous data if necessary */
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS
         || (local_color_tables && image_index > 0
-            && last_gfi->disposal == GIF_DISPOSAL_PREVIOUS)) {
+            && last_gfi->disposal > GIF_DISPOSAL_ASIS)) {
       if (!previous_data)
 	previous_data = Gif_NewArray(uint16_t, screen_size);
       memcpy(previous_data, this_data, sizeof(uint16_t) * screen_size);
@@ -656,9 +656,10 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
       if (subimage->required_color_count > 256) {
           if (image_index > 0 && local_color_tables) {
               Gif_OptData *subimage = (Gif_OptData*) last_gfi->user_data;
-              if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS
-                  && subimage->disposal != GIF_DISPOSAL_PREVIOUS) {
-                  subimage->disposal = GIF_DISPOSAL_PREVIOUS;
+              if ((last_gfi->disposal == GIF_DISPOSAL_PREVIOUS
+                   || last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+                  && subimage->disposal != last_gfi->disposal) {
+                  subimage->disposal = last_gfi->disposal;
                   memcpy(last_data, previous_data, sizeof(uint16_t) * screen_size);
                   goto retry_frame;
               }
