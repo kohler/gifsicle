@@ -666,6 +666,11 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
       compressed_len -= amt;
     }
 
+  } else if (!gfi->img) {
+    Gif_UncompressImage(gfi);
+    write_compressed_data(gfi, min_code_bits, gfc, grr);
+    Gif_ReleaseUncompressedImage(gfi);
+
   } else
     write_compressed_data(gfi, min_code_bits, gfc, grr);
 
