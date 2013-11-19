@@ -18,6 +18,23 @@ static inline uint32_t color_distance(const Gif_Color* c, int r, int g, int b) {
         + (c->gfc_blue - b) * (c->gfc_blue - b);
 }
 
+static inline unsigned kd3_distance(const int x[3], const int y[3]) {
+    return (x[0] - y[0]) * (x[0] - y[0])
+        + (x[1] - y[1]) * (x[1] - y[1])
+        + (x[2] - y[2]) * (x[2] - y[2]);
+}
+
+static inline void kd3_luminance_transform(int x[3]) {
+    /* For grayscale colormaps, use distance in luminance space instead of
+       distance in RGB space. The weights for the R,G,B components in
+       luminance space are 0.299,0.587,0.114. Using the proportional factors
+       306, 601, and 117 we get a scaled gray value between 0 and 255 *
+       1024. Thanks to Christian Kumpf, <kumpf@igd.fhg.de>, for providing a
+       patch. */
+    int gray = (306 * x[0] + 601 * x[1] + 117 * x[2]) >> 10;
+    x[0] = x[1] = x[2] = gray;
+}
+
 typedef struct Gif_Histogram {
   Gif_Color *c;
   int n;
@@ -543,193 +560,286 @@ colormap_flat_diversity(Gif_Color *hist, int nhist, int adapt_size,
 
 
 /*****
- * color_hash allocation and deallocation
+ * kd_tree allocation and deallocation
  **/
 
-typedef struct colormap_hash_item {
-    uint32_t color; // (1<<24) | (red<<16) | (green<<8) | (blue)
-    uint32_t pixel;
-} colormap_hash_item;
+typedef struct kd3_item {
+    int a[3];
+    int index;
+} kd3_item;
 
-#define COLORMAP_HASH_NLAST 4
+typedef struct kd3_treepos {
+    int pivot;
+    int offset;
+} kd3_treepos;
 
-struct colormap_hash {
-    colormap_hash_item* hash;
-    int nhash;
-    int hashfull;
-    Gif_Color* col;
-    int ncol;
-    int grayscale;
-    uint32_t* colmindist;
+typedef struct kd3_tree {
+    kd3_treepos* tree;
+    int ntree;
+    int disabled;
+    kd3_item* items;
+    int nitems;
+    int items_cap;
+    int maxdepth;
+    unsigned (*distance)(const int[3], const int[3]);
+    void (*transform)(int[3]);
+    unsigned* xradius;
+} kd3_tree;
+
+void kd3_init(kd3_tree* kd3, unsigned (*distance)(const int[3], const int[3]),
+              void (*transform)(int[3])) {
+    kd3->tree = NULL;
+    kd3->items = Gif_NewArray(kd3_item, 256);
+    kd3->nitems = 0;
+    kd3->items_cap = 256;
+    kd3->distance = distance;
+    kd3->transform = transform;
+    kd3->xradius = NULL;
+    kd3->disabled = -1;
+}
+
+void kd3_cleanup(kd3_tree* kd3) {
+    Gif_DeleteArray(kd3->tree);
+    Gif_DeleteArray(kd3->items);
+    Gif_DeleteArray(kd3->xradius);
+}
+
+void kd3_add(kd3_tree* kd3, int a0, int a1, int a2) {
+    assert(!kd3->tree);
+    if (kd3->nitems == kd3->items_cap) {
+        kd3->items_cap *= 2;
+        Gif_ReArray(kd3->items, kd3_item, kd3->items_cap);
+    }
+    kd3->items[kd3->nitems].a[0] = a0;
+    kd3->items[kd3->nitems].a[1] = a1;
+    kd3->items[kd3->nitems].a[2] = a2;
+    if (kd3->transform)
+        kd3->transform(kd3->items[kd3->nitems].a);
+    kd3->items[kd3->nitems].index = kd3->nitems;
+    ++kd3->nitems;
+}
+
+void kd3_add_8to15(kd3_tree* kd3, int a0, int a1, int a2) {
+    kd3_add(kd3, (a0 << 7) | (a0 >> 1), (a1 << 7) | (a1 >> 1),
+            (a2 << 7) | (a2 >> 1));
+}
+
+static int kd3_item_compar_0(const void* a, const void* b) {
+    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
+    return aa->a[0] - bb->a[0];
+}
+
+static int kd3_item_compar_1(const void* a, const void* b) {
+    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
+    return aa->a[1] - bb->a[1];
+}
+
+static int kd3_item_compar_2(const void* a, const void* b) {
+    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
+    return aa->a[2] - bb->a[2];
+}
+
+static int (*kd3_item_compars[])(const void*, const void*) = {
+    &kd3_item_compar_0, &kd3_item_compar_1, &kd3_item_compar_2
 };
 
-static int colormap_hash_sizes[] = {
-    1021, 4093, 16381, 65521, 262139, 1048571, 4194301
-};
-
-#define COLORMAP_HASHCOLOR(r, g, b) \
-    ((1U << 24) | ((uint8_t) b << 16) | ((uint8_t) g << 8) | ((uint8_t) r))
-
-static inline int colormap_hash_bucket(const colormap_hash* ch,
-                                       int r, int g, int b) {
-    uint32_t color = COLORMAP_HASHCOLOR(r, g, b);
-    int bk = color % ch->nhash, step = 0;
-    while (ch->hash[bk].color && ch->hash[bk].color != color) {
-        if (!step)
-            step = (((uint8_t) g << 16) | ((uint8_t) r << 8) | ((uint8_t) b))
-                % 1024 + 1;
-        bk += step;
-        if (bk >= ch->nhash)
-            bk -= ch->nhash;
+static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
+                           int l, int r, int n, int depth) {
+    int m, aindex = depth % 3;
+    if (depth > kd3->maxdepth)
+        kd3->maxdepth = depth;
+    while (n >= kd3->ntree) {
+        kd3->ntree *= 2;
+        Gif_ReArray(kd3->tree, kd3_treepos, kd3->ntree);
     }
-    return bk;
-}
-
-void colormap_hash_populate(colormap_hash* ch) {
-    int i, bk;
-    ch->grayscale = 1;
-    for (i = 0; i != ch->ncol; ++i) {
-        const Gif_Color* c = &ch->col[i];
-        ch->grayscale = ch->grayscale && c->gfc_red == c->gfc_green
-            && c->gfc_green == c->gfc_blue;
-        bk = colormap_hash_bucket(ch, c->gfc_red, c->gfc_green, c->gfc_blue);
-        if (!ch->hash[bk].color) {
-            ch->hash[bk].color = COLORMAP_HASHCOLOR(c->gfc_red, c->gfc_green, c->gfc_blue);
-            ch->hash[bk].pixel = i;
-            ++ch->hashfull;
-        }
-    }
-}
-
-void colormap_hash_init(colormap_hash* ch, const Gif_Colormap* gfcm) {
-    ch->nhash = colormap_hash_sizes[0];
-    ch->hash = Gif_NewArray(colormap_hash_item, ch->nhash);
-    memset(ch->hash, 0, sizeof(colormap_hash_item) * ch->nhash);
-    ch->hashfull = 0;
-    ch->col = gfcm->col;
-    ch->ncol = gfcm->ncol;
-    colormap_hash_populate(ch);
-    ch->colmindist = (uint32_t*) NULL;
-}
-
-void colormap_hash_cleanup(colormap_hash* ch) {
-    Gif_DeleteArray(ch->hash);
-    Gif_DeleteArray(ch->colmindist);
-}
-
-void colormap_hash_set_colmindist(colormap_hash* ch) {
-    int i, j;
-    if (ch->colmindist)
-        return;
-    ch->colmindist = Gif_NewArray(uint32_t, ch->ncol);
-    for (i = 0; i != ch->ncol; ++i)
-        ch->colmindist[i] = (uint32_t) -1;
-    for (i = 0; i != ch->ncol; ++i)
-        for (j = i + 1; j != ch->ncol; ++j) {
-            const Gif_Color* ci = &ch->col[i], *cj = &ch->col[j];
-            uint32_t dist = color_distance(ci, cj->gfc_red, cj->gfc_green, cj->gfc_blue);
-            // That's the squared distance; we want the square of 1/2 the
-            // distance
-            dist /= 4;
-            if (dist < ch->colmindist[i])
-                ch->colmindist[i] = dist;
-            if (dist < ch->colmindist[j])
-                ch->colmindist[j] = dist;
-        }
-}
-
-int closest_color_rgb_linear(Gif_Color* col, int ncol, int r, int g, int b) {
-    int i, found = 0;
-    uint32_t min_dist = 0xFFFFFFFFU;
-
-    /* Use straight-line Euclidean distance in RGB space */
-    for (i = 0; i < ncol; i++)
-	if (col[i].haspixel != 255) {
-            uint32_t dist = color_distance(&col[i], r, g, b);
-            if (dist < min_dist) {
-                min_dist = dist;
-                found = i;
-            }
-	}
-
-    return found;
-}
-
-int closest_color_grayscale_luminance(Gif_Color* col, int ncol,
-                                      int r, int g, int b) {
-    int i, found = 0;
-    uint32_t min_dist = 0xFFFFFFFFU;
-    /* If the new colormap is 100% grayscale, then use distance in luminance
-       space instead of distance in RGB space. The weights for the R,G,B
-       components in luminance space are 0.299,0.587,0.114. We calculate a
-       gray value for the input color first and compare that against the
-       available grays in the colormap. Thanks to Christian Kumpf,
-       <kumpf@igd.fhg.de>, for providing a patch.
-
-       Note on the calculation of 'gray': Using the factors 306, 601, and
-       117 (proportional to 0.299,0.587,0.114) we get a scaled gray value
-       between 0 and 255 * 1024. */
-    int gray = 306 * r + 601 * g + 117 * b;
-
-    for (i = 0; i < ncol; i++)
-	if (col[i].haspixel != 255) {
-            int in_gray = 1024 * col[i].gfc_red;
-            uint32_t dist = abs(gray - in_gray);
-            if (dist < min_dist) {
-                min_dist = dist;
-                found = i;
-            }
-	}
-
-    return found;
-}
-
-void colormap_hash_grow(colormap_hash* ch) {
-    size_t nhashsizes = sizeof(colormap_hash_sizes)/sizeof(colormap_hash_sizes[0]);
-    int sizeindex;
-    for (sizeindex = 0; sizeindex < (int) nhashsizes
-             && colormap_hash_sizes[sizeindex] <= ch->nhash; ++sizeindex)
-        /* do nothing */;
-    if (sizeindex < (int) nhashsizes) {
-        Gif_DeleteArray(ch->hash);
-        ch->nhash = colormap_hash_sizes[sizeindex];
-        ch->hash = Gif_NewArray(colormap_hash_item, ch->nhash);
-    }
-    memset(ch->hash, 0, sizeof(colormap_hash_item) * ch->nhash);
-    ch->hashfull = 0;
-    colormap_hash_populate(ch);
-}
-
-int colormap_hash_lookup(colormap_hash* ch, int r, int g, int b) {
-    int bk;
-
-    bk = colormap_hash_bucket(ch, r, g, b);
-    if (ch->hash[bk].color)
-        goto done;
-
-    if (ch->hashfull + ch->hashfull > ch->nhash) {
-        colormap_hash_grow(ch);
-        bk = colormap_hash_bucket(ch, r, g, b);
+    if (l + 1 >= r) {
+        kd3->tree[n].pivot = (l == r ? -1 : items[l].index);
+        kd3->tree[n].offset = -1;
+        return 2;
     }
 
-    /* find the closest color in the new colormap */
-    ch->hash[bk].color = COLORMAP_HASHCOLOR(r, g, b);
-    if (ch->grayscale)
-        ch->hash[bk].pixel =
-            closest_color_grayscale_luminance(ch->col, ch->ncol, r, g, b);
+    qsort(&items[l], r - l, sizeof(kd3_item), kd3_item_compars[aindex]);
+    m = l + ((r - l) >> 1);
+    while (m > l && items[m].a[aindex] == items[m-1].a[aindex])
+        --m;
+    if (m == l)
+        kd3->tree[n].pivot = items[m].a[aindex];
     else
-        ch->hash[bk].pixel =
-            closest_color_rgb_linear(ch->col, ch->ncol, r, g, b);
-    ++ch->hashfull;
+        kd3->tree[n].pivot = items[m-1].a[aindex]
+            + ((items[m].a[aindex] - items[m-1].a[aindex]) >> 1);
+    int nl = kd3_build_range(kd3, items, l, m, n+1, depth+1);
+    kd3->tree[n].offset = 1+nl;
+    int nr = kd3_build_range(kd3, items, m, r, n+1+nl, depth+1);
+    return 1+nl+nr;
+}
 
- done:
-    return ch->hash[bk].pixel;
+static int kd3_item_all_compar(const void* a, const void* b) {
+    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
+    if (aa->a[0] - bb->a[0])
+        return aa->a[0] - bb->a[0];
+    else if (aa->a[1] - bb->a[1])
+        return aa->a[1] - bb->a[1];
+    else
+        return aa->a[2] - bb->a[2];
+}
+
+void kd3_print(kd3_tree* kd3, int depth, kd3_treepos* p, int* a, int* b) {
+    int i;
+    char x[10][6];
+    for (i = 0; i != 3; ++i) {
+        if (a[i] == 0x80000000)
+            sprintf(x[2*i], "*");
+        else
+            sprintf(x[2*i], "%d", a[i]);
+        if (b[i] == 0x7FFFFFFF)
+            sprintf(x[2*i+1], "*");
+        else
+            sprintf(x[2*i+1], "%d", b[i]);
+    }
+    printf("%*s<%s:%s,%s:%s,%s:%s>", depth*3, "",
+           x[0], x[1], x[2], x[3], x[4], x[5]);
+    if (p->offset < 0) {
+        if (p->pivot >= 0) {
+            assert(kd3->items[p->pivot].a[0] >= a[0]);
+            assert(kd3->items[p->pivot].a[1] >= a[1]);
+            assert(kd3->items[p->pivot].a[2] >= a[2]);
+            assert(kd3->items[p->pivot].a[0] < b[0]);
+            assert(kd3->items[p->pivot].a[1] < b[1]);
+            assert(kd3->items[p->pivot].a[2] < b[2]);
+            printf(" ** @%d: <%d,%d,%d>\n", p->pivot, kd3->items[p->pivot].a[0], kd3->items[p->pivot].a[1], kd3->items[p->pivot].a[2]);
+        }
+    } else {
+        int aindex = depth % 3;
+        assert(p->pivot >= a[aindex]);
+        assert(p->pivot < b[aindex]);
+        printf((aindex == 0 ? " | <%d,_,_>\n" :
+                aindex == 1 ? " | <_,%d,_>\n" : " | <_,_,%d>\n"), p->pivot);
+        int x[3];
+        memcpy(x, b, sizeof(int) * 3);
+        x[aindex] = p->pivot;
+        kd3_print(kd3, depth + 1, p + 1, a, x);
+        memcpy(x, a, sizeof(int) * 3);
+        x[aindex] = p->pivot;
+        kd3_print(kd3, depth + 1, p + p->offset, x, b);
+    }
+}
+
+void kd3_build(kd3_tree* kd3) {
+    kd3_item* items;
+    int i, j, delta;
+    assert(!kd3->tree);
+
+    // create xradius
+    kd3->xradius = Gif_NewArray(unsigned, kd3->nitems);
+    for (i = 0; i != kd3->nitems; ++i)
+        kd3->xradius[i] = (unsigned) -1;
+    for (i = 0; i != kd3->nitems; ++i)
+        for (j = i + 1; j != kd3->nitems; ++j) {
+            unsigned dist = kd3->distance(kd3->items[i].a, kd3->items[j].a);
+            unsigned radius = dist / 4;
+            if (radius < kd3->xradius[i])
+                kd3->xradius[i] = radius;
+            if (radius < kd3->xradius[j])
+                kd3->xradius[j] = radius;
+        }
+
+    // create tree
+    kd3->tree = Gif_NewArray(kd3_treepos, 256);
+    kd3->ntree = 256;
+    kd3->maxdepth = 0;
+
+    // create copy of items; remove duplicates
+    items = Gif_NewArray(kd3_item, kd3->nitems);
+    memcpy(items, kd3->items, sizeof(kd3_item) * kd3->nitems);
+    qsort(items, kd3->nitems, sizeof(kd3_item), kd3_item_all_compar);
+    for (i = 0, delta = 1; i != kd3->nitems; ++i)
+        if (items[i].a[0] == items[i+delta].a[0]
+            && items[i].a[1] == items[i+delta].a[1]
+            && items[i].a[2] == items[i+delta].a[2])
+            ++delta, --i;
+        else if (delta > 1)
+            items[i+1] = items[i+delta];
+
+    kd3_build_range(kd3, items, 0, kd3->nitems - (delta - 1), 0, 0);
+    assert(kd3->maxdepth < 32);
+
+    Gif_DeleteArray(items);
+}
+
+void kd3_disable(kd3_tree* kd3, int i) {
+    assert(kd3->disabled < 0);
+    kd3->disabled = i;
+}
+
+void kd3_enable_all(kd3_tree* kd3) {
+    kd3->disabled = -1;
+}
+
+int kd3_closest_transformed(const kd3_tree* kd3, const int a[3]) {
+    assert(kd3->tree);
+    const kd3_treepos* stack[32];
+    uint8_t state[32];
+    int stackpos = 0;
+    int result = -1;
+    unsigned mindist = (unsigned) -1;
+    stack[0] = kd3->tree;
+    state[0] = 0;
+
+    while (stackpos >= 0) {
+        assert(stackpos < 32);
+        const kd3_treepos* p = stack[stackpos];
+
+        if (p->offset < 0) {
+            if (p->pivot >= 0 && kd3->disabled != p->pivot) {
+                unsigned dist = kd3->distance(kd3->items[p->pivot].a, a);
+                if (dist < mindist) {
+                    mindist = dist;
+                    result = p->pivot;
+                }
+            }
+            if (--stackpos >= 0)
+                ++state[stackpos];
+        } else if (state[stackpos] == 0) {
+            if (a[stackpos % 3] < p->pivot)
+                stack[stackpos + 1] = p + 1;
+            else
+                stack[stackpos + 1] = p + p->offset;
+            ++stackpos;
+            state[stackpos] = 0;
+        } else {
+            int delta = a[stackpos % 3] - p->pivot;
+            if (state[stackpos] == 1
+                && (unsigned) (delta * delta) < mindist) {
+                if (delta < 0)
+                    stack[stackpos + 1] = p + p->offset;
+                else
+                    stack[stackpos + 1] = p + 1;
+                ++stackpos;
+                state[stackpos] = 0;
+            } else if (--stackpos >= 0)
+                ++state[stackpos];
+        }
+    }
+
+    return result;
+}
+
+int kd3_closest(const kd3_tree* kd3, int a0, int a1, int a2) {
+    int a[3] = {a0, a1, a2};
+    if (kd3->transform)
+        kd3->transform(a);
+    return kd3_closest_transformed(kd3, a);
+}
+
+int kd3_closest_8to15(const kd3_tree* kd3, int a0, int a1, int a2) {
+    return kd3_closest(kd3, (a0 << 7) | (a0 >> 1), (a1 << 7) | (a1 >> 1),
+                       (a2 << 7) | (a2 >> 1));
 }
 
 
 void
 colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
-			 Gif_Colormap *old_cm, colormap_hash* ch,
+			 Gif_Colormap *old_cm, kd3_tree* kd3,
 			 uint32_t *histogram)
 {
   int ncol = old_cm->ncol;
@@ -739,14 +849,10 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
   int transparent = gfi->transparent;
 
   /* find closest colors in new colormap */
-  for (i = 0; i < ncol; i++)
-    if (col[i].haspixel)
-      map[i] = col[i].pixel;
-    else {
-      map[i] = col[i].pixel =
-          colormap_hash_lookup(ch, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
+  for (i = 0; i < ncol; i++) {
+      map[i] = col[i].pixel = kd3_closest_8to15(kd3, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
       col[i].haspixel = 1;
-    }
+  }
 
   /* map image */
   for (j = 0; j < gfi->height; j++) {
@@ -761,7 +867,9 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
 
 
 #define DITHER_SCALE	1024
+#define DITHER_SHIFT    10
 #define DITHER_SCALE_M1	(DITHER_SCALE-1)
+#define DITHER_ITEM2ERR (1<<(DITHER_SHIFT-7))
 #define N_RANDOM_VALUES	512
 
 typedef struct color_erritem {
@@ -770,8 +878,8 @@ typedef struct color_erritem {
 
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
-			       Gif_Colormap *old_cm,
-                               colormap_hash* ch, uint32_t *histogram)
+			       Gif_Colormap *old_cm, kd3_tree* kd3,
+                               uint32_t *histogram)
 {
   static int32_t *random_values = 0;
 
@@ -780,16 +888,13 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int transparent = gfi->transparent;
   int i, j, k;
   color_erritem *err, *err1;
-  Gif_Color *col = old_cm->col;
 
   /* Initialize distances */
-  colormap_hash_set_colmindist(ch);
-  for (i = 0; i < old_cm->ncol; ++i)
-      if (!col[i].haspixel) {
-          col[i].pixel =
-              colormap_hash_lookup(ch, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
-          col[i].haspixel = 1;
-      }
+  for (i = 0; i < old_cm->ncol; ++i) {
+      Gif_Color* c = &old_cm->col[i];
+      c->pixel = kd3_closest_8to15(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      c->haspixel = 1;
+  }
 
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
@@ -834,7 +939,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
     /* Do a single row */
     while (x >= 0 && x < width) {
       int e;
-      color_erritem use;
+      color_erritem use, usexf;
 
       /* the transparent color never gets adjusted */
       if (*data == transparent)
@@ -842,16 +947,21 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
       /* use Floyd-Steinberg errors to adjust actual color */
       for (k = 0; k < 3; ++k) {
-          use.a[k] = col[*data].gfc_array[k] + err[x+1].a[k] / DITHER_SCALE;
+          use.a[k] = old_cm->col[*data].gfc_array[k];
+          use.a[k] = (use.a[k] << 7) | (use.a[k] >> 1);
+          use.a[k] += (err[x+1].a[k] & ~(DITHER_ITEM2ERR-1)) / DITHER_ITEM2ERR;
           use.a[k] = max(use.a[k], 0);
-          use.a[k] = min(use.a[k], 255);
+          use.a[k] = min(use.a[k], (255 << 7) | (255 >> 1));
       }
 
-      e = col[*data].pixel;
-      if (color_distance(&ch->col[e], use.a[0], use.a[1], use.a[2]) < ch->colmindist[e])
+      usexf = use;
+      if (kd3->transform)
+          kd3->transform(usexf.a);
+      e = old_cm->col[*data].pixel;
+      if (kd3->distance(kd3->items[e].a, usexf.a) < kd3->xradius[e])
           *new_data = e;
       else
-          *new_data = colormap_hash_lookup(ch, use.a[0], use.a[1], use.a[2]);
+          *new_data = kd3_closest_transformed(kd3, usexf.a);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
@@ -859,12 +969,12 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	 image artifacts caused by error accumulation (the fact that the
 	 error terms might not sum to the error). */
       for (k = 0; k < 3; ++k) {
-          e = (use.a[k] - ch->col[*new_data].gfc_array[k]) * DITHER_SCALE;
+          e = (use.a[k] - kd3->items[*new_data].a[k]) * DITHER_ITEM2ERR;
           if (e) {
-              err [x+d0].a[k] += (e * 7) / 16;
-              err1[x+d1].a[k] += (e * 3) / 16;
-              err1[x+d2].a[k] += (e * 5) / 16;
-              err1[x+d3].a[k] += e / 16;
+              err [x+d0].a[k] += ((e * 7) & ~15) / 16;
+              err1[x+d1].a[k] += ((e * 3) & ~15) / 16;
+              err1[x+d2].a[k] += ((e * 5) & ~15) / 16;
+              err1[x+d3].a[k] += ( e      & ~15) / 16;
           }
       }
 
@@ -895,7 +1005,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 static int
 try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
 			Gif_Colormap *new_cm, int *new_ncol,
-			uint32_t *histogram)
+			kd3_tree* kd3, uint32_t *histogram)
 {
   uint32_t min_used;
   int i, j;
@@ -940,7 +1050,7 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
       new_transparent = i;
       min_used = histogram[i];
     }
-  new_cm->col[new_transparent].haspixel = 255; /* mark it unusable */
+  kd3_disable(kd3, new_transparent); /* mark it as unusable */
   return 1;
 
  found:
@@ -959,10 +1069,10 @@ void
 colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
 		colormap_image_func image_changer)
 {
-  colormap_hash hash;
+  kd3_tree kd3;
   int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
-  int new_ncol = new_cm->ncol;
+  int new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
   int compress_new_cm = 1;
 
@@ -980,8 +1090,19 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   for (j = 0; j < 256; j++)
     new_col[j].pixel = 0;
 
-  /* initialize hash */
-  colormap_hash_init(&hash, new_cm);
+  /* initialize kd3 tree */
+  new_gray = 1;
+  for (j = 0; new_gray && j < new_cm->ncol; ++j)
+      if (new_col[j].gfc_red != new_col[j].gfc_green
+          || new_col[j].gfc_red != new_col[j].gfc_blue)
+          new_gray = 0;
+  if (new_gray)
+      kd3_init(&kd3, kd3_distance, kd3_luminance_transform);
+  else
+      kd3_init(&kd3, kd3_distance, NULL);
+  for (j = 0; j < new_cm->ncol; ++j)
+      kd3_add_8to15(&kd3, new_col[j].gfc_red, new_col[j].gfc_green, new_col[j].gfc_blue);
+  kd3_build(&kd3);
 
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
@@ -998,12 +1119,13 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
       if (only_compressed)
 	Gif_UncompressImage(gfi);
 
+      kd3_enable_all(&kd3);
       do {
 	for (j = 0; j < 256; j++)
             histogram[j] = 0;
-	image_changer(gfi, new_data, gfcm, &hash, histogram);
+	image_changer(gfi, new_data, gfcm, &kd3, histogram);
       } while (try_assign_transparency(gfi, gfcm, new_data, new_cm, &new_ncol,
-				       histogram));
+				       &kd3, histogram));
 
       Gif_ReleaseUncompressedImage(gfi);
       /* version 1.28 bug fix: release any compressed version or it'll cause
@@ -1045,13 +1167,13 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm,
   if (background_transparent)
     gfs->background = gfs->images[0]->transparent;
   else if (gfs->global && gfs->background < gfs->global->ncol) {
-    Gif_Color *c = &gfs->global->col[ gfs->background ];
-    gfs->background = colormap_hash_lookup(&hash, c->gfc_red, c->gfc_green, c->gfc_blue);
+    Gif_Color *c = &gfs->global->col[gfs->background];
+    gfs->background = kd3_closest_8to15(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
     new_col[gfs->background].pixel++;
   }
 
   Gif_DeleteColormap(gfs->global);
-  colormap_hash_cleanup(&hash);
+  kd3_cleanup(&kd3);
 
   /* We may have used only a subset of the colors in new_cm. We try to store
      only that subset, just as if we'd piped the output of 'gifsicle
