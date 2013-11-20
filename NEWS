@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.76   20.Nov.2013
+
+* Fix `-O2` crashes introduced with `--resize` improvements. Reported
+  by Bryan Stillwell.
+
+
 Version 1.75   18.Nov.2013
 
 * Improve `--careful` (fewer crashes). Reported by Bryan Stillwell.
