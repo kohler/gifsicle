@@ -12,10 +12,10 @@
 #include <assert.h>
 #include <string.h>
 
-static inline uint32_t color_distance(const Gif_Color* c, int r, int g, int b) {
-    return (c->gfc_red - r) * (c->gfc_red - r)
-        + (c->gfc_green - g) * (c->gfc_green - g)
-        + (c->gfc_blue - b) * (c->gfc_blue - b);
+static inline uint32_t rgb_distance(const Gif_Color* x, const Gif_Color* y) {
+    return (x->gfc_red - y->gfc_red) * (x->gfc_red - y->gfc_red)
+        + (x->gfc_green - y->gfc_green) * (x->gfc_green - y->gfc_green)
+        + (x->gfc_blue - y->gfc_blue) * (x->gfc_blue - y->gfc_blue);
 }
 
 static inline unsigned kd3_distance(const int x[3], const int y[3]) {
@@ -451,24 +451,22 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int complain,
 
   /* 2. choose colors one at a time */
   for (nadapt = 0; nadapt < adapt_size; nadapt++) {
-    int chosen = 0;
+    int chosen;
+
+    /* 2.0. find the first non-chosen color */
+    for (chosen = 0; min_dist[chosen] == 0; ++chosen)
+        /* do nothing */;
 
     /* 2.1. choose the color to be added */
     if (nadapt == 0 || (nadapt >= 10 && nadapt % 2 == 0)) {
-      /* 2.1a. choose based on popularity from unchosen colors; we've sorted
-	 them on popularity, so just choose the first in the list */
-      for (; chosen < nhist; chosen++)
-	if (min_dist[chosen])
-	  break;
+        /* 2.1a. want most popular unchosen color; we've sorted them on
+           popularity, so we're done! */
 
     } else {
-      /* 2.1b. choose based on diversity from unchosen colors */
-      uint32_t chosen_dist = 0;
-      for (i = 0; i < nhist; i++)
-	if (min_dist[i] > chosen_dist) {
-	  chosen = i;
-	  chosen_dist = min_dist[i];
-	}
+        /* 2.1b. choose based on diversity from unchosen colors */
+        for (i = chosen + 1; i != nhist; ++i)
+            if (min_dist[i] > min_dist[chosen])
+                chosen = i;
     }
 
     /* 2.2. add the color */
@@ -476,19 +474,14 @@ colormap_diversity(Gif_Color *hist, int nhist, int adapt_size, int complain,
     closest[chosen] = nadapt;
 
     /* 2.3. adjust the min_dist array */
-    {
-      int red = hist[chosen].gfc_red, green = hist[chosen].gfc_green,
-	blue = hist[chosen].gfc_blue;
-      Gif_Color *h = hist;
-      for (i = 0; i < nhist; i++, h++)
-	if (min_dist[i]) {
-          uint32_t dist = color_distance(h, red, green, blue);
-	  if (dist < min_dist[i]) {
-	    min_dist[i] = dist;
-	    closest[i] = nadapt;
-	  }
-	}
-    }
+    for (i = 0; i < nhist; ++i)
+        if (min_dist[i]) {
+            uint32_t dist = rgb_distance(&hist[i], &hist[chosen]);
+            if (dist < min_dist[i]) {
+                min_dist[i] = dist;
+                closest[i] = nadapt;
+            }
+        }
   }
 
   /* 3. make the new palette by choosing one color from each slot. */
