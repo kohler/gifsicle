@@ -280,6 +280,14 @@ verbose_endline(void)
  * Info functions
  **/
 
+const char* debug_color_str(const Gif_Color* gfc) {
+    static int whichbuf = 0;
+    static char buf[8][8];
+    whichbuf = (whichbuf + 1) % 8;
+    sprintf(buf[whichbuf], "#%02X%02X%02X",
+            gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+    return buf[whichbuf];
+}
 
 static void
 safe_puts(const char *s, uint32_t len, FILE *f)

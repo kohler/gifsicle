@@ -162,6 +162,8 @@ void verbose_open(char, const char *);
 void verbose_close(char);
 void verbose_endline(void);
 
+const char* debug_color_str(const Gif_Color* gfc);
+
 #define EXIT_OK		0
 #define EXIT_ERR	1
 #define EXIT_USER_ERR	1
