@@ -752,7 +752,7 @@ void kd3_build(kd3_tree* kd3) {
     items = Gif_NewArray(kd3_item, kd3->nitems);
     memcpy(items, kd3->items, sizeof(kd3_item) * kd3->nitems);
     qsort(items, kd3->nitems, sizeof(kd3_item), kd3_item_all_compar);
-    for (i = 0, delta = 1; i != kd3->nitems; ++i)
+    for (i = 0, delta = 1; i != kd3->nitems - delta; ++i)
         if (items[i].a[0] == items[i+delta].a[0]
             && items[i].a[1] == items[i+delta].a[1]
             && items[i].a[2] == items[i+delta].a[2])
