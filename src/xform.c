@@ -366,6 +366,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
       || yoff[gfi->top + gfi->height] <= yoff[gfi->top]) {
       new_width = new_height = 1;
       gfi->transparent = 0;
+      gfi->disposal = GIF_DISPOSAL_ASIS;
       new_data = Gif_NewArray(uint8_t, 1);
       new_data[0] = 0;
       goto done;
