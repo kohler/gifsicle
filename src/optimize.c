@@ -376,81 +376,85 @@ static int
 expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
 {
   int x, y, expanded = 0;
-
-  int lf = bounds->left, tp = bounds->top,
-      rt = lf + bounds->width - 1, bt = tp + bounds->height - 1;
-
   Gif_OptBounds ob = safe_bounds(this_bounds);
-  int tlf = ob.left, ttp = ob.top,
-      trt = ob.left + ob.width - 1, tbt = ob.top + ob.height - 1;
 
-  if (lf > rt || tp > bt)
-    lf = 0, tp = 0, rt = screen_width - 1, bt = screen_height - 1;
+  if (bounds->width <= 0 || bounds->height <= 0) {
+      bounds->left = bounds->top = 0;
+      bounds->width = screen_width;
+      bounds->height = screen_height;
+  }
 
-  for (y = ttp; y < tp; y++) {
-    uint16_t *now = this_data + screen_width * y;
-    uint16_t *next = next_data + screen_width * y;
-    for (x = tlf; x <= trt; x++)
+  /* 20.Nov.2013 - The image `bounds` might be larger than `this_bounds`
+     because of a previous frame's background disposal. Don't accidentally
+     shrink `this_bounds`. */
+  if (ob.left > bounds->left) {
+      ob.width = (ob.left + ob.width) - bounds->left;
+      ob.left = bounds->left;
+  }
+  if (ob.top > bounds->top) {
+      ob.height = (ob.top + ob.height) - bounds->top;
+      ob.top = bounds->top;
+  }
+  if (ob.left + ob.width < bounds->left + bounds->width)
+      ob.width = bounds->left + bounds->width - ob.left;
+  if (ob.top + ob.height < bounds->top + bounds->height)
+      ob.height = bounds->top + bounds->height - ob.top;
+
+  for (; ob.top < bounds->top; ++ob.top, --ob.height) {
+    uint16_t *now = this_data + screen_width * ob.top;
+    uint16_t *next = next_data + screen_width * ob.top;
+    for (x = ob.left; x < ob.left + ob.width; ++x)
       if (now[x] != TRANSP && next[x] == TRANSP) {
 	expanded = 1;
-	goto found_top;
+	break;
       }
   }
- found_top:
-  tp = y;
 
-  for (y = tbt; y > bt; y--) {
-    uint16_t *now = this_data + screen_width * y;
-    uint16_t *next = next_data + screen_width * y;
-    for (x = tlf; x <= trt; x++)
+  for (; ob.top + ob.height > bounds->top + bounds->height; --ob.height) {
+    uint16_t *now = this_data + screen_width * (ob.top + ob.height - 1);
+    uint16_t *next = next_data + screen_width * (ob.top + ob.height - 1);
+    for (x = ob.left; x < ob.left + ob.width; ++x)
       if (now[x] != TRANSP && next[x] == TRANSP) {
 	expanded = 1;
-	goto found_bottom;
+	break;
       }
   }
- found_bottom:
-  bt = y;
 
-  for (x = tlf; x < lf; x++) {
-    uint16_t *now = this_data + x;
-    uint16_t *next = next_data + x;
-    for (y = tp; y <= bt; y++)
+  for (; ob.left < bounds->left; ++ob.left, --ob.width) {
+    uint16_t *now = this_data + ob.left;
+    uint16_t *next = next_data + ob.left;
+    for (y = ob.top; y < ob.top + ob.height; ++y)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
 	expanded = 1;
-	goto found_left;
+	break;
       }
   }
- found_left:
-  lf = x;
 
-  for (x = trt; x > rt; x--) {
-    uint16_t *now = this_data + x;
-    uint16_t *next = next_data + x;
-    for (y = tp; y <= bt; y++)
+  for (; ob.left + ob.width > bounds->left + bounds->width; --ob.width) {
+    uint16_t *now = this_data + ob.left + ob.width - 1;
+    uint16_t *next = next_data + ob.left + ob.width - 1;
+    for (y = ob.top; y < ob.top + ob.height; ++y)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
 	expanded = 1;
-	goto found_right;
+	break;
       }
   }
- found_right:
-  rt = x;
 
   if (!expanded)
-    for (y = tp; y <= bt; ++y) {
+    for (y = ob.top; y < ob.top + ob.height; ++y) {
       uint16_t *now = this_data + y*screen_width;
       uint16_t *next = next_data + y*screen_width;
-      for (x = lf; x <= rt; ++x)
+      for (x = ob.left; x < ob.left + ob.width; ++x)
 	if (now[x] != TRANSP && next[x] == TRANSP) {
 	  expanded = 1;
-	  goto found_expanded;
+	  break;
 	}
     }
 
- found_expanded:
-  bounds->left = lf;
-  bounds->top = tp;
-  bounds->width = rt + 1 - lf;
-  bounds->height = bt + 1 - tp;
+  bounds->left = ob.left;
+  bounds->top = ob.top;
+  bounds->width = ob.width;
+  bounds->height = ob.height;
   return expanded;
 }
 
@@ -468,8 +472,8 @@ fix_difference_bounds(Gif_OptData *bounds)
   }
   /* assert that image lies completely within screen */
   assert(bounds->top < screen_height && bounds->left < screen_width
-	 && bounds->top + bounds->height - 1 < screen_height
-	 && bounds->left + bounds->width - 1 < screen_width);
+	 && bounds->top + bounds->height <= screen_height
+	 && bounds->left + bounds->width <= screen_width);
 }
 
 
