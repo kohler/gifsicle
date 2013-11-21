@@ -566,7 +566,7 @@ typedef struct kd3_treepos {
     int offset;
 } kd3_treepos;
 
-typedef struct kd3_tree {
+struct kd3_tree {
     kd3_treepos* tree;
     int ntree;
     int disabled;
@@ -577,7 +577,7 @@ typedef struct kd3_tree {
     unsigned (*distance)(const int[3], const int[3]);
     void (*transform)(int[3]);
     unsigned* xradius;
-} kd3_tree;
+};
 
 void kd3_init(kd3_tree* kd3, unsigned (*distance)(const int[3], const int[3]),
               void (*transform)(int[3])) {
