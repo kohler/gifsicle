@@ -1060,7 +1060,7 @@ static int kd3_item_all_compar(const void* a, const void* b) {
 
 void kd3_print(kd3_tree* kd3, int depth, kd3_treepos* p, int* a, int* b) {
     int i;
-    char x[10][6];
+    char x[6][10];
     for (i = 0; i != 3; ++i) {
         if (a[i] == 0x80000000)
             sprintf(x[2*i], "*");
