@@ -220,7 +220,12 @@ Whole-GIF options: Also --no-OPTION.\n\
       --change-color COL1 COL2  Change COL1 to COL2 throughout.\n\
   -k, --colors N                Reduce the number of colors to N.\n\
       --color-method METHOD     Set method for choosing reduced colors.\n\
-  -f, --dither                  Dither image after changing colormap.\n\
+  -f, --dither                  Dither image after changing colormap.\n");
+#if HAVE_POW
+  printf("\
+      --gamma G                 Set gamma for color reduction [2.2].\n");
+#endif
+  printf("\
       --resize WxH              Resize the output GIF to WxH.\n\
       --resize-width W          Resize to width W and proportional height.\n\
       --resize-height H         Resize to height H and proportional width.\n\

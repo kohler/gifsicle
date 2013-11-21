@@ -114,7 +114,7 @@ if test "x$use_dmalloc" = xyes ; then
 else
   MALLOC_O=fmalloc.o
 fi
-AC_SUBST(MALLOC_O)dnl
+AC_SUBST(MALLOC_O)
 
 dnl
 dnl Set up `ungif' support
@@ -136,13 +136,14 @@ dnl
 dnl random or rand, strerror, strtoul, mkstemp, sys/select.h
 dnl
 
-AC_CHECK_FUNC(random, random_func=random, random_func=rand)
+AC_CHECK_FUNC([random], [random_func=random], [random_func=rand])
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a random number.])
 
-AC_REPLACE_FUNCS(strerror)
-AC_CHECK_FUNCS(strtoul mkstemp)
+AC_REPLACE_FUNCS([strerror])
+AC_CHECK_FUNCS([strtoul mkstemp])
+AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
 
-AC_CHECK_HEADERS(sys/select.h inttypes.h unistd.h)
+AC_CHECK_HEADERS([sys/select.h inttypes.h unistd.h])
 
 
 dnl

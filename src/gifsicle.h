@@ -106,6 +106,7 @@ typedef struct {
   Gif_Colormap *colormap_fixed;
   int colormap_algorithm;
   int colormap_dither;
+  double colormap_gamma;
 
   int optimizing;
 
@@ -228,13 +229,14 @@ void	resize_stream(Gif_Stream *, double new_width, double new_height,
  * quantization
  **/
 Gif_Color *histogram(Gif_Stream *, int *);
+void    kd3_set_gamma(double gamma);
 
 #define COLORMAP_DIVERSITY		0
 #define COLORMAP_BLEND_DIVERSITY	1
 #define COLORMAP_MEDIAN_CUT		2
-Gif_Colormap *colormap_blend_diversity(Gif_Color *, int, int, int);
-Gif_Colormap *colormap_flat_diversity(Gif_Color *, int, int, int);
-Gif_Colormap *colormap_median_cut(Gif_Color *, int, int, int);
+Gif_Colormap* colormap_blend_diversity(Gif_Color*, int, Gt_OutputData*);
+Gif_Colormap* colormap_flat_diversity(Gif_Color*, int, Gt_OutputData*);
+Gif_Colormap* colormap_median_cut(Gif_Color*, int, Gt_OutputData*);
 
 typedef struct kd3_tree kd3_tree;
 typedef void (*colormap_image_func)

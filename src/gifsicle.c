@@ -109,10 +109,12 @@ static int any_output_successful = 0;
 #define CH_COLOR_TRANSFORM	9
 #define CH_RESIZE		10
 #define CH_MEMORY		11
+#define CH_GAMMA		12
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
   "colormap size", "dither", "colormap", "colormap method",
-  "background", "color transformation", "resize", "memory conservation"
+  "background", "color transformation", "resize", "memory conservation",
+  "gamma"
 };
 
 
@@ -182,6 +184,7 @@ static const char *output_option_types[] = {
 #define RESIZE_FIT_WIDTH_OPT	365
 #define RESIZE_FIT_HEIGHT_OPT	366
 #define SIZE_INFO_OPT		367
+#define GAMMA_OPT		368
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -232,6 +235,8 @@ const Clp_Option options[] = {
   { "flip-horizontal", 0, FLIP_HORIZ_OPT, 0, Clp_Negate },
   { "flip-vertical", 0, FLIP_VERT_OPT, 0, Clp_Negate },
   { "no-flip", 0, NO_FLIP_OPT, 0, 0 },
+
+  { "gamma", 0, GAMMA_OPT, Clp_ValDouble, Clp_Negate },
 
   { "help", 'h', HELP_OPT, 0, 0 },
 
@@ -794,13 +799,16 @@ do_set_colormap(Gif_Stream *gfs, Gif_Colormap *gfcm)
 static void
 do_colormap_change(Gif_Stream *gfs)
 {
+  if (active_output_data.colormap_fixed || active_output_data.colormap_size > 0)
+    kd3_set_gamma(active_output_data.colormap_gamma);
+
   if (active_output_data.colormap_fixed)
     do_set_colormap(gfs, active_output_data.colormap_fixed);
 
   if (active_output_data.colormap_size > 0) {
     int nhist;
     Gif_Color *hist;
-    Gif_Colormap *(*adapt_func)(Gif_Color *, int, int, int);
+    Gif_Colormap* (*adapt_func)(Gif_Color*, int, Gt_OutputData*);
     Gif_Colormap *new_cm;
 
     /* set up the histogram */
@@ -837,8 +845,7 @@ do_colormap_change(Gif_Stream *gfs)
 
     }
 
-    new_cm = (*adapt_func)(hist, nhist, active_output_data.colormap_size,
-                           !active_output_data.colormap_fixed);
+    new_cm = (*adapt_func)(hist, nhist, &active_output_data);
     do_set_colormap(gfs, new_cm);
 
     Gif_DeleteArray(hist);
@@ -1149,6 +1156,7 @@ initialize_def_frame(void)
   def_output_data.colormap_fixed = 0;
   def_output_data.colormap_algorithm = COLORMAP_DIVERSITY;
   def_output_data.colormap_dither = 0;
+  def_output_data.colormap_gamma = 2.2;
 
   def_output_data.optimizing = 0;
   def_output_data.scaling = GT_SCALING_NONE;
@@ -1190,6 +1198,7 @@ combine_output_options(void)
     active_output_data.colormap_fixed = def_output_data.colormap_fixed;
   }
   COMBINE_ONE_OUTPUT_OPTION(CH_DITHER, colormap_dither);
+  COMBINE_ONE_OUTPUT_OPTION(CH_GAMMA, colormap_gamma);
 
   if (CHANGED(recent, CH_RESIZE)) {
     MARK_CH(output, CH_RESIZE);
@@ -1721,6 +1730,15 @@ main(int argc, char *argv[])
      case DITHER_OPT:
       MARK_CH(output, CH_DITHER);
       def_output_data.colormap_dither = !clp->negated;
+      break;
+
+    case GAMMA_OPT:
+#if HAVE_POW
+      MARK_CH(output, CH_GAMMA);
+      def_output_data.colormap_gamma = clp->negated ? 1 : clp->val.d;
+#else
+      Clp_OptionError("this version of Gifsicle does not support %O");
+#endif
       break;
 
     case RESIZE_OPT:

@@ -118,7 +118,7 @@ options are on the right.
 .Ix "Bad output" "\fB\-\-careful\fP"
 .Ix "Background color" "\fB\-\-background\fP"
 .Ix "Colors, changing" "\fB\-\-change\-color\fP, \fB\-\-use\-colormap\fP, \fB\-\-dither\fP, \fB\-\-transform\-colormap\fP"
-.Ix "\ \ \ reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP"
+.Ix "\ \ \ reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP, \fB\-\-gamma\fP"
 .Ix "Comments" "\fB\-\-comment\fP"
 .Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
 .Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
@@ -971,12 +971,12 @@ or less.
 must be between 2 and 256. This can be used to shrink output GIFs or
 eliminate any local color tables.
 .Sp
-Unless you give
-.Op \-\-use\-colormap ,
-an adaptive group of colors is chosen from the existing color table.
-You can affect this process with the
+Normally, an adaptive group of colors is chosen from the existing
+color table. You can affect this process with the
 .Op \-\-color\-method
-option. Gifsicle may need to add an additional color (making
+option or by giving your own colormap with
+.Op \-\-use\-colormap .
+Gifsicle may need to add an additional color (making
 .IR num +1
 in all) if there is transparency in the image.
 '
@@ -1004,11 +1004,22 @@ is a synonym for
 .TP
 .Oa \-\-dither
 '
-This option only matters if the colormap was changed. With
-.Op \-\-dither
-on, Floyd-Steinberg error diffusion is used to approximate any colors that
+When \-\-dither is on and the colormap is changed,
+Floyd-Steinberg error diffusion is used to approximate any colors that
 were removed. This looks better, but makes bigger files and can cause
 animation artifacts, so it is off by default.
+'
+.Sp
+.TP 5
+.Oa \-\-gamma gamma
+'
+Set the gamma correction to
+.IR gamma .
+Roughly speaking, higher numbers exaggerate shadows and lower numbers
+exaggerate highlights. The default is the sRGB default gamma function,
+which is close to 2.2. Gifsicle uses gamma correction when choosing a
+color palette (\fB\-\-colors\fP) and when dithering
+(\fB\-\-dither\fP).
 '
 .Sp
 .PD 0
