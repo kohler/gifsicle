@@ -722,7 +722,7 @@ void kd3_build(kd3_tree* kd3) {
     int i, j, delta;
     assert(!kd3->tree);
 
-    // create xradius
+    /* create xradius */
     kd3->xradius = Gif_NewArray(unsigned, kd3->nitems);
     for (i = 0; i != kd3->nitems; ++i)
         kd3->xradius[i] = (unsigned) -1;
@@ -736,12 +736,12 @@ void kd3_build(kd3_tree* kd3) {
                 kd3->xradius[j] = radius;
         }
 
-    // create tree
+    /* create tree */
     kd3->tree = Gif_NewArray(kd3_treepos, 256);
     kd3->ntree = 256;
     kd3->maxdepth = 0;
 
-    // create copy of items; remove duplicates
+    /* create copy of items; remove duplicates */
     items = Gif_NewArray(kd3_item, kd3->nitems);
     memcpy(items, kd3->items, sizeof(kd3_item) * kd3->nitems);
     qsort(items, kd3->nitems, sizeof(kd3_item), kd3_item_all_compar);

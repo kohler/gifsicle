@@ -1097,7 +1097,7 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void* user_data)
     if (*arg == 0 || isspace((unsigned char) *arg)
 	|| ((type & 1) && *arg == '-'))
 	val = arg;
-    else if (type & 1) { // unsigned
+    else if (type & 1) { /* unsigned */
 #if HAVE_STRTOUL
 	clp->val.ul = strtoul(arg, (char **) &val, 0);
 #else
