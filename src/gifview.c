@@ -44,8 +44,6 @@
 #define EXTERN extern
 #endif
 
-#define SAVE_FRAMES 20
-
 /*****
  * TIME STUFF (from xwrits)
  **/
@@ -99,6 +97,9 @@ struct timeval genesis_time;
  * THE VIEWER STRUCTURE
  **/
 
+static unsigned pixel_memory_limit_kb = 40000;
+static unsigned pixel_memory_kb;
+
 typedef struct Gt_Viewer {
 
   Display *display;
@@ -130,9 +131,9 @@ typedef struct Gt_Viewer {
   Pixmap pixmap;
   int im_pos;
   int was_unoptimized;
-  int free_pixmaps;
 
   Gif_XFrame *unoptimized_frames;
+  int n_unoptimized_frames;
 
   struct Gt_Viewer *next;
 
@@ -187,6 +188,7 @@ static struct timeval preparation_time;
 #define TITLE_OPT		312
 #define MIN_DELAY_OPT		313
 #define FALLBACK_DELAY_OPT	314
+#define MEMORY_LIMIT_OPT	315
 
 #define WINDOW_TYPE		(Clp_ValFirstUser)
 
@@ -199,6 +201,7 @@ const Clp_Option options[] = {
   { "install-colormap", 'i', INSTALL_COLORMAP_OPT, 0, Clp_Negate },
   { "interactive", 'e', INTERACTIVE_OPT, 0, Clp_Negate },
   { "help", 0, HELP_OPT, 0, 0 },
+  { "memory-limit", 0, MEMORY_LIMIT_OPT, Clp_ValUnsigned, Clp_Negate },
   { "min-delay", 0, MIN_DELAY_OPT, Clp_ValInt, Clp_Negate },
   { "fallback-delay", 0, FALLBACK_DELAY_OPT, Clp_ValInt, Clp_Negate },
   { "name", 0, NAME_OPT, Clp_ValString, 0 },
@@ -276,6 +279,7 @@ Options are:\n\
       --min-delay DELAY         Set minimum frame delay to DELAY/100 sec.\n\
       --fallback-delay DELAY    Set fallback frame delay to DELAY/100 sec.\n\
   +e, --no-interactive          Ignore buttons and keystrokes.\n\
+      --memory-limit LIM        Cache at most LIM megabytes of animation.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
 \n\
@@ -476,8 +480,8 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
   viewer->pixmap = None;
   viewer->im_pos = -1;
   viewer->was_unoptimized = 0;
-  viewer->free_pixmaps = 1;
   viewer->unoptimized_frames = Gif_NewXFrames(gfs);
+  viewer->n_unoptimized_frames = 0;
   viewer->next = viewers;
   viewers = viewer;
   viewer->animating = 0;
@@ -858,6 +862,11 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
   Gif_DeleteArray(strs[0]);
 }
 
+static unsigned screen_memory_kb(const Gt_Viewer* viewer) {
+  return 1 + ((unsigned) (viewer->gfs->screen_width
+                          * viewer->gfs->screen_height) / 334);
+}
+
 static Pixmap
 unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
 {
@@ -865,21 +874,34 @@ unoptimized_frame(Gt_Viewer *viewer, int frame, int slow)
   if (!viewer->unoptimized_frames[frame].pixmap) {
     (void) Gif_XNextImage(viewer->gfx, viewer->gfs, frame,
 			  viewer->unoptimized_frames);
+    pixel_memory_kb += screen_memory_kb(viewer);
+    viewer->unoptimized_frames[viewer->n_unoptimized_frames].user_data =
+      frame;
+    ++viewer->n_unoptimized_frames;
     if (slow) {
       set_viewer_name(viewer, frame);
       XFlush(viewer->display);
     }
   }
 
-  /* maybe kill some old frames */
-  if (viewer->free_pixmaps && frame % SAVE_FRAMES == 1) {
-    int kill, block_first = frame - 1, block_last = frame + SAVE_FRAMES - 1;
-    for (kill = 1; kill < viewer->nim; kill++)
-      if (viewer->unoptimized_frames[kill].pixmap && kill % 50 != 0
-	  && (kill < block_first || kill >= block_last)) {
-	XFreePixmap(viewer->display, viewer->unoptimized_frames[kill].pixmap);
-	viewer->unoptimized_frames[kill].pixmap = None;
-      }
+  /* kill some old frames if over the memory limit */
+  while (pixel_memory_limit_kb != (unsigned) -1
+         && pixel_memory_limit_kb < pixel_memory_kb
+         && viewer->n_unoptimized_frames > 1) {
+    int killidx, killframe, i = 0;
+    do {
+      killidx = random() % viewer->n_unoptimized_frames;
+      killframe = viewer->unoptimized_frames[killidx].user_data;
+      ++i;
+    } while (killframe == frame
+             || (i < 10 && killframe > frame && killframe < frame + 5)
+             || (i < 10 && (killframe % 50) == 0));
+    XFreePixmap(viewer->display, viewer->unoptimized_frames[killframe].pixmap);
+    viewer->unoptimized_frames[killframe].pixmap = None;
+    --viewer->n_unoptimized_frames;
+    viewer->unoptimized_frames[killidx].user_data =
+      viewer->unoptimized_frames[viewer->n_unoptimized_frames].user_data;
+    pixel_memory_kb -= screen_memory_kb(viewer);
   }
 
   return viewer->unoptimized_frames[frame].pixmap;
@@ -1321,6 +1343,13 @@ main(int argc, char *argv[])
 
     case FALLBACK_DELAY_OPT:
       fallback_delay = clp->negated ? 0 : clp->val.i;
+      break;
+
+    case MEMORY_LIMIT_OPT:
+      if (clp->negated || clp->val.u >= ((unsigned) -1 / 1000))
+        pixel_memory_limit_kb = (unsigned) -1;
+      else
+        pixel_memory_limit_kb = clp->val.u * 1000;
       break;
 
      case VERSION_OPT:

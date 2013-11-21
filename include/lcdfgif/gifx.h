@@ -49,6 +49,7 @@ struct Gif_XContext {
 struct Gif_XFrame {
     Pixmap pixmap;
     int postdisposal;
+    int user_data;
 };
 
 Gif_XContext *	Gif_NewXContext(Display *display, Window window);
