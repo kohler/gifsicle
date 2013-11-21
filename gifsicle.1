@@ -54,27 +54,29 @@ gifsicle \- manipulates GIF images and animations
 .B gifsicle
 is a powerful command-line program for creating, editing, manipulating, and
 getting information about GIF images and animations.
-'
-.SH INTRODUCTION
-'
-Without options,
-.B gifsicle
-acts like a filter: you feed it a GIF on standard input, and it writes that
-GIF on standard output. That means these two commands do the same thing:
-.Es
-\fBgifsicle < in.gif > out.gif\fR
-\fBgifsicle < in.gif | gifsicle | gifsicle > out.gif\fR
-.Ee
-Not too interesting. Most times you'll tell
-.B gifsicle
-to alter its inputs by giving it command line options. The
+.PP
+.B Gifsicle
+normally processes input GIF files according to its command line
+options and writes the result to the standard output. The
 .Op \-i
-option, for example, tells it to interlace its input files:
+option, for example, tells
+.B gifsicle
+to interlace its inputs:
 .Es
 \fBgifsicle \-i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
-To modify GIF files in place, you should use the
+.B Gifsicle
+is good at creating and manipulating GIF animations. By default, it
+combines two or more input files into a \(lqflipbook\(rq animation:
+.Es
+\fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
+.Ee
+Use options like
+.Op \-\-delay ", " \-\-loopcount ", and " \-\-optimize
+to tune your animations.
+.PP
+To modify GIF files in place, use the
 .Op \-\-batch
 option. With
 .Op \-\-batch ,
@@ -85,18 +87,6 @@ could say:
 .Es
 \fBgifsicle \-\-batch \-i *.gif
 .Ee
-.PP
-.B gifsicle
-is good at creating and manipulating GIF animations. The simplest way to
-create an animation is to give more than one input file, which
-.B gifsicle
-will combine to create a \(lqflipbook\(rq animation:
-.Es
-\fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
-.Ee
-Use options like
-.Op \-\-delay ", " \-\-loopcount ", and " \-\-optimize
-to tune your animations; see their descriptions for more details.
 .PP
 New users may want to skip to
 the Examples section at the end.
@@ -135,7 +125,6 @@ Image transformations
 .Ix "Selecting frames" "frame selections (like \fB'#0'\fP)"
 .Ix "Transparency" "\fB\-\-transparent\fP"
 .Ix "Warnings" "\fB\-\-no\-warnings\fP"
-.Ix "Web-safe palette" "\fB\-\-use\-colormap\fP"
 .PD
 '
 .SH COMMAND LINE
@@ -984,15 +973,16 @@ in all) if there is transparency in the image.
 .TP
 .Oa \-\-color\-method method
 '
-Determine how a smaller colormap is chosen. There are three choices:
-.BR diversity ,
+Determine how a smaller colormap is chosen.
+.RB \(oq diversity \(cq,
 the default, is
 .BR xv (1)'s
-diversity algorithm, which uses a strict subset of the existing colors.
-.B blend\-diversity
-is a modification of this: some color values are blended from a group of
-the existing colors.
-.B median\-cut
+diversity algorithm, which uses a strict subset of the existing colors
+and generally produces good results.
+.RB \(oq blend\-diversity \(cq
+is a modification of this: some color values are blended from groups of
+existing colors.
+.RB \(oq median\-cut \(cq
 is the median cut algorithm described by Heckbert.
 .Op \-\-method
 is a synonym for
@@ -1011,14 +1001,24 @@ approximate missing colors. This looks better, but makes bigger files
 and can cause animation artifacts, so it is off by default.
 .Sp
 Specify a dithering algorithm with the optional \fImethod\fR argument.
-The default, \(lqfloyd-steinberg\(rq, uses Floyd-Steinberg error
+The default,
+.RB \(oq floyd-steinberg \(cq,
+uses Floyd-Steinberg error
 diffusion. This usually looks best, but can cause animation artifacts,
 because dithering choices will vary from frame to frame. Gifsicle also
-supports ordered dithering algorithms that avoid animation artifacts;
-they dither using a repeating pattern. The \(lqo64x64r\(rq mode uses a
+supports ordered dithering algorithms that avoid animation artifacts.
+The
+.RB \(oq o64x64r \(cq
+mode uses a
 large, random-looking pattern and generally produces good results. The
-\(lqo3x3\(rq, \(lqo4x4\(rq, and \(lqo8x8\(rq modes use smaller, more
-regular patterns. The \(lqordered\(rq mode chooses a good ordered
+.RB \(oq o3x3 \(cq,
+.RB \(oq o4x4 \(cq,
+and
+.RB \(oq o8x8 \(cq
+modes use smaller, more
+regular patterns. The
+.RB \(oq ordered \(cq
+mode chooses a good ordered
 dithering algorithm.
 '
 .Sp
@@ -1027,10 +1027,12 @@ dithering algorithm.
 '
 Set the gamma correction to
 .IR gamma ,
-which can be a real number or \(lqsrgb\(rq. Roughly speaking, higher
+which can be a real number or
+.RB \(oq srgb \(cq.
+Roughly speaking, higher
 numbers exaggerate shadows and lower numbers exaggerate highlights.
-The default is the function defined by the standard sRGB color space.
-This is best for most uses. (Its effects are similar to
+The default is the function defined by the standard sRGB color space,
+which usually works well. (Its effects are similar to
 \fB\-\-gamma\fP=2.2.) Gifsicle uses gamma correction when choosing a
 color palette (\fB\-\-colors\fP) and when dithering
 (\fB\-\-dither\fP).
@@ -1048,7 +1050,7 @@ in the following input GIFs. (The
 .I color
 arguments have the same forms as in the
 .Op \-t
-option.) You can change multiple colors by giving the option multiple
+option.) Change multiple colors by giving the option multiple
 times. Color changes don't interfere with one another, so you can safely
 swap two colors with
 .Qa \-\-change\-color "color1 color2" \-\-change\-color "color2 color1" .
@@ -1065,9 +1067,14 @@ should be a shell command that reads from standard input and writes to
 standard output. Each colormap in the output GIF is translated into text
 colormap format (see
 .Op \-\-use\-colormap
-below) and piped to the command. The output that command generates (which
-should also be in text colormap format) will be used as the colormap
-instead.
+below) and piped to the command. The output that command generates
+(which should also be in text colormap format) will replace the input
+colormap. The replacement doesn't consider color matching, so pixels
+that used color slot
+.I n
+in the input will still use color slot
+.I n
+in the output.
 '
 .Sp
 .TP
@@ -1149,7 +1156,7 @@ To explode \(oqanim.gif\(cq into its component frames:
 .br
 \fBls anim.gif*\fR
 .br
-anim.gif      anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
+anim.gif  anim.gif.000  anim.gif.001  anim.gif.002  anim.gif.003
 .Ee
 To optimize \(oqanim.gif\(cq:
 .Es
