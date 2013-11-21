@@ -310,29 +310,41 @@ static inline void kd3_revgamma_transform(kd3_color* x) {
     x->a[2] = revgamma_array[x->a[2] >> 5];
 }
 
-void kd3_set_gamma(double gamma) {
+void kd3_set_gamma(int type, double gamma) {
 #if HAVE_POW
+    static int cur_type = KD3_GAMMA_SRGB;
     static double cur_gamma = 2.2;
     int i;
-    if (gamma >= cur_gamma - 0.001 && gamma <= cur_gamma + 0.001)
+    if (type == cur_type && (type != KD3_GAMMA_NUMERIC || gamma == cur_gamma))
         return;
-    if (gamma_array == srgb_gamma_array) {
-        gamma_array = Gif_NewArray(uint16_t, 1024);
-        revgamma_array = Gif_NewArray(uint16_t, 1024);
+    if (type == KD3_GAMMA_SRGB) {
+        if (gamma_array != srgb_gamma_array) {
+            Gif_DeleteArray(gamma_array);
+            Gif_DeleteArray(revgamma_array);
+        }
+        gamma_array = (uint16_t*) srgb_gamma_array;
+        revgamma_array = (uint16_t*) srgb_revgamma_array;
+    } else {
+        if (gamma_array == srgb_gamma_array) {
+            gamma_array = Gif_NewArray(uint16_t, 1024);
+            revgamma_array = Gif_NewArray(uint16_t, 1024);
+        }
+        for (i = 0; i < 1024; ++i) {
+            double x = (double) i / 1023;
+            gamma_array[i] = (int) (pow(x, gamma) * 32767);
+            while (i && gamma_array[i] < gamma_array[i-1]
+                   && gamma_array[i] < 32767)
+                ++i;
+            revgamma_array[i] = (int) (pow(x, 1/gamma) * 32767);
+            while (i && revgamma_array[i] < revgamma_array[i-1]
+                   && revgamma_array[i] < 32767)
+                ++i;
+        }
     }
-    for (i = 0; i < 1024; ++i) {
-        double x = (double) i / 1023;
-        gamma_array[i] = (int) (pow(x, gamma) * 32767);
-        while (i && gamma_array[i] < gamma_array[i-1]
-               && gamma_array[i] < 32767)
-            ++i;
-        revgamma_array[i] = (int) (pow(x, 1/gamma) * 32767);
-        while (i && revgamma_array[i] < revgamma_array[i-1]
-               && revgamma_array[i] < 32767)
-            ++i;
-    }
+    cur_type = type;
+    cur_gamma = gamma;
 #else
-    (void) gamma;
+    (void) type, (void) gamma;
 #endif
 }
 

@@ -106,6 +106,7 @@ typedef struct {
   Gif_Colormap *colormap_fixed;
   int colormap_algorithm;
   int colormap_dither;
+  int colormap_gamma_type;
   double colormap_gamma;
 
   int optimizing;
@@ -229,7 +230,9 @@ void	resize_stream(Gif_Stream *, double new_width, double new_height,
  * quantization
  **/
 Gif_Color *histogram(Gif_Stream *, int *);
-void    kd3_set_gamma(double gamma);
+#define KD3_GAMMA_SRGB			0
+#define KD3_GAMMA_NUMERIC		1
+void    kd3_set_gamma(int type, double gamma);
 
 #define COLORMAP_DIVERSITY		0
 #define COLORMAP_BLEND_DIVERSITY	1

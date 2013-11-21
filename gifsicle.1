@@ -1014,9 +1014,10 @@ animation artifacts, so it is off by default.
 .Oa \-\-gamma gamma
 '
 Set the gamma correction to
-.IR gamma .
-Roughly speaking, higher numbers exaggerate shadows and lower numbers
-exaggerate highlights. The default is the sRGB default gamma function,
+.IR gamma ,
+which can be a real number or \(lqsrgb\(rq. Roughly speaking, higher
+numbers exaggerate shadows and lower numbers exaggerate highlights.
+The default is the function defined by the standard sRGB color space,
 which is close to 2.2. Gifsicle uses gamma correction when choosing a
 color palette (\fB\-\-colors\fP) and when dithering
 (\fB\-\-dither\fP).
