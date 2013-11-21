@@ -185,6 +185,7 @@ static const char *output_option_types[] = {
 #define RESIZE_FIT_HEIGHT_OPT	366
 #define SIZE_INFO_OPT		367
 #define GAMMA_OPT		368
+#define GRAY_OPT		369
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -237,6 +238,7 @@ const Clp_Option options[] = {
   { "no-flip", 0, NO_FLIP_OPT, 0, 0 },
 
   { "gamma", 0, GAMMA_OPT, Clp_ValDouble, Clp_Negate },
+  { "gray", 0, GRAY_OPT, 0, 0 },
 
   { "help", 'h', HELP_OPT, 0, 0 },
 
@@ -1713,7 +1715,13 @@ main(int argc, char *argv[])
       }
       break;
 
-     case USE_COLORMAP_OPT:
+     case GRAY_OPT:
+      MARK_CH(output, CH_USE_COLORMAP);
+      Gif_DeleteColormap(def_output_data.colormap_fixed);
+      set_new_fixed_colormap("gray");
+      break;
+
+    case USE_COLORMAP_OPT:
       MARK_CH(output, CH_USE_COLORMAP);
       Gif_DeleteColormap(def_output_data.colormap_fixed);
       if (clp->negated)
