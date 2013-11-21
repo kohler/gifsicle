@@ -931,7 +931,7 @@ prepare_frame(Gt_Viewer *viewer, int frame)
   }
 
   /* Prepare the frame */
-  (void) unoptimized_frame(viewer, frame, changed_cursor);
+  (void) unoptimized_frame(viewer, frame, changed_cursor && !viewer->animating);
 
   /* Restore cursor */
   if (changed_cursor)
