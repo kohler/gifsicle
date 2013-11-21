@@ -1002,12 +1002,24 @@ is a synonym for
 .TP 5
 .Oa \-f
 .TP
-.Oa \-\-dither
+.Op \-\-dither "[=\fImethod\fR]"
 '
-When \-\-dither is on and the colormap is changed,
-Floyd-Steinberg error diffusion is used to approximate any colors that
-were removed. This looks better, but makes bigger files and can cause
-animation artifacts, so it is off by default.
+When
+.Op \-\-dither
+is on and the colormap is changed, combinations of colors are used to
+approximate missing colors. This looks better, but makes bigger files
+and can cause animation artifacts, so it is off by default.
+.Sp
+Specify a dithering algorithm with the optional \fImethod\fR argument.
+The default, \(lqfloyd-steinberg\(rq, uses Floyd-Steinberg error
+diffusion. This usually looks best, but can cause animation artifacts,
+because dithering choices will vary from frame to frame. Gifsicle also
+supports ordered dithering algorithms that avoid animation artifacts;
+they dither using a repeating pattern. The \(lqo64x64r\(rq mode uses a
+large, random-looking pattern and generally produces good results. The
+\(lqo3x3\(rq, \(lqo4x4\(rq, and \(lqo8x8\(rq modes use smaller, more
+regular patterns. The \(lqordered\(rq mode chooses a good ordered
+dithering algorithm.
 '
 .Sp
 .TP 5
@@ -1017,8 +1029,9 @@ Set the gamma correction to
 .IR gamma ,
 which can be a real number or \(lqsrgb\(rq. Roughly speaking, higher
 numbers exaggerate shadows and lower numbers exaggerate highlights.
-The default is the function defined by the standard sRGB color space,
-which is close to 2.2. Gifsicle uses gamma correction when choosing a
+The default is the function defined by the standard sRGB color space.
+This is best for most uses. (Its effects are similar to
+\fB\-\-gamma\fP=2.2.) Gifsicle uses gamma correction when choosing a
 color palette (\fB\-\-colors\fP) and when dithering
 (\fB\-\-dither\fP).
 '

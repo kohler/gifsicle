@@ -242,14 +242,13 @@ Gif_Colormap* colormap_flat_diversity(Gif_Color*, int, Gt_OutputData*);
 Gif_Colormap* colormap_median_cut(Gif_Color*, int, Gt_OutputData*);
 
 typedef struct kd3_tree kd3_tree;
-typedef void (*colormap_image_func)
-     (Gif_Image*, uint8_t*, Gif_Colormap*, kd3_tree*, uint32_t*);
 
-void	colormap_image_posterize
-        (Gif_Image*, uint8_t*, Gif_Colormap*, kd3_tree*, uint32_t*);
-void	colormap_image_floyd_steinberg
-        (Gif_Image*, uint8_t*, Gif_Colormap*, kd3_tree*, uint32_t*);
-void	colormap_stream(Gif_Stream *, Gif_Colormap *, colormap_image_func);
+enum {
+    dither_none = 0, dither_default,
+    dither_floyd_steinberg, dither_ordered_3x3,
+    dither_ordered_4x4, dither_ordered_8x8, dither_ordered_64x64r
+};
+void	colormap_stream(Gif_Stream*, Gif_Colormap*, int dither_type);
 
 /*****
  * parsing stuff
