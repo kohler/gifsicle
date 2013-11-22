@@ -19,28 +19,40 @@ typedef struct kd3_color {
     int a[3];
 } kd3_color;
 
-static inline void kd3_set8(kd3_color* x, int a0, int a1, int a2) {
-    x->a[0] = (a0 << 7) | (a0 >> 1);
-    x->a[1] = (a1 << 7) | (a1 >> 1);
-    x->a[2] = (a2 << 7) | (a2 >> 1);
-}
-
-static inline void kd3_clamp(kd3_color* x) {
-    int i;
-    for (i = 0; i < 3; ++i) {
-        if (x->a[i] < 0)
-            x->a[i] = 0;
-        if (x->a[i] > KD3_MAX)
-            x->a[i] = KD3_MAX;
-    }
-}
-
-static inline unsigned kd3_distance(const kd3_color* x, const kd3_color* y) {
-    return (x->a[0] - y->a[0]) * (x->a[0] - y->a[0])
-        + (x->a[1] - y->a[1]) * (x->a[1] - y->a[1])
-        + (x->a[2] - y->a[2]) * (x->a[2] - y->a[2]);
-}
-
+static const uint16_t srgb_gamma_array8[256] = {
+    0, 10, 20, 30, 40, 50, 60, 70,
+    80, 90, 100, 110, 120, 132, 144, 157,
+    170, 184, 198, 213, 229, 246, 263, 281,
+    299, 319, 338, 359, 380, 403, 425, 449,
+    473, 498, 524, 551, 578, 606, 635, 665,
+    695, 727, 759, 792, 825, 860, 895, 931,
+    968, 1006, 1045, 1085, 1125, 1167, 1209, 1252,
+    1296, 1341, 1386, 1433, 1481, 1529, 1578, 1629,
+    1680, 1732, 1785, 1839, 1894, 1950, 2007, 2065,
+    2123, 2183, 2244, 2305, 2368, 2432, 2496, 2562,
+    2629, 2696, 2765, 2834, 2905, 2977, 3049, 3123,
+    3198, 3273, 3350, 3428, 3507, 3587, 3668, 3750,
+    3833, 3917, 4002, 4088, 4176, 4264, 4354, 4444,
+    4536, 4629, 4723, 4818, 4914, 5011, 5109, 5209,
+    5309, 5411, 5514, 5618, 5723, 5829, 5936, 6045,
+    6154, 6265, 6377, 6490, 6604, 6720, 6836, 6954,
+    7073, 7193, 7315, 7437, 7561, 7686, 7812, 7939,
+    8067, 8197, 8328, 8460, 8593, 8728, 8863, 9000,
+    9139, 9278, 9419, 9560, 9704, 9848, 9994, 10140,
+    10288, 10438, 10588, 10740, 10893, 11048, 11204, 11360,
+    11519, 11678, 11839, 12001, 12164, 12329, 12495, 12662,
+    12831, 13000, 13172, 13344, 13518, 13693, 13869, 14047,
+    14226, 14406, 14588, 14771, 14955, 15141, 15328, 15516,
+    15706, 15897, 16089, 16283, 16478, 16675, 16872, 17071,
+    17272, 17474, 17677, 17882, 18088, 18295, 18504, 18714,
+    18926, 19138, 19353, 19569, 19786, 20004, 20224, 20445,
+    20668, 20892, 21118, 21345, 21573, 21803, 22034, 22267,
+    22501, 22736, 22973, 23211, 23451, 23692, 23935, 24179,
+    24425, 24672, 24920, 25170, 25421, 25674, 25928, 26184,
+    26441, 26700, 26960, 27222, 27485, 27749, 28016, 28283,
+    28552, 28823, 29095, 29368, 29643, 29920, 30197, 30477,
+    30758, 31040, 31324, 31610, 31897, 32185, 32475, 32767
+};
 
 static const uint16_t srgb_gamma_array[1024] = {
     0, 2, 5, 7, 10, 12, 15, 17,
@@ -173,15 +185,6 @@ static const uint16_t srgb_gamma_array[1024] = {
     32259, 32332, 32404, 32476, 32549, 32621, 32694, 32767
 };
 
-static uint16_t* gamma_array = (uint16_t*) srgb_gamma_array;
-
-static inline void kd3_gamma_transform(kd3_color* x) {
-    x->a[0] = gamma_array[x->a[0] >> 5];
-    x->a[1] = gamma_array[x->a[1] >> 5];
-    x->a[2] = gamma_array[x->a[2] >> 5];
-}
-
-
 static const uint16_t srgb_revgamma_array[1024] = {
     0, 32, 64, 96, 128, 160, 192, 224,
     256, 288, 320, 352, 384, 416, 448, 480,
@@ -313,43 +316,59 @@ static const uint16_t srgb_revgamma_array[1024] = {
     32543, 32575, 32607, 32639, 32671, 32703, 32735, 32767
 };
 
-static uint16_t* revgamma_array = (uint16_t*) srgb_revgamma_array;
+static uint16_t* gamma_arrays[3] = {
+    (uint16_t*) srgb_gamma_array8,
+    (uint16_t*) srgb_gamma_array,
+    (uint16_t*) srgb_revgamma_array
+};
+
+
+static inline void kd3_set8g(kd3_color* x, int a0, int a1, int a2) {
+    x->a[0] = gamma_arrays[0][a0];
+    x->a[1] = gamma_arrays[0][a1];
+    x->a[2] = gamma_arrays[0][a2];
+}
+
+static inline void kd3_gamma_transform(kd3_color* x) {
+    x->a[0] = gamma_arrays[1][x->a[0] >> 5];
+    x->a[1] = gamma_arrays[1][x->a[1] >> 5];
+    x->a[2] = gamma_arrays[1][x->a[2] >> 5];
+}
 
 static inline void kd3_revgamma_transform(kd3_color* x) {
-    x->a[0] = revgamma_array[x->a[0] >> 5];
-    x->a[1] = revgamma_array[x->a[1] >> 5];
-    x->a[2] = revgamma_array[x->a[2] >> 5];
+    x->a[0] = gamma_arrays[2][x->a[0] >> 5];
+    x->a[1] = gamma_arrays[2][x->a[1] >> 5];
+    x->a[2] = gamma_arrays[2][x->a[2] >> 5];
 }
 
 void kd3_set_gamma(int type, double gamma) {
 #if HAVE_POW
     static int cur_type = KD3_GAMMA_SRGB;
     static double cur_gamma = 2.2;
-    int i;
+    int i, j;
     if (type == cur_type && (type != KD3_GAMMA_NUMERIC || gamma == cur_gamma))
         return;
     if (type == KD3_GAMMA_SRGB) {
-        if (gamma_array != srgb_gamma_array) {
-            Gif_DeleteArray(gamma_array);
-            Gif_DeleteArray(revgamma_array);
-        }
-        gamma_array = (uint16_t*) srgb_gamma_array;
-        revgamma_array = (uint16_t*) srgb_revgamma_array;
+        if (gamma_arrays[0] != srgb_gamma_array8)
+            for (i = 0; i != 3; ++i)
+                Gif_DeleteArray(gamma_arrays[i]);
+        gamma_arrays[0] = (uint16_t*) srgb_gamma_array8;
+        gamma_arrays[1] = (uint16_t*) srgb_gamma_array;
+        gamma_arrays[2] = (uint16_t*) srgb_revgamma_array;
     } else {
-        if (gamma_array == srgb_gamma_array) {
-            gamma_array = Gif_NewArray(uint16_t, 1024);
-            revgamma_array = Gif_NewArray(uint16_t, 1024);
-        }
-        for (i = 0; i < 1024; ++i) {
-            double x = (double) i / 1023;
-            gamma_array[i] = (int) (pow(x, gamma) * 32767);
-            while (i && gamma_array[i] < gamma_array[i-1]
-                   && gamma_array[i] < 32767)
-                ++i;
-            revgamma_array[i] = (int) (pow(x, 1/gamma) * 32767);
-            while (i && revgamma_array[i] < revgamma_array[i-1]
-                   && revgamma_array[i] < 32767)
-                ++i;
+        if (gamma_arrays[0] == srgb_gamma_array8)
+            for (i = 0; i != 3; ++i)
+                gamma_arrays[i] = Gif_NewArray(uint16_t, i ? 1024 : 256);
+        for (j = 0; j != 1024; ++j) {
+            double x = j/1023.0;
+            if (j < 256)
+                gamma_arrays[0][j] = (int) (pow(i/255.0, gamma) * 32767);
+            gamma_arrays[1][j] = (int) (pow(x, gamma) * 32767);
+            gamma_arrays[2][j] = (int) (pow(x, 1/gamma) * 32767);
+            for (i = 0; i != 3; ++i)
+                while (j && gamma_arrays[i][j] <= gamma_arrays[i][j-1]
+                       && gamma_arrays[i][j] < 3267)
+                    ++gamma_arrays[i][j];
         }
     }
     cur_type = type;
@@ -360,18 +379,34 @@ void kd3_set_gamma(int type, double gamma) {
 }
 
 
+static inline void kd3_clamp(kd3_color* x) {
+    int i;
+    for (i = 0; i < 3; ++i) {
+        if (x->a[i] < 0)
+            x->a[i] = 0;
+        if (x->a[i] > KD3_MAX)
+            x->a[i] = KD3_MAX;
+    }
+}
+
+static inline unsigned kd3_distance(const kd3_color* x, const kd3_color* y) {
+    return (x->a[0] - y->a[0]) * (x->a[0] - y->a[0])
+        + (x->a[1] - y->a[1]) * (x->a[1] - y->a[1])
+        + (x->a[2] - y->a[2]) * (x->a[2] - y->a[2]);
+}
+
 static inline int kd3_luminance(const kd3_color* x) {
     return (306 * x->a[0] + 601 * x->a[1] + 117 * x->a[2]) >> 10;
 }
 
-static inline void kd3_luminance_gamma_transform(kd3_color* x) {
+static inline void kd3_luminance_transform(kd3_color* x) {
     /* For grayscale colormaps, use distance in luminance space instead of
        distance in RGB space. The weights for the R,G,B components in
        luminance space are 0.299,0.587,0.114. Using the proportional factors
        306, 601, and 117 we get a scaled gray value between 0 and 255 *
        1024. Thanks to Christian Kumpf, <kumpf@igd.fhg.de>, for providing a
        patch. */
-    x->a[0] = x->a[1] = x->a[2] = gamma_array[kd3_luminance(x) >> 7];
+    x->a[0] = x->a[1] = x->a[2] = kd3_luminance(x);
 }
 
 typedef struct Gif_Histogram {
@@ -724,8 +759,7 @@ colormap_median_cut(Gif_Color* hist, int nhist, Gt_OutputData* od)
     Gif_Color *slice = &hist[ slots[i].first ];
     kd3_color k;
     for (j = 0; j < slots[i].count; j++) {
-        kd3_set8(&k, slice[j].gfc_red, slice[j].gfc_green, slice[j].gfc_blue);
-        kd3_gamma_transform(&k);
+        kd3_set8g(&k, slice[j].gfc_red, slice[j].gfc_green, slice[j].gfc_blue);
         red_total += k.a[0] * (double) slice[j].pixel;
         green_total += k.a[1] * (double) slice[j].pixel;
         blue_total += k.a[2] * (double) slice[j].pixel;
@@ -800,11 +834,9 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
   qsort(hist, nhist, sizeof(Gif_Color), popularity_sort_compare);
 
   /* 1.5. gamma-correct hist colors */
-  for (i = 0; i < nhist; ++i) {
-      kd3_set8(&gchist[i], hist[i].gfc_red, hist[i].gfc_green,
-               hist[i].gfc_blue);
-      kd3_gamma_transform(&gchist[i]);
-  }
+  for (i = 0; i < nhist; ++i)
+      kd3_set8g(&gchist[i], hist[i].gfc_red, hist[i].gfc_green,
+                hist[i].gfc_blue);
 
   /* 2. choose colors one at a time */
   for (nadapt = 0; nadapt < adapt_size; nadapt++) {
@@ -1004,9 +1036,9 @@ void kd3_add(kd3_tree* kd3, kd3_color k) {
     ++kd3->nitems;
 }
 
-void kd3_add8(kd3_tree* kd3, int a0, int a1, int a2) {
+void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2) {
     kd3_color k;
-    kd3_set8(&k, a0, a1, a2);
+    kd3_set8g(&k, a0, a1, a2);
     kd3_add(kd3, k);
 }
 
@@ -1227,7 +1259,7 @@ int kd3_closest(const kd3_tree* kd3, kd3_color k) {
 
 int kd3_closest8(const kd3_tree* kd3, int a0, int a1, int a2) {
     kd3_color k;
-    kd3_set8(&k, a0, a1, a2);
+    kd3_set8g(&k, a0, a1, a2);
     if (kd3->transform)
         kd3->transform(&k);
     return kd3_closest_transformed(kd3, &k);
@@ -1339,8 +1371,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	goto next;
 
       /* find desired new color */
-      kd3_set8(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
-               old_cm->col[*data].gfc_blue);
+      kd3_set8g(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
+                old_cm->col[*data].gfc_blue);
       if (kd3->transform)
           kd3->transform(&use);
       /* use Floyd-Steinberg errors to adjust */
@@ -1406,10 +1438,10 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan,
                                     Gif_Color* gfc, const kd3_tree* kd3) {
     kd3_color base, err;
     int i, k;
-    kd3_set8(&base, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+    kd3_set8g(&base, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
     if (kd3->transform)
         kd3->transform(&base);
-    kd3_set8(&err, 0, 0, 0);
+    kd3_set8g(&err, 0, 0, 0);
     for (i = 0; i != nplan; ++i) {
         kd3_color cur;
         for (k = 0; k != 3; ++k)
@@ -1736,11 +1768,12 @@ colormap_stream(Gif_Stream *gfs, Gif_Colormap *new_cm, int dither_type)
           || new_col[j].gfc_red != new_col[j].gfc_blue)
           new_gray = 0;
   if (new_gray)
-      kd3_init(&kd3, kd3_distance, kd3_luminance_gamma_transform);
+      kd3_init(&kd3, kd3_distance, kd3_luminance_transform);
   else
-      kd3_init(&kd3, kd3_distance, kd3_gamma_transform);
+      kd3_init(&kd3, kd3_distance, NULL);
   for (j = 0; j < new_cm->ncol; ++j)
-      kd3_add8(&kd3, new_col[j].gfc_red, new_col[j].gfc_green, new_col[j].gfc_blue);
+      kd3_add8g(&kd3, new_col[j].gfc_red, new_col[j].gfc_green,
+                new_col[j].gfc_blue);
   kd3_build(&kd3);
 
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
