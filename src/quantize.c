@@ -1434,10 +1434,11 @@ static int ordered_dither_plan_compar(const void* xa, const void* xb) {
         return *a - *b;
 }
 
-static void set_ordered_dither_plan(uint8_t* plan, int nplan,
+static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
                                     Gif_Color* gfc, const kd3_tree* kd3) {
     kd3_color base, err;
-    int i, k;
+    int i, k, ncplan = 0;
+    uint8_t cplan[256];
     kd3_set8g(&base, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
     if (kd3->transform)
         kd3->transform(&base);
@@ -1447,7 +1448,23 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan,
         for (k = 0; k != 3; ++k)
             cur.a[k] = base.a[k] + err.a[k];
         kd3_clamp(&cur);
-        plan[i] = kd3_closest_transformed(kd3, &cur);
+        if (ncplan < nc) {
+            plan[i] = kd3_closest_transformed(kd3, &cur);
+            for (k = 0; k != ncplan && cplan[k] != plan[i]; ++k)
+                /* do nothing */;
+            if (k == ncplan)
+                cplan[ncplan++] = plan[i];
+        } else {
+            uint32_t mindist = kd3_distance(&kd3->items[cplan[0]].k, &cur);
+            plan[i] = cplan[0];
+            for (k = 1; k != ncplan; ++k) {
+                uint32_t dist = kd3_distance(&kd3->items[cplan[k]].k, &cur);
+                if (dist < mindist) {
+                    plan[i] = cplan[k];
+                    mindist = dist;
+                }
+            }
+        }
         for (k = 0; k != 3; ++k)
             err.a[k] += base.a[k] - kd3->items[plan[i]].k.a[k];
     }
@@ -1475,9 +1492,9 @@ static void pow2_ordered_dither(Gif_Image* gfi, uint8_t* all_new_data,
             if (data[x] != gfi->transparent) {
                 thisplan = &plan[data[x] << nplans];
                 if (!old_cm->col[data[x]].haspixel)
-                    set_ordered_dither_plan(thisplan, 1 << nplans,
+                    set_ordered_dither_plan(thisplan, 1 << nplans, matrix[3],
                                             &old_cm->col[data[x]], kd3);
-                i = matrix[3 + ((x + gfi->left) & (matrix[0] - 1))
+                i = matrix[4 + ((x + gfi->left) & (matrix[0] - 1))
                            + (((y + gfi->top) & (matrix[1] - 1)) << mws)];
                 new_data[x] = thisplan[i];
                 histogram[new_data[x]]++;
@@ -1520,9 +1537,9 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
                 if (data[x] != gfi->transparent) {
                     thisplan = &plan[nplan * data[x]];
                     if (!old_cm->col[data[x]].haspixel)
-                        set_ordered_dither_plan(thisplan, nplan,
+                        set_ordered_dither_plan(thisplan, nplan, matrix[3],
                                                 &old_cm->col[data[x]], kd3);
-                    i = matrix[3 + (x + gfi->left) % mw
+                    i = matrix[4 + (x + gfi->left) % mw
                                + ((y + gfi->top) % mh) * mw];
                     new_data[x] = thisplan[i];
                     histogram[new_data[x]]++;
@@ -1537,8 +1554,8 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
 void colormap_image_ordered_3x3(Gif_Image* gfi, uint8_t* all_new_data,
                                 Gif_Colormap* old_cm, kd3_tree* kd3,
                                 uint32_t* histogram) {
-    static const uint8_t matrix[3 + 3*3] = {
-        3, 3, 9,
+    static const uint8_t matrix[4 + 3*3] = {
+        3, 3, 9, 9,
         2, 6, 3,  5, 0, 8,  1, 7, 4
     };
     colormap_image_ordered(gfi, all_new_data, old_cm, kd3, histogram, matrix);
@@ -1547,8 +1564,8 @@ void colormap_image_ordered_3x3(Gif_Image* gfi, uint8_t* all_new_data,
 void colormap_image_ordered_4x4(Gif_Image* gfi, uint8_t* all_new_data,
                                 Gif_Colormap* old_cm, kd3_tree* kd3,
                                 uint32_t* histogram) {
-    static const uint8_t matrix[3 + 4*4] = {
-        4, 4, 16,
+    static const uint8_t matrix[4 + 4*4] = {
+        4, 4, 16, 16,
          0,  8,  3, 10,
         12,  4, 14,  6,
          2, 11,  1,  9,
@@ -1560,8 +1577,8 @@ void colormap_image_ordered_4x4(Gif_Image* gfi, uint8_t* all_new_data,
 void colormap_image_ordered_8x8(Gif_Image* gfi, uint8_t* all_new_data,
                                 Gif_Colormap* old_cm, kd3_tree* kd3,
                                 uint32_t* histogram) {
-    static const uint8_t matrix[3 + 8*8] = {
-        8, 8, 64,
+    static const uint8_t matrix[4 + 8*8] = {
+        8, 8, 64, 64,
          0, 48, 12, 60,  3, 51, 15, 63,
         32, 16, 44, 28, 35, 19, 47, 31,
          8, 56,  4, 52, 11, 59,  7, 55,
@@ -1577,8 +1594,8 @@ void colormap_image_ordered_8x8(Gif_Image* gfi, uint8_t* all_new_data,
 void colormap_image_ordered_64x64r(Gif_Image* gfi, uint8_t* all_new_data,
                                    Gif_Colormap* old_cm, kd3_tree* kd3,
                                    uint32_t* histogram) {
-    static const uint8_t matrix[3 + 64*64] = {
-        64, 64, 16,
+    static const uint8_t matrix[4 + 64*64] = {
+        64, 64, 16, 16,
          6, 15,  2, 15,  2, 14,  1, 13,  2, 14,  5, 13,  0, 14,  0,  9,  6, 10,  7, 13,  6, 13,  3, 10,  5, 15,  4, 11,  0, 11,  6, 10,  7, 12,  7, 13,  0,  9,  6, 15,  6, 10,  0, 15,  1, 15,  0,  8,  0, 15,  6, 15,  7, 15,  7,  9,  1, 15,  3,  8,  1,  8,  0, 14,
          9,  3, 10,  5, 10,  6, 10,  5,  9,  6,  9,  2,  9,  4, 13,  4, 13,  3,  8,  3, 10,  1, 13,  6, 11,  1, 12,  3, 14,  5, 15,  3,  8,  3,  8,  3, 12,  4, 11,  3, 13,  3,  8,  4,  9,  6, 12,  4, 11,  6, 11,  3, 10,  0, 12,  1, 11,  7, 12,  4, 12,  4, 11,  5,
          1, 14,  0, 10,  2,  9,  2, 11,  1,  8,  1,  8,  3,  9,  4, 15,  7, 13,  7, 14,  7, 14,  0, 10,  0, 14,  7,  9,  0, 11,  1, 15,  0, 11,  0, 11,  3, 15,  7, 14,  6, 10,  5,  8,  0, 11,  0,  8,  7, 11,  0, 15,  0, 12,  1, 13,  6,  9,  0, 15,  4,  9,  1,  8,
