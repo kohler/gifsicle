@@ -1063,7 +1063,7 @@ static int (*kd3_item_compars[])(const void*, const void*) = {
 
 static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
                            int l, int r, int n, int depth) {
-    int m, aindex = depth % 3;
+    int m, nl, nr, aindex = depth % 3;
     if (depth > kd3->maxdepth)
         kd3->maxdepth = depth;
     while (n >= kd3->ntree) {
@@ -1094,9 +1094,9 @@ static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
             + ((items[m].k.a[aindex] - items[m-1].k.a[aindex]) >> 1);
 
     /* recurse */
-    int nl = kd3_build_range(kd3, items, l, m, n+1, depth+1);
+    nl = kd3_build_range(kd3, items, l, m, n+1, depth+1);
     kd3->tree[n].offset = 1+nl;
-    int nr = kd3_build_range(kd3, items, m, r, n+1+nl, depth+1);
+    nr = kd3_build_range(kd3, items, m, r, n+1+nl, depth+1);
     return 1+nl+nr;
 }
 
@@ -1136,12 +1136,11 @@ void kd3_print(kd3_tree* kd3, int depth, kd3_treepos* p, int* a, int* b) {
             printf(" ** @%d: <%d,%d,%d>\n", p->pivot, kd3->items[p->pivot].k.a[0], kd3->items[p->pivot].k.a[1], kd3->items[p->pivot].k.a[2]);
         }
     } else {
-        int aindex = depth % 3;
+        int aindex = depth % 3, x[3];
         assert(p->pivot >= a[aindex]);
         assert(p->pivot < b[aindex]);
         printf((aindex == 0 ? " | <%d,_,_>\n" :
                 aindex == 1 ? " | <_,%d,_>\n" : " | <_,_,%d>\n"), p->pivot);
-        int x[3];
         memcpy(x, b, sizeof(int) * 3);
         x[aindex] = p->pivot;
         kd3_print(kd3, depth + 1, p + 1, a, x);
@@ -1203,18 +1202,19 @@ void kd3_enable_all(kd3_tree* kd3) {
 }
 
 int kd3_closest_transformed(const kd3_tree* kd3, const kd3_color* k) {
-    assert(kd3->tree);
     const kd3_treepos* stack[32];
     uint8_t state[32];
     int stackpos = 0;
     int result = -1;
     unsigned mindist = (unsigned) -1;
+    assert(kd3->tree);
     stack[0] = kd3->tree;
     state[0] = 0;
 
     while (stackpos >= 0) {
+        const kd3_treepos* p;
         assert(stackpos < 32);
-        const kd3_treepos* p = stack[stackpos];
+        p = stack[stackpos];
 
         if (p->offset < 0) {
             if (p->pivot >= 0 && kd3->disabled != p->pivot) {
