@@ -32,7 +32,7 @@ if test "x$enableval" = xyes ; then
 fi)
 
 AC_ARG_ENABLE(warnings,
-[  --enable-warnings       compile with -Wall],
+[  --enable-warnings       compile with -W -Wall],
 if test "x$enableval" = xyes ; then
   CC="$CC -W -Wall"
 fi)
@@ -42,7 +42,7 @@ AC_ARG_ENABLE(all,
 if test "x$enableval" = xyes ; then
   build_gifview=yes
   build_gifdiff=yes
-  CC="$CC -Wall"
+  CC="$CC -W -Wall"
 fi)
 
 ungif=
