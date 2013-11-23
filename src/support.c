@@ -151,30 +151,31 @@ usage(void)
 single images into animations, adding transparency, optimizing animations for\n\
 space, and printing information about GIFs.\n\
 \n\
-Usage: %s [OPTION | FILE | FRAME]...\n\
-\n\
+Usage: %s [OPTION | FILE | FRAME]...\n\n", program_name);
+  printf("\
 Mode options: at most one, before any filenames.\n\
   -m, --merge                   Merge mode: combine inputs, write stdout.\n\
   -b, --batch                   Batch mode: modify inputs, write back to\n\
                                 same filenames.\n\
   -e, --explode                 Explode mode: write N files for each input,\n\
                                 one per frame, to 'input.frame-number'.\n\
-  -E, --explode-by-name         Explode mode, but write 'input.name'.\n\
-\n\
+  -E, --explode-by-name         Explode mode, but write 'input.name'.\n\n");
+  printf("\
 General options: Also --no-OPTION for info and verbose.\n\
   -I, --info                    Print info about input GIFs. Two -I's means\n\
                                 normal output is not suppressed.\n\
       --color-info, --cinfo     --info plus colormap details.\n\
       --extension-info, --xinfo --info plus extension details.\n\
       --size-info, --sinfo      --info plus compression information.\n\
-  -V, --verbose                 Prints progress information.\n\
+  -V, --verbose                 Prints progress information.\n");
+  printf("\
   -h, --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
   -o, --output FILE             Write output to FILE.\n\
   -w, --no-warnings             Don't report warnings.\n\
       --conserve-memory         Conserve memory at the expense of speed.\n\
       --multifile               Support concatenated GIF files.\n\
-\n", program_name);
+\n");
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
 \n\
@@ -183,29 +184,29 @@ Frame change options:\n\
   --insert-before FRAME GIFS    Insert GIFS before FRAMES in input.\n\
   --append GIFS                 Append GIFS to input.\n\
   --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
-  --done                        Done with frame changes.\n\
-\n\
+  --done                        Done with frame changes.\n\n");
+  printf("\
 Image options: Also --no-OPTION and --same-OPTION.\n\
   -B, --background COL          Make COL the background color.\n\
       --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
                                 Crop the image.\n\
       --crop-transparency       Crop transparent borders off the image.\n\
       --flip-horizontal, --flip-vertical\n\
-                                Flip the image.\n\
+                                Flip the image.\n");
+  printf("\
   -i, --interlace               Turn on interlacing.\n\
   -S, --logical-screen WxH      Set logical screen to WxH.\n\
   -p, --position X,Y            Set frame position to (X,Y).\n\
       --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
                                 Rotate the image.\n\
-  -t, --transparent COL         Make COL transparent.\n\
-\n");
+  -t, --transparent COL         Make COL transparent.\n\n");
   printf("\
 Extension options: Also --no-OPTION and --same-OPTION.\n\
   -x, --app-extension N D       Add an app extension named N with data D.\n\
   -c, --comment TEXT            Add a comment before the next frame.\n\
       --extension N D           Add an extension number N with data D.\n\
-  -n, --name TEXT               Set next frame's name.\n\
-\n\
+  -n, --name TEXT               Set next frame's name.\n\n");
+  printf("\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
   -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
   -D, --disposal METHOD         Set frame disposal to METHOD.\n\
@@ -228,12 +229,13 @@ Whole-GIF options: Also --no-OPTION.\n\
   printf("\
       --resize WxH              Resize the output GIF to WxH.\n\
       --resize-width W          Resize to width W and proportional height.\n\
-      --resize-height H         Resize to height H and proportional width.\n\
+      --resize-height H         Resize to height H and proportional width.\n");
+  printf("\
       --scale XFACTOR[xYFACTOR] Scale the output GIF by XFACTORxYFACTOR.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
       --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
-                                be 'web', 'gray', 'bw', or a GIF file.\n\
-\n\
+                                be 'web', 'gray', 'bw', or a GIF file.\n\n");
+  printf("\
 Report bugs to <ekohler@gmail.com>.\n\
 Too much information? Try '%s --help | more'.\n", program_name);
 #ifdef GIF_UNGIF

@@ -1267,6 +1267,8 @@ copy_crop(Gt_Crop *oc)
 int
 main(int argc, char *argv[])
 {
+  Clp_Parser* clp;
+
   /* Check SIZEOF constants (useful for Windows). If these assertions fail,
      you've used the wrong Makefile. You should've used Makefile.w32 for
      32-bit Windows and Makefile.w64 for 64-bit Windows. */
@@ -1274,8 +1276,7 @@ main(int argc, char *argv[])
   static_assert(sizeof(unsigned long) == SIZEOF_UNSIGNED_LONG, "unsigned long has the wrong size.");
   static_assert(sizeof(void*) == SIZEOF_VOID_P, "void* has the wrong size.");
 
-  Clp_Parser *clp =
-    Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
+  clp = Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
 
   Clp_AddStringListType
     (clp, LOOP_TYPE, Clp_AllowNumbers,

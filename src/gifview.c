@@ -263,28 +263,30 @@ usage(void)
 'Gifview' is a lightweight GIF viewer for X. It can display animated GIFs as\n\
 slideshows, one frame at a time, or as animations.\n\
 \n\
-Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
-\n\
+Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\n", program_name);
+  printf("\
 Options are:\n\
   -a, --animate                 Animate multiframe GIFs.\n\
   -U, --unoptimize              Unoptimize displayed GIFs.\n\
   -d, --display DISPLAY         Set display to DISPLAY.\n\
       --name NAME               Set application resource name to NAME.\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
-  -T, --title TITLE             Set window title.\n\
+  -T, --title TITLE             Set window title.\n");
+  printf("\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
       --new-window WINDOW       Show GIF in new child of existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
   --bg, --background COLOR      Use COLOR for transparent pixels.\n\
       --min-delay DELAY         Set minimum frame delay to DELAY/100 sec.\n\
       --fallback-delay DELAY    Set fallback frame delay to DELAY/100 sec.\n\
-  +e, --no-interactive          Ignore buttons and keystrokes.\n\
+  +e, --no-interactive          Ignore buttons and keystrokes.\n");
+  printf("\
       --memory-limit LIM        Cache at most LIM megabytes of animation.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
 \n\
-Frame selections:               #num, #num1-num2, #num1-, #name\n\
-\n\
+Frame selections:               #num, #num1-num2, #num1-, #name\n\n");
+  printf("\
 Keystrokes:\n\
   [N]/[Space] Go to next frame.         [P]/[B] Go to previous frame.\n\
   [R]/[<] Go to first frame.            [>] Go to last frame.\n\
@@ -294,7 +296,7 @@ Keystrokes:\n\
 \n\
 Left mouse button goes to next frame, right mouse button deletes window.\n\
 \n\
-Report bugs to <ekohler@gmail.com>.\n", program_name);
+Report bugs to <ekohler@gmail.com>.\n");
 }
 
 

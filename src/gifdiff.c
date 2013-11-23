@@ -385,15 +385,15 @@ visual appearance. An animation and an optimized version of the same animation\n
 should compare as the same. Gifdiff exits with status 0 if the images are\n\
 the same, 1 if they're different, and 2 if there was some error.\n\
 \n\
-Usage: %s [OPTION]... FILE1 FILE2\n\
-\n\
+Usage: %s [OPTION]... FILE1 FILE2\n\n", program_name);
+  printf("\
 Options:\n\
   -q, --brief                   Don't report detailed differences.\n\
   -w, --ignore-redundancy       Ignore differences in redundant frames.\n\
   -h, --help                    Print this message and exit.\n\
   -v, --version                 Print version number and exit.\n\
 \n\
-Report bugs to <ekohler@gmail.com>.\n", program_name);
+Report bugs to <ekohler@gmail.com>.\n");
 }
 
 
