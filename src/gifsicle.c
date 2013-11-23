@@ -1782,7 +1782,7 @@ main(int argc, char *argv[])
           Clp_OptionError(clp, "%O should be a number or %<srgb%>");
       }
 #else
-      Clp_OptionError("this version of Gifsicle does not support %O");
+      Clp_OptionError(clp, "this version of Gifsicle does not support %O");
 #endif
       break;
     }
