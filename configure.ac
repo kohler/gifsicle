@@ -37,6 +37,13 @@ if test "x$enableval" = xyes ; then
   CC="$CC -W -Wall"
 fi)
 
+AC_ARG_ENABLE([werror],
+[  --enable-werror         compile with -Werror],
+if test "x$enableval" = xyes ; then
+  WERROR="-Werror"
+fi)
+AC_SUBST([WERROR])
+
 AC_ARG_ENABLE(all,
 [  --enable-all            --enable-gifview --enable-gifdiff --enable-warnings],
 if test "x$enableval" = xyes ; then

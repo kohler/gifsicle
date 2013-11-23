@@ -12,6 +12,8 @@ gifsicle_DEPENDENCIES = @GIFWRITE_O@ @MALLOC_O@ @LIBOBJS@
 gifview_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
 gifdiff_DEPENDENCIES = @MALLOC_O@ @LIBOBJS@
 
+WERROR = @WERROR@
+
 gifsicle_SOURCES = clp.c \
 		giffunc.c gifread.c gifunopt.c \
 		gifsicle.h merge.c optimize.c quantize.c support.c xform.c \
@@ -25,7 +27,7 @@ gifdiff_SOURCES = clp.c \
 		giffunc.c gifread.c \
 		gifdiff.c
 
-AM_CPPFLAGS = $(X_CFLAGS) -I$(top_srcdir)/include
+AM_CPPFLAGS = $(X_CFLAGS) $(WERROR) -I$(top_srcdir)/include
 
 EXTRA_DIST = dmalloc.h dmalloc.c fmalloc.c gifwrite.c ungifwrt.c \
 	Makefile.bcc Makefile.w32 win32cfg.h
