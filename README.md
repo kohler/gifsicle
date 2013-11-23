@@ -32,16 +32,18 @@ http://www.lcdf.org/gifsicle/
 Building Gifsicle on UNIX
 -------------------------
 
-Just type `./configure`, then `make`. `make install` will build and
-install Gifsicle and its manual page (under /usr/local by default). If
-you have checked out Gifsicle from source, run `autoreconf -i` first.
+Type `./configure`, then `make`.
 
-`./configure` accepts the usual options. See `INSTALL` for more
-details.
+If `./configure` does not exist (you downloaded from Github), run
+`autoreconf -i` first.
 
-To build without gifview (for example, if you don't have X11), give
-the `--disable-gifview` option. To build without gifdiff, give the
-`--disable-gifdiff` option.
+`./configure` accepts the usual options; see `INSTALL` for more
+details. To build without gifview (for example, if you don't have
+X11), use `./configure --disable-gifview`. To build without gifdiff,
+use `./configure --disable-gifdiff`.
+
+`make install` will build and install Gifsicle and its manual page
+(under /usr/local by default).
 
 
 Building Gifsicle on Windows
