@@ -11,6 +11,7 @@
 #include "gifsicle.h"
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #include <math.h>
 
 /* kd3_color: a 3D vector, each component has 15 bits of precision */
@@ -1110,15 +1111,17 @@ static int kd3_item_all_compar(const void* a, const void* b) {
         return aa->k.a[2] - bb->k.a[2];
 }
 
-void kd3_print(kd3_tree* kd3, int depth, kd3_treepos* p, int* a, int* b) {
+#if 0
+static void kd3_print_depth(kd3_tree* kd3, int depth, kd3_treepos* p,
+                            int* a, int* b) {
     int i;
     char x[6][10];
     for (i = 0; i != 3; ++i) {
-        if (a[i] == 0x80000000)
+        if (a[i] == INT_MIN)
             sprintf(x[2*i], "*");
         else
             sprintf(x[2*i], "%d", a[i]);
-        if (b[i] == 0x7FFFFFFF)
+        if (b[i] == INT_MAX)
             sprintf(x[2*i+1], "*");
         else
             sprintf(x[2*i+1], "%d", b[i]);
@@ -1143,12 +1146,20 @@ void kd3_print(kd3_tree* kd3, int depth, kd3_treepos* p, int* a, int* b) {
                 aindex == 1 ? " | <_,%d,_>\n" : " | <_,_,%d>\n"), p->pivot);
         memcpy(x, b, sizeof(int) * 3);
         x[aindex] = p->pivot;
-        kd3_print(kd3, depth + 1, p + 1, a, x);
+        kd3_print_depth(kd3, depth + 1, p + 1, a, x);
         memcpy(x, a, sizeof(int) * 3);
         x[aindex] = p->pivot;
-        kd3_print(kd3, depth + 1, p + p->offset, x, b);
+        kd3_print_depth(kd3, depth + 1, p + p->offset, x, b);
     }
 }
+
+static void kd3_print(kd3_tree* kd3) {
+    int a[3], b[3];
+    a[0] = a[1] = a[2] = INT_MIN;
+    b[0] = b[1] = b[2] = INT_MAX;
+    kd3_print_depth(kd3, 0, kd3->tree, a, b);
+}
+#endif
 
 void kd3_build(kd3_tree* kd3) {
     kd3_item* items;
