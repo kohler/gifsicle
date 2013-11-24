@@ -230,9 +230,9 @@ void	resize_stream(Gif_Stream *, double new_width, double new_height,
  * quantization
  **/
 Gif_Color *histogram(Gif_Stream *, int *);
-#define KD3_GAMMA_SRGB			0
-#define KD3_GAMMA_NUMERIC		1
-void    kd3_set_gamma(int type, double gamma);
+#define KC_GAMMA_SRGB			0
+#define KC_GAMMA_NUMERIC		1
+void    kc_set_gamma(int type, double gamma);
 
 #define COLORMAP_DIVERSITY		0
 #define COLORMAP_BLEND_DIVERSITY	1

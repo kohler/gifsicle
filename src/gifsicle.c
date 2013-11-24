@@ -793,8 +793,8 @@ static void
 do_colormap_change(Gif_Stream *gfs)
 {
   if (active_output_data.colormap_fixed || active_output_data.colormap_size > 0)
-    kd3_set_gamma(active_output_data.colormap_gamma_type,
-                  active_output_data.colormap_gamma);
+    kc_set_gamma(active_output_data.colormap_gamma_type,
+                 active_output_data.colormap_gamma);
 
   if (active_output_data.colormap_fixed)
     colormap_stream(gfs, active_output_data.colormap_fixed,
@@ -1151,7 +1151,7 @@ initialize_def_frame(void)
   def_output_data.colormap_fixed = 0;
   def_output_data.colormap_algorithm = COLORMAP_DIVERSITY;
   def_output_data.colormap_dither = dither_none;
-  def_output_data.colormap_gamma_type = KD3_GAMMA_SRGB;
+  def_output_data.colormap_gamma_type = KC_GAMMA_SRGB;
   def_output_data.colormap_gamma = 2.2;
 
   def_output_data.optimizing = 0;
@@ -1768,15 +1768,15 @@ main(int argc, char *argv[])
       char* ends;
       MARK_CH(output, CH_GAMMA);
       if (clp->negated) {
-        def_output_data.colormap_gamma_type = KD3_GAMMA_NUMERIC;
+        def_output_data.colormap_gamma_type = KC_GAMMA_NUMERIC;
         def_output_data.colormap_gamma = 1;
       } else if (strcmp(clp->val.s, "sRGB") == 0
                  || strcmp(clp->val.s, "srgb") == 0)
-        def_output_data.colormap_gamma_type = KD3_GAMMA_SRGB;
+        def_output_data.colormap_gamma_type = KC_GAMMA_SRGB;
       else {
         double gamma = strtod(clp->val.s, &ends);
         if (*clp->val.s && !*ends && !isspace((unsigned char) *clp->val.s)) {
-          def_output_data.colormap_gamma_type = KD3_GAMMA_NUMERIC;
+          def_output_data.colormap_gamma_type = KC_GAMMA_NUMERIC;
           def_output_data.colormap_gamma = gamma;
         } else
           Clp_OptionError(clp, "%O should be a number or %<srgb%>");
