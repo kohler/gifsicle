@@ -1008,18 +1008,27 @@ diffusion. This usually looks best, but can cause animation artifacts,
 because dithering choices will vary from frame to frame. Gifsicle also
 supports ordered dithering algorithms that avoid animation artifacts.
 The
-.RB \(oq o64x64r \(cq
+.RB \(oq ro64 \(cq
 mode uses a
 large, random-looking pattern and generally produces good results. The
-.RB \(oq o3x3 \(cq,
-.RB \(oq o4x4 \(cq,
+.RB \(oq o3 \(cq,
+.RB \(oq o4 \(cq,
 and
-.RB \(oq o8x8 \(cq
+.RB \(oq o8 \(cq
 modes use smaller, more
 regular patterns. The
 .RB \(oq ordered \(cq
 mode chooses a good ordered
-dithering algorithm.
+dithering algorithm. For special effects, try the halftone modes
+.RB \(oq halftone \(cq,
+.RB \(oq squarehalftone \(cq,
+and
+.RB \(oq diagonal \(cq.
+Some modes take optional parameters using commas. The halftone modes
+take a cell size and a color limit:
+.RB \(oq halftone,10,3 \(cq
+creates 10-pixel wide halftone cells where each cell uses up to 3
+colors.
 '
 .Sp
 .TP 5
