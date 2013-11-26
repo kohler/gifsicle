@@ -105,7 +105,9 @@ typedef struct {
   int colormap_size;
   Gif_Colormap *colormap_fixed;
   int colormap_algorithm;
-  int colormap_dither;
+  int dither_type;
+  const uint8_t* dither_data;
+  const char* dither_name;
   int colormap_gamma_type;
   double colormap_gamma;
 
@@ -244,11 +246,11 @@ Gif_Colormap* colormap_median_cut(Gif_Color*, int, Gt_OutputData*);
 typedef struct kd3_tree kd3_tree;
 
 enum {
-    dither_none = 0, dither_default,
-    dither_floyd_steinberg, dither_ordered_3x3,
-    dither_ordered_4x4, dither_ordered_8x8, dither_ordered_64x64r
+    dither_none = 0, dither_default, dither_floyd_steinberg,
+    dither_ordered, dither_ordered_new
 };
-void	colormap_stream(Gif_Stream*, Gif_Colormap*, int dither_type);
+int     set_dither_type(Gt_OutputData* od, const char* name);
+void	colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*);
 
 /*****
  * parsing stuff

@@ -198,7 +198,6 @@ static const char *output_option_types[] = {
 #define COLORMAP_ALG_TYPE	(Clp_ValFirstUser + 8)
 #define SCALE_FACTOR_TYPE	(Clp_ValFirstUser + 9)
 #define OPTIMIZE_TYPE		(Clp_ValFirstUser + 10)
-#define DITHER_TYPE		(Clp_ValFirstUser + 11)
 
 const Clp_Option options[] = {
 
@@ -226,7 +225,7 @@ const Clp_Option options[] = {
   { "delete", 0, DELETE_OPT, 0, 0 },
   { "disposal", 'D', DISPOSAL_OPT, DISPOSAL_TYPE, Clp_Negate },
   { 0, 'f', DITHER_OPT, 0, Clp_Negate },
-  { "dither", 0, DITHER_OPT, DITHER_TYPE, Clp_Negate | Clp_Optional },
+  { "dither", 0, DITHER_OPT, Clp_ValString, Clp_Negate | Clp_Optional },
   { "done", 0, ALTER_DONE_OPT, 0, 0 },
 
   { "explode", 'e', 'e', 0, 0 },
@@ -798,7 +797,7 @@ do_colormap_change(Gif_Stream *gfs)
 
   if (active_output_data.colormap_fixed)
     colormap_stream(gfs, active_output_data.colormap_fixed,
-                    active_output_data.colormap_dither);
+                    &active_output_data);
 
   if (active_output_data.colormap_size > 0) {
     int nhist;
@@ -841,7 +840,7 @@ do_colormap_change(Gif_Stream *gfs)
     }
 
     new_cm = (*adapt_func)(hist, nhist, &active_output_data);
-    colormap_stream(gfs, new_cm, active_output_data.colormap_dither);
+    colormap_stream(gfs, new_cm, &active_output_data);
 
     Gif_DeleteArray(hist);
     Gif_DeleteColormap(new_cm);
@@ -1150,7 +1149,8 @@ initialize_def_frame(void)
   def_output_data.colormap_size = 0;
   def_output_data.colormap_fixed = 0;
   def_output_data.colormap_algorithm = COLORMAP_DIVERSITY;
-  def_output_data.colormap_dither = dither_none;
+  def_output_data.dither_type = dither_none;
+  def_output_data.dither_name = "none";
   def_output_data.colormap_gamma_type = KC_GAMMA_SRGB;
   def_output_data.colormap_gamma = 2.2;
 
@@ -1193,7 +1193,11 @@ combine_output_options(void)
     Gif_DeleteColormap(active_output_data.colormap_fixed);
     active_output_data.colormap_fixed = def_output_data.colormap_fixed;
   }
-  COMBINE_ONE_OUTPUT_OPTION(CH_DITHER, colormap_dither);
+  if (CHANGED(recent, CH_DITHER)) {
+    MARK_CH(output, CH_DITHER);
+    active_output_data.dither_type = def_output_data.dither_type;
+    active_output_data.dither_data = def_output_data.dither_data;
+  }
   if (CHANGED(recent, CH_GAMMA)) {
     MARK_CH(output, CH_GAMMA);
     active_output_data.colormap_gamma_type = def_output_data.colormap_gamma_type;
@@ -1302,18 +1306,6 @@ main(int argc, char *argv[])
      "no-keep-empty", GT_OPT_KEEPEMPTY,
      "drop-empty", GT_OPT_KEEPEMPTY,
      "no-drop-empty", GT_OPT_KEEPEMPTY + 1,
-     (const char*) 0);
-  Clp_AddStringListType
-    (clp, DITHER_TYPE, 0,
-     "none", dither_none,
-     "default", dither_default,
-     "fs", dither_floyd_steinberg,
-     "floyd-steinberg", dither_floyd_steinberg,
-     "ordered", dither_ordered_64x64r,
-     "o3x3", dither_ordered_3x3,
-     "o4x4", dither_ordered_4x4,
-     "o8x8", dither_ordered_8x8,
-     "o64x64r", dither_ordered_64x64r,
      (const char*) 0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
@@ -1747,19 +1739,23 @@ main(int argc, char *argv[])
       break;
 
     case DITHER_OPT: {
-      int d;
+      const char* name;
       if (clp->negated)
-        d = dither_none;
+        name = "none";
       else if (!clp->have_val)
-        d = dither_default;
+        name = "default";
       else
-        d = clp->val.i;
-      if (d != def_output_data.colormap_dither
-          && (d == dither_none
-              || def_output_data.colormap_dither != dither_default))
+        name = clp->val.s;
+      if (strcmp(name, "posterize") == 0)
+        name = "none";
+      if (strcmp(name, def_output_data.dither_name) != 0
+          && (strcmp(name, "none") == 0
+              || strcmp(def_output_data.dither_name, "default") != 0))
         MARK_CH(output, CH_DITHER);
       UNCHECKED_MARK_CH(output, CH_DITHER);
-      def_output_data.colormap_dither = d;
+      if (set_dither_type(&def_output_data, name) < 0)
+        Clp_OptionError(clp, "%<%s%> is not a valid dither", name);
+      def_output_data.dither_name = name;
       break;
     }
 
