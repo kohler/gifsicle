@@ -2057,12 +2057,13 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
     } else if (strcmp(name, "halftone") == 0 || strcmp(name, "half") == 0
                || strcmp(name, "trihalftone") == 0
                || strcmp(name, "trihalf") == 0) {
-        int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 8;
+        int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 6;
         int ncol = nparm >= 2 && parm[1] > 1 ? parm[1] : 2;
         od->dither_type = dither_ordered_new;
         od->dither_data = make_halftone_matrix_triangular(size, (int) (size * sqrt(3) + 0.5), ncol);
-    } else if (strcmp(name, "sqhalftone") == 0 || strcmp(name, "sqhalf") == 0) {
-        int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 8;
+    } else if (strcmp(name, "sqhalftone") == 0 || strcmp(name, "sqhalf") == 0
+               || strcmp(name, "squarehalftone") == 0) {
+        int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 6;
         int ncol = nparm >= 2 && parm[1] > 1 ? parm[1] : 2;
         od->dither_type = dither_ordered_new;
         od->dither_data = make_halftone_matrix_square(size, size, ncol);
