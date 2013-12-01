@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.77
+Version 1.77   26.Nov.2013
 
 * Major improvements to color selection (important when reducing
   colormap size). Use gamma-corrected colors in selection and
