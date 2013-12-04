@@ -136,7 +136,7 @@ static inline void kc_revgamma_transform(kcolor* x) {
     }
 }
 
-static const char* __attribute__((used)) kc_debug_str(kcolor x) {
+static const char* USED_ATTR kc_debug_str(kcolor x) {
     static int whichbuf = 0;
     static char buf[4][8];
     whichbuf = (whichbuf + 1) % 4;

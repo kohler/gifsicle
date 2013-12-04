@@ -11,8 +11,10 @@
 #include <lcdf/clp.h>
 #ifdef __GNUC__
 #define NORETURN __attribute__ ((noreturn))
+#define USED_ATTR __attribute__ ((used))
 #else
 #define NORETURN
+#define USED_ATTR
 #endif
 
 typedef struct Gt_Frameset Gt_Frameset;
