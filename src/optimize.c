@@ -406,40 +406,44 @@ expand_difference_bounds(Gif_OptData *bounds, Gif_Image *this_bounds)
     for (x = ob.left; x < ob.left + ob.width; ++x)
       if (now[x] != TRANSP && next[x] == TRANSP) {
 	expanded = 1;
-	break;
+	goto found_top;
       }
   }
 
+ found_top:
   for (; ob.top + ob.height > bounds->top + bounds->height; --ob.height) {
     uint16_t *now = this_data + screen_width * (ob.top + ob.height - 1);
     uint16_t *next = next_data + screen_width * (ob.top + ob.height - 1);
     for (x = ob.left; x < ob.left + ob.width; ++x)
       if (now[x] != TRANSP && next[x] == TRANSP) {
 	expanded = 1;
-	break;
+	goto found_bottom;
       }
   }
 
+ found_bottom:
   for (; ob.left < bounds->left; ++ob.left, --ob.width) {
     uint16_t *now = this_data + ob.left;
     uint16_t *next = next_data + ob.left;
     for (y = ob.top; y < ob.top + ob.height; ++y)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
 	expanded = 1;
-	break;
+	goto found_left;
       }
   }
 
+ found_left:
   for (; ob.left + ob.width > bounds->left + bounds->width; --ob.width) {
     uint16_t *now = this_data + ob.left + ob.width - 1;
     uint16_t *next = next_data + ob.left + ob.width - 1;
     for (y = ob.top; y < ob.top + ob.height; ++y)
       if (now[y*screen_width] != TRANSP && next[y*screen_width] == TRANSP) {
 	expanded = 1;
-	break;
+	goto found_right;
       }
   }
 
+ found_right:
   if (!expanded)
     for (y = ob.top; y < ob.top + ob.height; ++y) {
       uint16_t *now = this_data + y*screen_width;
