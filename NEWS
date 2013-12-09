@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.78   9.Dec.2013
+
+* Correct an optimization bug introduced in 1.76. Reported by Tom
+  Roostan.
+
+
 Version 1.77   26.Nov.2013
 
 * Major improvements to color selection (important when reducing
