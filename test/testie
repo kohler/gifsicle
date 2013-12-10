@@ -1688,6 +1688,11 @@ F<testieNNNNN>, and are typically removed on test completion.
 Examining the contents of a test directory can be useful when
 debugging a test.
 
+=item B<-p>, B<--path> I<DIR>
+
+Prepend I<DIR> to the C<PATH> environment variable before running the
+test script.
+
 =item B<-V>, B<--verbose>
 
 Print information to standard error about successful tests as well as
