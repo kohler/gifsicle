@@ -1,13 +1,13 @@
 Gifsicle
 ========
 
-Gifsicle manipulates GIF image files in many different ways. Depending
-on command line options, it can merge several GIFs into a GIF
-animation; explode an animation into its component frames; change
-individual frames in an animation; turn interlacing on and off; add
-transparency; add delays, disposals, and looping to animations; add or
-remove comments; flip and rotate; optimize animations for space;
-change images' colormaps; and other things.
+Gifsicle manipulates GIF image files. Depending on command line
+options, it can merge several GIFs into a GIF animation; explode an
+animation into its component frames; change individual frames in an
+animation; turn interlacing on and off; add transparency; add delays,
+disposals, and looping to animations; add and remove comments; flip
+and rotate; optimize animations for space; change images' colormaps;
+and other things.
 
 Gifview, a companion program, displays GIF images and animations on an
 X display. It can display multi-frame GIFs either as slideshows,
