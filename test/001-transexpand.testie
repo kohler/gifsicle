@@ -1,12 +1,8 @@
 %script
-gifsicle -O0 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O1 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O2 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O3 x.gif > y.gif
-gifdiff x.gif y.gif
+for i in 0 1 2 3; do
+    gifsicle -O$i x.gif > y.gif
+    gifdiff x.gif y.gif
+done
 
 %file -e x.gif
 R0lGODlhCgBeAPEAAN2i6oaz/Haeq7yPvSH/C05FVFNDQVBFMi4wAwEAAAAh+QQFBQAEACwAAAAA

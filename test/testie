@@ -1407,17 +1407,18 @@ Usage: testie [OPTIONS] [FILE]...
 Options:
   VARIABLE=VALUE             Variable settings for test script.
   -V, --verbose              Print information for successful tests.
-  -VV, --superverbose        Print initial \%info for all tests.
+  -VV, --superverbose        Print initial %info for all tests.
   -s, --show TESTIEFILE      Show contents of TESTIEFILE on completion.
   -S, --show-raw TESTIEFILE  Like --show, but include ignored lines.
   --show-all                 Show contents of all TESTIEFILEs on completion.
   --show-all-raw             Like --show-all, but include ignored lines.
   --preserve-temporaries     Preserve temporary files.
   -e, --expand               Expand test files into current directory.
+  -p, --path DIR             Prepend DIR to PATH.
   -v, --version              Print version information and exit.
   --help                     Print this message and exit.
 
-Report bugs and suggestions to <kohler\@seas.harvard.edu>.
+Report bugs and suggestions to <kohler@seas.harvard.edu>.
 EOD;
     exit(0);
 }

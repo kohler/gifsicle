@@ -1,0 +1,12 @@
+%script
+for i in 0 1 2 3; do
+    gifsicle -O$i x.gif > y.gif
+    gifdiff x.gif y.gif
+done
+
+%file -e x.gif
+R0lGODlhKAAUAPEAAP/////TAP8AAAAAACH5BAEUAAAALAAAAAAoABQAAAIahI+py+0Po5y02ouz
+3rz7D4biSJbmiabqihUAIfkEARQAAAAsAAAAACgAFAAAAiiEj6nL7Q+jnLTai7PevPu/BeIYgAiJ
+mgaamiypvmMsl25Ny/m7t2YBACH5BAkUAAAALAAAAAAoABQAAAIohI+py+0Po5y02ouz3rz7vwni
+KIAIiZoGmposqb5jLJduTcv5u7dmAQAh+QQBFAAAACwAAAAAKAAUAAACGoSPqcvtD6OctNqLs968
++w+G4kiW5omm6ooVADs=

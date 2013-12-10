@@ -1,20 +1,10 @@
 %script
-gifsicle -O0 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O0 --careful x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O1 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O1 --careful x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O2 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O2 --careful x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O3 x.gif > y.gif
-gifdiff x.gif y.gif
-gifsicle -O3 --careful x.gif > y.gif
-gifdiff x.gif y.gif
+for i in 0 1 2 3; do
+    gifsicle -O$i x.gif > y.gif
+    gifdiff x.gif y.gif
+    gifsicle -O$i --careful x.gif > y.gif
+    gifdiff x.gif y.gif
+done
 
 %file -e x.gif
 R0lGODlhZABQAPYAAFRYZCYqMjY5RP39/UZJVAEABDE0OxgbIHR3hmZpdOjp6RAQFEJFTBIUGNjY
