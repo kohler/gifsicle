@@ -370,10 +370,11 @@ scale_image_data_interp(Gif_Stream* gfs, Gif_Image* gfi,
                         const uint16_t* xoff, const uint16_t* yoff,
                         Gif_Image* new_gfi) {
     uint8_t* data = new_gfi->image_data;
-    int x1, y1, x2, y2, xi, yi, ntransp, n, i;
+    int x1, y1, x2, y2, xi, yi, n, i;
     double xc[3];
     uint8_t* in_data = data;
     kd3_tree kd3;
+    kcolor kc;
     (void) gfs, (void) in_data;
 
     kd3_init(&kd3, NULL);
@@ -400,31 +401,28 @@ scale_image_data_interp(Gif_Stream* gfs, Gif_Image* gfi,
                 ++x2;
             assert(x2 <= gfi->width);
 
-            ntransp = 0;
+            if (gfi->img[y1][x1] == gfi->transparent) {
+                *data++ = gfi->transparent;
+                continue;
+            }
+
+            n = 0;
             xc[0] = xc[1] = xc[2] = 0;
             for (yi = y1; yi != y2; ++yi)
                 for (xi = x1; xi != x2; ++xi) {
                     uint8_t pixel = gfi->img[yi][xi];
-                    if (pixel == gfi->transparent)
-                        ++ntransp;
-                    else
+                    if (pixel != gfi->transparent) {
                         for (i = 0; i != 3; ++i)
                             xc[i] += kd3.ks[pixel].a[i];
+                        ++n;
+                    }
                 }
 
-            n = (y2 - y1) * (x2 - x1);
-            if (ntransp >= 0.75 * n)
-                *data = gfi->transparent;
-            else {
-                kcolor kc;
-                for (i = 0; i != 3; ++i) {
-                    int v = (int) (xc[i] / (n - ntransp) + 0.5);
-                    kc.a[i] = KC_CLAMPV(v);
-                }
-                *data = kd3_closest_transformed(&kd3, &kc);
+            for (i = 0; i != 3; ++i) {
+                int v = (int) (xc[i] / n + 0.5);
+                kc.a[i] = KC_CLAMPV(v);
             }
-
-            ++data;
+            *data++ = kd3_closest_transformed(&kd3, &kc);
         }
     }
 
