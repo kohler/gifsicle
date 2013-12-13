@@ -369,7 +369,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
     memcpy(desti->compressed, srci->compressed, srci->compressed_len);
   } else {
     int i, j;
-    Gif_CreateUncompressedImage(desti);
+    Gif_CreateUncompressedImage(desti, desti->interlace);
 
     if (trivial_map)
       for (j = 0; j < desti->height; j++)

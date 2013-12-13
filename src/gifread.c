@@ -500,13 +500,14 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 static int
 uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
 {
-  if (!Gif_CreateUncompressedImage(gfi)) return 0;
-  gfc->width = gfi->width;
-  gfc->height = gfi->height;
-  gfc->image = gfi->image_data;
-  gfc->maximage = gfi->image_data + gfi->width * gfi->height;
-  read_image_data(gfc, grr);
-  return 1;
+    if (!Gif_CreateUncompressedImage(gfi, gfi->interlace))
+        return 0;
+    gfc->width = gfi->width;
+    gfc->height = gfi->height;
+    gfc->image = gfi->image_data;
+    gfc->maximage = gfi->image_data + gfi->width * gfi->height;
+    read_image_data(gfc, grr);
+    return 1;
 }
 
 

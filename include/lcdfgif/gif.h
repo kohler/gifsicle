@@ -156,7 +156,7 @@ void		Gif_ReleaseUncompressedImage(Gif_Image *gfi);
 void		Gif_ReleaseCompressedImage(Gif_Image *gfi);
 int		Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *data,
 			void (*free_data)(void *), int data_interlaced);
-int		Gif_CreateUncompressedImage(Gif_Image *gfi);
+int		Gif_CreateUncompressedImage(Gif_Image* gfi, int data_interlaced);
 
 int		Gif_ClipImage(Gif_Image *gfi, int l, int t, int w, int h);
 

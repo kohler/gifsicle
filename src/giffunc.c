@@ -777,11 +777,11 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
 }
 
 int
-Gif_CreateUncompressedImage(Gif_Image *gfi)
+Gif_CreateUncompressedImage(Gif_Image *gfi, int data_interlaced)
 {
-  uint8_t *data = Gif_NewArray(uint8_t, gfi->width * gfi->height);
-  return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
-				  gfi->interlace);
+    uint8_t *data = Gif_NewArray(uint8_t, gfi->width * gfi->height);
+    return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
+                                    data_interlaced);
 }
 
 void

@@ -345,65 +345,71 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  **/
 
 static void
+scale_image_data_trivial(Gif_Stream* gfs, Gif_Image* gfi,
+                         const uint16_t* xoff, const uint16_t* yoff,
+                         Gif_Image* new_gfi) {
+    uint8_t* data = new_gfi->image_data;
+    int new_width = new_gfi->width;
+    int xi, yi, xo, yo;
+    (void) gfs;
+
+    for (yi = 0; yi < gfi->height; ++yi)
+        if (yoff[yi] != yoff[yi+1]) {
+            const uint8_t* in_line = gfi->img[yi];
+            for (xi = 0; xi < gfi->width; ++xi, ++in_line)
+                for (xo = xoff[xi]; xo != xoff[xi+1]; ++xo, ++data)
+                    *data = *in_line;
+            for (yo = yoff[yi] + 1; yo != yoff[yi+1]; ++yo, data += new_width)
+                memcpy(data, data - new_width, new_width);
+        }
+}
+
+static void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
 {
-  uint8_t *new_data, *in_line, *out_data;
-  int new_width, new_height;
-  int was_compressed = (gfi->img == 0);
-  int i, j, k;
+    Gif_Image new_gfi;
+    int was_compressed = (gfi->img == 0);
 
-  /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled from
-     left edge of the *subimage* to right edge of the subimage, causing
-     consistency problems when several subimages overlap. Solution: always use
-     scale factors relating to the *whole image* (the screen size). */
+    /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled
+       from left edge of the *subimage* to right edge of the subimage,
+       causing consistency problems when several subimages overlap.
+       Solution: always use scale factors relating to the *whole image* (the
+       screen size). */
 
-  /* calculate new width and height based on the four edges (left, right, top,
-     bottom). This is better than simply multiplying the width and height by
-     the scale factors because it avoids roundoff inconsistencies between
-     frames on animated GIFs. Don't allow 0-width or 0-height images; GIF
-     doesn't support them well. */
-  if (xoff[gfi->left + gfi->width] <= xoff[gfi->left]
-      || yoff[gfi->top + gfi->height] <= yoff[gfi->top]) {
-      new_width = new_height = 1;
-      gfi->transparent = 0;
-      gfi->disposal = GIF_DISPOSAL_ASIS;
-      new_data = Gif_NewArray(uint8_t, 1);
-      new_data[0] = 0;
-      goto done;
-  }
+    /* calculate new width and height based on the four edges (left, right,
+       top, bottom). This is better than simply multiplying the width and
+       height by the scale factors because it avoids roundoff
+       inconsistencies between frames on animated GIFs. Don't allow 0-width
+       or 0-height images; GIF doesn't support them well. */
+    new_gfi = *gfi;
+    new_gfi.left = xoff[gfi->left];
+    new_gfi.top = yoff[gfi->top];
+    new_gfi.width = xoff[gfi->left + gfi->width] - new_gfi.left;
+    new_gfi.height = yoff[gfi->top + gfi->height] - new_gfi.top;
+    new_gfi.img = NULL;
+    new_gfi.image_data = NULL;
+    new_gfi.compressed = NULL;
+    if (new_gfi.width == 0 || new_gfi.height == 0) {
+        new_gfi.width = new_gfi.height = 1;
+        Gif_CreateUncompressedImage(&new_gfi, 0);
+        new_gfi.image_data[0] = 0;
+        new_gfi.transparent = 0;
+        new_gfi.disposal = GIF_DISPOSAL_ASIS;
+    } else {
+        if (was_compressed)
+            Gif_UncompressImage(gfi);
+        Gif_CreateUncompressedImage(&new_gfi, 0);
+        scale_image_data_trivial(gfs, gfi, &xoff[gfi->left], &yoff[gfi->top],
+                                 &new_gfi);
+    }
 
-  xoff += gfi->left;
-  yoff += gfi->top;
-  new_width = xoff[gfi->width] - xoff[0];
-  new_height = yoff[gfi->height] - yoff[0];
-
-  if (was_compressed)
-    Gif_UncompressImage(gfi);
-
-  new_data = Gif_NewArray(uint8_t, new_width * new_height);
-  out_data = new_data;
-  for (j = 0; j < gfi->height; ++j)
-      if (yoff[j] != yoff[j+1]) {
-          in_line = gfi->img[j];
-          for (i = 0; i < gfi->width; ++i, ++in_line)
-              for (k = xoff[i]; k != xoff[i+1]; ++k, ++out_data)
-                  *out_data = *in_line;
-          for (i = yoff[j] + 1; i != yoff[j+1]; ++i, out_data += new_width)
-              memcpy(out_data, out_data - new_width, new_width);
-      }
-
- done:
-  Gif_ReleaseUncompressedImage(gfi);
-  Gif_ReleaseCompressedImage(gfi);
-  gfi->left = xoff[0];
-  gfi->top = yoff[0];
-  gfi->width = new_width;
-  gfi->height = new_height;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
-  if (was_compressed) {
-    Gif_FullCompressImage(gfs, gfi, &gif_write_info);
     Gif_ReleaseUncompressedImage(gfi);
-  }
+    Gif_ReleaseCompressedImage(gfi);
+    *gfi = new_gfi;
+    if (was_compressed) {
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
+    }
 }
 
 void
