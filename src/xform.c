@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
+#include "kcolor.h"
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
@@ -365,6 +366,72 @@ scale_image_data_trivial(Gif_Stream* gfs, Gif_Image* gfi,
 }
 
 static void
+scale_image_data_interp(Gif_Stream* gfs, Gif_Image* gfi,
+                        const uint16_t* xoff, const uint16_t* yoff,
+                        Gif_Image* new_gfi) {
+    uint8_t* data = new_gfi->image_data;
+    int x1, y1, x2, y2, xi, yi, ntransp, n, i;
+    double xc[3];
+    uint8_t* in_data = data;
+    kd3_tree kd3;
+    (void) gfs, (void) in_data;
+
+    kd3_init(&kd3, NULL);
+    {
+        Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+        for (i = 0; i < gfcm->ncol; ++i)
+            kd3_add8g(&kd3, gfcm->col[i].gfc_red, gfcm->col[i].gfc_green, gfcm->col[i].gfc_blue);
+        if (gfi->transparent >= 0 && gfi->transparent < gfcm->ncol)
+            kd3_disable(&kd3, gfi->transparent);
+    }
+    kd3_build(&kd3);
+
+    for (y1 = 0; y1 < gfi->height; y1 = y2) {
+        for (y2 = y1 + 1; yoff[y2] != yoff[y1] + 1; ++y2)
+            /* spin */;
+        while (y2 < gfi->height && yoff[y2+1] == yoff[y2])
+            ++y2;
+        assert(y2 <= gfi->height);
+
+        for (x1 = 0; x1 < gfi->width; x1 = x2) {
+            for (x2 = x1 + 1; x2 < gfi->width && xoff[x2] != xoff[x1] + 1; ++x2)
+                /* spin */;
+            while (x2 < gfi->width && xoff[x2+1] == xoff[x2])
+                ++x2;
+            assert(x2 <= gfi->width);
+
+            ntransp = 0;
+            xc[0] = xc[1] = xc[2] = 0;
+            for (yi = y1; yi != y2; ++yi)
+                for (xi = x1; xi != x2; ++xi) {
+                    uint8_t pixel = gfi->img[yi][xi];
+                    if (pixel == gfi->transparent)
+                        ++ntransp;
+                    else
+                        for (i = 0; i != 3; ++i)
+                            xc[i] += kd3.ks[pixel].a[i];
+                }
+
+            n = (y2 - y1) * (x2 - x1);
+            if (ntransp >= 0.75 * n)
+                *data = gfi->transparent;
+            else {
+                kcolor kc;
+                for (i = 0; i != 3; ++i) {
+                    int v = (int) (xc[i] / (n - ntransp) + 0.5);
+                    kc.a[i] = KC_CLAMPV(v);
+                }
+                *data = kd3_closest_transformed(&kd3, &kc);
+            }
+
+            ++data;
+        }
+    }
+
+    assert(data - in_data == (xoff[gfi->width] - xoff[0]) * (yoff[gfi->height] - yoff[0]));
+}
+
+static void
 scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
 {
     Gif_Image new_gfi;
@@ -399,8 +466,20 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
         if (was_compressed)
             Gif_UncompressImage(gfi);
         Gif_CreateUncompressedImage(&new_gfi, 0);
-        scale_image_data_trivial(gfs, gfi, &xoff[gfi->left], &yoff[gfi->top],
+#if 0
+        scale_image_data_trivial(gfs, gfi,
+                                 &xoff[gfi->left], &yoff[gfi->top],
                                  &new_gfi);
+#else
+        if (new_gfi.width >= gfi->width && new_gfi.height >= gfi->height)
+            scale_image_data_trivial(gfs, gfi,
+                                     &xoff[gfi->left], &yoff[gfi->top],
+                                     &new_gfi);
+        else
+            scale_image_data_interp(gfs, gfi,
+                                    &xoff[gfi->left], &yoff[gfi->top],
+                                    &new_gfi);
+#endif
     }
 
     Gif_ReleaseUncompressedImage(gfi);
