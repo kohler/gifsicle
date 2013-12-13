@@ -25,8 +25,15 @@
 #define KC_HALF  0x4000
 #define KC_BITS  15
 typedef struct kcolor {
-    int32_t a[3];
+    int16_t a[3];
 } kcolor;
+
+typedef struct wkcolor {
+    int32_t a[3];
+} wkcolor;
+
+#define KC_CLAMPV(v) ((v) < 0 ? 0 : ((v) < KC_MAX ? (v) : KC_MAX))
+
 
 /* Invariant: (0<=x<256) ==> (srgb_revgamma[srgb_gamma[x] >> 7] <= x). */
 
@@ -106,18 +113,8 @@ static uint16_t* gamma_tables[2] = {
 };
 
 
-static inline void kc_clear(kcolor* x) {
+static inline void wkc_clear(wkcolor* x) {
     x->a[0] = x->a[1] = x->a[2] = 0;
-}
-
-static inline void kc_clamp(kcolor* x) {
-    int i;
-    for (i = 0; i < 3; ++i) {
-        if (x->a[i] < 0)
-            x->a[i] = 0;
-        if (x->a[i] > KC_MAX)
-            x->a[i] = KC_MAX;
-    }
 }
 
 static inline void kc_set8g(kcolor* x, int a0, int a1, int a2) {
@@ -204,9 +201,9 @@ static void kc_test_gamma() {
 #endif
 
 static inline uint32_t kc_distance(const kcolor* x, const kcolor* y) {
-    return (x->a[0] - y->a[0]) * (x->a[0] - y->a[0])
-        + (x->a[1] - y->a[1]) * (x->a[1] - y->a[1])
-        + (x->a[2] - y->a[2]) * (x->a[2] - y->a[2]);
+    int32_t d0 = x->a[0] - y->a[0], d1 = x->a[1] - y->a[1],
+        d2 = x->a[2] - y->a[2];
+    return d0 * d0 + d1 * d1 + d2 * d2;
 }
 
 static inline int kc_luminance(const kcolor* x) {
@@ -796,11 +793,6 @@ Gif_Colormap* colormap_flat_diversity(Gif_Color* hist, int nhist,
  * kd_tree allocation and deallocation
  **/
 
-typedef struct kd3_item {
-    kcolor k;
-    int index;
-} kd3_item;
-
 typedef struct kd3_treepos {
     int pivot;
     int offset;
@@ -810,7 +802,7 @@ struct kd3_tree {
     kd3_treepos* tree;
     int ntree;
     int disabled;
-    kd3_item* items;
+    kcolor* ks;
     int nitems;
     int items_cap;
     int maxdepth;
@@ -820,7 +812,7 @@ struct kd3_tree {
 
 void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*)) {
     kd3->tree = NULL;
-    kd3->items = Gif_NewArray(kd3_item, 256);
+    kd3->ks = Gif_NewArray(kcolor, 256);
     kd3->nitems = 0;
     kd3->items_cap = 256;
     kd3->transform = transform;
@@ -830,17 +822,16 @@ void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*)) {
 
 void kd3_cleanup(kd3_tree* kd3) {
     Gif_DeleteArray(kd3->tree);
-    Gif_DeleteArray(kd3->items);
+    Gif_DeleteArray(kd3->ks);
     Gif_DeleteArray(kd3->xradius);
 }
 
 void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
     if (kd3->nitems == kd3->items_cap) {
         kd3->items_cap *= 2;
-        Gif_ReArray(kd3->items, kd3_item, kd3->items_cap);
+        Gif_ReArray(kd3->ks, kcolor, kd3->items_cap);
     }
-    kd3->items[kd3->nitems].k = *k;
-    kd3->items[kd3->nitems].index = kd3->nitems;
+    kd3->ks[kd3->nitems] = *k;
     ++kd3->nitems;
 }
 
@@ -852,27 +843,34 @@ void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2) {
     kd3_add_transformed(kd3, &k);
 }
 
+static kd3_tree* kd3_sorter;
+
 static int kd3_item_compar_0(const void* a, const void* b) {
-    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
-    return aa->k.a[0] - bb->k.a[0];
+    const int* aa = (const int*) a, *bb = (const int*) b;
+    return kd3_sorter->ks[*aa].a[0] - kd3_sorter->ks[*bb].a[0];
 }
 
 static int kd3_item_compar_1(const void* a, const void* b) {
-    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
-    return aa->k.a[1] - bb->k.a[1];
+    const int* aa = (const int*) a, *bb = (const int*) b;
+    return kd3_sorter->ks[*aa].a[1] - kd3_sorter->ks[*bb].a[1];
 }
 
 static int kd3_item_compar_2(const void* a, const void* b) {
-    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
-    return aa->k.a[2] - bb->k.a[2];
+    const int* aa = (const int*) a, *bb = (const int*) b;
+    return kd3_sorter->ks[*aa].a[2] - kd3_sorter->ks[*bb].a[2];
 }
 
 static int (*kd3_item_compars[])(const void*, const void*) = {
     &kd3_item_compar_0, &kd3_item_compar_1, &kd3_item_compar_2
 };
 
-static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
-                           int l, int r, int n, int depth) {
+static int kd3_item_all_compar(const void* a, const void* b) {
+    const int* aa = (const int*) a, *bb = (const int*) b;
+    return memcmp(&kd3_sorter->ks[*aa], &kd3_sorter->ks[*bb], sizeof(kcolor));
+}
+
+static int kd3_build_range(int* perm, int nperm, int n, int depth) {
+    kd3_tree* kd3 = kd3_sorter;
     int m, nl, nr, aindex = depth % 3;
     if (depth > kd3->maxdepth)
         kd3->maxdepth = depth;
@@ -880,44 +878,36 @@ static int kd3_build_range(kd3_tree* kd3, kd3_item* items,
         kd3->ntree *= 2;
         Gif_ReArray(kd3->tree, kd3_treepos, kd3->ntree);
     }
-    if (l + 1 >= r) {
-        kd3->tree[n].pivot = (l == r ? -1 : items[l].index);
+    if (nperm <= 1) {
+        kd3->tree[n].pivot = (nperm == 0 ? -1 : perm[0]);
         kd3->tree[n].offset = -1;
         return 2;
     }
 
-    qsort(&items[l], r - l, sizeof(kd3_item), kd3_item_compars[aindex]);
+    qsort(perm, nperm, sizeof(int), kd3_item_compars[aindex]);
 
     /* pick pivot: a color component to split */
-    m = l + ((r - l) >> 1);
-    while (m > l && items[m].k.a[aindex] == items[m-1].k.a[aindex])
+    m = nperm >> 1;
+    while (m > 0
+           && kd3->ks[perm[m]].a[aindex] == kd3->ks[perm[m-1]].a[aindex])
         --m;
-    if (m == l) { /* don't split entirely to the right (infinite loop) */
-        m = l + ((r - l) >> 1);
-        while (m < r && items[m].k.a[aindex] == items[m-1].k.a[aindex])
+    if (m == 0) { /* don't split entirely to the right (infinite loop) */
+        m = nperm >> 1;
+        while (m < nperm
+               && kd3->ks[perm[m]].a[aindex] == kd3->ks[perm[m-1]].a[aindex])
             ++m;
     }
-    if (m == l)
-        kd3->tree[n].pivot = items[m].k.a[aindex];
+    if (m == 0)
+        kd3->tree[n].pivot = kd3->ks[perm[m]].a[aindex];
     else
-        kd3->tree[n].pivot = items[m-1].k.a[aindex]
-            + ((items[m].k.a[aindex] - items[m-1].k.a[aindex]) >> 1);
+        kd3->tree[n].pivot = kd3->ks[perm[m-1]].a[aindex]
+            + ((kd3->ks[perm[m]].a[aindex] - kd3->ks[perm[m-1]].a[aindex]) >> 1);
 
     /* recurse */
-    nl = kd3_build_range(kd3, items, l, m, n+1, depth+1);
+    nl = kd3_build_range(perm, m, n+1, depth+1);
     kd3->tree[n].offset = 1+nl;
-    nr = kd3_build_range(kd3, items, m, r, n+1+nl, depth+1);
+    nr = kd3_build_range(&perm[m], nperm - m, n+1+nl, depth+1);
     return 1+nl+nr;
-}
-
-static int kd3_item_all_compar(const void* a, const void* b) {
-    const kd3_item* aa = (const kd3_item*) a, *bb = (const kd3_item*) b;
-    if (aa->k.a[0] - bb->k.a[0])
-        return aa->k.a[0] - bb->k.a[0];
-    else if (aa->k.a[1] - bb->k.a[1])
-        return aa->k.a[1] - bb->k.a[1];
-    else
-        return aa->k.a[2] - bb->k.a[2];
 }
 
 #if 0
@@ -939,13 +929,13 @@ static void kd3_print_depth(kd3_tree* kd3, int depth, kd3_treepos* p,
            x[0], x[1], x[2], x[3], x[4], x[5]);
     if (p->offset < 0) {
         if (p->pivot >= 0) {
-            assert(kd3->items[p->pivot].k.a[0] >= a[0]);
-            assert(kd3->items[p->pivot].k.a[1] >= a[1]);
-            assert(kd3->items[p->pivot].k.a[2] >= a[2]);
-            assert(kd3->items[p->pivot].k.a[0] < b[0]);
-            assert(kd3->items[p->pivot].k.a[1] < b[1]);
-            assert(kd3->items[p->pivot].k.a[2] < b[2]);
-            printf(" ** @%d: <%d,%d,%d>\n", p->pivot, kd3->items[p->pivot].k.a[0], kd3->items[p->pivot].k.a[1], kd3->items[p->pivot].k.a[2]);
+            assert(kd3->ks[p->pivot].a[0] >= a[0]);
+            assert(kd3->ks[p->pivot].a[1] >= a[1]);
+            assert(kd3->ks[p->pivot].a[2] >= a[2]);
+            assert(kd3->ks[p->pivot].a[0] < b[0]);
+            assert(kd3->ks[p->pivot].a[1] < b[1]);
+            assert(kd3->ks[p->pivot].a[2] < b[2]);
+            printf(" ** @%d: <%d,%d,%d>\n", p->pivot, kd3->ks[p->pivot].a[0], kd3->ks[p->pivot].a[1], kd3->ks[p->pivot].a[2]);
         }
     } else {
         int aindex = depth % 3, x[3];
@@ -980,7 +970,7 @@ void kd3_build_xradius(kd3_tree* kd3) {
         kd3->xradius[i] = (unsigned) -1;
     for (i = 0; i != kd3->nitems; ++i)
         for (j = i + 1; j != kd3->nitems; ++j) {
-            unsigned dist = kc_distance(&kd3->items[i].k, &kd3->items[j].k);
+            unsigned dist = kc_distance(&kd3->ks[i], &kd3->ks[j]);
             unsigned radius = dist / 4;
             if (radius < kd3->xradius[i])
                 kd3->xradius[i] = radius;
@@ -990,8 +980,7 @@ void kd3_build_xradius(kd3_tree* kd3) {
 }
 
 void kd3_build(kd3_tree* kd3) {
-    kd3_item* items;
-    int i, delta;
+    int i, delta, *perm;
     assert(!kd3->tree);
 
     /* create tree */
@@ -1000,48 +989,38 @@ void kd3_build(kd3_tree* kd3) {
     kd3->maxdepth = 0;
 
     /* create copy of items; remove duplicates */
-    items = Gif_NewArray(kd3_item, kd3->nitems);
-    memcpy(items, kd3->items, sizeof(kd3_item) * kd3->nitems);
-    qsort(items, kd3->nitems, sizeof(kd3_item), kd3_item_all_compar);
+    perm = Gif_NewArray(int, kd3->nitems);
+    for (i = 0; i != kd3->nitems; ++i)
+        perm[i] = i;
+    kd3_sorter = kd3;
+    qsort(perm, kd3->nitems, sizeof(int), kd3_item_all_compar);
     for (i = 0, delta = 1; i != kd3->nitems - delta; ++i)
-        if (items[i].k.a[0] == items[i+delta].k.a[0]
-            && items[i].k.a[1] == items[i+delta].k.a[1]
-            && items[i].k.a[2] == items[i+delta].k.a[2])
+        if (memcmp(&kd3->ks[perm[i]], &kd3->ks[perm[i+delta]],
+                   sizeof(kcolor)) == 0)
             ++delta, --i;
         else if (delta > 1)
-            items[i+1] = items[i+delta];
+            perm[i+1] = perm[i+delta];
 
-    kd3_build_range(kd3, items, 0, kd3->nitems - (delta - 1), 0, 0);
+    kd3_build_range(perm, kd3->nitems - (delta - 1), 0, 0);
     assert(kd3->maxdepth < 32);
 
-    Gif_DeleteArray(items);
+    Gif_DeleteArray(perm);
 }
 
 void kd3_disable(kd3_tree* kd3, int i) {
     assert((unsigned) i < (unsigned) kd3->nitems);
-    if (kd3->items[i].index >= 0) {
-        kd3->items[i].index = kd3->disabled;
-        kd3->disabled = -i - 2;
-    }
+    assert(kd3->disabled < 0 || kd3->disabled == i);
+    kd3->disabled = i;
 }
 
 void kd3_enable(kd3_tree* kd3, int i) {
-    int* pprev = &kd3->disabled;
     assert((unsigned) i < (unsigned) kd3->nitems);
-    while (*pprev != -1 && *pprev != -i - 2)
-        pprev = &kd3->items[-*pprev - 2].index;
-    if (*pprev == -i - 2) {
-        *pprev = kd3->items[i].index;
-        kd3->items[i].index = i;
-    }
+    if (kd3->disabled == i)
+        kd3->disabled = -1;
 }
 
 void kd3_enable_all(kd3_tree* kd3) {
-    while (kd3->disabled != -1) {
-        int i = -kd3->disabled - 2;
-        kd3->disabled = kd3->items[i].index;
-        kd3->items[i].index = i;
-    }
+    kd3->disabled = -1;
 }
 
 int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
@@ -1060,8 +1039,8 @@ int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
         p = stack[stackpos];
 
         if (p->offset < 0) {
-            if (p->pivot >= 0 && kd3->items[p->pivot].index >= 0) {
-                unsigned dist = kc_distance(&kd3->items[p->pivot].k, k);
+            if (p->pivot >= 0 && kd3->disabled != p->pivot) {
+                unsigned dist = kc_distance(&kd3->ks[p->pivot], k);
                 if (dist < mindist) {
                     mindist = dist;
                     result = p->pivot;
@@ -1155,7 +1134,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int dither_direction = 0;
   int transparent = gfi->transparent;
   int i, j, k;
-  kcolor *err, *err1;
+  wkcolor *err, *err1;
 
   /* Initialize distances */
   for (i = 0; i < old_cm->ncol; ++i) {
@@ -1169,8 +1148,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
   /* Initialize Floyd-Steinberg error vectors to small random values, so we
      don't get artifacts on the top row */
-  err = Gif_NewArray(kcolor, width + 2);
-  err1 = Gif_NewArray(kcolor, width + 2);
+  err = Gif_NewArray(wkcolor, width + 2);
+  err1 = Gif_NewArray(wkcolor, width + 2);
   /* Use the same random values on each call in an attempt to minimize
      "jumping dithering" effects on animations */
   if (!random_values) {
@@ -1221,12 +1200,14 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       if (kd3->transform)
           kd3->transform(&use);
       /* use Floyd-Steinberg errors to adjust */
-      for (k = 0; k < 3; ++k)
-          use.a[k] += (err[x+1].a[k] & ~(DITHER_ITEM2ERR-1)) / DITHER_ITEM2ERR;
-      kc_clamp(&use);
+      for (k = 0; k < 3; ++k) {
+          int v = use.a[k]
+              + (err[x+1].a[k] & ~(DITHER_ITEM2ERR-1)) / DITHER_ITEM2ERR;
+          use.a[k] = KC_CLAMPV(v);
+      }
 
       e = old_cm->col[*data].pixel;
-      if (kc_distance(&kd3->items[e].k, &use) < kd3->xradius[e])
+      if (kc_distance(&kd3->ks[e], &use) < kd3->xradius[e])
           *new_data = e;
       else
           *new_data = kd3_closest_transformed(kd3, &use);
@@ -1237,7 +1218,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 	 image artifacts caused by error accumulation (the fact that the
 	 error terms might not sum to the error). */
       for (k = 0; k < 3; ++k) {
-          e = (use.a[k] - kd3->items[*new_data].k.a[k]) * DITHER_ITEM2ERR;
+          e = (use.a[k] - kd3->ks[*new_data].a[k]) * DITHER_ITEM2ERR;
           if (e) {
               err [x+d0].a[k] += ((e * 7) & ~15) / 16;
               err1[x+d1].a[k] += ((e * 3) & ~15) / 16;
@@ -1256,7 +1237,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
     /* change dithering directions */
     {
-      kcolor *temp = err1;
+      wkcolor *temp = err1;
       err1 = err;
       err = temp;
       dither_direction = !dither_direction;
@@ -1299,7 +1280,8 @@ static int ordered_dither_plan_compare(const void* xa, const void* xb) {
 
 static int kc_line_closest(const kcolor* p0, const kcolor* p1,
                            const kcolor* ref, double* t, unsigned* dist) {
-    kcolor p01, p0ref;
+    wkcolor p01, p0ref;
+    kcolor online;
     unsigned den;
     int d;
     for (d = 0; d != 3; ++d) {
@@ -1318,16 +1300,18 @@ static int kc_line_closest(const kcolor* p0, const kcolor* p1,
           + p01.a[2]*p0ref.a[2]) / den;
     if (*t < 0 || *t > 1)
         return 0;
-    for (d = 0; d != 3; ++d)
-        p01.a[d] = (int) (p01.a[d] * *t) + p0->a[d];
-    *dist = kc_distance(&p01, ref);
+    for (d = 0; d != 3; ++d) {
+        int v = (int) (p01.a[d] * *t) + p0->a[d];
+        online.a[d] = KC_CLAMPV(v);
+    }
+    *dist = kc_distance(&online, ref);
     return 1;
 }
 
 static int kc_plane_closest(const kcolor* p0, const kcolor* p1,
                             const kcolor* p2, const kcolor* ref,
                             double* t, unsigned* dist) {
-    kcolor p0ref, p01, p02;
+    wkcolor p0ref, p01, p02;
     double n[3], pvec[3], det, qvec[3], u, v;
     int d;
 
@@ -1400,7 +1384,7 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
     mindist = (unsigned) -1;
     for (i = 0; i != ncp; ++i) {
         /* check for closest single color */
-        dist = kc_distance(&kd3->items[cp[i].plan].k, want);
+        dist = kc_distance(&kd3->ks[cp[i].plan], want);
         if (dist < mindist) {
             bestcp[0].plan = cp[i].plan;
             bestcp[0].frac = KC_WHOLE;
@@ -1410,8 +1394,8 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 
         for (j = i + 1; nc >= 2 && j < ncp; ++j) {
             /* check for closest blend of two colors */
-            if (kc_line_closest(&kd3->items[cp[i].plan].k,
-                                &kd3->items[cp[j].plan].k,
+            if (kc_line_closest(&kd3->ks[cp[i].plan],
+                                &kd3->ks[cp[j].plan],
                                 want, &t[0], &dist)
                 && dist < mindist) {
                 bestcp[0].plan = cp[i].plan;
@@ -1424,9 +1408,9 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 
             for (k = j + 1; nc >= 3 && k < ncp; ++k)
                 /* check for closest blend of three colors */
-                if (kc_plane_closest(&kd3->items[cp[i].plan].k,
-                                     &kd3->items[cp[j].plan].k,
-                                     &kd3->items[cp[k].plan].k,
+                if (kc_plane_closest(&kd3->ks[cp[i].plan],
+                                     &kd3->ks[cp[j].plan],
+                                     &kd3->ks[cp[k].plan],
                                      want, &t[0], &dist)
                     && dist < mindist) {
                     bestcp[0].plan = cp[i].plan;
@@ -1446,21 +1430,23 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 
 static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
                                     Gif_Color* gfc, kd3_tree* kd3) {
-    kcolor want, cur, err;
+    kcolor want, cur;
+    wkcolor err;
     int i, d;
 
     kc_set8g(&want, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
     if (kd3->transform)
         kd3->transform(&want);
 
-    kc_clear(&err);
+    wkc_clear(&err);
     for (i = 0; i != nplan; ++i) {
-        for (d = 0; d != 3; ++d)
-            cur.a[d] = want.a[d] + err.a[d];
-        kc_clamp(&cur);
+        for (d = 0; d != 3; ++d) {
+            int v = want.a[d] + err.a[d];
+            cur.a[d] = KC_CLAMPV(v);
+        }
         plan[i] = kd3_closest_transformed(kd3, &cur);
         for (d = 0; d != 3; ++d)
-            err.a[d] += want.a[d] - kd3->items[plan[i]].k.a[d];
+            err.a[d] += want.a[d] - kd3->ks[plan[i]].a[d];
     }
 
     qsort(plan, nplan, 1, ordered_dither_plan_compare);
@@ -1523,7 +1509,7 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
     /* Initialize luminances, create luminance sorter */
     ordered_dither_lum = Gif_NewArray(int, kd3->nitems);
     for (i = 0; i != kd3->nitems; ++i)
-        ordered_dither_lum[i] = kc_luminance(&kd3->items[i].k);
+        ordered_dither_lum[i] = kc_luminance(&kd3->ks[i]);
 
     /* Do the image! */
     if ((mw & (mw - 1)) == 0 && (mh & (mh - 1)) == 0
