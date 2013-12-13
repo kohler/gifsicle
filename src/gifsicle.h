@@ -1,5 +1,5 @@
 /* gifsicle.h - Function declarations for gifsicle.
-   Copyright (C) 1997-2011 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2013 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -7,6 +7,8 @@
    as this notice is kept intact and this source code is made available. There
    is no warranty, express or implied. */
 
+#ifndef GIFSICLE_H
+#define GIFSICLE_H
 #include <lcdfgif/gif.h>
 #include <lcdf/clp.h>
 #ifdef __GNUC__
@@ -312,3 +314,5 @@ void		blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);
 
 extern int mode;
 extern int nested_mode;
+
+#endif
