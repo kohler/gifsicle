@@ -410,7 +410,7 @@ void
 resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
 {
     double xfactor, yfactor;
-    uint16_t* xarr;
+    uint16_t* xyarr;
     int i, nw, nh;
 
     Gif_CalculateScreenSize(gfs, 0);
@@ -444,17 +444,19 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
         xfactor = (double) nw / gfs->screen_width;
     }
 
-    xarr = Gif_NewArray(uint16_t, gfs->screen_width + gfs->screen_height + 2);
+    xyarr = Gif_NewArray(uint16_t, gfs->screen_width + gfs->screen_height + 2);
     for (i = 0; i != gfs->screen_width + 1; ++i)
-        xarr[i] = (int) (i * xfactor + 0.5);
+        xyarr[i] = (int) (i * xfactor);
     for (i = 0; i != gfs->screen_height + 1; ++i)
-        xarr[gfs->screen_width + 1 + i] = (int) (i * yfactor + 0.5);
+        xyarr[gfs->screen_width + 1 + i] = (int) (i * yfactor);
+    assert(xyarr[gfs->screen_width] == nw);
+    assert(xyarr[gfs->screen_width + 1 + gfs->screen_height] == nh);
 
     for (i = 0; i < gfs->nimages; i++)
         scale_image(gfs, gfs->images[i],
-                    &xarr[0], &xarr[gfs->screen_width + 1]);
+                    &xyarr[0], &xyarr[gfs->screen_width + 1]);
 
-    Gif_DeleteArray(xarr);
+    Gif_DeleteArray(xyarr);
     gfs->screen_width = nw;
     gfs->screen_height = nh;
 }
