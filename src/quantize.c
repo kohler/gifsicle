@@ -798,7 +798,7 @@ typedef struct kd3_treepos {
     int offset;
 } kd3_treepos;
 
-struct kd3_tree {
+typedef struct kd3_tree {
     kd3_treepos* tree;
     int ntree;
     int disabled;
@@ -808,7 +808,7 @@ struct kd3_tree {
     int maxdepth;
     void (*transform)(kcolor*);
     unsigned* xradius;
-};
+} kd3_tree;
 
 void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*)) {
     kd3->tree = NULL;
@@ -1073,13 +1073,7 @@ int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
     return result;
 }
 
-int kd3_closest(const kd3_tree* kd3, kcolor k) {
-    if (kd3->transform)
-        kd3->transform(&k);
-    return kd3_closest_transformed(kd3, &k);
-}
-
-int kd3_closest8(const kd3_tree* kd3, int a0, int a1, int a2) {
+int kd3_closest8g(const kd3_tree* kd3, int a0, int a1, int a2) {
     kcolor k;
     kc_set8g(&k, a0, a1, a2);
     if (kd3->transform)
@@ -1101,7 +1095,7 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
 
   /* find closest colors in new colormap */
   for (i = 0; i < ncol; i++) {
-      map[i] = col[i].pixel = kd3_closest8(kd3, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
+      map[i] = col[i].pixel = kd3_closest8g(kd3, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
       col[i].haspixel = 1;
   }
 
@@ -1139,7 +1133,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   /* Initialize distances */
   for (i = 0; i < old_cm->ncol; ++i) {
       Gif_Color* c = &old_cm->col[i];
-      c->pixel = kd3_closest8(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      c->pixel = kd3_closest8g(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
       c->haspixel = 1;
   }
 
@@ -1722,7 +1716,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
     gfs->background = gfs->images[0]->transparent;
   else if (gfs->global && gfs->background < gfs->global->ncol) {
     Gif_Color *c = &gfs->global->col[gfs->background];
-    gfs->background = kd3_closest8(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+    gfs->background = kd3_closest8g(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
     new_col[gfs->background].pixel++;
   }
 

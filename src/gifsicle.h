@@ -247,8 +247,6 @@ Gif_Colormap* colormap_blend_diversity(Gif_Color*, int, Gt_OutputData*);
 Gif_Colormap* colormap_flat_diversity(Gif_Color*, int, Gt_OutputData*);
 Gif_Colormap* colormap_median_cut(Gif_Color*, int, Gt_OutputData*);
 
-typedef struct kd3_tree kd3_tree;
-
 enum {
     dither_none = 0, dither_default, dither_floyd_steinberg,
     dither_ordered, dither_ordered_new
