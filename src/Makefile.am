@@ -16,7 +16,8 @@ WERROR = @WERROR@
 
 gifsicle_SOURCES = clp.c \
 		giffunc.c gifread.c gifunopt.c \
-		gifsicle.h merge.c optimize.c quantize.c support.c xform.c \
+		gifsicle.h kcolor.h \
+		merge.c optimize.c quantize.c support.c xform.c \
 		gifsicle.c
 
 gifview_SOURCES = clp.c \
