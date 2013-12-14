@@ -350,6 +350,7 @@ typedef struct {
     Gif_Image* gfi;
     const uint16_t* xoff;
     const uint16_t* yoff;
+    kd3_tree global_kd3;
 } scale_context;
 
 static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
@@ -358,10 +359,12 @@ static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
     sctx->gfi = NULL;
     sctx->xoff = xoff;
     sctx->yoff = yoff;
+    sctx->global_kd3.ks = NULL;
 }
 
 static void scale_context_cleanup(scale_context* sctx) {
-    (void) sctx;
+    if (sctx->global_kd3.ks)
+        kd3_cleanup(&sctx->global_kd3);
 }
 
 static void scale_image_data_trivial(scale_context* sctx, Gif_Image* new_gfi) {
@@ -391,19 +394,21 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
     int x1, y1, x2, y2, xi, yi, n, i;
     double xc[3];
     uint8_t* in_data = data;
-    kd3_tree kd3;
+    kd3_tree local_kd3, *kd3;
     kcolor kc;
     (void) in_data;
 
-    kd3_init(&kd3, NULL);
-    {
-        Gif_Colormap* gfcm = gfi->local ? gfi->local : sctx->gfs->global;
-        for (i = 0; i < gfcm->ncol; ++i)
-            kd3_add8g(&kd3, gfcm->col[i].gfc_red, gfcm->col[i].gfc_green, gfcm->col[i].gfc_blue);
-        if (gfi->transparent >= 0 && gfi->transparent < gfcm->ncol)
-            kd3_disable(&kd3, gfi->transparent);
+    if (gfi->local) {
+        kd3 = &local_kd3;
+        kd3_init_build(kd3, NULL, gfi->local);
+    } else {
+        kd3 = &sctx->global_kd3;
+        if (!kd3->ks)
+            kd3_init_build(kd3, NULL, sctx->gfs->global);
+        kd3_enable_all(kd3);
     }
-    kd3_build(&kd3);
+    if (gfi->transparent >= 0 && gfi->transparent < kd3->nitems)
+        kd3_disable(kd3, gfi->transparent);
 
     for (y1 = 0; y1 < gfi->height; y1 = y2) {
         for (y2 = y1 + 1; yoff[y2] != yoff[y1] + 1; ++y2)
@@ -431,7 +436,7 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
                     uint8_t pixel = gfi->img[yi][xi];
                     if (pixel != gfi->transparent) {
                         for (i = 0; i != 3; ++i)
-                            xc[i] += kd3.ks[pixel].a[i];
+                            xc[i] += kd3->ks[pixel].a[i];
                         ++n;
                     }
                 }
@@ -440,10 +445,12 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
                 int v = (int) (xc[i] / n + 0.5);
                 kc.a[i] = KC_CLAMPV(v);
             }
-            *data++ = kd3_closest_transformed(&kd3, &kc);
+            *data++ = kd3_closest_transformed(kd3, &kc);
         }
     }
 
+    if (gfi->local)
+        kd3_cleanup(kd3);
     assert(data - in_data == (xoff[gfi->width] - xoff[0]) * (yoff[gfi->height] - yoff[0]));
 }
 
