@@ -345,14 +345,32 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  * scale
  **/
 
-static void
-scale_image_data_trivial(Gif_Stream* gfs, Gif_Image* gfi,
-                         const uint16_t* xoff, const uint16_t* yoff,
-                         Gif_Image* new_gfi) {
+typedef struct {
+    Gif_Stream* gfs;
+    Gif_Image* gfi;
+    const uint16_t* xoff;
+    const uint16_t* yoff;
+} scale_context;
+
+static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
+                               const uint16_t* xoff, const uint16_t* yoff) {
+    sctx->gfs = gfs;
+    sctx->gfi = NULL;
+    sctx->xoff = xoff;
+    sctx->yoff = yoff;
+}
+
+static void scale_context_cleanup(scale_context* sctx) {
+    (void) sctx;
+}
+
+static void scale_image_data_trivial(scale_context* sctx, Gif_Image* new_gfi) {
     uint8_t* data = new_gfi->image_data;
+    Gif_Image* gfi = sctx->gfi;
+    const uint16_t* xoff = &sctx->xoff[gfi->left];
+    const uint16_t* yoff = &sctx->yoff[gfi->top];
     int new_width = new_gfi->width;
     int xi, yi, xo, yo;
-    (void) gfs;
 
     for (yi = 0; yi < gfi->height; ++yi)
         if (yoff[yi] != yoff[yi+1]) {
@@ -365,21 +383,21 @@ scale_image_data_trivial(Gif_Stream* gfs, Gif_Image* gfi,
         }
 }
 
-static void
-scale_image_data_interp(Gif_Stream* gfs, Gif_Image* gfi,
-                        const uint16_t* xoff, const uint16_t* yoff,
-                        Gif_Image* new_gfi) {
+static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
     uint8_t* data = new_gfi->image_data;
+    Gif_Image* gfi = sctx->gfi;
+    const uint16_t* xoff = &sctx->xoff[gfi->left];
+    const uint16_t* yoff = &sctx->yoff[gfi->top];
     int x1, y1, x2, y2, xi, yi, n, i;
     double xc[3];
     uint8_t* in_data = data;
     kd3_tree kd3;
     kcolor kc;
-    (void) gfs, (void) in_data;
+    (void) in_data;
 
     kd3_init(&kd3, NULL);
     {
-        Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+        Gif_Colormap* gfcm = gfi->local ? gfi->local : sctx->gfs->global;
         for (i = 0; i < gfcm->ncol; ++i)
             kd3_add8g(&kd3, gfcm->col[i].gfc_red, gfcm->col[i].gfc_green, gfcm->col[i].gfc_blue);
         if (gfi->transparent >= 0 && gfi->transparent < gfcm->ncol)
@@ -430,8 +448,9 @@ scale_image_data_interp(Gif_Stream* gfs, Gif_Image* gfi,
 }
 
 static void
-scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
+scale_image(scale_context* sctx)
 {
+    Gif_Image* gfi = sctx->gfi;
     Gif_Image new_gfi;
     int was_compressed = (gfi->img == 0);
 
@@ -447,10 +466,10 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
        inconsistencies between frames on animated GIFs. Don't allow 0-width
        or 0-height images; GIF doesn't support them well. */
     new_gfi = *gfi;
-    new_gfi.left = xoff[gfi->left];
-    new_gfi.top = yoff[gfi->top];
-    new_gfi.width = xoff[gfi->left + gfi->width] - new_gfi.left;
-    new_gfi.height = yoff[gfi->top + gfi->height] - new_gfi.top;
+    new_gfi.left = sctx->xoff[gfi->left];
+    new_gfi.top = sctx->yoff[gfi->top];
+    new_gfi.width = sctx->xoff[gfi->left + gfi->width] - new_gfi.left;
+    new_gfi.height = sctx->yoff[gfi->top + gfi->height] - new_gfi.top;
     new_gfi.img = NULL;
     new_gfi.image_data = NULL;
     new_gfi.compressed = NULL;
@@ -465,18 +484,12 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
             Gif_UncompressImage(gfi);
         Gif_CreateUncompressedImage(&new_gfi, 0);
 #if 0
-        scale_image_data_trivial(gfs, gfi,
-                                 &xoff[gfi->left], &yoff[gfi->top],
-                                 &new_gfi);
+        scale_image_data_trivial(sctx, &new_gfi);
 #else
         if (new_gfi.width >= gfi->width && new_gfi.height >= gfi->height)
-            scale_image_data_trivial(gfs, gfi,
-                                     &xoff[gfi->left], &yoff[gfi->top],
-                                     &new_gfi);
+            scale_image_data_trivial(sctx, &new_gfi);
         else
-            scale_image_data_interp(gfs, gfi,
-                                    &xoff[gfi->left], &yoff[gfi->top],
-                                    &new_gfi);
+            scale_image_data_interp(sctx, &new_gfi);
 #endif
     }
 
@@ -484,7 +497,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
     Gif_ReleaseCompressedImage(gfi);
     *gfi = new_gfi;
     if (was_compressed) {
-        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_FullCompressImage(sctx->gfs, gfi, &gif_write_info);
         Gif_ReleaseUncompressedImage(gfi);
     }
 }
@@ -494,6 +507,7 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
 {
     double xfactor, yfactor;
     uint16_t* xyarr;
+    scale_context sctx;
     int i, nw, nh;
 
     Gif_CalculateScreenSize(gfs, 0);
@@ -535,10 +549,14 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
         xyarr[gfs->screen_width + 1 + i] = (int) (i * yfactor);
     xyarr[gfs->screen_width + 1 + gfs->screen_height] = nh;
 
-    for (i = 0; i < gfs->nimages; i++)
-        scale_image(gfs, gfs->images[i],
-                    &xyarr[0], &xyarr[gfs->screen_width + 1]);
+    scale_context_init(&sctx, gfs, &xyarr[0], &xyarr[gfs->screen_width+1]);
 
+    for (i = 0; i < gfs->nimages; i++) {
+        sctx.gfi = gfs->images[i];
+        scale_image(&sctx);
+    }
+
+    scale_context_cleanup(&sctx);
     Gif_DeleteArray(xyarr);
     gfs->screen_width = nw;
     gfs->screen_height = nh;
