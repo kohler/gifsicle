@@ -39,6 +39,18 @@ static inline void kc_set8g(kcolor* x, int a0, int a1, int a2) {
     x->a[2] = gamma_tables[0][a2];
 }
 
+/* return the gamma transformation of `a0/a1/a2` [RGB] */
+static inline kcolor kc_make8g(int a0, int a1, int a2) {
+    kcolor x;
+    kc_set8g(&x, a0, a1, a2);
+    return x;
+}
+
+/* return the gamma transformation of `*gfc` */
+static inline kcolor kc_makegfcg(const Gif_Color* gfc) {
+    return kc_make8g(gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+}
+
 /* return a hex color string definition for `x` */
 const char* kc_debug_str(kcolor x);
 
