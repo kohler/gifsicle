@@ -893,7 +893,7 @@ static int kd3_build_range(int* perm, int nperm, int n, int depth) {
         --m;
     if (m == 0) { /* don't split entirely to the right (infinite loop) */
         m = nperm >> 1;
-        while (m < nperm
+        while (m < nperm - 1 /* also, don't split entirely to the left */
                && kd3->ks[perm[m]].a[aindex] == kd3->ks[perm[m-1]].a[aindex])
             ++m;
     }
