@@ -128,6 +128,10 @@ void kd3_build_xradius(kd3_tree* kd3);
 /* build the actual kd-tree for `kd3`. must be called before kd3_closest. */
 void kd3_build(kd3_tree* kd3);
 
+/* kd3_init + kd3_add8g for all colors in `gfcm` + kd3_build */
+void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
+                    const Gif_Colormap* gfcm);
+
 /* return the index of the color in `*kd3` closest to `k`. */
 int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k);
 

@@ -905,6 +905,16 @@ void kd3_build(kd3_tree* kd3) {
     Gif_DeleteArray(perm);
 }
 
+void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
+                    const Gif_Colormap* gfcm) {
+    int i;
+    kd3_init(kd3, transform);
+    for (i = 0; i < gfcm->ncol; ++i)
+        kd3_add8g(kd3, gfcm->col[i].gfc_red, gfcm->col[i].gfc_green,
+                  gfcm->col[i].gfc_blue);
+    kd3_build(kd3);
+}
+
 int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
     const kd3_treepos* stack[32];
     uint8_t state[32];
@@ -1525,14 +1535,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       if (new_col[j].gfc_red != new_col[j].gfc_green
           || new_col[j].gfc_red != new_col[j].gfc_blue)
           new_gray = 0;
-  if (new_gray)
-      kd3_init(&kd3, kc_luminance_transform);
-  else
-      kd3_init(&kd3, NULL);
-  for (j = 0; j < new_cm->ncol; ++j)
-      kd3_add8g(&kd3, new_col[j].gfc_red, new_col[j].gfc_green,
-                new_col[j].gfc_blue);
-  kd3_build(&kd3);
+  kd3_init_build(&kd3, new_gray ? kc_luminance_transform : NULL, new_cm);
 
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];
