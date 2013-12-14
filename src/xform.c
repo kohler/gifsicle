@@ -391,12 +391,10 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
     Gif_Image* gfi = sctx->gfi;
     const uint16_t* xoff = &sctx->xoff[gfi->left];
     const uint16_t* yoff = &sctx->yoff[gfi->top];
-    int x1, y1, x2, y2, xi, yi, n, i;
+    int xo, yo, xi, yi, xd, yd, n, i, j, k;
     double xc[3];
-    uint8_t* in_data = data;
     kd3_tree local_kd3, *kd3;
     kcolor kc;
-    (void) in_data;
 
     if (gfi->local) {
         kd3 = &local_kd3;
@@ -410,48 +408,50 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
     if (gfi->transparent >= 0 && gfi->transparent < kd3->nitems)
         kd3_disable(kd3, gfi->transparent);
 
-    for (y1 = 0; y1 < gfi->height; y1 = y2) {
-        for (y2 = y1 + 1; yoff[y2] != yoff[y1] + 1; ++y2)
-            /* spin */;
-        while (y2 < gfi->height && yoff[y2+1] == yoff[y2])
-            ++y2;
-        assert(y2 <= gfi->height);
+    /* for each output pixel... */
+    for (yi = 0, yo = yoff[0]; yo < yoff[gfi->height]; ++yo) {
+        /* find the range of input pixels that affect it */
+        for (yd = 1; yoff[yi+yd] < yo + 1; ++yd)
+            /* nada */;
 
-        for (x1 = 0; x1 < gfi->width; x1 = x2) {
-            for (x2 = x1 + 1; x2 < gfi->width && xoff[x2] != xoff[x1] + 1; ++x2)
-                /* spin */;
-            while (x2 < gfi->width && xoff[x2+1] == xoff[x2])
-                ++x2;
-            assert(x2 <= gfi->width);
+        for (xi = 0, xo = xoff[0]; xo < xoff[gfi->width]; ++xo, ++data) {
+            for (xd = 1; xoff[xi+xd] < xo + 1; ++xd)
+                /* nada */;
 
-            if (gfi->img[y1][x1] == gfi->transparent) {
-                *data++ = gfi->transparent;
-                continue;
-            }
-
-            n = 0;
-            xc[0] = xc[1] = xc[2] = 0;
-            for (yi = y1; yi != y2; ++yi)
-                for (xi = x1; xi != x2; ++xi) {
-                    uint8_t pixel = gfi->img[yi][xi];
-                    if (pixel != gfi->transparent) {
-                        for (i = 0; i != 3; ++i)
-                            xc[i] += kd3->ks[pixel].a[i];
-                        ++n;
+            /* combine the input pixels, find the closest match */
+            if ((xd == 1 && yd == 1)
+                || gfi->img[yi][xi] == gfi->transparent)
+                *data = gfi->img[yi][xi];
+            else {
+                n = 0;
+                xc[0] = xc[1] = xc[2] = 0;
+                for (j = 0; j != yd; ++j)
+                    for (i = 0; i != xd; ++i) {
+                        uint8_t pixel = gfi->img[yi+j][xi+i];
+                        if (pixel != gfi->transparent) {
+                            for (k = 0; k != 3; ++k)
+                                xc[k] += kd3->ks[pixel].a[k];
+                            ++n;
+                        }
                     }
-                }
 
-            for (i = 0; i != 3; ++i) {
-                int v = (int) (xc[i] / n + 0.5);
-                kc.a[i] = KC_CLAMPV(v);
+                for (k = 0; k != 3; ++k) {
+                    int v = (int) (xc[k] / n + 0.5);
+                    kc.a[k] = KC_CLAMPV(v);
+                }
+                *data = kd3_closest_transformed(kd3, &kc);
             }
-            *data++ = kd3_closest_transformed(kd3, &kc);
+
+            if (xoff[xi+xd] == xo + 1)
+                xi += xd;
         }
+
+        if (yoff[yi+yd] == yo + 1)
+            yi += yd;
     }
 
     if (gfi->local)
         kd3_cleanup(kd3);
-    assert(data - in_data == (xoff[gfi->width] - xoff[0]) * (yoff[gfi->height] - yoff[0]));
 }
 
 static void
