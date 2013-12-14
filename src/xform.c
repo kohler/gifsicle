@@ -345,24 +345,30 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
  * scale
  **/
 
+/* kcscreen: A frame buffer containing `kcolor`s (one per pixel).
+   Kcolors with components < 0 represent transparency. */
 typedef struct {
-    kcolor* data;
-    kcolor* scratch;
-    int sw;
-    int sh;
-    kcolor bg;
+    kcolor* data;       /* data buffer: (x,y) in data[y*sw + x] */
+    kcolor* scratch;    /* scratch buffer, used for previous disposal */
+    unsigned sw;        /* screen width */
+    unsigned sh;        /* screen height */
+    kcolor bg;          /* background color */
 } kcscreen;
 
+/* initialize `kcs` to an empty state */
 static void kcscreen_clear(kcscreen* kcs) {
     kcs->data = kcs->scratch = NULL;
 }
 
-static void kcscreen_init(kcscreen* kcs, int sw, int sh, Gif_Stream* gfs) {
-    int i, sz = sw * sh;
+/* initialize `kcs` for stream `gfs`. Screen size is `sw`x`sh`; if either
+   component is <= 0, the value of `gfs->screen_*` is taken. */
+static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
+    unsigned i, sz;
     assert(!kcs->data && !kcs->scratch);
+    kcs->sw = sw <= 0 ? gfs->screen_width : sw;
+    kcs->sh = sh <= 0 ? gfs->screen_height : sh;
+    sz = (unsigned) kcs->sw * kcs->sh;
     kcs->data = Gif_NewArray(kcolor, sz);
-    kcs->sw = sw;
-    kcs->sh = sh;
     if (gfs->nimages > 0 && gfs->images[0]->transparent >= 0) {
         /* XXX assume memset(..., 255, ...) sets to -1 (pretty good ass'n) */
         memset(kcs->data, 255, sizeof(kcolor) * sz);
@@ -374,14 +380,19 @@ static void kcscreen_init(kcscreen* kcs, int sw, int sh, Gif_Stream* gfs) {
     }
 }
 
+/* free memory associated with `kcs` */
 static void kcscreen_cleanup(kcscreen* kcs) {
     Gif_DeleteArray(kcs->data);
     Gif_DeleteArray(kcs->scratch);
 }
 
+/* apply image `gfi` to screen `kcs`, using the color array `ks` */
 static void kcscreen_apply(kcscreen* kcs, const Gif_Image* gfi,
                            const kcolor* ks) {
     int x, y;
+    assert((unsigned) gfi->left + gfi->width <= kcs->sw);
+    assert((unsigned) gfi->top + gfi->height <= kcs->sh);
+
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
         if (!kcs->scratch)
             kcs->scratch = Gif_NewArray(kcolor, kcs->sw * kcs->sh);
@@ -400,8 +411,12 @@ static void kcscreen_apply(kcscreen* kcs, const Gif_Image* gfi,
     }
 }
 
+/* dispose of image `gfi`, which was previously applied by kcscreen_apply */
 static void kcscreen_dispose(kcscreen* kcs, const Gif_Image* gfi) {
     int x, y;
+    assert((unsigned) gfi->left + gfi->width <= kcs->sw);
+    assert((unsigned) gfi->top + gfi->height <= kcs->sh);
+
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
         for (y = gfi->top; y != gfi->top + gfi->height; ++y)
             memcpy(&kcs->data[y * kcs->sw + gfi->left],
@@ -413,7 +428,7 @@ static void kcscreen_dispose(kcscreen* kcs, const Gif_Image* gfi) {
                    sizeof(kcolor) * gfi->width);
     } else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
         for (y = gfi->top; y != gfi->top + gfi->height; ++y)
-            for (x = gfi->left; x != gfi->left + gfi->width; ++ x)
+            for (x = gfi->left; x != gfi->left + gfi->width; ++x)
                 kcs->data[y * kcs->sw + x] = kcs->bg;
     }
 }
@@ -504,8 +519,9 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
     /* apply image to sctx->in */
     if (!sctx->in.data) {
         /* first image, set up screens */
-        kcscreen_init(&sctx->in, sw, sctx->gfs->screen_height, sctx->gfs);
-        kcscreen_init(&sctx->out, sctx->xoff[sw], sctx->yoff[sctx->gfs->screen_height], sctx->gfs);
+        kcscreen_init(&sctx->in, sctx->gfs, 0, 0);
+        kcscreen_init(&sctx->out, sctx->gfs,
+                      sctx->xoff[sw], sctx->yoff[sctx->gfs->screen_height]);
     }
     kcscreen_apply(&sctx->in, gfi, kd3->ks);
 
