@@ -130,6 +130,7 @@ typedef struct {
 } Gt_OutputData;
 
 extern Gt_OutputData active_output_data;
+extern Clp_Parser* clp;
 
 #define GT_SCALING_NONE		0
 #define GT_SCALING_RESIZE	1
@@ -163,10 +164,10 @@ extern int error_count;
 extern int no_warnings;
 extern Gif_CompressInfo gif_write_info;
 
-void fatal_error(const char *message, ...) NORETURN;
-void warning(int need_file, const char *message, ...);
-void warncontext(int need_file, const char *message, ...);
-void error(int need_file, const char *message, ...);
+void fatal_error(const char* format, ...) NORETURN;
+void warning(int need_file, const char* format, ...);
+void warncontext(int need_file, const char* message, ...);
+void error(int need_file, const char* format, ...);
 void clp_error_handler(Clp_Parser *clp, const char *clp_message);
 void usage(void);
 void short_usage(void);

@@ -1,4 +1,3 @@
-/* -*- c-basic-offset: 2 -*- */
 /* gifview.c - gifview's main loop.
    Copyright (C) 1997-2013 Eddie Kohler, ekohler@gmail.com
    This file is part of gifview, in the gifsicle package.
@@ -149,6 +148,7 @@ typedef struct Gt_Viewer {
 } Gt_Viewer;
 
 const char *program_name = "gifview";
+static Clp_Parser* clp;
 
 static const char *cur_display_name = 0;
 static Display *cur_display = 0;
@@ -217,54 +217,51 @@ const Clp_Option options[] = {
  * Diagnostics
  **/
 
-void
-fatal_error(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
-  exit(1);
+void fatal_error(const char* format, ...) {
+    char buf[BUFSIZ];
+    int n = snprintf(buf, BUFSIZ, "%s: ", program_name);
+    va_list val;
+    va_start(val, format);
+    Clp_vsnprintf(clp, buf + n, BUFSIZ - n, format, val);
+    va_end(val);
+    fputs(buf, stderr);
+    exit(1);
 }
 
-void
-error(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+void error(const char* format, ...) {
+    char buf[BUFSIZ];
+    int n = snprintf(buf, BUFSIZ, "%s: ", program_name);
+    va_list val;
+    va_start(val, format);
+    Clp_vsnprintf(clp, buf + n, BUFSIZ - n, format, val);
+    va_end(val);
+    fputs(buf, stderr);
 }
 
-void
-warning(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: warning: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+void warning(const char* format, ...) {
+    char buf[BUFSIZ];
+    int n = snprintf(buf, BUFSIZ, "%s: warning: ", program_name);
+    va_list val;
+    va_start(val, format);
+    Clp_vsnprintf(clp, buf + n, BUFSIZ - n, format, val);
+    va_end(val);
+    fputs(buf, stderr);
 }
 
-void
-short_usage(void)
-{
-  fprintf(stderr, "Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
-Try '%s --help' for more information.\n",
-	  program_name, program_name);
+void short_usage(void) {
+    Clp_fprintf(clp, stderr, "\
+Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\
+Try %<%s --help%> for more information.\n",
+                program_name, program_name);
 }
 
-void
-usage(void)
-{
-  printf("\
-'Gifview' is a lightweight GIF viewer for X. It can display animated GIFs as\n\
+void usage(void) {
+    Clp_fprintf(clp, stdout, "\
+%<Gifview%> is a lightweight GIF viewer for X. It can display animated GIFs as\n\
 slideshows, one frame at a time, or as animations.\n\
 \n\
 Usage: %s [--display DISPLAY] [OPTION]... [FILE | FRAME]...\n\n", program_name);
-  printf("\
+    Clp_fprintf(clp, stdout, "\
 Options are:\n\
   -a, --animate                 Animate multiframe GIFs.\n\
   -U, --unoptimize              Unoptimize displayed GIFs.\n\
@@ -272,7 +269,7 @@ Options are:\n\
       --name NAME               Set application resource name to NAME.\n\
   -g, --geometry GEOMETRY       Set window geometry.\n\
   -T, --title TITLE             Set window title.\n");
-  printf("\
+    Clp_fprintf(clp, stdout, "\
   -w, --window WINDOW           Show GIF in existing WINDOW.\n\
       --new-window WINDOW       Show GIF in new child of existing WINDOW.\n\
   -i, --install-colormap        Use a private colormap.\n\
@@ -280,13 +277,13 @@ Options are:\n\
       --min-delay DELAY         Set minimum frame delay to DELAY/100 sec.\n\
       --fallback-delay DELAY    Set fallback frame delay to DELAY/100 sec.\n\
   +e, --no-interactive          Ignore buttons and keystrokes.\n");
-  printf("\
+    Clp_fprintf(clp, stdout, "\
       --memory-limit LIM        Cache at most LIM megabytes of animation.\n\
       --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
 \n\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\n");
-  printf("\
+    Clp_fprintf(clp, stdout, "\
 Keystrokes:\n\
   [N]/[Space] Go to next frame.         [P]/[B] Go to previous frame.\n\
   [R]/[<] Go to first frame.            [>] Go to last frame.\n\
@@ -444,10 +441,10 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
     XColor color;
     if (!XParseColor(viewer->display, viewer->colormap, cur_background_color,
 		     &color)) {
-      error("invalid background color '%s'", cur_background_color);
+      error("invalid background color %<%s%>\n", cur_background_color);
       cur_background_color = 0;
     } else if (!XAllocColor(viewer->display, viewer->colormap, &color))
-      warning("can't allocate background color");
+      warning("can%,t allocate background color\n");
     else {
       unsigned long pixel = color.pixel;
       Gif_XContext *gfx = viewer->gfx;
@@ -536,7 +533,7 @@ get_input_stream(const char *name)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdin))) {
-      error("<stdin>: is a terminal");
+      error("<stdin>: is a terminal\n");
       return NULL;
     }
 #endif
@@ -552,7 +549,7 @@ get_input_stream(const char *name)
   } else
     f = fopen(name, "rb");
   if (!f) {
-    error("%s: %s", name, strerror(errno));
+    error("%s: %s\n", name, strerror(errno));
     return 0;
   }
 
@@ -560,7 +557,7 @@ get_input_stream(const char *name)
   fclose(f);
 
   if (!gfs || Gif_ImageCount(gfs) == 0) {
-    error("'%s' doesn't seem to contain a GIF", name);
+    error("%s: file not in GIF format\n", name);
     Gif_DeleteStream(gfs);
     return 0;
   }
@@ -568,7 +565,7 @@ get_input_stream(const char *name)
   if (!cur_display) {
     cur_display = XOpenDisplay(cur_display_name);
     if (!cur_display) {
-      error("can't open display");
+      error("can%,t open display\n");
       return 0;
     }
   }
@@ -713,7 +710,7 @@ parse_geometry(const char *const_g, XSizeHints *sh, int screen_width,
   return 1;
 
  error:
-  warning("bad geometry specification");
+  warning("bad geometry specification\n");
   sh->flags = 0;
   return 0;
 }
@@ -1065,12 +1062,12 @@ frame_argument(Gt_Viewer *viewer, const char *arg)
   if (c[0] != 0) {
     Gif_Image *gfi = Gif_GetNamedImage(viewer->gfs, c);
     if (!gfi)
-      error("no frame named '%s'", c);
+      error("no frame named %<%s%>\n", c);
     else
       n1 = Gif_ImageNumber(viewer->gfs, gfi);
   } else {
     if (n1 < 0 || n1 >= viewer->nim) {
-      error("no frame number %d", n1);
+      error("no frame number %d\n", n1);
       n1 = 0;
     }
   }
@@ -1272,9 +1269,8 @@ main(int argc, char *argv[])
   int any_errors = 0;
   int first_frame = -1;
 
-  Clp_Parser *clp =
-    Clp_NewParser(argc, (const char * const *)argv,
-                  sizeof(options) / sizeof(options[0]), options);
+  clp = Clp_NewParser(argc, (const char * const *)argv,
+                      sizeof(options) / sizeof(options[0]), options);
   Clp_SetOptionChar(clp, '+', Clp_ShortNegated);
   Clp_AddStringListType
     (clp, WINDOW_TYPE, Clp_AllowNumbers | Clp_StringListLong,
@@ -1292,7 +1288,7 @@ main(int argc, char *argv[])
 
      case DISPLAY_OPT:
       if (cur_display)
-	fatal_error("'--display' must come before all other options");
+	fatal_error("%<--display%> must come before all other options\n");
       cur_display_name = clp->vstr;
       cur_display = 0;
       cur_arrow_cursor = cur_wait_cursor = None;

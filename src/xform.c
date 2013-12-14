@@ -148,17 +148,17 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
 
 #ifdef HAVE_MKSTEMP
   if (mkstemp(tmp_file) < 0)
-    fatal_error("can't create temporary file!");
+    fatal_error("can%,t create temporary file!");
 #else
   if (!tmp_file)
-    fatal_error("can't create temporary file!");
+    fatal_error("can%,t create temporary file!");
 #endif
 
   new_command = Gif_NewArray(char, strlen(command) + strlen(tmp_file) + 4);
   sprintf(new_command, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
   if (!f)
-    fatal_error("can't run color transformation command: %s", strerror(errno));
+    fatal_error("can%,t run color transformation command: %s", strerror(errno));
   Gif_DeleteArray(new_command);
 
   for (i = 0; i < gfcm->ncol; i++)

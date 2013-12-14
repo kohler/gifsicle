@@ -50,6 +50,8 @@ static uint16_t *line;
 static int brief;
 static int ignore_redundancy;
 
+static Clp_Parser* clp;
+
 
 static void
 combine_colormaps(Gif_Colormap *gfcm, Gif_Colormap *newcm)
@@ -368,27 +370,23 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 }
 
 
-void
-short_usage(void)
-{
-  fprintf(stderr, "Usage: %s [OPTION]... FILE1 FILE2\n\
-Try '%s --help' for more information.\n",
-	  program_name, program_name);
+void short_usage(void) {
+    Clp_fprintf(clp, stderr, "Usage: %s [OPTION]... FILE1 FILE2\n\
+Try %<%s --help%> for more information.\n",
+                program_name, program_name);
 }
 
-void
-usage(void)
-{
-  printf("\
-'Gifdiff' compares two GIF files (either images or animations) for identical\n\
+void usage(void) {
+    Clp_fprintf(clp, stdout, "\
+%<Gifdiff%> compares two GIF files (either images or animations) for identical\n\
 visual appearance. An animation and an optimized version of the same animation\n\
 should compare as the same. Gifdiff exits with status 0 if the images are\n\
-the same, 1 if they're different, and 2 if there was some error.\n\
+the same, 1 if they%,re different, and 2 if there was some error.\n\
 \n\
 Usage: %s [OPTION]... FILE1 FILE2\n\n", program_name);
-  printf("\
+    Clp_fprintf(clp, stdout, "\
 Options:\n\
-  -q, --brief                   Don't report detailed differences.\n\
+  -q, --brief                   Don%,t report detailed differences.\n\
   -w, --ignore-redundancy       Ignore differences in redundant frames.\n\
   -h, --help                    Print this message and exit.\n\
   -v, --version                 Print version number and exit.\n\
@@ -397,35 +395,25 @@ Report bugs to <ekohler@gmail.com>.\n");
 }
 
 
-void
-fatal_error(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
-  exit(2);			/* exit(2) for trouble */
+void fatal_error(const char* format, ...) {
+    char buf[BUFSIZ];
+    int n = snprintf(buf, BUFSIZ, "%s: ", program_name);
+    va_list val;
+    va_start(val, format);
+    Clp_vsnprintf(clp, buf + n, BUFSIZ - n, format, val);
+    va_end(val);
+    fputs(buf, stderr);
+    exit(2);			/* exit(2) for trouble */
 }
 
-void
-error(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
-}
-
-void
-warning(char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  fprintf(stderr, "%s: warning: ", program_name);
-  vfprintf(stderr, message, val);
-  fputc('\n', stderr);
+void error(const char* format, ...) {
+    char buf[BUFSIZ];
+    int n = snprintf(buf, BUFSIZ, "%s: ", program_name);
+    va_list val;
+    va_start(val, format);
+    Clp_vsnprintf(clp, buf + n, BUFSIZ - n, format, val);
+    va_end(val);
+    fputs(buf, stderr);
 }
 
 static int gifread_error_count;
@@ -451,11 +439,11 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
       && (last_which_image != which_image || message == 0
 	  || strcmp(message, last_message) != 0)) {
     const char *etype = last_is_error ? "error" : "warning";
-    error("While reading '%s' frame #%d:", filename, last_which_image);
+    error("While reading %<%s%> frame #%d:\n", filename, last_which_image);
     if (same_error_count == 1)
-      error("  %s: %s", etype, last_message);
+      error("  %s: %s\n", etype, last_message);
     else if (same_error_count > 0)
-      error("  %s: %s (%d times)", etype, last_message, same_error_count);
+      error("  %s: %s (%d times)\n", etype, last_message, same_error_count);
     same_error_count = 0;
     last_message[0] = 0;
   }
@@ -471,7 +459,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     last_message[0] = 0;
 
   if (different_error_count == 11 && message) {
-    error("(more errors while reading '%s')", filename);
+    error("(more errors while reading %<%s%>)\n", filename);
     different_error_count++;
   }
 }
@@ -488,7 +476,7 @@ read_stream(const char **filename)
 #ifndef OUTPUT_GIF_TO_TERMINAL
 	extern int isatty(int);
 	if (isatty(fileno(stdin))) {
-	    fatal_error("<stdin>: is a terminal");
+	    fatal_error("<stdin>: is a terminal\n");
 	    return NULL;
 	}
 #endif
@@ -505,13 +493,13 @@ read_stream(const char **filename)
     } else {
 	f = fopen(*filename, "rb");
 	if (!f)
-	    fatal_error("%s: %s", *filename, strerror(errno));
+	    fatal_error("%s: %s\n", *filename, strerror(errno));
     }
     gifread_error_count = 0;
     gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, gifread_error, (void *) *filename);
     gifread_error(-1, 0, -1, (void *) *filename); /* print out last error message */
     if (!gfs)
-	fatal_error("'%s' doesn't seem to contain a GIF", *filename);
+	fatal_error("%s: file not in GIF format\n", *filename);
     return gfs;
 }
 
@@ -523,8 +511,8 @@ main(int argc, char *argv[])
   const char **inputp;
   Gif_Stream *gfs1, *gfs2;
 
-  Clp_Parser *clp =
-    Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
+  clp = Clp_NewParser(argc, (const char * const *)argv,
+                      sizeof(options) / sizeof(options[0]), options);
 
   program_name = Clp_ProgramName(clp);
   brief = 0;
@@ -557,7 +545,7 @@ particular purpose.\n");
 
      case Clp_NotOption:
       if (how_many_inputs == 2) {
-	error("too many file arguments");
+	error("too many file arguments\n");
 	goto bad_option;
       }
       inputp = (how_many_inputs == 0 ? &filename1 : &filename2);
@@ -583,9 +571,9 @@ particular purpose.\n");
  done:
 
   if (how_many_inputs < 2)
-    fatal_error("need exactly 2 file arguments");
+    fatal_error("need exactly 2 file arguments\n");
   if (filename1 == 0 && filename2 == 0)
-    fatal_error("can't read both files from stdin");
+    fatal_error("can%,t read both files from stdin\n");
 
   gfs1 = read_stream(&filename1);
   gfs2 = read_stream(&filename2);

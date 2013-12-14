@@ -323,6 +323,8 @@ const Clp_Option options[] = {
 
 };
 
+Clp_Parser* clp;
+
 
 static void combine_output_options(void);
 static void initialize_def_frame(void);
@@ -342,7 +344,7 @@ set_mode(int newmode)
   }
 
   if (mode != INFOING && infoing == 1)
-    fatal_error("'--info' suppresses normal output, can't use with an\n  output mode like '--merge' or '--batch'.\n  (Try '-II', which doesn't suppress normal output.)");
+    fatal_error("%<--info%> suppresses normal output, can%,t use with an\n  output mode like %<--merge%> or %<--batch%>.\n  (Try %<-II%>, which doesn%,t suppress normal output.)");
   if (newmode != BLANK_MODE && newmode != mode)
     fatal_error("too late to change modes");
 }
@@ -356,7 +358,7 @@ set_frame_change(int kind)
 
   set_mode(BLANK_MODE);
   if (mode < DELETING && frames_done) {
-    fatal_error("frame selection and frame changes don't mix");
+    fatal_error("frame selection and frame changes don%,t mix");
     return;
   }
   assert(!nested_mode);
@@ -478,7 +480,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
       && (last_which_image != which_image || message == 0
 	  || strcmp(message, last_message) != 0)) {
     const char *etype = last_is_error ? "error" : "warning";
-    error(0, "While reading '%s' frame #%d:", filename, last_which_image);
+    error(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
     if (same_error_count == 1)
       error(0, "  %s: %s", etype, last_message);
     else if (same_error_count > 0)
@@ -498,7 +500,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     last_message[0] = 0;
 
   if (different_error_count == 11 && message) {
-    error(0, "(more errors while reading '%s')", filename);
+    error(0, "(more errors while reading %<%s%>)", filename);
     different_error_count++;
   }
 }
@@ -659,7 +661,7 @@ input_stream(const char *name)
   /* special processing for components after the first */
   if (componentno > 1) {
     if (mode == BATCHING || mode == INSERTING)
-      fatal_error("--multifile is useful only in merge mode");
+      fatal_error("%s: %<--multifile%> is useful only in merge mode", name);
     input_done();
   }
 
@@ -726,7 +728,7 @@ input_stream(const char *name)
       warning(1, "GIF too complex to unoptimize", name);
       if (!context) {
 	warncontext(1, "(The reason was local color tables or complex transparency.");
-	warncontext(1, "Try running the GIF through 'gifsicle --colors=255' first.)");
+	warncontext(1, "Try running the GIF through %<gifsicle --colors=255%> first.)");
       }
       context = 1;
     }
@@ -1261,7 +1263,7 @@ print_useless_options(const char *type_name, int value, const char *names[])
     if (CHANGED(value, i)) {
       warning(0, "useless %s-related %s option", names[i], type_name);
       if (!explanation_printed)
-	warncontext(0, "(It didn't affect any %s.)", type_name);
+	warncontext(0, "(It didn%,t affect any %s.)", type_name);
       explanation_printed = 1;
     }
 }
@@ -1287,8 +1289,6 @@ copy_crop(Gt_Crop *oc)
 int
 main(int argc, char *argv[])
 {
-  Clp_Parser* clp;
-
   /* Check SIZEOF constants (useful for Windows). If these assertions fail,
      you've used the wrong Makefile. You should've used Makefile.w32 for
      32-bit Windows and Makefile.w64 for 64-bit Windows. */
@@ -1709,7 +1709,7 @@ main(int argc, char *argv[])
 	 input_transforms = delete_color_transforms
 	   (input_transforms, &color_change_transformer);
        else if (parsed_color2.haspixel)
-	 error(0, "COLOR2 must be in RGB format in '--change-color COLOR1 COLOR2'");
+	 error(0, "COLOR2 must be in RGB format in %<--change-color COLOR1 COLOR2%>");
        else
 	 input_transforms = append_color_change
 	   (input_transforms, parsed_color, parsed_color2);
@@ -1811,7 +1811,7 @@ main(int argc, char *argv[])
       if (clp->negated)
 	def_output_data.scaling = GT_SCALING_NONE;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error(0, "one of W and H must be positive in '%s WxH'", Clp_CurOptionName(clp));
+	error(0, "one of W and H must be positive in %<%s WxH%>", Clp_CurOptionName(clp));
 	def_output_data.scaling = GT_SCALING_NONE;
       } else {
 	def_output_data.scaling = (opt == RESIZE_FIT_OPT ? GT_SCALING_RESIZE_FIT : GT_SCALING_RESIZE);

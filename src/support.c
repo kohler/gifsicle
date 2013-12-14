@@ -25,104 +25,92 @@ int no_warnings = 0;
 static void
 verror(int need_file, int seriousness, const char *fmt, va_list val)
 {
-  char pattern[BUFSIZ];
-  char buffer[BUFSIZ];
-  static char *printed_file = 0;
-  static int just_printed_context = 0;
-  const char *initial_prefix = program_name;
-  const char *prefix = "";
-  const char *iname = input_name;
-  if (!iname)
-    iname = "<stdin>";
-  if (mode == EXPLODING && active_output_data.active_output_name)
-    iname = active_output_data.active_output_name;
+    char buf[BUFSIZ];
+    static char* printed_file = 0;
+    static int just_printed_context = 0;
+    const char* initial_prefix = program_name;
+    const char* prefix = "";
+    const char* iname = input_name;
+    const char* xfmt;
+    int n;
 
-  if (printed_file && strcmp(printed_file, iname) != 0) {
-      free(printed_file);
-      printed_file = 0;
-  }
-  if (need_file == 2 && !printed_file)
-      initial_prefix = iname;
-  else if (need_file && !printed_file) {
-      if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING) {
-	  fprintf(stderr, "%s: While processing '%s':\n", program_name, iname);
-	  just_printed_context = 1;
-	  prefix = "  ";
-	  initial_prefix = "";
-      }
-      printed_file = malloc(strlen(iname) + 1);
-      strcpy(printed_file, iname);
-  } else if (just_printed_context && seriousness == 0) {
-      prefix = "  ";
-      initial_prefix = "";
-  } else
-      just_printed_context = 0;
+    if (!iname)
+        iname = "<stdin>";
+    if (mode == EXPLODING && active_output_data.active_output_name)
+        iname = active_output_data.active_output_name;
 
-  if (seriousness > 2)
-      sprintf(pattern, "%s%s%s fatal error: %%s\n",
-	      initial_prefix, *initial_prefix ? ":" : "", prefix);
-  else if (seriousness == 1)
-      sprintf(pattern, "%s%s%s warning: %%s\n",
-	      initial_prefix, *initial_prefix ? ":" : "", prefix);
-  else
-      sprintf(pattern, "%s%s%s %%s\n",
-	      initial_prefix, *initial_prefix ? ":" : "", prefix);
+    if (printed_file && strcmp(printed_file, iname) != 0) {
+        free(printed_file);
+        printed_file = 0;
+    }
+    if (need_file == 2 && !printed_file)
+        initial_prefix = iname;
+    else if (need_file && !printed_file) {
+        if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING) {
+            Clp_fprintf(clp, stderr, "%s: While processing %<%s%>:\n",
+                        program_name, iname);
+            just_printed_context = 1;
+            prefix = "  ";
+            initial_prefix = "";
+        }
+        printed_file = malloc(strlen(iname) + 1);
+        strcpy(printed_file, iname);
+    } else if (just_printed_context && seriousness == 0) {
+        prefix = "  ";
+        initial_prefix = "";
+    } else
+        just_printed_context = 0;
 
-  if (seriousness > 1)
-    error_count++;
-  else if (no_warnings)
-    return;
+    if (seriousness > 2)
+        xfmt = "%s%s%s fatal error: ";
+    else if (seriousness == 1)
+        xfmt = "%s%s%s warning: ";
+    else
+        xfmt = "%s%s%s ";
+    n = snprintf(buf, sizeof(buf), xfmt,
+                 initial_prefix, *initial_prefix ? ":" : "", prefix);
+    n += Clp_vsnprintf(clp, buf + n, sizeof(buf) - n, fmt, val);
+    if ((size_t) n + 1 < sizeof(buf)) {
+        buf[n++] = '\n';
+        buf[n++] = 0;
+    }
 
-  /* try and keep error messages together (no interleaving of error messages
-     from two gifsicle processes in the same command line) by calling fprintf
-     only once */
-  verbose_endline();
-  if (strlen(fmt) + strlen(pattern) < BUFSIZ) {
-    sprintf(buffer, pattern, fmt);
-    vfprintf(stderr, buffer, val);
-  } else {
-    pattern[strlen(pattern) - 3] = 0;
-    fprintf(stderr, "%s", pattern);
-    vfprintf(stderr, fmt, val);
-    putc('\n', stderr);
-  }
+    if (seriousness > 1)
+        error_count++;
+    else if (no_warnings)
+        return;
+
+    verbose_endline();
+    fputs(buf, stderr);
 }
 
-void
-fatal_error(const char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  verror(0, 3, message, val);
-  va_end(val);
-  exit(EXIT_USER_ERR);
+void fatal_error(const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(0, 3, format, val);
+    va_end(val);
+    exit(EXIT_USER_ERR);
 }
 
-void
-error(int need_file, const char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  verror(need_file, 2, message, val);
-  va_end(val);
+void error(int need_file, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(need_file, 2, format, val);
+    va_end(val);
 }
 
-void
-warning(int need_file, const char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  verror(need_file, 1, message, val);
-  va_end(val);
+void warning(int need_file, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(need_file, 1, format, val);
+    va_end(val);
 }
 
-void
-warncontext(int need_file, const char *message, ...)
-{
-  va_list val;
-  va_start(val, message);
-  verror(need_file, 0, message, val);
-  va_end(val);
+void warncontext(int need_file, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(need_file, 0, format, val);
+    va_end(val);
 }
 
 void
@@ -946,7 +934,7 @@ read_colormap_file(const char *name, FILE *f)
     if (!gfs)
       error(0, "%s: file not in GIF format", name);
     else if (!gfs->global)
-      error(0, "%s: can't use as palette (no global color table)", name);
+      error(0, "%s: can%,t use as palette (no global color table)", name);
     else {
       if (gfs->errors)
 	warning(0, "%s: there were errors reading this GIF", name);
@@ -1138,7 +1126,7 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     if (output_data->background.haspixel) {
 	if (gfs->images[0]->transparent >= 0) {
 	    static int context = 0;
-	    warning(1, "irrelevant background color");
+	    warning(1, "irrelevant background color\n");
 	    if (!context) {
 		warncontext(1, "(The background will appear transparent because");
 		warncontext(1, "the first image contains transparency.)");
@@ -1327,7 +1315,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
       || crop->x + crop->w > r || crop->y + crop->h > b) {
-    error(1, "cropping dimensions don't fit image");
+    error(1, "cropping dimensions don%,t fit image");
     crop->ready = 2;
   } else
     crop->ready = 1;
