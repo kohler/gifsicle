@@ -565,7 +565,7 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
                     int outidx = sctx->out.sw*yo + xo;
                     if (sctx->out.data[outidx].a[0] >= 0
                         && kc_distance(&sctx->out.data[outidx], &kc)
-                           < kc_distance(&kd3->ks[*data], &kc))
+                           <= kc_distance(&kd3->ks[*data], &kc))
                         *data = gfi->transparent;
                 }
             }
