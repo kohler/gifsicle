@@ -882,8 +882,8 @@ pixels wide without changing its aspect ratio. An analogous operation is
 performed for
 .RI _x height .
 Resizing happens after all input frames have been combined and before
-optimization. Gifsicle's resize algorithm is designed for speed, not
-quality; for best-looking results you will need to use other tools.
+optimization. See also
+.Op \-\-resize\-method .
 '
 .Sp
 .TP
@@ -938,6 +938,22 @@ is not given, it defaults to
 .IR Xfactor .
 Scaling happens after all input frames have been combined and before
 optimization.
+'
+.Sp
+.TP
+.Oa \-\-resize\-method method
+'
+Set the method used to resize images. The \(oqfast\(cq method runs
+very quickly, but can produce noisy results. The \(oqmix\(cq method is
+somewhat slower, but produces better-looking results. The default
+method is a good tradeoff for most images; currently it is \(oqmix\(cq.
+.RS
+.Sp
+.PP
+Details: The \(oqfast\(cq method maps each pixel in the output image
+to exactly one pixel in the input image. The \(oqmix\(cq method
+considers all input pixels that affect an output pixel, which is
+important when shrinking images.
 .PD
 '
 .\" -----------------------------------------------------------------

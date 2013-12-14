@@ -609,9 +609,7 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
         kd3_cleanup(kd3);
 }
 
-static void
-scale_image(scale_context* sctx)
-{
+static void scale_image(scale_context* sctx, int method) {
     Gif_Image* gfi = sctx->gfi;
     Gif_Image new_gfi;
     int was_compressed = (gfi->img == 0);
@@ -639,14 +637,10 @@ scale_image(scale_context* sctx)
     if (was_compressed)
         Gif_UncompressImage(gfi);
 
-#if 0
-    scale_image_data_trivial(sctx, &new_gfi);
-#else
-    if (new_gfi.width >= gfi->width && new_gfi.height >= gfi->height)
-        scale_image_data_trivial(sctx, &new_gfi);
-    else
+    if (method == SCALE_METHOD_MIX)
         scale_image_data_interp(sctx, &new_gfi);
-#endif
+    else
+        scale_image_data_trivial(sctx, &new_gfi);
 
     Gif_ReleaseUncompressedImage(gfi);
     Gif_ReleaseCompressedImage(gfi);
@@ -658,7 +652,8 @@ scale_image(scale_context* sctx)
 }
 
 void
-resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
+resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
+              int method)
 {
     double xfactor, yfactor;
     uint16_t* xyarr;
@@ -711,9 +706,14 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
 
     scale_context_init(&sctx, gfs, &xyarr[0], &xyarr[gfs->screen_width+1]);
 
+    /* no point to MIX method if we're expanding the image in both dimens */
+    if (method == SCALE_METHOD_MIX && gfs->screen_width <= nw
+        && gfs->screen_height <= nh)
+        method = SCALE_METHOD_FAST;
+
     for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {
         sctx.gfi = gfs->images[sctx.imageno];
-        scale_image(&sctx);
+        scale_image(&sctx, method);
     }
 
     scale_context_cleanup(&sctx);

@@ -110,11 +110,12 @@ static int any_output_successful = 0;
 #define CH_RESIZE		10
 #define CH_MEMORY		11
 #define CH_GAMMA		12
+#define CH_RESIZE_METHOD	13
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
   "colormap size", "dither", "colormap", "colormap method",
   "background", "color transformation", "resize", "memory conservation",
-  "gamma"
+  "gamma", "resize method"
 };
 
 
@@ -186,6 +187,7 @@ static const char *output_option_types[] = {
 #define SIZE_INFO_OPT		367
 #define GAMMA_OPT		368
 #define GRAY_OPT		369
+#define RESIZE_METHOD_OPT	370
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -198,6 +200,7 @@ static const char *output_option_types[] = {
 #define COLORMAP_ALG_TYPE	(Clp_ValFirstUser + 8)
 #define SCALE_FACTOR_TYPE	(Clp_ValFirstUser + 9)
 #define OPTIMIZE_TYPE		(Clp_ValFirstUser + 10)
+#define RESIZE_METHOD_TYPE	(Clp_ValFirstUser + 11)
 
 const Clp_Option options[] = {
 
@@ -275,6 +278,7 @@ const Clp_Option options[] = {
   { "resize-fit-height", 0, RESIZE_FIT_HEIGHT_OPT, Clp_ValUnsigned, Clp_Negate },
   { "resize-fi", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resize-f", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-method", 0, RESIZE_METHOD_OPT, RESIZE_METHOD_TYPE, 0 },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
@@ -296,6 +300,7 @@ const Clp_Option options[] = {
   { "same-screen", 0, SAME_LOGICAL_SCREEN_OPT, 0, 0 },
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
   { "scale", 0, SCALE_OPT, SCALE_FACTOR_TYPE, Clp_Negate },
+  { "scale-method", 0, RESIZE_METHOD_OPT, RESIZE_METHOD_TYPE, 0 },
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "sinfo", 0, SIZE_INFO_OPT, 0, Clp_Negate },
   { "size-info", 0, SIZE_INFO_OPT, 0, Clp_Negate },
@@ -917,13 +922,16 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   if (out) {
     if (active_output_data.scaling == GT_SCALING_RESIZE)
       resize_stream(out, active_output_data.resize_width,
-		    active_output_data.resize_height, 0);
+		    active_output_data.resize_height,
+                    0, active_output_data.scale_method);
     else if (active_output_data.scaling == GT_SCALING_SCALE)
       resize_stream(out, active_output_data.scale_x * out->screen_width,
-		    active_output_data.scale_y * out->screen_height, 0);
+		    active_output_data.scale_y * out->screen_height,
+                    0, active_output_data.scale_method);
     else if (active_output_data.scaling == GT_SCALING_RESIZE_FIT)
       resize_stream(out, active_output_data.resize_width,
-		    active_output_data.resize_height, 1);
+		    active_output_data.resize_height,
+                    1, active_output_data.scale_method);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -1158,6 +1166,7 @@ initialize_def_frame(void)
 
   def_output_data.optimizing = 0;
   def_output_data.scaling = GT_SCALING_NONE;
+  def_output_data.scale_method = SCALE_METHOD_MIX;
 
   def_output_data.conserve_memory = 0;
 
@@ -1213,6 +1222,11 @@ combine_output_options(void)
     active_output_data.resize_height = def_output_data.resize_height;
     active_output_data.scale_x = def_output_data.scale_x;
     active_output_data.scale_y = def_output_data.scale_y;
+  }
+
+  if (CHANGED(recent, CH_RESIZE_METHOD)) {
+    MARK_CH(output, CH_RESIZE_METHOD);
+    active_output_data.scale_method = def_output_data.scale_method;
   }
 
   COMBINE_ONE_OUTPUT_OPTION(CH_MEMORY, conserve_memory);
@@ -1308,6 +1322,12 @@ main(int argc, char *argv[])
      "no-keep-empty", GT_OPT_KEEPEMPTY,
      "drop-empty", GT_OPT_KEEPEMPTY,
      "no-drop-empty", GT_OPT_KEEPEMPTY + 1,
+     (const char*) 0);
+  Clp_AddStringListType
+    (clp, RESIZE_METHOD_TYPE, 0,
+     "mix", SCALE_METHOD_MIX,
+     "fast", SCALE_METHOD_FAST,
+     "good", SCALE_METHOD_MIX,
      (const char*) 0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);
   Clp_AddType(clp, POSITION_TYPE, 0, parse_position, 0);
@@ -1830,10 +1850,15 @@ main(int argc, char *argv[])
 	error(0, "%s X and Y factors must be positive", Clp_CurOptionName(clp));
 	def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	def_output_data.scaling = 2; /* use scale factor */
+	def_output_data.scaling = GT_SCALING_SCALE;
 	def_output_data.scale_x = parsed_scale_factor_x;
 	def_output_data.scale_y = parsed_scale_factor_y;
       }
+      break;
+
+    case RESIZE_METHOD_OPT:
+      MARK_CH(output, CH_RESIZE_METHOD);
+      def_output_data.scale_method = clp->val.i;
       break;
 
       /* RANDOM OPTIONS */

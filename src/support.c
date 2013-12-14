@@ -232,6 +232,7 @@ Whole-GIF options: Also --no-OPTION.\n\
       --resize-height H         Resize to height H and proportional width.\n");
   printf("\
       --scale XFACTOR[xYFACTOR] Scale the output GIF by XFACTORxYFACTOR.\n\
+      --resize-method METHOD    Set resizing method.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
       --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
                                 be 'web', 'gray', 'bw', or a GIF file.\n\n");

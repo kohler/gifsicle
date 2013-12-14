@@ -123,6 +123,7 @@ typedef struct {
   int resize_height;
   double scale_x;
   double scale_y;
+  int scale_method;
 
   int conserve_memory;
 
@@ -134,6 +135,9 @@ extern Gt_OutputData active_output_data;
 #define GT_SCALING_RESIZE	1
 #define GT_SCALING_SCALE	2
 #define GT_SCALING_RESIZE_FIT	3
+
+#define SCALE_METHOD_FAST	0
+#define SCALE_METHOD_MIX	1
 
 #define GT_OPT_MASK		0xFFFF
 #define GT_OPT_KEEPEMPTY	0x10000
@@ -231,7 +235,7 @@ int	crop_image(Gif_Image *, Gt_Crop *, int preserve_total_crop);
 void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
 void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);
 void	resize_stream(Gif_Stream *, double new_width, double new_height,
-                      int fit);
+                      int fit, int method);
 
 /*****
  * quantization
