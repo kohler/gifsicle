@@ -994,7 +994,7 @@ void kd3_build(kd3_tree* kd3) {
         perm[i] = i;
     kd3_sorter = kd3;
     qsort(perm, kd3->nitems, sizeof(int), kd3_item_all_compar);
-    for (i = 0, delta = 1; i != kd3->nitems - delta; ++i)
+    for (i = 0, delta = 1; i + delta < kd3->nitems; ++i)
         if (memcmp(&kd3->ks[perm[i]], &kd3->ks[perm[i+delta]],
                    sizeof(kcolor)) == 0)
             ++delta, --i;
