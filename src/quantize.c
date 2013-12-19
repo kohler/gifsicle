@@ -97,11 +97,14 @@ uint16_t* gamma_tables[2] = {
 
 const char* kc_debug_str(kcolor x) {
     static int whichbuf = 0;
-    static char buf[4][8];
+    static char buf[4][32];
     whichbuf = (whichbuf + 1) % 4;
-    kc_revgamma_transform(&x);
-    sprintf(buf[whichbuf], "#%02X%02X%02X",
-            x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
+    if (x.a[0] >= 0 && x.a[1] >= 0 && x.a[2] >= 0) {
+        kc_revgamma_transform(&x);
+        sprintf(buf[whichbuf], "#%02X%02X%02X",
+                x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
+    } else
+        sprintf(buf[whichbuf], "<%d,%d,%d>", x.a[0], x.a[1], x.a[2]);
     return buf[whichbuf];
 }
 
