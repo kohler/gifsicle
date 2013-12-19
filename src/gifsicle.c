@@ -1325,8 +1325,11 @@ main(int argc, char *argv[])
      (const char*) 0);
   Clp_AddStringListType
     (clp, RESIZE_METHOD_TYPE, 0,
+     "point", SCALE_METHOD_POINT,
+     "sample", SCALE_METHOD_POINT,
      "mix", SCALE_METHOD_MIX,
-     "fast", SCALE_METHOD_FAST,
+     "box", SCALE_METHOD_BOX,
+     "fast", SCALE_METHOD_POINT,
      "good", SCALE_METHOD_MIX,
      (const char*) 0);
   Clp_AddType(clp, DIMENSIONS_TYPE, 0, parse_dimensions, 0);

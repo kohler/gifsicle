@@ -137,8 +137,9 @@ extern Clp_Parser* clp;
 #define GT_SCALING_SCALE	2
 #define GT_SCALING_RESIZE_FIT	3
 
-#define SCALE_METHOD_FAST	0
-#define SCALE_METHOD_MIX	1
+#define SCALE_METHOD_POINT	0
+#define SCALE_METHOD_BOX	1
+#define SCALE_METHOD_MIX	2
 
 #define GT_OPT_MASK		0xFFFF
 #define GT_OPT_KEEPEMPTY	0x10000

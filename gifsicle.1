@@ -943,17 +943,25 @@ optimization.
 .TP
 .Oa \-\-resize\-method method
 '
-Set the method used to resize images. The \(oqfast\(cq method runs
-very quickly, but can produce noisy results. The \(oqmix\(cq method is
-somewhat slower, but produces better-looking results. The default
-method is a good tradeoff for most images; currently it is \(oqmix\(cq.
+Set the method used to resize images. The \(oqsample\(cq method runs
+very quickly, but when shrinking images, it produces noisy results.
+The \(oqmix\(cq method is somewhat slower, but produces better-looking
+results. The default method is a good tradeoff for most images;
+currently it is \(oqmix\(cq.
 .RS
 .Sp
 .PP
-Details: The \(oqfast\(cq method maps each pixel in the output image
-to exactly one pixel in the input image. The \(oqmix\(cq method
-considers all input pixels that affect an output pixel, which is
-important when shrinking images.
+Details: The resize methods differ most when shrinking images. The
+\(oqsample\(cq method is a point sampler. Each pixel position in the
+output image maps to exactly one pixel position in the input, so when
+shrinking, full rows and columns from the input are dropped. The
+\(oqbox\(cq and \(oqmix\(cq methods are types of box samplers. These
+methods consider all input pixels that affect an output pixel, which
+generally produces better results. The \(oqbox\(cq method is a bit
+faster and produces somewhat sharper results, but there will be
+anomalies when shrinking an image by just a few pixels in one
+dimension. The \(oqmix\(cq method is slower and produces somewhat
+blurrier results, but avoids those anomalies.
 .PD
 '
 .\" -----------------------------------------------------------------

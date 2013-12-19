@@ -443,6 +443,8 @@ typedef struct {
     kd3_tree global_kd3;
     kcscreen in;
     kcscreen out;
+    double rxfactor;
+    double ryfactor;
 } scale_context;
 
 static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
@@ -463,7 +465,7 @@ static void scale_context_cleanup(scale_context* sctx) {
     kcscreen_cleanup(&sctx->out);
 }
 
-static void scale_image_data_trivial(scale_context* sctx, Gif_Image* new_gfi) {
+static void scale_image_data_point(scale_context* sctx, Gif_Image* new_gfi) {
     uint8_t* data;
     Gif_Image* gfi = sctx->gfi;
     const uint16_t* xoff = &sctx->xoff[gfi->left];
@@ -495,26 +497,21 @@ static void scale_image_data_trivial(scale_context* sctx, Gif_Image* new_gfi) {
         }
 }
 
-static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
-    uint8_t* data;
-    Gif_Image* gfi = sctx->gfi;
+static kd3_tree* scale_image_prepare(scale_context* sctx, kd3_tree* local_kd3) {
+    kd3_tree* kd3;
     int sw = sctx->gfs->screen_width;
-    int xo, yo, xi, yi, xi1, xd, yd, n, i, j, k;
-    double xc[3];
-    kd3_tree local_kd3, *kd3;
-    kcolor kc;
 
-    if (gfi->local) {
-        kd3 = &local_kd3;
-        kd3_init_build(kd3, NULL, gfi->local);
+    if (sctx->gfi->local) {
+        kd3 = local_kd3;
+        kd3_init_build(kd3, NULL, sctx->gfi->local);
     } else {
         kd3 = &sctx->global_kd3;
         if (!kd3->ks)
             kd3_init_build(kd3, NULL, sctx->gfs->global);
         kd3_enable_all(kd3);
     }
-    if (gfi->transparent >= 0 && gfi->transparent < kd3->nitems)
-        kd3_disable(kd3, gfi->transparent);
+    if (sctx->gfi->transparent >= 0 && sctx->gfi->transparent < kd3->nitems)
+        kd3_disable(kd3, sctx->gfi->transparent);
 
     /* apply image to sctx->in */
     if (!sctx->in.data) {
@@ -523,7 +520,37 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
         kcscreen_init(&sctx->out, sctx->gfs,
                       sctx->xoff[sw], sctx->yoff[sctx->gfs->screen_height]);
     }
-    kcscreen_apply(&sctx->in, gfi, kd3->ks);
+    kcscreen_apply(&sctx->in, sctx->gfi, kd3->ks);
+
+    return kd3;
+}
+
+static void scale_image_complete(scale_context* sctx, Gif_Image* new_gfi,
+                                 kd3_tree* kd3) {
+    /* apply disposal to sctx->in and sctx->out */
+    if (sctx->imageno != sctx->gfs->nimages - 1) {
+        kcscreen_dispose(&sctx->in, sctx->gfi);
+
+        if (sctx->gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+            kcscreen_dispose(&sctx->out, new_gfi);
+        else if (sctx->gfi->disposal != GIF_DISPOSAL_PREVIOUS)
+            kcscreen_apply(&sctx->out, new_gfi, kd3->ks);
+    }
+
+    if (sctx->gfi->local)
+        kd3_cleanup(kd3);
+}
+
+static void scale_image_data_box(scale_context* sctx, Gif_Image* new_gfi) {
+    uint8_t* data;
+    Gif_Image* gfi = sctx->gfi;
+    int sw = sctx->gfs->screen_width;
+    int xo, yo, xi, yi, xi1, xd, yd, n, i, j, k;
+    double xc[3];
+    kd3_tree local_kd3, *kd3;
+    kcolor kc;
+
+    kd3 = scale_image_prepare(sctx, &local_kd3);
 
     /* create image data */
     /* might need to expand the output a bit; it must cover all pixels
@@ -595,18 +622,98 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
             yi += yd;
     }
 
-    /* apply disposal to sctx->in and sctx->out */
-    if (sctx->imageno != sctx->gfs->nimages - 1) {
-        kcscreen_dispose(&sctx->in, gfi);
+    scale_image_complete(sctx, new_gfi, kd3);
+}
 
-        if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-            kcscreen_dispose(&sctx->out, new_gfi);
-        else if (gfi->disposal != GIF_DISPOSAL_PREVIOUS)
-            kcscreen_apply(&sctx->out, new_gfi, kd3->ks);
+static double bounds_factor(int val, const double bounds[2]) {
+    if (val < bounds[0] && bounds[1] < val + 1)
+        return bounds[1] - bounds[0];
+    else if (val < bounds[0])
+        return 1 - (bounds[0] - val);
+    else if (bounds[1] < val + 1)
+        return bounds[1] - val;
+    else
+        return 1.0;
+}
+
+static void scale_image_data_mix(scale_context* sctx, Gif_Image* new_gfi) {
+    uint8_t* data;
+    Gif_Image* gfi = sctx->gfi;
+    int sw = sctx->gfs->screen_width;
+    int xo, yo, i, j, k;
+    double xc[3], n, bounds[4];
+    double transpbound = sctx->rxfactor * sctx->ryfactor / 4;
+    kd3_tree local_kd3, *kd3;
+    kcolor kc;
+
+    kd3 = scale_image_prepare(sctx, &local_kd3);
+
+    /* create image data */
+    /* might need to expand the output a bit; it must cover all pixels
+       modified by the input image or we'll get "trail" type artifacts */
+    if (sctx->xoff[gfi->left+gfi->width-1] == new_gfi->left+new_gfi->width)
+        ++new_gfi->width;
+    if (sctx->yoff[gfi->top+gfi->height-1] == new_gfi->top+new_gfi->height)
+        ++new_gfi->height;
+    Gif_CreateUncompressedImage(new_gfi, 0);
+    data = new_gfi->image_data;
+
+    /* for each output pixel, pick closest pixel to output screen */
+    for (yo = new_gfi->top; yo != new_gfi->top + new_gfi->height;
+         ++yo) {
+        for (xo = new_gfi->left; xo != new_gfi->left + new_gfi->width;
+             ++xo, ++data) {
+            /* combine the input pixels */
+            n = 0;
+            xc[0] = xc[1] = xc[2] = 0;
+
+            /* create floating-point bounds */
+            bounds[0] = xo * sctx->rxfactor;
+            if (xo + 1 == (int) sctx->out.sw)
+                bounds[1] = sctx->in.sw;
+            else
+                bounds[1] = (xo + 1) * sctx->rxfactor;
+            bounds[2] = yo * sctx->ryfactor;
+            if (yo + 1 == (int) sctx->out.sh)
+                bounds[3] = sctx->in.sh;
+            else
+                bounds[3] = (yo + 1) * sctx->ryfactor;
+
+            /* run over integer bounds */
+            for (j = (int) bounds[2]; j < bounds[3]; ++j) {
+                double jf = bounds_factor(j, &bounds[2]);
+                const kcolor* indata = &sctx->in.data[sw*j];
+                for (i = (int) bounds[0]; i < bounds[1]; ++i) {
+                    double f = jf * bounds_factor(i, &bounds[0]);
+                    if (indata[i].a[0] >= 0) {
+                        for (k = 0; k != 3; ++k)
+                            xc[k] += indata[i].a[k] * f;
+                        n += f;
+                    }
+                }
+            }
+
+            /* find the closest match */
+            if (gfi->transparent >= 0 && n <= transpbound)
+                *data = gfi->transparent;
+            else {
+                for (k = 0; k != 3; ++k) {
+                    int v = (int) (xc[k] / n + 0.5);
+                    kc.a[k] = KC_CLAMPV(v);
+                }
+                *data = kd3_closest_transformed(kd3, &kc);
+                if (gfi->transparent >= 0) {
+                    int outidx = sctx->out.sw*yo + xo;
+                    if (sctx->out.data[outidx].a[0] >= 0
+                        && kc_distance(&sctx->out.data[outidx], &kc)
+                           <= kc_distance(&kd3->ks[*data], &kc))
+                        *data = gfi->transparent;
+                }
+            }
+        }
     }
 
-    if (gfi->local)
-        kd3_cleanup(kd3);
+    scale_image_complete(sctx, new_gfi, kd3);
 }
 
 static void scale_image(scale_context* sctx, int method) {
@@ -638,9 +745,11 @@ static void scale_image(scale_context* sctx, int method) {
         Gif_UncompressImage(gfi);
 
     if (method == SCALE_METHOD_MIX)
-        scale_image_data_interp(sctx, &new_gfi);
+        scale_image_data_mix(sctx, &new_gfi);
+    else if (method == SCALE_METHOD_BOX)
+        scale_image_data_box(sctx, &new_gfi);
     else
-        scale_image_data_trivial(sctx, &new_gfi);
+        scale_image_data_point(sctx, &new_gfi);
 
     Gif_ReleaseUncompressedImage(gfi);
     Gif_ReleaseCompressedImage(gfi);
@@ -681,17 +790,16 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
 
     nw = (int) (new_width + 0.5);
     nh = (int) (new_height + 0.5);
-    xfactor = (double) nw / gfs->screen_width;
-    yfactor = (double) nh / gfs->screen_height;
 
     if (fit && nw >= gfs->screen_width && nh >= gfs->screen_height)
         return;
-    else if (fit && xfactor < yfactor) {
-        nh = (int) (gfs->screen_height * xfactor + 0.5);
-        yfactor = (double) nh / gfs->screen_height;
-    } else if (fit && yfactor < xfactor) {
-        nw = (int) (gfs->screen_width * yfactor + 0.5);
+    else if (fit) {
         xfactor = (double) nw / gfs->screen_width;
+        yfactor = (double) nh / gfs->screen_height;
+        if (xfactor < yfactor)
+            nh = (int) (gfs->screen_height * xfactor + 0.5);
+        else if (yfactor < xfactor)
+            nw = (int) (gfs->screen_width * yfactor + 0.5);
     }
 
     /* refuse to create 0-pixel dimensions */
@@ -699,6 +807,12 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
         nw = 1;
     if (nh == 0)
         nh = 1;
+
+    /* create real scale factors */
+    xfactor = (double) nw / gfs->screen_width;
+    sctx.rxfactor = gfs->screen_width / (double) nw;
+    yfactor = (double) nh / gfs->screen_height;
+    sctx.ryfactor = gfs->screen_height / (double) nh;
 
     xyarr = Gif_NewArray(uint16_t, gfs->screen_width + gfs->screen_height + 2);
     for (i = 0; i != gfs->screen_width; ++i)
@@ -712,10 +826,11 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
 
     scale_context_init(&sctx, gfs, &xyarr[0], &xyarr[gfs->screen_width+1]);
 
-    /* no point to MIX method if we're expanding the image in both dimens */
-    if (method == SCALE_METHOD_MIX && gfs->screen_width <= nw
-        && gfs->screen_height <= nh)
-        method = SCALE_METHOD_FAST;
+    /* no point to MIX or BOX method if we're expanding the image in
+       both dimens */
+    if ((method == SCALE_METHOD_MIX || method == SCALE_METHOD_BOX)
+        && gfs->screen_width <= nw && gfs->screen_height <= nh)
+        method = SCALE_METHOD_POINT;
 
     for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {
         sctx.gfi = gfs->images[sctx.imageno];
