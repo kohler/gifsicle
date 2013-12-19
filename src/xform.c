@@ -569,7 +569,7 @@ static void scale_image_data_interp(scale_context* sctx, Gif_Image* new_gfi) {
             }
 
             /* find the closest match */
-            if (gfi->transparent >= 0 && n < xd * yd / 4)
+            if (gfi->transparent >= 0 && n <= (xd * yd) / 4)
                 *data = gfi->transparent;
             else {
                 for (k = 0; k != 3; ++k) {
