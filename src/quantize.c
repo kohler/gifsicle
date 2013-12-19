@@ -1328,7 +1328,7 @@ static int kc_plane_closest(const kcolor* p0, const kcolor* p1,
     pvec[2] = n[0]*p02.a[1] - n[1]*p02.a[0];
 
     det = pvec[0]*p01.a[0] + pvec[1]*p01.a[1] + pvec[2]*p01.a[2];
-    if (det > 0.0001 && det < 0.0001)
+    if (fabs(det) <= 0.0001220703125) /* optimizer will take care of that */
         return 0;
     det = 1 / det;
 
