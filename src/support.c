@@ -629,7 +629,7 @@ parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid dimensions '%s' (want WxH)", arg);
+    return Clp_OptionError(clp, "invalid dimensions %<%s%> (want WxH)", arg);
   else
     return 0;
 }
@@ -648,7 +648,7 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid position '%s' (want 'X,Y')", arg);
+    return Clp_OptionError(clp, "invalid position %<%s%> (want 'X,Y')", arg);
   else
     return 0;
 }
@@ -670,7 +670,7 @@ parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid scale factor '%s' (want XxY)", arg);
+    return Clp_OptionError(clp, "invalid scale factor %<%s%> (want XxY)", arg);
   else
     return 0;
 }
@@ -711,7 +711,7 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid rectangle '%s' (want 'X1,Y1-X2,Y2' or 'X1,Y1+WxH'", input_arg);
+    return Clp_OptionError(clp, "invalid rectangle %<%s%> (want X1,Y1-X2,Y2 or X1,Y1+WxH", input_arg);
   else
     return 0;
 }
@@ -759,7 +759,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     if (len == 0 || len % 3 != 0
 	|| (int)strspn(arg, "0123456789ABCDEFabcdef") != len) {
       if (complain)
-	Clp_OptionError(clp, "invalid color '%s' (want '#RGB' or '#RRGGBB')",
+	Clp_OptionError(clp, "invalid color %<%s%> (want #RGB or #RRGGBB)",
 			input_arg);
       return 0;
     }
@@ -804,7 +804,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
  error:
   if (complain)
-    return Clp_OptionError(clp, "invalid color '%s'", input_arg);
+    return Clp_OptionError(clp, "invalid color %<%s%>", input_arg);
   else
     return 0;
 }
@@ -819,7 +819,7 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   arg = Clp_Shift(clp, 0);
   if (!arg && complain)
-    return Clp_OptionError(clp, "'%O' takes two color arguments");
+    return Clp_OptionError(clp, "%<%O%> takes two color arguments");
   else if (!arg)
     return 0;
 
