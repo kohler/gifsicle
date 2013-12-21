@@ -653,15 +653,30 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     return 0;
 }
 
+static double strtod_fraction(const char* arg, char** endptr) {
+    char* val, *val2;
+    double d = strtod(arg, &val);
+    if (arg != val && *val == '/') {
+        double denom = strtod(val + 1, &val2);
+        if (val2 != val + 1 && denom) {
+            d /= denom;
+            val = val2;
+        }
+    }
+    if (endptr)
+        *endptr = val;
+    return d;
+}
+
 int
 parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *val;
   (void)thunk;
 
-  parsed_scale_factor_x = strtod(arg, &val);
+  parsed_scale_factor_x = strtod_fraction(arg, &val);
   if (*val == 'x') {
-    parsed_scale_factor_y = strtod(val + 1, &val);
+    parsed_scale_factor_y = strtod_fraction(val + 1, &val);
     if (*val == 0)
       return 1;
   } else if (*val == 0) {
