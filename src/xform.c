@@ -445,10 +445,12 @@ typedef struct {
     kcscreen out;
     double rxfactor;
     double ryfactor;
+    double xfactor;
+    double yfactor;
 } scale_context;
 
-static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
-                               const uint16_t* xoff, const uint16_t* yoff) {
+static void sctx_init(scale_context* sctx, Gif_Stream* gfs,
+                      const uint16_t* xoff, const uint16_t* yoff) {
     sctx->gfs = gfs;
     sctx->gfi = NULL;
     sctx->xoff = xoff;
@@ -458,7 +460,7 @@ static void scale_context_init(scale_context* sctx, Gif_Stream* gfs,
     kcscreen_clear(&sctx->out);
 }
 
-static void scale_context_cleanup(scale_context* sctx) {
+static void sctx_cleanup(scale_context* sctx) {
     if (sctx->global_kd3.ks)
         kd3_cleanup(&sctx->global_kd3);
     kcscreen_cleanup(&sctx->in);
@@ -824,7 +826,7 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
     assert(xyarr[gfs->screen_width - 1] != nw);
     assert(xyarr[gfs->screen_width + gfs->screen_height] != nh);
 
-    scale_context_init(&sctx, gfs, &xyarr[0], &xyarr[gfs->screen_width+1]);
+    sctx_init(&sctx, gfs, &xyarr[0], &xyarr[gfs->screen_width+1]);
 
     /* no point to MIX or BOX method if we're expanding the image in
        both dimens */
@@ -837,7 +839,7 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
         scale_image(&sctx, method);
     }
 
-    scale_context_cleanup(&sctx);
+    sctx_cleanup(&sctx);
     Gif_DeleteArray(xyarr);
     gfs->screen_width = nw;
     gfs->screen_height = nh;
