@@ -349,11 +349,11 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
 /* kcscreen: A frame buffer containing `kcolor`s (one per pixel).
    Kcolors with components < 0 represent transparency. */
 typedef struct {
-    kcolor* data;       /* data buffer: (x,y) in data[y*width + x] */
-    kcolor* scratch;    /* scratch buffer, used for previous disposal */
+    kacolor* data;      /* data buffer: (x,y) in data[y*width + x] */
+    kacolor* scratch;   /* scratch buffer, used for previous disposal */
     unsigned width;     /* screen width */
     unsigned height;    /* screen height */
-    kcolor bg;          /* background color */
+    kacolor bg;         /* background color */
 } kcscreen;
 
 /* initialize `kcs` to an empty state */
@@ -369,13 +369,14 @@ static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
     kcs->width = sw <= 0 ? gfs->screen_width : sw;
     kcs->height = sh <= 0 ? gfs->screen_height : sh;
     sz = (unsigned) kcs->width * kcs->height;
-    kcs->data = Gif_NewArray(kcolor, sz);
+    kcs->data = Gif_NewArray(kacolor, sz);
     if (gfs->nimages > 0 && gfs->images[0]->transparent >= 0) {
-        kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = -32640;
+        kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
         for (i = 0; i != sz; ++i)
             kcs->data[i] = kcs->bg;
     } else {
-        kcs->bg = kc_makegfcg(&gfs->global->col[gfs->background]);
+        kcs->bg.k = kc_makegfcg(&gfs->global->col[gfs->background]);
+        kcs->bg.a[3] = KC_MAX;
         for (i = 0; i != sz; ++i)
             kcs->data[i] = kcs->bg;
     }
@@ -396,19 +397,21 @@ static void kcscreen_apply(kcscreen* kcs, const Gif_Image* gfi,
 
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
         if (!kcs->scratch)
-            kcs->scratch = Gif_NewArray(kcolor, kcs->width * kcs->height);
+            kcs->scratch = Gif_NewArray(kacolor, kcs->width * kcs->height);
         for (y = gfi->top; y != gfi->top + gfi->height; ++y)
             memcpy(&kcs->scratch[y * kcs->width + gfi->left],
                    &kcs->data[y * kcs->width + gfi->left],
-                   sizeof(kcolor) * gfi->width);
+                   sizeof(kacolor) * gfi->width);
     }
 
     for (y = gfi->top; y != gfi->top + gfi->height; ++y) {
         const uint8_t* linein = gfi->img[y - gfi->top];
-        kcolor* lineout = &kcs->data[y * kcs->width + gfi->left];
+        kacolor* lineout = &kcs->data[y * kcs->width + gfi->left];
         for (x = 0; x != gfi->width; ++x)
-            if (linein[x] != gfi->transparent)
-                lineout[x] = ks[linein[x]];
+            if (linein[x] != gfi->transparent) {
+                lineout[x].k = ks[linein[x]];
+                lineout[x].a[3] = KC_MAX;
+            }
     }
 }
 
@@ -422,11 +425,7 @@ static void kcscreen_dispose(kcscreen* kcs, const Gif_Image* gfi) {
         for (y = gfi->top; y != gfi->top + gfi->height; ++y)
             memcpy(&kcs->data[y * kcs->width + gfi->left],
                    &kcs->scratch[y * kcs->width + gfi->left],
-                   sizeof(kcolor) * gfi->width);
-    } else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND && kcs->bg.a[0] < 0) {
-        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
-            memset(&kcs->data[y * kcs->width + gfi->left], 255,
-                   sizeof(kcolor) * gfi->width);
+                   sizeof(kacolor) * gfi->width);
     } else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
         for (y = gfi->top; y != gfi->top + gfi->height; ++y)
             for (x = gfi->left; x != gfi->left + gfi->width; ++x)
@@ -539,18 +538,18 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
                                    Gif_Image* gfo, int yo) {
     int k, xo, transparent = sctx->gfi->transparent;
     uint8_t* data = gfo->img[yo];
-    const kcolor* oscr = &sctx->oscr.data[sctx->oscr.width * (yo + gfo->top)
-                                          + gfo->left];
+    const kacolor* oscr = &sctx->oscr.data[sctx->oscr.width * (yo + gfo->top)
+                                           + gfo->left];
 
     for (xo = 0; xo != gfo->width; ++xo)
-        if (sc[xo].a[3] <= 0.25)
+        if (sc[xo].a[3] <= KC_MAX / 4)
             data[xo] = transparent;
         else {
             kcolor kc;
             /* don't effectively mix partially transparent pixels with black */
-            if (sc[xo].a[3] <= 0.984375)
+            if (sc[xo].a[3] <= KC_MAX * 31 / 32)
                 for (k = 0; k != 3; ++k)
-                    sc[xo].a[k] /= sc[xo].a[3];
+                    sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
             /* find closest color */
             for (k = 0; k != 3; ++k) {
                 int v = (int) (sc[xo].a[k] + 0.5);
@@ -558,8 +557,8 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
             }
             data[xo] = kd3_closest_transformed(sctx->kd3, &kc);
             /* maybe previous color is actually closer to the color we want */
-            if (transparent >= 0 && oscr[xo].a[0] >= 0
-                && kc_distance(&oscr[xo], &kc)
+            if (transparent >= 0 && oscr[xo].a[3]
+                && kc_distance(&oscr[xo].k, &kc)
                     <= kc_distance(&sctx->kd3->ks[data[xo]], &kc))
                 data[xo] = transparent;
         }
@@ -609,14 +608,11 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
 
         /* collect input mixes */
         for (j = ypr.lo; j != ypr.hi; ++j) {
-            const kcolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
+            const kacolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
             for (i = xi0; i != xi1; ++i) {
                 ++nsc[xoff[i]];
-                if (indata[i].a[0] >= 0) {
-                    for (k = 0; k != 3; ++k)
-                        sc[xoff[i]].a[k] += indata[i].a[k];
-                    ++sc[xoff[i]].a[3];
-                }
+                for (k = 0; k != 4; ++k)
+                    sc[xoff[i]].a[k] += indata[i].a[k];
             }
         }
 
@@ -665,7 +661,7 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
         /* collect input mixes */
         for (j = (int) bounds[2]; j < bounds[3]; ++j) {
             double jf = mix_factor(j, &bounds[2]) * sctx->ixf * sctx->iyf;
-            const kcolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
+            const kacolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
             bounds[1] = gfo->left * sctx->oxf;
             for (xo = 0; xo != gfo->width; ++xo) {
@@ -674,11 +670,8 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
 
                 for (i = (int) bounds[0]; i < bounds[1]; ++i) {
                     double f = mix_factor(i, &bounds[0]) * jf;
-                    if (indata[i].a[0] >= 0) {
-                        for (k = 0; k != 3; ++k)
-                            sc[xo].a[k] += indata[i].a[k] * f;
-                        sc[xo].a[3] += f;
-                    }
+                    for (k = 0; k != 4; ++k)
+                        sc[xo].a[k] += indata[i].a[k] * f;
                 }
             }
         }

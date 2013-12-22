@@ -26,6 +26,11 @@ typedef struct kcolor {
 
 #define KC_CLAMPV(v) ((v) < 0 ? 0 : ((v) < KC_MAX ? (v) : KC_MAX))
 
+typedef union kacolor {
+    kcolor k;
+    int16_t a[4];
+} kacolor;
+
 
 /* gamma_tables[0]: array of 256 gamma-conversion values
    gamma_tables[1]: array of 256 reverse gamma-conversion values */
