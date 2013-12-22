@@ -946,8 +946,9 @@ optimization.
 Set the method used to resize images. The \(oqsample\(cq method runs
 very quickly, but when shrinking images, it produces noisy results.
 The \(oqmix\(cq method is somewhat slower, but produces better-looking
-results. The default method is a good tradeoff for most images;
-currently it is \(oqmix\(cq.
+results. The \(oqcatrom\(cq method is a Catmull-Rom cubic filter; it
+is yet slower. The default method, a good tradeoff for most images, is
+currently \(oqmix\(cq.
 .RS
 .Sp
 .PP
@@ -963,7 +964,7 @@ dimension. (Some output pixels will correspond to exactly 1 input row
 or column, while others will correspond to exactly 2 input rows or
 columns.) The \(oqmix\(cq method is a full bilinear interpolator. This
 is slower and produces somewhat blurrier results, but avoids such
-anomalies.
+anomalies. The \(oqcatrom\(cq method uses Catmull-Rom resampling.
 .PD
 '
 .\" -----------------------------------------------------------------

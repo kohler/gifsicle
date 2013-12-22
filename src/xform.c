@@ -435,6 +435,17 @@ static void kcscreen_dispose(kcscreen* kcs, const Gif_Image* gfi) {
 
 
 typedef struct {
+    double w;
+    int ipos;
+    int opos;
+} scale_weight;
+
+typedef struct {
+    scale_weight* ws;
+    int n;
+} scale_weightset;
+
+typedef struct {
     Gif_Stream* gfs;
     Gif_Image* gfi;
     int imageno;
@@ -445,6 +456,8 @@ typedef struct {
     double oyf;                 /* (input height) / (output height) */
     double ixf;                 /* (output width) / (input width) */
     double iyf;                 /* (output height) / (input height) */
+    scale_weightset xweights;
+    scale_weightset yweights;
     kd3_tree global_kd3;
     kd3_tree local_kd3;
 } scale_context;
@@ -464,6 +477,8 @@ static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
     sctx->iyf = (double) nh / gfs->screen_height;
     sctx->oxf = gfs->screen_width / (double) nw;
     sctx->oyf = gfs->screen_height / (double) nh;
+    sctx->xweights.ws = sctx->yweights.ws = NULL;
+    sctx->xweights.n = sctx->yweights.n = 0;
 }
 
 static void sctx_cleanup(scale_context* sctx) {
@@ -471,6 +486,8 @@ static void sctx_cleanup(scale_context* sctx) {
         kd3_cleanup(&sctx->global_kd3);
     kcscreen_cleanup(&sctx->iscr);
     kcscreen_cleanup(&sctx->oscr);
+    Gif_DeleteArray(sctx->xweights.ws);
+    Gif_DeleteArray(sctx->yweights.ws);
 }
 
 static void scale_image_data_point(scale_context* sctx, Gif_Image* gfo) {
@@ -533,6 +550,10 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
 typedef struct scale_color {
     double a[4];
 } scale_color;
+
+static inline void sc_clear(scale_color* x) {
+    x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
+}
 
 static void scale_image_output_row(scale_context* sctx, scale_color* sc,
                                    Gif_Image* gfo, int yo) {
@@ -602,7 +623,7 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
         pixel_range ypr = make_pixel_range(yo + gfo->top, sctx->oscr.height,
                                            sctx->iscr.height, sctx->oyf);
         for (xo = 0; xo != gfo->width; ++xo) {
-            sc[xo].a[0] = sc[xo].a[1] = sc[xo].a[2] = sc[xo].a[3] = 0;
+            sc_clear(&sc[xo]);
             nsc[xo] = 0;
         }
 
@@ -656,7 +677,7 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
         bounds[3] = (gfo->top + yo + 1) * sctx->oyf;
 
         for (xo = 0; xo != gfo->width; ++xo)
-            sc[xo].a[0] = sc[xo].a[1] = sc[xo].a[2] = sc[xo].a[3] = 0;
+            sc_clear(&sc[xo]);
 
         /* collect input mixes */
         for (j = (int) bounds[2]; j < bounds[3]; ++j) {
@@ -684,6 +705,144 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
 
     Gif_DeleteArray(sc);
 }
+
+
+static void scale_weightset_add(scale_weightset* wset,
+                                int ipos, int opos, double w) {
+    if (wset->n && wset->ws[wset->n - 1].ipos == ipos
+        && wset->ws[wset->n - 1].opos == opos)
+        wset->ws[wset->n - 1].w += w;
+    else {
+        if (!wset->ws)
+            wset->ws = Gif_NewArray(scale_weight, 256);
+        else if (wset->n > 128 && (wset->n & (wset->n - 1)) == 0)
+            Gif_ReArray(wset->ws, scale_weight, wset->n * 2);
+        wset->ws[wset->n].w = w;
+        wset->ws[wset->n].ipos = ipos;
+        wset->ws[wset->n].opos = opos;
+        ++wset->n;
+    }
+}
+
+static inline double scale_weight_cubic(double x, double b, double c) {
+    x = fabs(x);
+    if (x < 1)
+        return ((12 - 9*b - 6*c) * x*x*x
+                + (-18 + 12*b + 6*c) * x*x
+                + (6 - 2*b)) / 6;
+    else if (x < 2)
+        return ((-b - 6*c) * x*x*x
+                + (6*b + 30*c) * x*x
+                + (-12*b - 48*c) * x
+                + (8*b + 24*c)) / 6;
+    else
+        return 0;
+}
+
+static inline double scale_weight_catrom(double x) {
+    return scale_weight_cubic(x, 0, 0.5);
+}
+
+static void scale_weightset_create(scale_weightset* wset, int nin, int nout,
+                                   double (*weightf)(double), double radius) {
+    double of = (double) nin / nout;
+    double reduction = of > 1.0 ? of : 1.0;
+    int opos;
+
+    for (opos = 0; opos != nout; ++opos) {
+        double icenter = (opos + 0.5) * of - 0.5;
+        int ipos0 = (int) ceil(icenter - radius * reduction - 0.0001);
+        int ipos1 = (int) floor(icenter + radius * reduction + 0.0001) + 1;
+        int wset0 = wset->n;
+        double sum = 0;
+
+        for (; ipos0 != ipos1; ++ipos0) {
+            double w = (*weightf)((ipos0 - icenter) / reduction);
+            if (w != 0.0) {
+                int ripos = ipos0 < 0 ? 0 : (ipos0 < nin ? ipos0 : nin - 1);
+                scale_weightset_add(wset, ripos, opos, w);
+                sum += w;
+            }
+        }
+
+        for (; wset0 != wset->n; ++wset0)
+            wset->ws[wset0].w /= sum;
+    }
+
+    scale_weightset_add(wset, nin, nout, 0);
+}
+
+static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
+                                      double (*weightf)(double),
+                                      double radius) {
+    int yi, yi0, yi1, xo, yo, k;
+    scale_color* sc = Gif_NewArray(scale_color, gfo->width);
+    kacolor* kcx = Gif_NewArray(kacolor, gfo->width * sctx->iscr.height);
+    const scale_weight* w, *ww;
+
+    if (!sctx->xweights.ws) {
+        scale_weightset_create(&sctx->xweights, sctx->iscr.width,
+                               sctx->oscr.width, weightf, radius);
+        scale_weightset_create(&sctx->yweights, sctx->iscr.height,
+                               sctx->oscr.height, weightf, radius);
+    }
+
+    scale_image_prepare(sctx);
+
+    /* scale every input row by the X scaling factor */
+    {
+        double ycmp = radius * (sctx->oyf > 1 ? sctx->oyf : 1);
+        yi0 = (int) floor(gfo->top * sctx->oyf - ycmp - 0.0001);
+        yi0 = yi0 < 0 ? 0 : yi0;
+        yi1 = (int) ceil((gfo->top + gfo->height) * sctx->oyf + ycmp + 0.0001) + 1;
+        yi1 = yi1 < (int) sctx->iscr.height ? yi1 : (int) sctx->iscr.height;
+    }
+
+    for (ww = sctx->xweights.ws; ww->opos < gfo->left; ++ww)
+        /* skip */;
+    for (yi = yi0; yi != yi1; ++yi) {
+        const kacolor* iscr = &sctx->iscr.data[sctx->iscr.width * yi];
+        kacolor* oscr = &kcx[gfo->width * yi];
+        for (xo = 0; xo != gfo->width; ++xo)
+            sc_clear(&sc[xo]);
+        for (w = ww; w->opos < gfo->left + gfo->width; ++w)
+            for (k = 0; k != 4; ++k)
+                sc[w->opos - gfo->left].a[k] += iscr[w->ipos].a[k] * w->w;
+        for (xo = 0; xo != gfo->width; ++xo)
+            for (k = 0; k != 4; ++k)
+                /* The sc[] value might be a bit too big, or even a bit
+                   negative. The KC_QUARTER offset handles that cleanly;
+                   subtract KC_QUARTER on storage, add it back on use. */
+                oscr[xo].a[k] = (int) (sc[xo].a[k] + 0.5) - KC_QUARTER;
+    }
+
+    /* scale the resulting rows by the y factor */
+    for (w = sctx->yweights.ws; w->opos < gfo->top; ++w)
+        /* skip */;
+    for (yo = 0; yo != gfo->height; ++yo) {
+        for (xo = 0; xo != gfo->width; ++xo)
+            sc_clear(&sc[xo]);
+        for (; w->opos < gfo->top + yo + 1; ++w) {
+            const kacolor* iscr = &kcx[gfo->width * w->ipos];
+            assert(w->ipos >= yi0 && w->ipos < yi1);
+            for (xo = 0; xo != gfo->width; ++xo)
+                for (k = 0; k != 4; ++k)
+                    sc[xo].a[k] += (iscr[xo].a[k] + KC_QUARTER) * w->w;
+        }
+        /* generate output */
+        scale_image_output_row(sctx, sc, gfo, yo);
+    }
+
+    scale_image_complete(sctx, gfo);
+
+    Gif_DeleteArray(sc);
+    Gif_DeleteArray(kcx);
+}
+
+static void scale_image_data_catrom(scale_context* sctx, Gif_Image* gfo) {
+    scale_image_data_weighted(sctx, gfo, scale_weight_catrom, 2);
+}
+
 
 static void scale_image(scale_context* sctx, int method) {
     Gif_Image* gfi = sctx->gfi;
@@ -749,6 +908,8 @@ static void scale_image(scale_context* sctx, int method) {
         scale_image_data_mix(sctx, &gfo);
     else if (method == SCALE_METHOD_BOX)
         scale_image_data_box(sctx, &gfo);
+    else if (method == SCALE_METHOD_CATROM)
+        scale_image_data_catrom(sctx, &gfo);
     else
         scale_image_data_point(sctx, &gfo);
 
@@ -821,7 +982,8 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
         && (nw % gfs->screen_width) == 0 && (nh % gfs->screen_height) == 0)
         method = SCALE_METHOD_POINT;
     /* ensure we understand the method */
-    if (method != SCALE_METHOD_MIX && method != SCALE_METHOD_BOX)
+    if (method != SCALE_METHOD_MIX && method != SCALE_METHOD_BOX
+        && method != SCALE_METHOD_CATROM)
         method = SCALE_METHOD_POINT;
 
     for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {

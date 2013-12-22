@@ -16,9 +16,10 @@
 /* 15 bits means KC_MAX * KC_MAX always fits within a signed 32-bit
    integer, and a 3-D squared distance always fits within an unsigned 32-bit
    integer. */
-#define KC_MAX   0x7FFF
-#define KC_WHOLE 0x8000
-#define KC_HALF  0x4000
+#define KC_MAX     0x7FFF
+#define KC_WHOLE   0x8000
+#define KC_HALF    0x4000
+#define KC_QUARTER 0x2000
 #define KC_BITS  15
 typedef struct kcolor {
     int16_t a[3];

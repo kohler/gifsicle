@@ -140,6 +140,7 @@ extern Clp_Parser* clp;
 #define SCALE_METHOD_POINT	0
 #define SCALE_METHOD_BOX	1
 #define SCALE_METHOD_MIX	2
+#define SCALE_METHOD_CATROM	3
 
 #define GT_OPT_MASK		0xFFFF
 #define GT_OPT_KEEPEMPTY	0x10000
