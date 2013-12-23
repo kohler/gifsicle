@@ -56,7 +56,7 @@ static int infoing = 0;
 int verbosing = 0;
 
 
-#define CHANGED(next, flag)	(((next) & 1<<(flag)) != 0)
+#define CHANGED(next, flag)	(((next) & (1<<(flag))) != 0)
 #define UNCHECKED_MARK_CH(where, what)			\
   next_##where |= 1<<what;
 #define MARK_CH(where, what)				\
@@ -1709,7 +1709,7 @@ main(int argc, char *argv[])
      }
 
      case CHANGE_COLOR_OPT: {
-       next_input |= CH_CHANGE_COLOR;
+       next_input |= 1 << CH_CHANGE_COLOR;
        if (clp->negated)
 	 input_transforms = delete_color_transforms
 	   (input_transforms, &color_change_transformer);
@@ -1721,8 +1721,8 @@ main(int argc, char *argv[])
        break;
      }
 
-     case COLOR_TRANSFORM_OPT:
-      next_output |= CH_COLOR_TRANSFORM;
+    case COLOR_TRANSFORM_OPT:
+      next_output |= 1 << CH_COLOR_TRANSFORM;
       if (clp->negated)
 	output_transforms = delete_color_transforms
 	  (output_transforms, &pipe_color_transformer);
