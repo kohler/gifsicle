@@ -743,6 +743,33 @@ static inline double scale_weight_catrom(double x) {
     return scale_weight_cubic(x, 0, 0.5);
 }
 
+static inline double scale_weight_mitchell(double x) {
+    return scale_weight_cubic(x, 1.0/3, 1.0/3);
+}
+
+static inline double sinc(double x) {
+    if (x <= 0.000000005)
+        return 1;
+    else
+        return sin(M_PI * x) / (M_PI * x);
+}
+
+static inline double scale_weight_lanczos(double x, int lobes) {
+    x = fabs(x);
+    if (x < lobes)
+        return sinc(x) * sinc(x / lobes);
+    else
+        return 0;
+}
+
+static inline double scale_weight_lanczos2(double x) {
+    return scale_weight_lanczos(x, 2);
+}
+
+static inline double scale_weight_lanczos3(double x) {
+    return scale_weight_lanczos(x, 3);
+}
+
 static void scale_weightset_create(scale_weightset* wset, int nin, int nout,
                                    double (*weightf)(double), double radius) {
     double of = (double) nin / nout;
@@ -843,6 +870,18 @@ static void scale_image_data_catrom(scale_context* sctx, Gif_Image* gfo) {
     scale_image_data_weighted(sctx, gfo, scale_weight_catrom, 2);
 }
 
+static void scale_image_data_mitchell(scale_context* sctx, Gif_Image* gfo) {
+    scale_image_data_weighted(sctx, gfo, scale_weight_mitchell, 2);
+}
+
+static void scale_image_data_lanczos2(scale_context* sctx, Gif_Image* gfo) {
+    scale_image_data_weighted(sctx, gfo, scale_weight_lanczos2, 2);
+}
+
+static void scale_image_data_lanczos3(scale_context* sctx, Gif_Image* gfo) {
+    scale_image_data_weighted(sctx, gfo, scale_weight_lanczos3, 3);
+}
+
 
 static void scale_image(scale_context* sctx, int method) {
     Gif_Image* gfi = sctx->gfi;
@@ -910,6 +949,12 @@ static void scale_image(scale_context* sctx, int method) {
         scale_image_data_box(sctx, &gfo);
     else if (method == SCALE_METHOD_CATROM)
         scale_image_data_catrom(sctx, &gfo);
+    else if (method == SCALE_METHOD_LANCZOS2)
+        scale_image_data_lanczos2(sctx, &gfo);
+    else if (method == SCALE_METHOD_LANCZOS3)
+        scale_image_data_lanczos3(sctx, &gfo);
+    else if (method == SCALE_METHOD_MITCHELL)
+        scale_image_data_mitchell(sctx, &gfo);
     else
         scale_image_data_point(sctx, &gfo);
 
@@ -983,7 +1028,8 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
         method = SCALE_METHOD_POINT;
     /* ensure we understand the method */
     if (method != SCALE_METHOD_MIX && method != SCALE_METHOD_BOX
-        && method != SCALE_METHOD_CATROM)
+        && method != SCALE_METHOD_CATROM && method != SCALE_METHOD_LANCZOS2
+        && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
 
     for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {

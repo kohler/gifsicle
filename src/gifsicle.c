@@ -1331,6 +1331,10 @@ main(int argc, char *argv[])
      "mix", SCALE_METHOD_MIX,
      "box", SCALE_METHOD_BOX,
      "catrom", SCALE_METHOD_CATROM,
+     "lanczos", SCALE_METHOD_LANCZOS3,
+     "lanczos2", SCALE_METHOD_LANCZOS2,
+     "lanczos3", SCALE_METHOD_LANCZOS3,
+     "mitchell", SCALE_METHOD_MITCHELL,
      "fast", SCALE_METHOD_POINT,
      "good", SCALE_METHOD_MIX,
      (const char*) 0);
