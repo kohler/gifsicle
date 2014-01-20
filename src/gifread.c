@@ -662,7 +662,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char *app_name, int position,
 {
   uint8_t block_len = gifgetbyte(grr);
   uint8_t *data = 0;
-  uint8_t data_len = 0;
+  int data_len = 0;
   Gif_Extension *gfex = 0;
 
   while (block_len > 0) {
