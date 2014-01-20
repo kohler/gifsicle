@@ -1615,6 +1615,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     if (fr->interlacing >= 0)
       desti->interlace = fr->interlacing;
+    fprintf(stderr, "%d %d %d %d %d %d\n", i, fr->left, desti->left, fr->top, desti->top, fr->position_is_offset);
     if (fr->left >= 0)
       desti->left = fr->left + (fr->position_is_offset ? desti->left : 0);
     if (fr->top >= 0)
@@ -1669,22 +1670,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
 
-  /* Cropping the whole output? */
+  /* Cropping the whole output? Reset logical screen */
   if (merger[0]->crop && merger[0]->crop == merger[nmerger - 1]->crop) {
-    /* Adjust positions */
-    int l = 0x7FFFFFFF, t = 0x7FFFFFFF;
-    for (i = 0; i < dest->nimages && (l || t); i++) {
-      Gif_Image *gfi = dest->images[i];
-      if (gfi->left < l)
-        l = gfi->left;
-      if (gfi->top < t)
-        t = gfi->top;
-    }
-    for (i = 0; i < dest->nimages; i++) {
-      Gif_Image *gfi = dest->images[i];
-      gfi->left -= l;
-      gfi->top -= t;
-    }
     /* 13.May.2008: Set the logical screen to the cropped dimensions */
     /* 18.May.2008: Unless --crop-transparency is on */
     if (merger[0]->crop->transparent_edges)
