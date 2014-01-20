@@ -372,7 +372,7 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
   fprintf(where, "  extension %d: ", count);
   if (gfex->kind == 255) {
     fprintf(where, "app '");
-    safe_puts(gfex->application, strlen(gfex->application), where);
+    safe_puts(gfex->appname, gfex->applength, where);
     fprintf(where, "'");
   } else {
     if (gfex->kind >= 32 && gfex->kind < 127)
@@ -381,9 +381,12 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
       fprintf(where, "0x%02X", gfex->kind);
   }
   if (gfex->position >= gfs->nimages)
-    fprintf(where, " at end\n");
+    fprintf(where, " at end");
   else
-    fprintf(where, " before #%d\n", gfex->position);
+    fprintf(where, " before #%d", gfex->position);
+  if (gfex->packetized)
+    fprintf(where, " packetized");
+  fprintf(where, "\n");
 
   /* Now, hexl the data. */
   while (len > 0) {
@@ -1029,17 +1032,18 @@ add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
 static Gif_Extension *
 copy_extension(Gif_Extension *src)
 {
-  Gif_Extension *dest = Gif_NewExtension(src->kind, src->application);
-  if (!dest) return 0;
-  dest->data = Gif_NewArray(uint8_t, src->length);
-  dest->length = src->length;
-  dest->free_data = Gif_DeleteArrayFunc;
-  if (!dest->data) {
-    Gif_DeleteExtension(dest);
-    return 0;
-  }
-  memcpy(dest->data, src->data, src->length);
-  return dest;
+    Gif_Extension *dest = Gif_NewExtension(src->kind, src->appname, src->applength);
+    if (!dest) return 0;
+    dest->data = Gif_NewArray(uint8_t, src->length);
+    dest->length = src->length;
+    dest->free_data = Gif_DeleteArrayFunc;
+    if (!dest->data) {
+        Gif_DeleteExtension(dest);
+        return 0;
+    }
+    memcpy(dest->data, src->data, src->length);
+    dest->packetized = src->packetized;
+    return dest;
 }
 
 

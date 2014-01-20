@@ -226,24 +226,26 @@ int		Gif_AddComment(Gif_Comment *, const char *, int);
 /** GIF_EXTENSION **/
 
 struct Gif_Extension {
-
     int kind;			/* negative kinds are reserved */
-    char *application;
-    uint8_t *data;
+    char* appname;
+    int applength;
+    uint8_t* data;
     uint32_t length;
     int position;
+    int packetized;
 
     Gif_Stream *stream;
     Gif_Extension *next;
     void (*free_data)(void *);
-
 };
 
 
-Gif_Extension *	Gif_NewExtension(int, const char *);
-void		Gif_DeleteExtension(Gif_Extension *);
-int		Gif_AddExtension(Gif_Stream *, Gif_Extension *, int);
-Gif_Extension * Gif_GetExtension(Gif_Stream *, int, Gif_Extension *);
+Gif_Extension*  Gif_NewExtension(int kind, const char* appname, int applength);
+void		Gif_DeleteExtension(Gif_Extension* gfex);
+int		Gif_AddExtension(Gif_Stream* gfs, Gif_Extension* gfex,
+                                 int imageno);
+Gif_Extension*  Gif_GetExtension(Gif_Stream* gfs, int kind,
+                                 Gif_Extension* position);
 
 
 /** READING AND WRITING **/

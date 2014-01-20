@@ -781,21 +781,24 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);
   if (gfex->kind == 255) {	/* an application extension */
-    int len = gfex->application ? strlen(gfex->application) : 0;
-    if (len) {
-      gifputbyte(len, grr);
-      gifputblock((const uint8_t *)gfex->application, len, grr);
+    if (gfex->applength) {
+      gifputbyte(gfex->applength, grr);
+      gifputblock((const uint8_t*) gfex->appname, gfex->applength, grr);
     }
   }
-  while (pos + 255 < gfex->length) {
-    gifputbyte(255, grr);
-    gifputblock(gfex->data + pos, 255, grr);
-    pos += 255;
-  }
-  if (pos < gfex->length) {
-    uint32_t len = gfex->length - pos;
-    gifputbyte(len, grr);
-    gifputblock(gfex->data + pos, len, grr);
+  if (gfex->packetized)
+    gifputblock(gfex->data, gfex->length, grr);
+  else {
+    while (pos + 255 < gfex->length) {
+      gifputbyte(255, grr);
+      gifputblock(gfex->data + pos, 255, grr);
+      pos += 255;
+    }
+    if (pos < gfex->length) {
+      uint32_t len = gfex->length - pos;
+      gifputbyte(len, grr);
+      gifputblock(gfex->data + pos, len, grr);
+    }
   }
   gifputbyte(0, grr);
 }

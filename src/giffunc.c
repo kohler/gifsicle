@@ -116,23 +116,32 @@ Gif_NewComment(void)
 
 
 Gif_Extension *
-Gif_NewExtension(int kind, const char *app_name)
+Gif_NewExtension(int kind, const char* appname, int applength)
 {
-  Gif_Extension *gfex = Gif_New(Gif_Extension);
-  if (!gfex)
-    return 0;
-  gfex->kind = app_name ? 255 : kind;
-  gfex->application = Gif_CopyString(app_name);
-  gfex->data = 0;
-  gfex->position = 0;
-  gfex->stream = 0;
-  gfex->next = 0;
-  gfex->free_data = 0;
-  if (!gfex->application && app_name) {
-    Gif_DeleteExtension(gfex);
-    return 0;
-  }
-  return gfex;
+    Gif_Extension *gfex = Gif_New(Gif_Extension);
+    if (!gfex)
+        return 0;
+    gfex->kind = kind;
+    if (appname
+        && (gfex->appname = (char*) Gif_NewArray(char, applength + 1))) {
+        memcpy(gfex->appname, appname, applength);
+        gfex->appname[applength] = 0;
+        gfex->applength = applength;
+    } else {
+        gfex->appname = 0;
+        gfex->applength = 0;
+    }
+    gfex->data = 0;
+    gfex->position = 0;
+    gfex->stream = 0;
+    gfex->next = 0;
+    gfex->free_data = 0;
+    gfex->packetized = 0;
+    if (!gfex->appname && appname) {
+        Gif_DeleteExtension(gfex);
+        return 0;
+    }
+    return gfex;
 }
 
 
@@ -513,7 +522,7 @@ Gif_DeleteExtension(Gif_Extension *gfex)
     return;
   if (gfex->data && gfex->free_data)
     (*gfex->free_data)(gfex->data);
-  Gif_DeleteArray(gfex->application);
+  Gif_DeleteArray(gfex->appname);
   if (gfex->stream) {
     Gif_Stream *gfs = gfex->stream;
     Gif_Extension *prev, *trav;
