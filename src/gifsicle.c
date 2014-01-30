@@ -807,17 +807,19 @@ do_colormap_change(Gif_Stream *gfs)
 
     /* set up the histogram */
     {
+      uint32_t ntransp;
       int i, any_locals = 0;
       for (i = 0; i < gfs->nimages; i++)
 	if (gfs->images[i]->local)
 	  any_locals = 1;
-      hist = histogram(gfs, &nhist);
+      hist = histogram(gfs, &nhist, &ntransp);
       if (nhist <= active_output_data.colormap_size
           && !any_locals
           && !active_output_data.colormap_fixed) {
 	warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
 	return;
       }
+      active_output_data.colormap_needs_transparency = ntransp > 0;
     }
 
     switch (active_output_data.colormap_algorithm) {

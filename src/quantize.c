@@ -304,8 +304,8 @@ pixel_sort_compare(const void *va, const void *vb)
 }
 
 
-Gif_Color *
-histogram(Gif_Stream *gfs, int *nhist_store)
+Gif_Color*
+histogram(Gif_Stream* gfs, int* nhist_store, uint32_t* ntransp_store)
 {
   Gif_Histogram hist;
   Gif_Color *linear;
@@ -381,23 +381,13 @@ histogram(Gif_Stream *gfs, int *nhist_store)
   /* now, make the linear histogram from the hashed histogram */
   linear = Gif_NewArray(Gif_Color, hist.n + 1);
   i = 0;
-
-  /* Put all transparent pixels in histogram slot 0. Transparent pixels are
-     marked by haspixel == 255. */
-  if (ntransparent) {
-    linear[0] = transparent_color;
-    linear[0].haspixel = 255;
-    linear[0].pixel = ntransparent;
-    i++;
-  }
-
-  /* put hash histogram colors into linear histogram */
   for (x = 0; x < hist.cap; x++)
     if (hist.c[x].haspixel)
       linear[i++] = hist.c[x];
 
   delete_histogram(&hist);
   *nhist_store = i;
+  *ntransp_store = ntransparent;
   return linear;
 }
 
@@ -429,15 +419,6 @@ blue_sort_compare(const void *va, const void *vb)
   const Gif_Color *a = (const Gif_Color *)va;
   const Gif_Color *b = (const Gif_Color *)vb;
   return a->gfc_blue - b->gfc_blue;
-}
-
-
-static void
-assert_hist_transparency(Gif_Color *hist, int nhist)
-{
-  int i;
-  for (i = 1; i < nhist; i++)
-    assert(hist[i].haspixel != 255);
 }
 
 
@@ -473,14 +454,9 @@ colormap_median_cut(Gif_Color* hist, int nhist, Gt_OutputData* od)
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
      necessary */
-  assert_hist_transparency(hist, nhist);
-  if (adapt_size > 2 && adapt_size < nhist && hist[0].haspixel == 255
-      && nhist <= 265)
+  if (adapt_size > 2 && adapt_size < nhist && nhist <= 265
+      && od->colormap_needs_transparency)
     adapt_size--;
-  if (hist[0].haspixel == 255) {
-    hist[0] = hist[nhist - 1];
-    nhist--;
-  }
 
   /* 1. set up the first slot, containing all pixels. */
   {
@@ -621,19 +597,14 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
      necessary */
-  assert_hist_transparency(hist, nhist);
   /* It will be necessary to accommodate transparency if (1) there is
      transparency in the image; (2) the adaptive palette isn't trivial; and
      (3) there are a small number of colors in the image (arbitrary constant:
      <= 265), so it's likely that most images will use most of the slots, so
      it's likely there won't be unused slots. */
-  if (adapt_size > 2 && adapt_size < nhist && hist[0].haspixel == 255
-      && nhist <= 265)
+  if (adapt_size > 2 && adapt_size < nhist && nhist <= 265
+      && od->colormap_needs_transparency)
     adapt_size--;
-  if (hist[0].haspixel == 255) {
-    hist[0] = hist[nhist - 1];
-    nhist--;
-  }
 
   /* blending has bad effects when there are very few colors */
   if (adapt_size < 4)

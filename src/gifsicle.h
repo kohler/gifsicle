@@ -109,6 +109,7 @@ typedef struct {
   int colormap_size;
   Gif_Colormap *colormap_fixed;
   int colormap_algorithm;
+  int colormap_needs_transparency;
   int dither_type;
   const uint8_t* dither_data;
   const char* dither_name;
@@ -235,7 +236,7 @@ void	resize_stream(Gif_Stream *, double new_width, double new_height,
 /*****
  * quantization
  **/
-Gif_Color *histogram(Gif_Stream *, int *);
+Gif_Color* histogram(Gif_Stream* gfs, int* nhist, uint32_t* ntransp);
 #define KC_GAMMA_SRGB			0
 #define KC_GAMMA_NUMERIC		1
 void    kc_set_gamma(int type, double gamma);
