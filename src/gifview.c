@@ -988,7 +988,8 @@ view_frame(Gt_Viewer *viewer, int frame)
     /* 5/26/98 Do some noodling around to try and use memory most effectively.
        If animating, keep the uncompressed frame; otherwise, throw it away. */
     if (viewer->animating || viewer->unoptimizing)
-      viewer->pixmap = unoptimized_frame(viewer, frame, changed_cursor);
+      viewer->pixmap = unoptimized_frame(viewer, frame,
+                                         changed_cursor && !viewer->animating);
     else
       viewer->pixmap = Gif_XImage(viewer->gfx, viewer->gfs, gfi);
 
