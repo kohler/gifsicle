@@ -1615,7 +1615,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     if (fr->interlacing >= 0)
       desti->interlace = fr->interlacing;
-    fprintf(stderr, "%d %d %d %d %d %d\n", i, fr->left, desti->left, fr->top, desti->top, fr->position_is_offset);
     if (fr->left >= 0)
       desti->left = fr->left + (fr->position_is_offset ? desti->left : 0);
     if (fr->top >= 0)
