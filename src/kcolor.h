@@ -183,4 +183,25 @@ static inline void kd3_enable_all(kd3_tree* kd3) {
     kd3->disabled = -1;
 }
 
+
+typedef struct kchistitem {
+    kacolor ka;
+    uint32_t count;
+} kchistitem;
+
+typedef struct kchist {
+    kchistitem* h;
+    int n;
+    int capacity;
+} kchist;
+
+void kchist_init(kchist* kch);
+void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp);
+void kchist_cleanup(kchist* kch);
+void kchist_compress(kchist* kch);
+
+Gif_Colormap* colormap_blend_diversity(kchist* kch, Gt_OutputData* od);
+Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
+Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
+
 #endif

@@ -166,171 +166,161 @@ static void kc_test_gamma() {
 #endif
 
 
+static int kchist_sizes[] = {
+    4093, 16381, 65521, 262139, 1048571, 4194301, 16777213,
+    67108859, 268435459, 1073741839
+};
 
-typedef struct Gif_Histogram {
-  Gif_Color *c;
-  int n;
-  int cap;
-} Gif_Histogram;
+static void kchist_grow(kchist* kch);
 
-static void add_histogram_color(Gif_Color *, Gif_Histogram *, unsigned long);
-
-static void
-init_histogram(Gif_Histogram *new_hist, Gif_Histogram *old_hist)
-{
-  int new_cap = (old_hist ? old_hist->cap * 2 : 1024);
-  Gif_Color *nc = Gif_NewArray(Gif_Color, new_cap);
-  int i;
-  new_hist->c = nc;
-  new_hist->n = 0;
-  new_hist->cap = new_cap;
-  for (i = 0; i < new_cap; i++)
-    new_hist->c[i].haspixel = 0;
-  if (old_hist)
-    for (i = 0; i < old_hist->cap; i++)
-      if (old_hist->c[i].haspixel)
-	add_histogram_color(&old_hist->c[i], new_hist, old_hist->c[i].pixel);
+void kchist_init(kchist* kch) {
+    int i;
+    kch->h = Gif_NewArray(kchistitem, kchist_sizes[0]);
+    kch->n = 0;
+    kch->capacity = kchist_sizes[0];
+    for (i = 0; i != kch->capacity; ++i)
+        kch->h[i].count = 0;
 }
 
-static void
-delete_histogram(Gif_Histogram *hist)
-{
-  Gif_DeleteArray(hist->c);
+void kchist_cleanup(kchist* kch) {
+    Gif_DeleteArray(kch->h);
+    kch->h = NULL;
 }
 
-static void
-add_histogram_color(Gif_Color *color, Gif_Histogram *hist, unsigned long count)
-{
-  Gif_Color *hc = hist->c;
-  int hcap = hist->cap - 1;
-  int i = (((color->gfc_red & 0xF0) << 4) | (color->gfc_green & 0xF0)
-	   | (color->gfc_blue >> 4)) & hcap;
-  int hash2 = ((((color->gfc_red & 0x0F) << 8) | ((color->gfc_green & 0x0F) << 4)
-		| (color->gfc_blue & 0x0F)) & hcap) | 1;
+void kchist_add(kchist* kch, kcolor k, unsigned count) {
+    unsigned hash1, hash2 = 0;
+    kacolor ka;
+    ka.k = k;
+    ka.a[3] = 0;
 
-  for (; hc[i].haspixel; i = (i + hash2) & hcap)
-    if (GIF_COLOREQ(&hc[i], color)) {
-      hc[i].pixel += count;
-      color->haspixel = 1;
-      color->pixel = i;
-      return;
+    if (!kch->capacity
+        || kch->n > ((kch->capacity * 3) >> 4))
+        kchist_grow(kch);
+    hash1 = (((ka.a[0] & 0x7FE0) << 15)
+             | ((ka.a[1] & 0x7FE0) << 5)
+             | ((ka.a[2] & 0x7FE0) >> 5)) % kch->capacity;
+
+    while (kch->h[hash1].count
+           && memcmp(&kch->h[hash1].ka, &ka, sizeof(ka)) != 0) {
+        if (!hash2) {
+            hash2 = (((ka.a[0] & 0x03FF) << 20)
+                     | ((ka.a[1] & 0x03FF) << 10)
+                     | (ka.a[2] & 0x03FF)) % kch->capacity;
+            hash2 = hash2 ? hash2 : 1;
+        }
+        hash1 += hash2;
+        if (hash1 >= (unsigned) kch->capacity)
+            hash1 -= kch->capacity;
     }
 
-  if (hist->n > ((hist->cap * 7) >> 3)) {
-    Gif_Histogram new_hist;
-    init_histogram(&new_hist, hist);
-    delete_histogram(hist);
-    *hist = new_hist;
-    hc = hist->c;		/* 31.Aug.1999 - bug fix from Steven Marthouse
-				   <comments@vrml3d.com> */
-  }
-
-  hist->n++;
-  hc[i] = *color;
-  hc[i].haspixel = 1;
-  hc[i].pixel = count;
-  color->haspixel = 1;
-  color->pixel = i;
+    if (!kch->h[hash1].count) {
+        kch->h[hash1].ka = ka;
+        ++kch->n;
+    }
+    kch->h[hash1].count += count;
+    if (kch->h[hash1].count < count)
+        kch->h[hash1].count = (uint32_t) -1;
 }
 
-static int
-popularity_sort_compare(const void *va, const void *vb)
-{
-  const Gif_Color *a = (const Gif_Color *)va;
-  const Gif_Color *b = (const Gif_Color *)vb;
-  return b->pixel - a->pixel;
+static void kchist_grow(kchist* kch) {
+    kchistitem* oldh = kch->h;
+    int i, oldcapacity = kch->capacity ? kch->capacity : kch->n;
+    for (i = 0; kchist_sizes[i] <= oldcapacity; ++i)
+        /* do nothing */;
+    kch->capacity = kchist_sizes[i];
+    kch->h = Gif_NewArray(kchistitem, kch->capacity);
+    kch->n = 0;
+    for (i = 0; i != kch->capacity; ++i)
+        kch->h[i].count = 0;
+    for (i = 0; i != oldcapacity; ++i)
+        if (oldh[i].count)
+            kchist_add(kch, oldh[i].ka.k, oldh[i].count);
+    Gif_DeleteArray(oldh);
 }
 
-static int
-pixel_sort_compare(const void *va, const void *vb)
-{
-  const Gif_Color *a = (const Gif_Color *)va;
-  const Gif_Color *b = (const Gif_Color *)vb;
-  return a->pixel - b->pixel;
+void kchist_compress(kchist* kch) {
+    int i, j;
+    for (i = 0, j = kch->n; i != kch->n; )
+        if (kch->h[i].count)
+            ++i;
+        else if (kch->h[j].count) {
+            kch->h[i] = kch->h[j];
+            ++i, ++j;
+        } else
+            ++j;
+    kch->capacity = 0;
 }
 
+void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
+    uint32_t gcount[256], lcount[256];
+    uint32_t nbackground = 0, ntransparent = 0;
+    int x, y, i, imagei;
+    kchist_init(kch);
 
-Gif_Color*
-histogram(Gif_Stream* gfs, int* nhist_store, uint32_t* ntransp_store)
-{
-  Gif_Histogram hist;
-  Gif_Color *linear;
-  unsigned long ntransparent = 0;
-  unsigned long nbackground = 0;
-  int x, y, i;
+    for (i = 0; i != 256; ++i)
+        gcount[i] = 0;
 
-  unmark_colors(gfs->global);
-  for (i = 0; i < gfs->nimages; i++)
-    unmark_colors(gfs->images[i]->local);
+    /* Count pixels */
+    for (imagei = 0; imagei < gfs->nimages; ++imagei) {
+        Gif_Image* gfi = gfs->images[imagei];
+        Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+        uint32_t* count = gfi->local ? lcount : gcount;
+        uint32_t old_transparent_count = 0;
+        int only_compressed = (gfi->img == 0);
+        if (!gfcm)
+            continue;
+        if (count == lcount)
+            for (i = 0; i != 256; ++i)
+                count[i] = 0;
+        if (gfi->transparent >= 0)
+            old_transparent_count = count[gfi->transparent];
 
-  init_histogram(&hist, 0);
+        /* unoptimize the image if necessary */
+        if (only_compressed)
+            Gif_UncompressImage(gfi);
 
-  /* Count pixels. Be careful about values which are outside the range of the
-     colormap. */
-  for (i = 0; i < gfs->nimages; i++) {
-    Gif_Image *gfi = gfs->images[i];
-    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    uint32_t count[256];
-    Gif_Color *col;
-    int ncol;
-    int transparent = gfi->transparent;
-    int only_compressed = (gfi->img == 0);
-    if (!gfcm) continue;
+        /* sweep over the image data, counting pixels */
+        for (y = 0; y < gfi->height; ++y) {
+            const uint8_t* data = gfi->img[y];
+            for (x = 0; x < gfi->width; ++x, ++data)
+                ++count[*data];
+        }
 
-    /* unoptimize the image if necessary */
-    if (only_compressed)
-      Gif_UncompressImage(gfi);
+        /* add counted colors to global histogram (local only) */
+        if (gfi->local)
+            for (i = 0; i != gfcm->ncol; ++i)
+                if (count[i] && i != gfi->transparent)
+                    kchist_add(kch, kc_makegfcg(&gfcm->col[i]), count[i]);
+        if (gfi->transparent >= 0
+            && count[gfi->transparent] != old_transparent_count) {
+            ntransparent += count[gfi->transparent] - old_transparent_count;
+            count[gfi->transparent] = old_transparent_count;
+        }
 
-    /* sweep over the image data, counting pixels */
-    for (x = 0; x < 256; x++)
-      count[x] = 0;
-    for (y = 0; y < gfi->height; y++) {
-      uint8_t *data = gfi->img[y];
-      for (x = 0; x < gfi->width; x++, data++)
-	count[*data]++;
+        /* if this image has background disposal, count its size towards the
+           background's pixel count */
+        if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
+            nbackground += gfi->width * gfi->height;
+
+        /* throw out compressed image if necessary */
+        if (only_compressed)
+            Gif_ReleaseUncompressedImage(gfi);
     }
 
-    /* add counted colors to global histogram */
-    col = gfcm->col;
-    ncol = gfcm->ncol;
-    for (x = 0; x < ncol; x++)
-      if (count[x] && x != transparent) {
-	if (col[x].haspixel)
-	  hist.c[ col[x].pixel ].pixel += count[x];
-	else
-	  add_histogram_color(&col[x], &hist, count[x]);
-      }
-    if (transparent >= 0)
-      ntransparent += count[transparent];
+    if (gfs->images[0]->transparent < 0 && gfs->global
+        && gfs->background < gfs->global->ncol)
+        gcount[gfs->background] += nbackground;
+    else
+        ntransparent += nbackground;
 
-    /* if this image has background disposal, count its size towards the
-       background's pixel count */
-    if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-      nbackground += gfi->width * gfi->height;
+    if (gfs->global)
+        for (i = 0; i != gfs->global->ncol; ++i)
+            if (gcount[i])
+                kchist_add(kch, kc_makegfcg(&gfs->global->col[i]), gcount[i]);
 
-    /* unoptimize the image if necessary */
-    if (only_compressed)
-      Gif_ReleaseUncompressedImage(gfi);
-  }
-
-  /* account for background by adding it to 'ntransparent' or the histogram */
-  if (gfs->images[0]->transparent < 0 && gfs->global
-      && gfs->background < gfs->global->ncol)
-    add_histogram_color(&gfs->global->col[gfs->background], &hist, nbackground);
-  else
-    ntransparent += nbackground;
-
-  /* now, make the linear histogram from the hashed histogram */
-  linear = Gif_NewArray(Gif_Color, hist.n + 1);
-  i = 0;
-  for (x = 0; x < hist.cap; x++)
-    if (hist.c[x].haspixel)
-      linear[i++] = hist.c[x];
-
-  delete_histogram(&hist);
-  *nhist_store = i;
-  *ntransp_store = ntransparent;
-  return linear;
+    /* now, make the linear histogram from the hashed histogram */
+    kchist_compress(kch);
+    *ntransp_store = ntransparent;
 }
 
 
@@ -339,28 +329,34 @@ histogram(Gif_Stream* gfs, int* nhist_store, uint32_t* ntransp_store)
 #define min(a, b)	((a) < (b) ? (a) : (b))
 #define max(a, b)	((a) > (b) ? (a) : (b))
 
-static int
-red_sort_compare(const void *va, const void *vb)
-{
-  const Gif_Color *a = (const Gif_Color *)va;
-  const Gif_Color *b = (const Gif_Color *)vb;
-  return a->gfc_red - b->gfc_red;
+static int red_kchistitem_compare(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[0] - b->ka.a[0];
 }
 
-static int
-green_sort_compare(const void *va, const void *vb)
-{
-  const Gif_Color *a = (const Gif_Color *)va;
-  const Gif_Color *b = (const Gif_Color *)vb;
-  return a->gfc_green - b->gfc_green;
+static int green_kchistitem_compare(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[1] - b->ka.a[1];
 }
 
-static int
-blue_sort_compare(const void *va, const void *vb)
-{
-  const Gif_Color *a = (const Gif_Color *)va;
-  const Gif_Color *b = (const Gif_Color *)vb;
-  return a->gfc_blue - b->gfc_blue;
+static int blue_kchistitem_compare(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[2] - b->ka.a[2];
+}
+
+static int popularity_kchistitem_compare(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->count > b->count ? -1 : a->count != b->count;
+}
+
+static int popularity_sort_compare(const void* va, const void* vb) {
+    const Gif_Color* a = (const Gif_Color*) va;
+    const Gif_Color* b = (const Gif_Color*) vb;
+    return a->pixel > b->pixel ? -1 : a->pixel != b->pixel;
 }
 
 
@@ -368,158 +364,182 @@ blue_sort_compare(const void *va, const void *vb)
    pixel fields are undefined; the haspixel fields are all 0. */
 
 typedef struct {
-  int first;
-  int count;
-  uint32_t pixel;
+    int first;
+    int size;
+    uint32_t pixel;
 } adaptive_slot;
 
-Gif_Colormap *
-colormap_median_cut(Gif_Color* hist, int nhist, Gt_OutputData* od)
+Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
 {
   int adapt_size = od->colormap_size;
   adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
   Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
   Gif_Color *adapt = gfcm->col;
   int nadapt;
-  int i, j;
+  int i, j, k;
 
   /* This code was written with reference to ppmquant by Jef Poskanzer, part
      of the pbmplus package. */
 
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size >= nhist && !od->colormap_fixed)
-    warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
-  if (adapt_size >= nhist)
-    adapt_size = nhist;
+  if (adapt_size >= kch->n && !od->colormap_fixed)
+    warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
+  if (adapt_size >= kch->n)
+    adapt_size = kch->n;
 
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
      necessary */
-  if (adapt_size > 2 && adapt_size < nhist && nhist <= 265
+  if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
       && od->colormap_needs_transparency)
     adapt_size--;
 
-  /* 1. set up the first slot, containing all pixels. */
-  {
-    uint32_t total = 0;
-    for (i = 0; i < nhist; i++)
-      total += hist[i].pixel;
+    /* 1. set up the first slot, containing all pixels. */
     slots[0].first = 0;
-    slots[0].count = nhist;
-    slots[0].pixel = total;
-    qsort(hist, nhist, sizeof(Gif_Color), pixel_sort_compare);
-  }
+    slots[0].size = kch->n;
+    slots[0].pixel = 0;
+    for (i = 0; i < kch->n; i++)
+        slots[0].pixel += kch->h[i].count;
 
   /* 2. split slots until we have enough. */
   for (nadapt = 1; nadapt < adapt_size; nadapt++) {
     adaptive_slot *split = 0;
-    Gif_Color minc, maxc, *slice;
+    kcolor minc, maxc;
+    kchistitem *slice;
 
     /* 2.1. pick the slot to split. */
     {
       uint32_t split_pixel = 0;
       for (i = 0; i < nadapt; i++)
-	if (slots[i].count >= 2 && slots[i].pixel > split_pixel) {
+	if (slots[i].size >= 2 && slots[i].pixel > split_pixel) {
 	  split = &slots[i];
 	  split_pixel = slots[i].pixel;
 	}
       if (!split)
 	break;
     }
-    slice = &hist[split->first];
+    slice = &kch->h[split->first];
 
     /* 2.2. find its extent. */
     {
-      Gif_Color *trav = slice;
-      minc = maxc = *trav;
-      for (i = 1, trav++; i < split->count; i++, trav++) {
-	minc.gfc_red = min(minc.gfc_red, trav->gfc_red);
-	maxc.gfc_red = max(maxc.gfc_red, trav->gfc_red);
-	minc.gfc_green = min(minc.gfc_green, trav->gfc_green);
-	maxc.gfc_green = max(maxc.gfc_green, trav->gfc_green);
-	minc.gfc_blue = min(minc.gfc_blue, trav->gfc_blue);
-	maxc.gfc_blue = max(maxc.gfc_blue, trav->gfc_blue);
-      }
+      kchistitem *trav = slice;
+      minc = maxc = trav->ka.k;
+      for (i = 1, trav++; i < split->size; i++, trav++)
+          for (k = 0; k != 3; ++k) {
+              minc.a[k] = min(minc.a[k], trav->ka.a[k]);
+              maxc.a[k] = max(maxc.a[k], trav->ka.a[k]);
+          }
     }
 
     /* 2.3. decide how to split it. use the luminance method. also sort the
        colors. */
     {
-      double red_diff = 0.299 * (maxc.gfc_red - minc.gfc_red);
-      double green_diff = 0.587 * (maxc.gfc_green - minc.gfc_green);
-      double blue_diff = 0.114 * (maxc.gfc_blue - minc.gfc_blue);
+      double red_diff = 0.299 * (maxc.a[0] - minc.a[0]);
+      double green_diff = 0.587 * (maxc.a[1] - minc.a[1]);
+      double blue_diff = 0.114 * (maxc.a[2] - minc.a[2]);
       if (red_diff >= green_diff && red_diff >= blue_diff)
-	qsort(slice, split->count, sizeof(Gif_Color), red_sort_compare);
+	qsort(slice, split->size, sizeof(kchistitem), red_kchistitem_compare);
       else if (green_diff >= blue_diff)
-	qsort(slice, split->count, sizeof(Gif_Color), green_sort_compare);
+	qsort(slice, split->size, sizeof(kchistitem), green_kchistitem_compare);
       else
-	qsort(slice, split->count, sizeof(Gif_Color), blue_sort_compare);
+	qsort(slice, split->size, sizeof(kchistitem), blue_kchistitem_compare);
     }
 
     /* 2.4. decide where to split the slot and split it there. */
     {
       uint32_t half_pixels = split->pixel / 2;
-      uint32_t pixel_accum = slice[0].pixel;
+      uint32_t pixel_accum = slice[0].count;
       uint32_t diff1, diff2;
-      for (i = 1; i < split->count - 1 && pixel_accum < half_pixels; i++)
-	pixel_accum += slice[i].pixel;
+      for (i = 1; i < split->size - 1 && pixel_accum < half_pixels; i++)
+	pixel_accum += slice[i].count;
 
       /* We know the area before the split has more pixels than the area
          after, possibly by a large margin (bad news). If it would shrink the
          margin, change the split. */
       diff1 = 2*pixel_accum - split->pixel;
-      diff2 = split->pixel - 2*(pixel_accum - slice[i-1].pixel);
+      diff2 = split->pixel - 2*(pixel_accum - slice[i-1].count);
       if (diff2 < diff1 && i > 1) {
 	i--;
-	pixel_accum -= slice[i].pixel;
+	pixel_accum -= slice[i].count;
       }
 
       slots[nadapt].first = split->first + i;
-      slots[nadapt].count = split->count - i;
+      slots[nadapt].size = split->size - i;
       slots[nadapt].pixel = split->pixel - pixel_accum;
-      split->count = i;
+      split->size = i;
       split->pixel = pixel_accum;
     }
   }
 
-  /* 3. make the new palette by choosing one color from each slot. */
-  for (i = 0; i < nadapt; i++) {
-    double red_total = 0, green_total = 0, blue_total = 0;
-    Gif_Color *slice = &hist[ slots[i].first ];
-    kcolor k;
-    for (j = 0; j < slots[i].count; j++) {
-        kc_set8g(&k, slice[j].gfc_red, slice[j].gfc_green, slice[j].gfc_blue);
-        red_total += k.a[0] * (double) slice[j].pixel;
-        green_total += k.a[1] * (double) slice[j].pixel;
-        blue_total += k.a[2] * (double) slice[j].pixel;
+    /* 3. make the new palette by choosing one color from each slot. */
+    for (i = 0; i < nadapt; i++) {
+        double px[3];
+        kchistitem* slice = &kch->h[ slots[i].first ];
+        kcolor kc;
+        px[0] = px[1] = px[2] = 0;
+        for (j = 0; j != slots[i].size; ++j)
+            for (k = 0; k != 3; ++k)
+                px[k] += slice[j].ka.a[k] * (double) slice[j].count;
+        kc.a[0] = (int) (px[0] / slots[i].pixel);
+        kc.a[1] = (int) (px[1] / slots[i].pixel);
+        kc.a[2] = (int) (px[2] / slots[i].pixel);
+        adapt[i] = kc_togfcg(&kc);
     }
-    k.a[0] = (int) (red_total / slots[i].pixel);
-    k.a[1] = (int) (green_total / slots[i].pixel);
-    k.a[2] = (int) (blue_total / slots[i].pixel);
-    adapt[i] = kc_togfcg(&k);
-  }
 
-  Gif_DeleteArray(slots);
-  gfcm->ncol = nadapt;
-  return gfcm;
+    Gif_DeleteArray(slots);
+    gfcm->ncol = nadapt;
+    return gfcm;
 }
 
 
+typedef struct {
+    double a[4];
+} diversityitem;
+
+static void colormap_diversity_do_blend(Gif_Color* adapt, int nadapt, kchist* kch,
+                                        const int* closest) {
+    int i, j, k;
+    diversityitem* di = Gif_NewArray(diversityitem, nadapt);
+    for (i = 0; i != nadapt; ++i)
+        for (k = 0; k != 4; ++k)
+            di[i].a[k] = 0;
+    for (i = 0; i != kch->n; ++i) {
+        double count = kch->h[i].count;
+        j = closest[i];
+        for (k = 0; k != 3; ++k)
+            di[j].a[k] += kch->h[i].ka.a[k] * count;
+        di[j].a[3] += count;
+    }
+    for (i = 0; i != nadapt; ++i) {
+        int match = adapt[i].pixel;
+        if (di[i].a[3] >= 3 * kch->h[match].count) {
+            /* Favor, by a smallish amount, the color the plain diversity
+               algorithm would pick. */
+            kcolor kc = kc_makegfcg(&adapt[i]);
+            double count = kch->h[match].count * 2;
+            for (k = 0; k != 3; ++k)
+                di[i].a[k] += kc.a[k] * count;
+            di[i].a[3] += count;
+            for (k = 0; k != 3; ++k)
+                kc.a[k] = (int) (di[i].a[k] / di[i].a[3]);
+            adapt[i] = kc_togfcg(&kc);
+        }
+    }
+    Gif_DeleteArray(di);
+}
 
 static Gif_Colormap *
-colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
-                   int blend)
+colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
 {
   int adapt_size = od->colormap_size;
-  uint32_t* min_dist = Gif_NewArray(uint32_t, nhist);
-  uint32_t* min_dither_dist = Gif_NewArray(uint32_t, nhist);
-  int *closest = Gif_NewArray(int, nhist);
-  kcolor* gchist = Gif_NewArray(kcolor, nhist); /* gamma-corrected */
+  uint32_t* min_dist = Gif_NewArray(uint32_t, kch->n);
+  uint32_t* min_dither_dist = Gif_NewArray(uint32_t, kch->n);
+  int *closest = Gif_NewArray(int, kch->n);
   Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
   Gif_Color *adapt = gfcm->col;
   int nadapt = 0;
-  int i, j, match = 0;
+  int i, j;
 
   /* This code was uses XV's modified diversity algorithm, and was written
      with reference to XV's implementation of that algorithm by John Bradley
@@ -527,10 +547,10 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
 
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size > nhist && !od->colormap_fixed)
-    warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
-  if (adapt_size > nhist)
-    adapt_size = nhist;
+  if (adapt_size > kch->n && !od->colormap_fixed)
+    warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
+  if (adapt_size > kch->n)
+    adapt_size = kch->n;
 
   /* 0. remove any transparent color from consideration; reduce adaptive
      palette size to accommodate transparency if it looks like that'll be
@@ -540,7 +560,7 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
      (3) there are a small number of colors in the image (arbitrary constant:
      <= 265), so it's likely that most images will use most of the slots, so
      it's likely there won't be unused slots. */
-  if (adapt_size > 2 && adapt_size < nhist && nhist <= 265
+  if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
       && od->colormap_needs_transparency)
     adapt_size--;
 
@@ -549,15 +569,10 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
     blend = 0;
 
   /* 1. initialize min_dist and sort the colors in order of popularity. */
-  for (i = 0; i < nhist; i++)
+  for (i = 0; i < kch->n; i++)
       min_dist[i] = min_dither_dist[i] = 0xFFFFFFFF;
 
-  qsort(hist, nhist, sizeof(Gif_Color), popularity_sort_compare);
-
-  /* 1.5. gamma-correct hist colors */
-  for (i = 0; i < nhist; ++i)
-      kc_set8g(&gchist[i], hist[i].gfc_red, hist[i].gfc_green,
-               hist[i].gfc_blue);
+  qsort(kch->h, kch->n, sizeof(kchistitem), popularity_kchistitem_compare);
 
   /* 2. choose colors one at a time */
   for (nadapt = 0; nadapt < adapt_size; nadapt++) {
@@ -574,7 +589,7 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
 
     } else if (od->dither_type == dither_none) {
         /* 2.1b. choose based on diversity from unchosen colors */
-        for (i = chosen + 1; i != nhist; ++i)
+        for (i = chosen + 1; i != kch->n; ++i)
             if (min_dist[i] > min_dist[chosen])
                 chosen = i;
 
@@ -589,7 +604,7 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
         double dweight = nadapt < 4 ? 0.25 : 0.125;
 #endif
         double max_dist = min_dist[chosen] + min_dither_dist[chosen] * dweight;
-        for (i = chosen + 1; i != nhist; ++i)
+        for (i = chosen + 1; i != kch->n; ++i)
             if (min_dist[i] != 0) {
                 double dist = min_dist[i] + min_dither_dist[i] * dweight;
                 if (dist > max_dist) {
@@ -602,14 +617,13 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
     /* 2.2. add the color */
     min_dist[chosen] = min_dither_dist[chosen] = 0;
     closest[chosen] = nadapt;
-    adapt[nadapt] = hist[chosen];
+    adapt[nadapt] = kc_togfcg(&kch->h[chosen].ka.k);
     adapt[nadapt].pixel = chosen;
-    adapt[nadapt].haspixel = 0;
 
     /* 2.3. adjust the min_dist array */
-    for (i = 0; i < nhist; ++i)
+    for (i = 0; i < kch->n; ++i)
         if (min_dist[i]) {
-            uint32_t dist = kc_distance(&gchist[i], &gchist[chosen]);
+            uint32_t dist = kc_distance(&kch->h[i].ka.k, &kch->h[chosen].ka.k);
             if (dist < min_dist[i]) {
                 min_dist[i] = dist;
                 closest[i] = nadapt;
@@ -619,79 +633,41 @@ colormap_diversity(Gif_Color *hist, int nhist, Gt_OutputData* od,
     /* 2.4. also account for dither distances */
     if (od->dither_type != dither_none && nadapt > 0 && nadapt < 64)
         for (j = 0; j < nadapt; ++j) {
-            kcolor x = gchist[chosen], *y = &gchist[adapt[j].pixel];
+            kcolor x = kch->h[chosen].ka.k, *y = &kch->h[adapt[j].pixel].ka.k;
             /* penalize combinations with large luminance difference */
             double dL = fabs(kc_luminance(&x) - kc_luminance(y));
-            dL = (dL > 8192 ? dL * 4 / 32767. : 1);
+            dL = (dL >= 4096 ? dL * 2 / 8192. : 1);
             /* create combination */
             for (i = 0; i < 3; ++i)
                 x.a[i] = (x.a[i] + y->a[i]) >> 1;
             /* track closeness of combination to other colors */
-            for (i = 0; i < nhist; ++i)
+            for (i = 0; i < kch->n; ++i)
                 if (min_dist[i]) {
-                    double dist = kc_distance(&gchist[i], &x) * dL;
+                    double dist = kc_distance(&kch->h[i].ka.k, &x) * dL;
                     if (dist < min_dither_dist[i])
                         min_dither_dist[i] = (uint32_t) dist;
                 }
         }
   }
 
-  /* 3. make the new palette by choosing one color from each slot. */
-  if (blend) {
-    for (i = 0; i < nadapt; i++) {
-      double red_total = 0, green_total = 0, blue_total = 0;
-      uint32_t pixel_total = 0, mismatch_pixel_total = 0;
-      for (j = 0; j < nhist; j++)
-	if (closest[j] == i) {
-	  double pixel = hist[j].pixel;
-	  red_total += gchist[j].a[0] * pixel;
-	  green_total += gchist[j].a[1] * pixel;
-	  blue_total += gchist[j].a[2] * pixel;
-	  pixel_total += pixel;
-	  if (min_dist[j])
-	    mismatch_pixel_total += pixel;
-	  else
-	    match = j;
-	}
-      /* Only blend if total number of mismatched pixels exceeds total number
-	 of matched pixels by a large margin. */
-      if (3 * mismatch_pixel_total <= 2 * pixel_total)
-	adapt[i] = hist[match];
-      else {
-	/* Favor, by a smallish amount, the color the plain diversity
-           algorithm would pick. */
-	double pixel = hist[match].pixel * 2;
-        kcolor k;
-	red_total += gchist[match].a[0] * pixel;
-	green_total += gchist[match].a[1] * pixel;
-	blue_total += gchist[match].a[2] * pixel;
-	pixel_total += pixel;
-        k.a[0] = (int) (red_total / pixel_total);
-        k.a[1] = (int) (green_total / pixel_total);
-        k.a[2] = (int) (blue_total / pixel_total);
-        adapt[i] = kc_togfcg(&k);
-      }
-      adapt[i].haspixel = 0;
-    }
-  }
+    /* 3. make the new palette by choosing one color from each slot. */
+    if (blend)
+        colormap_diversity_do_blend(adapt, nadapt, kch, closest);
 
-  Gif_DeleteArray(min_dist);
-  Gif_DeleteArray(min_dither_dist);
-  Gif_DeleteArray(closest);
-  Gif_DeleteArray(gchist);
-  gfcm->ncol = nadapt;
-  return gfcm;
+    Gif_DeleteArray(min_dist);
+    Gif_DeleteArray(min_dither_dist);
+    Gif_DeleteArray(closest);
+    gfcm->ncol = nadapt;
+    return gfcm;
 }
 
 
-Gif_Colormap* colormap_blend_diversity(Gif_Color* hist, int nhist,
-                                       Gt_OutputData* od) {
-    return colormap_diversity(hist, nhist, od, 1);
+Gif_Colormap* colormap_blend_diversity(kchist* kch, Gt_OutputData* od) {
+    return colormap_diversity(kch, od, 1);
 }
 
-Gif_Colormap* colormap_flat_diversity(Gif_Color* hist, int nhist,
-                                      Gt_OutputData* od) {
-    return colormap_diversity(hist, nhist, od, 0);
+Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od) {
+    return colormap_diversity(kch, od, 0);
 }
 
 

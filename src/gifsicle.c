@@ -10,6 +10,7 @@
 
 #include <config.h>
 #include "gifsicle.h"
+#include "kcolor.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -807,9 +808,8 @@ do_colormap_change(Gif_Stream *gfs)
                     &active_output_data);
 
   if (active_output_data.colormap_size > 0) {
-    int nhist;
-    Gif_Color *hist;
-    Gif_Colormap* (*adapt_func)(Gif_Color*, int, Gt_OutputData*);
+    kchist kch;
+    Gif_Colormap* (*adapt_func)(kchist*, Gt_OutputData*);
     Gif_Colormap *new_cm;
 
     /* set up the histogram */
@@ -819,40 +819,36 @@ do_colormap_change(Gif_Stream *gfs)
       for (i = 0; i < gfs->nimages; i++)
 	if (gfs->images[i]->local)
 	  any_locals = 1;
-      hist = histogram(gfs, &nhist, &ntransp);
-      if (nhist <= active_output_data.colormap_size
+      kchist_make(&kch, gfs, &ntransp);
+      if (kch.n <= active_output_data.colormap_size
           && !any_locals
           && !active_output_data.colormap_fixed) {
-	warning(1, "trivial adaptive palette (only %d colors in source)", nhist);
+	warning(1, "trivial adaptive palette (only %d colors in source)", kch.n);
+        kchist_cleanup(&kch);
 	return;
       }
       active_output_data.colormap_needs_transparency = ntransp > 0;
     }
 
     switch (active_output_data.colormap_algorithm) {
-
      case COLORMAP_DIVERSITY:
       adapt_func = &colormap_flat_diversity;
       break;
-
      case COLORMAP_BLEND_DIVERSITY:
       adapt_func = &colormap_blend_diversity;
       break;
-
      case COLORMAP_MEDIAN_CUT:
       adapt_func = &colormap_median_cut;
       break;
-
      default:
       fatal_error("can't happen");
-
     }
 
-    new_cm = (*adapt_func)(hist, nhist, &active_output_data);
+    new_cm = (*adapt_func)(&kch, &active_output_data);
     colormap_stream(gfs, new_cm, &active_output_data);
 
-    Gif_DeleteArray(hist);
     Gif_DeleteColormap(new_cm);
+    kchist_cleanup(&kch);
   }
 }
 
