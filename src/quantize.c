@@ -494,170 +494,220 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
 
 
 typedef struct {
-    double a[4];
-} diversityitem;
+    kchist* kch;
+    int* closest;
+    uint32_t* min_dist;
+    uint32_t* min_dither_dist;
+    int* chosen;
+    int nchosen;
+} kcdiversity;
 
-static void colormap_diversity_do_blend(Gif_Color* adapt, int nadapt, kchist* kch,
-                                        const int* closest) {
-    int i, j, k;
-    diversityitem* di = Gif_NewArray(diversityitem, nadapt);
-    for (i = 0; i != nadapt; ++i)
-        for (k = 0; k != 4; ++k)
-            di[i].a[k] = 0;
-    for (i = 0; i != kch->n; ++i) {
-        double count = kch->h[i].count;
-        j = closest[i];
-        for (k = 0; k != 3; ++k)
-            di[j].a[k] += kch->h[i].ka.a[k] * count;
-        di[j].a[3] += count;
-    }
-    for (i = 0; i != nadapt; ++i) {
-        int match = adapt[i].pixel;
-        if (di[i].a[3] >= 3 * kch->h[match].count) {
-            /* Favor, by a smallish amount, the color the plain diversity
-               algorithm would pick. */
-            kcolor kc = kc_makegfcg(&adapt[i]);
-            double count = kch->h[match].count * 2;
-            for (k = 0; k != 3; ++k)
-                di[i].a[k] += kc.a[k] * count;
-            di[i].a[3] += count;
-            for (k = 0; k != 3; ++k)
-                kc.a[k] = (int) (di[i].a[k] / di[i].a[3]);
-            adapt[i] = kc_togfcg(&kc);
-        }
-    }
-    Gif_DeleteArray(di);
+void kcdiversity_init(kcdiversity* div, kchist* kch, int dodither) {
+    int i;
+    div->kch = kch;
+    qsort(kch->h, kch->n, sizeof(kchistitem), popularity_kchistitem_compare);
+    div->closest = Gif_NewArray(int, kch->n);
+    div->min_dist = Gif_NewArray(uint32_t, kch->n);
+    for (i = 0; i != kch->n; ++i)
+        div->min_dist[i] = (uint32_t) -1;
+    if (dodither) {
+        div->min_dither_dist = Gif_NewArray(uint32_t, kch->n);
+        for (i = 0; i != kch->n; ++i)
+            div->min_dither_dist[i] = (uint32_t) -1;
+    } else
+        div->min_dither_dist = NULL;
+    div->chosen = Gif_NewArray(int, kch->n);
+    div->nchosen = 0;
 }
 
-static Gif_Colormap *
-colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
-{
-  int adapt_size = od->colormap_size;
-  uint32_t* min_dist = Gif_NewArray(uint32_t, kch->n);
-  uint32_t* min_dither_dist = Gif_NewArray(uint32_t, kch->n);
-  int *closest = Gif_NewArray(int, kch->n);
-  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
-  Gif_Color *adapt = gfcm->col;
-  int nadapt = 0;
-  int i, j;
+void kcdiversity_cleanup(kcdiversity* div) {
+    Gif_DeleteArray(div->closest);
+    Gif_DeleteArray(div->min_dist);
+    Gif_DeleteArray(div->min_dither_dist);
+    Gif_DeleteArray(div->chosen);
+}
 
-  /* This code was uses XV's modified diversity algorithm, and was written
-     with reference to XV's implementation of that algorithm by John Bradley
-     <bradley@cis.upenn.edu> and Tom Lane <Tom.Lane@g.gp.cs.cmu.edu>. */
+int kcdiversity_find_popular(kcdiversity* div) {
+    int i, n = div->kch->n;
+    for (i = 0; i != n && div->min_dist[i] == 0; ++i)
+        /* spin */;
+    return i;
+}
 
-  if (adapt_size < 2 || adapt_size > 256)
-    fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size > kch->n && !od->colormap_fixed)
-    warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
-  if (adapt_size > kch->n)
-    adapt_size = kch->n;
-
-  /* 0. remove any transparent color from consideration; reduce adaptive
-     palette size to accommodate transparency if it looks like that'll be
-     necessary */
-  /* It will be necessary to accommodate transparency if (1) there is
-     transparency in the image; (2) the adaptive palette isn't trivial; and
-     (3) there are a small number of colors in the image (arbitrary constant:
-     <= 265), so it's likely that most images will use most of the slots, so
-     it's likely there won't be unused slots. */
-  if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
-      && od->colormap_needs_transparency)
-    adapt_size--;
-
-  /* blending has bad effects when there are very few colors */
-  if (adapt_size < 4)
-    blend = 0;
-
-  /* 1. initialize min_dist and sort the colors in order of popularity. */
-  for (i = 0; i < kch->n; i++)
-      min_dist[i] = min_dither_dist[i] = 0xFFFFFFFF;
-
-  qsort(kch->h, kch->n, sizeof(kchistitem), popularity_kchistitem_compare);
-
-  /* 2. choose colors one at a time */
-  for (nadapt = 0; nadapt < adapt_size; nadapt++) {
-    int chosen;
-
-    /* 2.0. find the first non-chosen color */
-    for (chosen = 0; min_dist[chosen] == 0; ++chosen)
-        /* do nothing */;
-
-    /* 2.1. choose the color to be added */
-    if (nadapt == 0 || (nadapt >= 10 && nadapt % 2 == 0)) {
-        /* 2.1a. want most popular unchosen color; we've sorted them on
-           popularity, so we're done! */
-
-    } else if (od->dither_type == dither_none) {
-        /* 2.1b. choose based on diversity from unchosen colors */
-        for (i = chosen + 1; i != kch->n; ++i)
-            if (min_dist[i] > min_dist[chosen])
+int kcdiversity_find_diverse(kcdiversity* div, double ditherweight) {
+    int i, n = div->kch->n, chosen = kcdiversity_find_popular(div);
+    if (chosen == n)
+        /* skip */;
+    else if (!ditherweight || !div->min_dither_dist) {
+        for (i = chosen + 1; i != n; ++i)
+            if (div->min_dist[i] > div->min_dist[chosen])
                 chosen = i;
-
     } else {
-        /* 2.1c. choose based on diversity from unchosen colors, but allow
-           dithered combinations to stand in for colors, particularly early
-           on in the color finding process */
-#if HAVE_POW
-        /* Weight assigned to dithered combinations drops as we proceed. */
-        double dweight = 0.05 + pow(0.25, 1 + (nadapt - 1) / 3.);
-#else
-        double dweight = nadapt < 4 ? 0.25 : 0.125;
-#endif
-        double max_dist = min_dist[chosen] + min_dither_dist[chosen] * dweight;
-        for (i = chosen + 1; i != kch->n; ++i)
-            if (min_dist[i] != 0) {
-                double dist = min_dist[i] + min_dither_dist[i] * dweight;
+        double max_dist = div->min_dist[chosen] + ditherweight * div->min_dither_dist[chosen];
+        for (i = chosen + 1; i != n; ++i)
+            if (div->min_dist[i] != 0) {
+                double dist = div->min_dist[i] + ditherweight * div->min_dither_dist[i];
                 if (dist > max_dist) {
                     chosen = i;
                     max_dist = dist;
                 }
             }
     }
+    return chosen;
+}
 
-    /* 2.2. add the color */
-    min_dist[chosen] = min_dither_dist[chosen] = 0;
-    closest[chosen] = nadapt;
-    adapt[nadapt] = kc_togfcg(&kch->h[chosen].ka.k);
-    adapt[nadapt].pixel = chosen;
+int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
+    int i, j, k, n = div->kch->n;
+    kchistitem* hist = div->kch->h;
 
-    /* 2.3. adjust the min_dist array */
-    for (i = 0; i < kch->n; ++i)
-        if (min_dist[i]) {
-            uint32_t dist = kc_distance(&kch->h[i].ka.k, &kch->h[chosen].ka.k);
-            if (dist < min_dist[i]) {
-                min_dist[i] = dist;
-                closest[i] = nadapt;
+    div->min_dist[chosen] = 0;
+    if (div->min_dither_dist)
+        div->min_dither_dist[chosen] = 0;
+    div->closest[chosen] = chosen;
+
+    /* adjust the min_dist array */
+    for (i = 0; i != n; ++i)
+        if (div->min_dist[i]) {
+            uint32_t dist = kc_distance(&hist[i].ka.k, &hist[chosen].ka.k);
+            if (dist < div->min_dist[i]) {
+                div->min_dist[i] = dist;
+                div->closest[i] = chosen;
             }
         }
 
-    /* 2.4. also account for dither distances */
-    if (od->dither_type != dither_none && nadapt > 0 && nadapt < 64)
-        for (j = 0; j < nadapt; ++j) {
-            kcolor x = kch->h[chosen].ka.k, *y = &kch->h[adapt[j].pixel].ka.k;
+    /* also account for dither distances */
+    if (dodither && div->min_dither_dist)
+        for (i = 0; i != div->nchosen; ++i) {
+            kcolor x = hist[chosen].ka.k, *y = &hist[div->chosen[i]].ka.k;
             /* penalize combinations with large luminance difference */
             double dL = fabs(kc_luminance(&x) - kc_luminance(y));
             dL = (dL > 8192 ? dL * 4 / 32767. : 1);
             /* create combination */
-            for (i = 0; i < 3; ++i)
-                x.a[i] = (x.a[i] + y->a[i]) >> 1;
+            for (k = 0; k != 3; ++k)
+                x.a[k] = (x.a[k] + y->a[k]) >> 1;
             /* track closeness of combination to other colors */
-            for (i = 0; i < kch->n; ++i)
-                if (min_dist[i]) {
-                    double dist = kc_distance(&kch->h[i].ka.k, &x) * dL;
-                    if (dist < min_dither_dist[i])
-                        min_dither_dist[i] = (uint32_t) dist;
+            for (j = 0; j != n; ++j)
+                if (div->min_dist[j]) {
+                    double dist = kc_distance(&hist[j].ka.k, &x) * dL;
+                    if (dist < div->min_dither_dist[j])
+                        div->min_dither_dist[j] = (uint32_t) dist;
                 }
         }
-  }
+
+    div->chosen[div->nchosen] = chosen;
+    ++div->nchosen;
+    return chosen;
+}
+
+typedef struct {
+    double a[4];
+} diversityitem;
+
+static void colormap_diversity_do_blend(kcdiversity* div) {
+    int i, j, k, n = div->kch->n;
+    kchistitem* hist = div->kch->h;
+    int* chosenmap = Gif_NewArray(int, n);
+    diversityitem* di = Gif_NewArray(diversityitem, div->nchosen);
+    for (i = 0; i != div->nchosen; ++i)
+        for (k = 0; k != 4; ++k)
+            di[i].a[k] = 0;
+    for (i = 0; i != div->nchosen; ++i)
+        chosenmap[div->chosen[i]] = i;
+    for (i = 0; i != n; ++i) {
+        double count = hist[i].count;
+        if (div->closest[i] == i)
+            count *= 3;
+        j = chosenmap[div->closest[i]];
+        for (k = 0; k != 3; ++k)
+            di[j].a[k] += hist[i].ka.a[k] * count;
+        di[j].a[3] += count;
+    }
+    for (i = 0; i != div->nchosen; ++i) {
+        int match = div->chosen[i];
+        if (di[i].a[3] >= 5 * hist[match].count)
+            for (k = 0; k != 3; ++k)
+                hist[match].ka.a[k] = (int) (di[i].a[k] / di[i].a[3]);
+    }
+    Gif_DeleteArray(chosenmap);
+    Gif_DeleteArray(di);
+}
+
+
+static Gif_Colormap *
+colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
+{
+    int adapt_size = od->colormap_size;
+    kcdiversity div;
+    Gif_Colormap* gfcm = Gif_NewFullColormap(adapt_size, 256);
+    int nadapt = 0;
+    int chosen;
+
+    /* This code was uses XV's modified diversity algorithm, and was written
+       with reference to XV's implementation of that algorithm by John Bradley
+       <bradley@cis.upenn.edu> and Tom Lane <Tom.Lane@g.gp.cs.cmu.edu>. */
+
+    if (adapt_size < 2 || adapt_size > 256)
+        fatal_error("adaptive palette size must be between 2 and 256");
+    if (adapt_size > kch->n && !od->colormap_fixed)
+        warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
+    if (adapt_size > kch->n)
+        adapt_size = kch->n;
+
+    /* 0. remove any transparent color from consideration; reduce adaptive
+       palette size to accommodate transparency if it looks like that'll be
+       necessary */
+    /* It will be necessary to accommodate transparency if (1) there is
+       transparency in the image; (2) the adaptive palette isn't trivial; and
+       (3) there are a small number of colors in the image (arbitrary constant:
+       <= 265), so it's likely that most images will use most of the slots, so
+       it's likely there won't be unused slots. */
+    if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
+        && od->colormap_needs_transparency)
+        adapt_size--;
+
+    /* blending has bad effects when there are very few colors */
+    if (adapt_size < 4)
+        blend = 0;
+
+    /* 1. initialize min_dist and sort the colors in order of popularity. */
+    kcdiversity_init(&div, kch, od->dither_type != dither_none);
+
+    /* 2. choose colors one at a time */
+    for (nadapt = 0; nadapt < adapt_size; nadapt++) {
+        /* 2.1. choose the color to be added */
+        if (nadapt == 0 || (nadapt >= 10 && nadapt % 2 == 0))
+            /* 2.1a. want most popular unchosen color */
+            chosen = kcdiversity_find_popular(&div);
+        else if (od->dither_type == dither_none)
+            /* 2.1b. choose based on diversity from unchosen colors */
+            chosen = kcdiversity_find_diverse(&div, 0);
+        else {
+            /* 2.1c. choose based on diversity from unchosen colors, but allow
+               dithered combinations to stand in for colors, particularly early
+               on in the color finding process */
+            /* Weight assigned to dithered combinations drops as we proceed. */
+#if HAVE_POW
+            double ditherweight = 0.05 + pow(0.25, 1 + (nadapt - 1) / 3.);
+#else
+            double ditherweight = nadapt < 4 ? 0.25 : 0.125;
+#endif
+            chosen = kcdiversity_find_diverse(&div, ditherweight);
+        }
+
+        kcdiversity_choose(&div, chosen,
+                           od->dither_type != dither_none
+                           && nadapt > 0 && nadapt < 64);
+    }
 
     /* 3. make the new palette by choosing one color from each slot. */
     if (blend)
-        colormap_diversity_do_blend(adapt, nadapt, kch, closest);
+        colormap_diversity_do_blend(&div);
 
-    Gif_DeleteArray(min_dist);
-    Gif_DeleteArray(min_dither_dist);
-    Gif_DeleteArray(closest);
+    for (nadapt = 0; nadapt != div.nchosen; ++nadapt)
+        gfcm->col[nadapt] = kc_togfcg(&kch->h[div.chosen[nadapt]].ka.k);
     gfcm->ncol = nadapt;
+
+    kcdiversity_cleanup(&div);
     return gfcm;
 }
 
