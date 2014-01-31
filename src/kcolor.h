@@ -71,6 +71,18 @@ static inline void kc_revgamma_transform(kcolor* x) {
     }
 }
 
+/* return the reverse gramma transformation of `*x` as a Gif_Color */
+static inline Gif_Color kc_togfcg(const kcolor* x) {
+    kcolor xx = *x;
+    Gif_Color gfc;
+    kc_revgamma_transform(&xx);
+    gfc.gfc_red = (uint8_t) (xx.a[0] >> 7);
+    gfc.gfc_green = (uint8_t) (xx.a[1] >> 7);
+    gfc.gfc_blue = (uint8_t) (xx.a[2] >> 7);
+    gfc.haspixel = 0;
+    return gfc;
+}
+
 
 /* return the squared Euclidean distance between `*x` and `*y` */
 static inline uint32_t kc_distance(const kcolor* x, const kcolor* y) {
