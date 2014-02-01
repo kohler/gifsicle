@@ -309,7 +309,6 @@ histogram(Gif_Stream* gfs, int* nhist_store, uint32_t* ntransp_store)
 {
   Gif_Histogram hist;
   Gif_Color *linear;
-  Gif_Color transparent_color;
   unsigned long ntransparent = 0;
   unsigned long nbackground = 0;
   int x, y, i;
@@ -355,11 +354,8 @@ histogram(Gif_Stream* gfs, int* nhist_store, uint32_t* ntransp_store)
 	else
 	  add_histogram_color(&col[x], &hist, count[x]);
       }
-    if (transparent >= 0) {
-      if (ntransparent == 0)
-	  transparent_color = col[transparent];
+    if (transparent >= 0)
       ntransparent += count[transparent];
-    }
 
     /* if this image has background disposal, count its size towards the
        background's pixel count */
