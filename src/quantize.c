@@ -636,7 +636,7 @@ colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
             kcolor x = kch->h[chosen].ka.k, *y = &kch->h[adapt[j].pixel].ka.k;
             /* penalize combinations with large luminance difference */
             double dL = fabs(kc_luminance(&x) - kc_luminance(y));
-            dL = (dL >= 4096 ? dL * 2 / 8192. : 1);
+            dL = (dL > 8192 ? dL * 4 / 32767. : 1);
             /* create combination */
             for (i = 0; i < 3; ++i)
                 x.a[i] = (x.a[i] + y->a[i]) >> 1;
