@@ -445,12 +445,12 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit)
     }
 
     xyarr = Gif_NewArray(uint16_t, gfs->screen_width + gfs->screen_height + 2);
-    for (i = 0; i != gfs->screen_width + 1; ++i)
+    for (i = 0; i != gfs->screen_width; ++i)
         xyarr[i] = (int) (i * xfactor);
-    for (i = 0; i != gfs->screen_height + 1; ++i)
+    xyarr[gfs->screen_width] = nw;
+    for (i = 0; i != gfs->screen_height; ++i)
         xyarr[gfs->screen_width + 1 + i] = (int) (i * yfactor);
-    assert(xyarr[gfs->screen_width] == nw);
-    assert(xyarr[gfs->screen_width + 1 + gfs->screen_height] == nh);
+    xyarr[gfs->screen_width + 1 + gfs->screen_height] = nh;
 
     for (i = 0; i < gfs->nimages; i++)
         scale_image(gfs, gfs->images[i],
