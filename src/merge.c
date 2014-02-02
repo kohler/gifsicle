@@ -43,10 +43,14 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
                  int compress_immediately)
 {
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    Gif_Color *col = gfcm->col;
-    int ncol = gfcm->ncol;
-    int transp = gfi->transparent;
-    int i, j, l, t, r, b, nleft;
+    Gif_Color *col;
+    int i, j, l, t, r, b, nleft, ncol, transp = gfi->transparent;
+
+    /* There might not be a colormap. */
+    if (!gfcm)
+        return;
+    col = gfcm->col;
+    ncol = gfcm->ncol;
 
     /* Mark color used for transparency. */
     if (transp >= 0 && transp < ncol)
