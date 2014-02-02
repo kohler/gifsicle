@@ -203,6 +203,8 @@ int		Gif_ColorEq(Gif_Color *, Gif_Color *);
 #define		GIF_COLOREQ(c1, c2) \
 ((c1)->gfc_red==(c2)->gfc_red && (c1)->gfc_green==(c2)->gfc_green && \
  (c1)->gfc_blue==(c2)->gfc_blue)
+#define         GIF_SETCOLOR(c, r, g, b) \
+((c)->gfc_red = (r), (c)->gfc_green = (g), (c)->gfc_blue = (b))
 
 int		Gif_FindColor(Gif_Colormap *, Gif_Color *);
 int		Gif_AddColor(Gif_Colormap *, Gif_Color *, int look_from);

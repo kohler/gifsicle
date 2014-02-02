@@ -1452,7 +1452,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   /* 11/23/98 A new stream's screen size is 0x0; we'll use the max of the
      merged-together streams' screen sizes by default (in merge_stream()) */
 
-  if (f2 < 0) f2 = fset->count - 1;
+  if (f2 < 0)
+      f2 = fset->count - 1;
   nmerger = 0;
   merger_flatten(fset, f1, f2);
   if (nmerger == 0) {
@@ -1690,6 +1691,19 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
   /* Find the background color in the colormap, or add it if we can */
   set_background(dest, output_data);
+
+  /* The global colormap might be empty even given images that use it, if
+     those images are entirely transparent. Since absent global colormaps
+     are surprising, assign a black-and-white colormap */
+  if (dest->global->ncol == 0) {
+      for (i = 0; i != dest->nimages; ++i)
+          if (!dest->images[i]->local) {
+              GIF_SETCOLOR(&dest->global->col[0], 0, 0, 0);
+              GIF_SETCOLOR(&dest->global->col[1], 255, 255, 255);
+              dest->global->ncol = 2;
+              break;
+          }
+  }
 
   return dest;
 }
