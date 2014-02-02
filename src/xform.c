@@ -452,6 +452,7 @@ typedef struct {
     kd3_tree* kd3;
     kcscreen iscr;
     kcscreen oscr;
+    kcscreen xscr;
     double oxf;                 /* (input width) / (output width) */
     double oyf;                 /* (input height) / (output height) */
     double ixf;                 /* (output width) / (input width) */
@@ -460,6 +461,8 @@ typedef struct {
     scale_weightset yweights;
     kd3_tree global_kd3;
     kd3_tree local_kd3;
+    unsigned max_desired_dist;
+    int scale_colors;
 } scale_context;
 
 static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
@@ -469,16 +472,21 @@ static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
     sctx->local_kd3.ks = NULL;
     kcscreen_clear(&sctx->iscr);
     kcscreen_clear(&sctx->oscr);
+    kcscreen_clear(&sctx->xscr);
     sctx->iscr.width = gfs->screen_width;
     sctx->iscr.height = gfs->screen_height;
     sctx->oscr.width = nw;
     sctx->oscr.height = nh;
+    sctx->xscr.width = nw;
+    sctx->xscr.height = nh;
     sctx->ixf = (double) nw / gfs->screen_width;
     sctx->iyf = (double) nh / gfs->screen_height;
     sctx->oxf = gfs->screen_width / (double) nw;
     sctx->oyf = gfs->screen_height / (double) nh;
     sctx->xweights.ws = sctx->yweights.ws = NULL;
     sctx->xweights.n = sctx->yweights.n = 0;
+    sctx->max_desired_dist = 16000;
+    sctx->scale_colors = 0;
 }
 
 static void sctx_cleanup(scale_context* sctx) {
@@ -486,6 +494,7 @@ static void sctx_cleanup(scale_context* sctx) {
         kd3_cleanup(&sctx->global_kd3);
     kcscreen_cleanup(&sctx->iscr);
     kcscreen_cleanup(&sctx->oscr);
+    kcscreen_cleanup(&sctx->xscr);
     Gif_DeleteArray(sctx->xweights.ws);
     Gif_DeleteArray(sctx->yweights.ws);
 }
@@ -528,11 +537,111 @@ static void scale_image_prepare(scale_context* sctx) {
         kcscreen_init(&sctx->iscr, sctx->gfs, 0, 0);
         kcscreen_init(&sctx->oscr, sctx->gfs,
                       sctx->oscr.width, sctx->oscr.height);
+        kcscreen_init(&sctx->xscr, sctx->gfs,
+                      sctx->xscr.width, sctx->xscr.height);
     }
     kcscreen_apply(&sctx->iscr, sctx->gfi, sctx->kd3->ks);
 }
 
+static void scale_image_output_row(scale_context* sctx, scale_color* sc,
+                                   Gif_Image* gfo, int yo) {
+    int k, xo;
+    kacolor* oscr = &sctx->xscr.data[sctx->xscr.width * (yo + gfo->top)
+                                     + gfo->left];
+
+    for (xo = 0; xo != gfo->width; ++xo)
+        if (sc[xo].a[3] <= KC_MAX / 4)
+            oscr[xo] = kac_transparent();
+        else {
+            /* don't effectively mix partially transparent pixels with black */
+            if (sc[xo].a[3] <= KC_MAX * 31 / 32)
+                for (k = 0; k != 3; ++k)
+                    sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
+            /* find closest color */
+            for (k = 0; k != 3; ++k) {
+                int v = (int) (sc[xo].a[k] + 0.5);
+                oscr[xo].a[k] = KC_CLAMPV(v);
+            }
+            oscr[xo].a[3] = KC_MAX;
+        }
+}
+
+static int scale_image_add_colors(scale_context* sctx, Gif_Image* gfo) {
+    kchist kch;
+    kcdiversity div;
+    Gif_Color gfc;
+    Gif_Colormap* gfcm = sctx->gfi->local ? sctx->gfi->local : sctx->gfs->global;
+    int yo, xo, i, nadded;
+
+    kchist_init(&kch);
+    for (yo = 0; yo != gfo->height; ++yo) {
+        kacolor* xscr = &sctx->xscr.data[sctx->xscr.width * (yo + gfo->top)
+                                         + gfo->left];
+        for (xo = 0; xo != gfo->width; ++xo)
+            if (xscr[xo].a[3])
+                kchist_add(&kch, xscr[xo].k, 1);
+    }
+    for (i = 0; i != gfcm->ncol; ++i)
+        kchist_add(&kch, kc_makegfcg(&gfcm->col[i]), (unsigned) -1);
+    kchist_compress(&kch);
+
+    kcdiversity_init(&div, &kch, 0);
+    for (i = 0; i != gfcm->ncol; ++i)
+        kcdiversity_choose(&div, kcdiversity_find_popular(&div), 0);
+
+    nadded = 0;
+    while (gfcm->ncol < sctx->scale_colors) {
+        int chosen = kcdiversity_find_diverse(&div, 0);
+        if (chosen >= kch.n || div.min_dist[chosen] <= sctx->max_desired_dist)
+            break;
+        kcdiversity_choose(&div, chosen, 0);
+        gfc = kc_togfcg(&kch.h[chosen].ka.k);
+        Gif_AddColor(gfcm, &gfc, gfcm->ncol);
+        kd3_add8g(sctx->kd3, gfc.gfc_red, gfc.gfc_green, gfc.gfc_blue);
+        ++nadded;
+    }
+
+    kcdiversity_cleanup(&div);
+    kchist_cleanup(&kch);
+    return nadded != 0;
+}
+
 static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
+    int yo, xo, transparent = sctx->gfi->transparent;
+    unsigned dist, dist2, max_dist;
+
+ retry:
+    max_dist = 0;
+    /* look up palette for output screen */
+    for (yo = 0; yo != gfo->height; ++yo) {
+        uint8_t* data = gfo->img[yo];
+        kacolor* xscr = &sctx->xscr.data[sctx->xscr.width * (yo + gfo->top)
+                                         + gfo->left];
+        kacolor* oscr = &sctx->oscr.data[sctx->oscr.width * (yo + gfo->top)
+                                         + gfo->left];
+        for (xo = 0; xo != gfo->width; ++xo)
+            if (xscr[xo].a[3]) {
+                data[xo] = kd3_closest_transformed(sctx->kd3, &xscr[xo].k, &dist);
+                /* maybe previous color is actually closer to desired */
+                if (transparent >= 0 && oscr[xo].a[3]) {
+                    dist2 = kc_distance(&oscr[xo].k, &xscr[xo].k);
+                    if (dist2 <= dist) {
+                        data[xo] = transparent;
+                        dist = dist2;
+                    }
+                }
+                max_dist = dist > max_dist ? dist : max_dist;
+            } else
+                data[xo] = transparent;
+    }
+
+    if (max_dist > sctx->max_desired_dist) {
+        Gif_Colormap* gfcm = sctx->gfi->local ? sctx->gfi->local : sctx->gfs->global;
+        if (gfcm->ncol < sctx->scale_colors
+            && scale_image_add_colors(sctx, gfo))
+            goto retry;
+    }
+
     /* apply disposal to sctx->iscr and sctx->oscr */
     if (sctx->imageno != sctx->gfs->nimages - 1) {
         kcscreen_dispose(&sctx->iscr, sctx->gfi);
@@ -545,44 +654,6 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
 
     if (sctx->gfi->local)
         kd3_cleanup(sctx->kd3);
-}
-
-typedef struct scale_color {
-    double a[4];
-} scale_color;
-
-static inline void sc_clear(scale_color* x) {
-    x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
-}
-
-static void scale_image_output_row(scale_context* sctx, scale_color* sc,
-                                   Gif_Image* gfo, int yo) {
-    int k, xo, transparent = sctx->gfi->transparent;
-    uint8_t* data = gfo->img[yo];
-    const kacolor* oscr = &sctx->oscr.data[sctx->oscr.width * (yo + gfo->top)
-                                           + gfo->left];
-
-    for (xo = 0; xo != gfo->width; ++xo)
-        if (sc[xo].a[3] <= KC_MAX / 4)
-            data[xo] = transparent;
-        else {
-            kcolor kc;
-            /* don't effectively mix partially transparent pixels with black */
-            if (sc[xo].a[3] <= KC_MAX * 31 / 32)
-                for (k = 0; k != 3; ++k)
-                    sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
-            /* find closest color */
-            for (k = 0; k != 3; ++k) {
-                int v = (int) (sc[xo].a[k] + 0.5);
-                kc.a[k] = KC_CLAMPV(v);
-            }
-            data[xo] = kd3_closest_transformed(sctx->kd3, &kc);
-            /* maybe previous color is actually closer to the color we want */
-            if (transparent >= 0 && oscr[xo].a[3]
-                && kc_distance(&oscr[xo].k, &kc)
-                    <= kc_distance(&sctx->kd3->ks[data[xo]], &kc))
-                data[xo] = transparent;
-        }
 }
 
 typedef struct pixel_range {
@@ -969,8 +1040,9 @@ static void scale_image(scale_context* sctx, int method) {
 }
 
 void
-resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
-              int method)
+resize_stream(Gif_Stream *gfs,
+              double new_width, double new_height,
+              int fit, int method, int scale_colors)
 {
     scale_context sctx;
     int nw, nh;
@@ -1016,6 +1088,7 @@ resize_stream(Gif_Stream *gfs, double new_width, double new_height, int fit,
 
     /* create scale context */
     sctx_init(&sctx, gfs, nw, nh);
+    sctx.scale_colors = scale_colors;
 
     /* no point to MIX or BOX method if we're expanding the image in
        both dimens */

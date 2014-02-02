@@ -124,6 +124,7 @@ typedef struct {
   double scale_x;
   double scale_y;
   int scale_method;
+  int scale_colors;
 
   int conserve_memory;
 
@@ -240,8 +241,8 @@ int	crop_image(Gif_Image *, Gt_Crop *, int preserve_total_crop);
 
 void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
 void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);
-void	resize_stream(Gif_Stream *, double new_width, double new_height,
-                      int fit, int method);
+void	resize_stream(Gif_Stream* gfs, double new_width, double new_height,
+                      int fit, int method, int scale_colors);
 
 /*****
  * quantization

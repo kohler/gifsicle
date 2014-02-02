@@ -955,15 +955,14 @@ Details: The resize methods differ most when shrinking images. The
 \(oqsample\(cq method is a point sampler. Each pixel position in the
 output image maps to exactly one pixel position in the input, so when
 shrinking, full rows and columns from the input are dropped. The other
-methods consider all input pixels that affect an output pixel, which
-generally produces better results. The \(oqbox\(cq method, a box
-sampler, is a bit faster and produces somewhat sharper results, but
-there will be anomalies when shrinking images by a small amount in one
-dimension. (Some output pixels will correspond to exactly 1 input row
-or column, while others will correspond to exactly 2 input rows or
-columns.) The \(oqmix\(cq method is a full bilinear interpolator. This
-is slower and produces somewhat blurrier results, but avoids such
-anomalies.
+methods use all input pixels, which generally produces better-looking
+images. The \(oqbox\(cq method, a box sampler, is faster than the more
+complex filters and produces somewhat sharper results, but there will
+be anomalies when shrinking images by a small amount in one dimension.
+(Some output pixels will correspond to exactly 1 input row or column,
+while others will correspond to exactly 2 input rows or columns.) The
+\(oqmix\(cq method is a full bilinear interpolator. This is slower and
+produces somewhat blurrier results, but avoids such anomalies.
 .Sp
 .PP
 Gifsicle also supports several complex resamplers, including
@@ -971,6 +970,20 @@ Catmull-Rom cubic resampling (\(oqcatrom\(cq), Mitchell-Netravali
 filter (\(oqmitchell\(cq), a 2-lobed Lanczos filter
 (\(oqlanczos2\(cq), and a 3-lobed Lanczos filter (\(oqlanczos3\(cq).
 These filters are slower, but can give sharper, better results.
+.RE
+'
+.Sp
+.TP
+.Oa \-\-resize\-colors n
+'
+Allow Gifsicle to add intermediate colors when resizing images.
+Normally, Gifsicle's resize algorithms use input images' color
+palettes without changes. When shrinking images with very few colors
+(e.g., pure black-and-white images), adding intermediate colors can
+improve the results. Example:
+.Oa \-\-resize\-colors 64
+allows Gifsicle to add intermediate colors for images that have fewer
+than 64 input colors.
 .PD
 '
 .\" -----------------------------------------------------------------

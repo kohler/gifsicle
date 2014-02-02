@@ -493,15 +493,6 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
 }
 
 
-typedef struct {
-    kchist* kch;
-    int* closest;
-    uint32_t* min_dist;
-    uint32_t* min_dither_dist;
-    int* chosen;
-    int nchosen;
-} kcdiversity;
-
 void kcdiversity_init(kcdiversity* div, kchist* kch, int dodither) {
     int i;
     div->kch = kch;
@@ -599,15 +590,11 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
     return chosen;
 }
 
-typedef struct {
-    double a[4];
-} diversityitem;
-
 static void colormap_diversity_do_blend(kcdiversity* div) {
     int i, j, k, n = div->kch->n;
     kchistitem* hist = div->kch->h;
     int* chosenmap = Gif_NewArray(int, n);
-    diversityitem* di = Gif_NewArray(diversityitem, div->nchosen);
+    scale_color* di = Gif_NewArray(scale_color, div->nchosen);
     for (i = 0; i != div->nchosen; ++i)
         for (k = 0; k != 4; ++k)
             di[i].a[k] = 0;
@@ -753,6 +740,12 @@ void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
     }
     kd3->ks[kd3->nitems] = *k;
     ++kd3->nitems;
+    if (kd3->tree) {
+        Gif_DeleteArray(kd3->tree);
+        Gif_DeleteArray(kd3->xradius);
+        kd3->tree = NULL;
+        kd3->xradius = NULL;
+    }
 }
 
 void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2) {
@@ -937,13 +930,17 @@ void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
     kd3_build(kd3);
 }
 
-int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
+int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
+                            unsigned* dist_store) {
     const kd3_treepos* stack[32];
     uint8_t state[32];
     int stackpos = 0;
     int result = -1;
     unsigned mindist = (unsigned) -1;
-    assert(kd3->tree);
+
+    if (!kd3->tree)
+        kd3_build(kd3);
+
     stack[0] = kd3->tree;
     state[0] = 0;
 
@@ -984,15 +981,17 @@ int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k) {
         }
     }
 
+    if (dist_store)
+        *dist_store = mindist;
     return result;
 }
 
-int kd3_closest8g(const kd3_tree* kd3, int a0, int a1, int a2) {
+int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2) {
     kcolor k;
     kc_set8g(&k, a0, a1, a2);
     if (kd3->transform)
         kd3->transform(&k);
-    return kd3_closest_transformed(kd3, &k);
+    return kd3_closest_transformed(kd3, &k, NULL);
 }
 
 
@@ -1118,7 +1117,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       if (kc_distance(&kd3->ks[e], &use) < kd3->xradius[e])
           *new_data = e;
       else
-          *new_data = kd3_closest_transformed(kd3, &use);
+          *new_data = kd3_closest_transformed(kd3, &use, NULL);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
@@ -1352,7 +1351,7 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
             int v = want.a[d] + err.a[d];
             cur.a[d] = KC_CLAMPV(v);
         }
-        plan[i] = kd3_closest_transformed(kd3, &cur);
+        plan[i] = kd3_closest_transformed(kd3, &cur, NULL);
         for (d = 0; d != 3; ++d)
             err.a[d] += want.a[d] - kd3->ks[plan[i]].a[d];
     }

@@ -112,11 +112,12 @@ static int any_output_successful = 0;
 #define CH_MEMORY		11
 #define CH_GAMMA		12
 #define CH_RESIZE_METHOD	13
+#define CH_SCALE_COLORS		14
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
   "colormap size", "dither", "colormap", "colormap method",
   "background", "color transformation", "resize", "memory conservation",
-  "gamma", "resize method"
+  "gamma", "resize method", "resize colors"
 };
 
 
@@ -189,6 +190,7 @@ static const char *output_option_types[] = {
 #define GAMMA_OPT		368
 #define GRAY_OPT		369
 #define RESIZE_METHOD_OPT	370
+#define RESIZE_COLORS_OPT	371
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -280,6 +282,7 @@ const Clp_Option options[] = {
   { "resize-fi", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resize-f", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resize-method", 0, RESIZE_METHOD_OPT, RESIZE_METHOD_TYPE, 0 },
+  { "resize-colors", 0, RESIZE_COLORS_OPT, Clp_ValInt, Clp_Negate },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
@@ -302,6 +305,7 @@ const Clp_Option options[] = {
   { "same-transparent", 0, SAME_TRANSPARENT_OPT, 0, 0 },
   { "scale", 0, SCALE_OPT, SCALE_FACTOR_TYPE, Clp_Negate },
   { "scale-method", 0, RESIZE_METHOD_OPT, RESIZE_METHOD_TYPE, 0 },
+  { "scale-colors", 0, RESIZE_COLORS_OPT, Clp_ValInt, Clp_Negate },
   { "screen", 0, LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "sinfo", 0, SIZE_INFO_OPT, 0, Clp_Negate },
   { "size-info", 0, SIZE_INFO_OPT, 0, Clp_Negate },
@@ -918,18 +922,19 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
 			     compress_immediately, &huge_stream);
 
   if (out) {
-    if (active_output_data.scaling == GT_SCALING_RESIZE)
-      resize_stream(out, active_output_data.resize_width,
-		    active_output_data.resize_height,
-                    0, active_output_data.scale_method);
-    else if (active_output_data.scaling == GT_SCALING_SCALE)
-      resize_stream(out, active_output_data.scale_x * out->screen_width,
-		    active_output_data.scale_y * out->screen_height,
-                    0, active_output_data.scale_method);
-    else if (active_output_data.scaling == GT_SCALING_RESIZE_FIT)
-      resize_stream(out, active_output_data.resize_width,
-		    active_output_data.resize_height,
-                    1, active_output_data.scale_method);
+    double w, h;
+    if (active_output_data.scaling == GT_SCALING_SCALE) {
+      w = active_output_data.scale_x * out->screen_width;
+      h = active_output_data.scale_y * out->screen_height;
+    } else {
+      w = active_output_data.resize_width;
+      h = active_output_data.resize_height;
+    }
+    if (active_output_data.scaling != GT_SCALING_NONE)
+      resize_stream(out, w, h,
+                    active_output_data.scaling == GT_SCALING_RESIZE_FIT,
+                    active_output_data.scale_method,
+                    active_output_data.scale_colors);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -1166,6 +1171,7 @@ initialize_def_frame(void)
   def_output_data.optimizing = 0;
   def_output_data.scaling = GT_SCALING_NONE;
   def_output_data.scale_method = SCALE_METHOD_MIX;
+  def_output_data.scale_colors = 0;
 
   def_output_data.conserve_memory = 0;
 
@@ -1226,6 +1232,11 @@ combine_output_options(void)
   if (CHANGED(recent, CH_RESIZE_METHOD)) {
     MARK_CH(output, CH_RESIZE_METHOD);
     active_output_data.scale_method = def_output_data.scale_method;
+  }
+
+  if (CHANGED(recent, CH_SCALE_COLORS)) {
+    MARK_CH(output, CH_SCALE_COLORS);
+    active_output_data.scale_colors = def_output_data.scale_colors;
   }
 
   COMBINE_ONE_OUTPUT_OPTION(CH_MEMORY, conserve_memory);
@@ -1864,6 +1875,15 @@ main(int argc, char *argv[])
     case RESIZE_METHOD_OPT:
       MARK_CH(output, CH_RESIZE_METHOD);
       def_output_data.scale_method = clp->val.i;
+      break;
+
+    case RESIZE_COLORS_OPT:
+      MARK_CH(output, CH_SCALE_COLORS);
+      def_output_data.scale_colors = clp->negated ? 0 : clp->val.i;
+      if (def_output_data.scale_colors > 256) {
+        error(0, "%s can be at most 256", Clp_CurOptionName(clp));
+        def_output_data.scale_colors = 256;
+      }
       break;
 
       /* RANDOM OPTIONS */

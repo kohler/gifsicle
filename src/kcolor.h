@@ -57,6 +57,13 @@ static inline kcolor kc_makegfcg(const Gif_Color* gfc) {
     return kc_make8g(gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
 }
 
+/* return transparency */
+static inline kacolor kac_transparent() {
+    kacolor x;
+    x.a[0] = x.a[1] = x.a[2] = x.a[3] = 0;
+    return x;
+}
+
 /* return a hex color string definition for `x` */
 const char* kc_debug_str(kcolor x);
 
@@ -162,13 +169,15 @@ void kd3_build(kd3_tree* kd3);
 void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
                     const Gif_Colormap* gfcm);
 
-/* return the index of the color in `*kd3` closest to `k`. */
-int kd3_closest_transformed(const kd3_tree* kd3, const kcolor* k);
+/* return the index of the color in `*kd3` closest to `k`.
+   if `dist!=NULL`, store the distance from `k` to that index in `*dist`. */
+int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
+                            unsigned* dist);
 
 /* given 8-bit color `a0/a1/a2` (RGB), gamma-transform it, transform it by
    `kd3->transform` if necessary, and return the index of the color in
    `*kd3` closest to it. */
-int kd3_closest8g(const kd3_tree* kd3, int a0, int a1, int a2);
+int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2);
 
 /* disable color index `i` in `*kd3`: it will never be returned by
    `kd3_closest*` */
@@ -196,12 +205,39 @@ typedef struct kchist {
 } kchist;
 
 void kchist_init(kchist* kch);
-void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp);
 void kchist_cleanup(kchist* kch);
+void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp);
+void kchist_add(kchist* kch, kcolor color, unsigned count);
 void kchist_compress(kchist* kch);
+
+
+typedef struct {
+    kchist* kch;
+    int* closest;
+    uint32_t* min_dist;
+    uint32_t* min_dither_dist;
+    int* chosen;
+    int nchosen;
+} kcdiversity;
+
+void kcdiversity_init(kcdiversity* div, kchist* kch, int dodither);
+void kcdiversity_cleanup(kcdiversity* div);
+int kcdiversity_find_popular(kcdiversity* div);
+int kcdiversity_find_diverse(kcdiversity* div, double ditherweight);
+int kcdiversity_choose(kcdiversity* div, int chosen, int dodither);
+
 
 Gif_Colormap* colormap_blend_diversity(kchist* kch, Gt_OutputData* od);
 Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
 Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
+
+
+typedef struct scale_color {
+    double a[4];
+} scale_color;
+
+static inline void sc_clear(scale_color* x) {
+    x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
+}
 
 #endif
