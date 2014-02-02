@@ -1,6 +1,6 @@
 /* -*- mode: c; c-basic-offset: 2 -*- */
 /* gifwrite.c - Functions to write GIFs.
-   Copyright (C) 1997-2013 Eddie Kohler, kohler@cs.ucla.edu
+   Copyright (C) 1997-2014 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
