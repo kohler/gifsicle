@@ -1,0 +1,25 @@
+%script
+gifsicle -I < x.gif
+gifsicle x.gif | gifsicle -I
+gifsicle --scale=2 x.gif | gifsicle -I
+
+%file -e x.gif
+R0lGODlhAgACAHAAACH5BAEBAAAALAAAAAACAAIAAAIChFEAOw==
+
+%expect stdout
+* <stdin> 1 image
+  logical screen 2x2
+  + image #0 2x2 transparent 0
+    delay 0.01s
+* <stdin> 1 image
+  logical screen 2x2
+  global color table [2]
+  background 0
+  + image #0 2x2 transparent 0
+    delay 0.01s
+* <stdin> 1 image
+  logical screen 4x4
+  global color table [2]
+  background 0
+  + image #0 4x4 transparent 0
+    delay 0.01s
