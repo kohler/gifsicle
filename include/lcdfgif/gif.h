@@ -135,6 +135,7 @@ int		Gif_ImageNumber(Gif_Stream *gfs, Gif_Image *gfi);
 #define		Gif_ImageDelay(gfi)		((gfi)->delay)
 #define		Gif_ImageUserData(gfi)		((gfi)->userdata)
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
+int             Gif_ImageColorBound(const Gif_Image* gfi);
 
 typedef		void (*Gif_ReadErrorHandler)(int is_error,
 					     const char *error_text,

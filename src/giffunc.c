@@ -194,6 +194,16 @@ Gif_RemoveImage(Gif_Stream *gfs, int inum)
 
 
 int
+Gif_ImageColorBound(const Gif_Image* gfi)
+{
+    if (gfi->compressed)
+        return 1 << gfi->compressed[0];
+    else
+        return 256;
+}
+
+
+int
 Gif_AddCommentTake(Gif_Comment *gfcom, char *x, int xlen)
 {
   if (gfcom->count >= gfcom->cap) {

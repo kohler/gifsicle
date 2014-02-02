@@ -112,66 +112,70 @@ find_color_index(Gif_Color *c, int nc, Gif_Color *color)
 int
 merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 {
-  Gif_Color *srccol = src->col;
-  Gif_Color *destcol = dest->col;
-  int ndestcol = dest->ncol;
-  int dest_userflags = dest->userflags;
-  int i, x;
-  int trivial_map = 1;
+    Gif_Color *srccol;
+    Gif_Color *destcol = dest->col;
+    int ndestcol = dest->ncol;
+    int dest_userflags = dest->userflags;
+    int i, x;
+    int trivial_map = 1;
 
-  for (i = 0; i < src->ncol; i++) {
-    if (srccol[i].haspixel & 1) {
-      /* Store an image color cell's mapping to the global colormap in its
-	 'pixel' slot. This is useful caching: oftentimes many input frames
-	 will share a colormap */
-      int mapto = (srccol[i].pixel < 256 ? (int)srccol[i].pixel : -1);
+    if (!src)
+        return 1;
 
-      if (mapto == -1)
-	mapto = find_color_index(destcol, ndestcol, &srccol[i]);
+    srccol = src->col;
+    for (i = 0; i < src->ncol; i++) {
+        if (srccol[i].haspixel & 1) {
+            /* Store an image color cell's mapping to the global colormap in
+               its 'pixel' slot. This is useful caching: oftentimes many
+               input frames will share a colormap */
+            int mapto = (srccol[i].pixel < 256 ? (int)srccol[i].pixel : -1);
 
-      if (mapto == -1 && ndestcol < 256) {
-	/* add the color */
-	mapto = ndestcol;
-	destcol[mapto] = srccol[i];
-	ndestcol++;
-      }
+            if (mapto == -1)
+                mapto = find_color_index(destcol, ndestcol, &srccol[i]);
 
-      if (mapto == -1)
-	/* check for a pure-transparent color */
-	for (x = 0; x < ndestcol; x++)
-	  if (destcol[x].haspixel == 2) {
-	    mapto = x;
-	    destcol[mapto] = srccol[i];
-	    break;
-	  }
+            if (mapto == -1 && ndestcol < 256) {
+                /* add the color */
+                mapto = ndestcol;
+                destcol[mapto] = srccol[i];
+                ndestcol++;
+            }
 
-      if (mapto == -1)
-	/* give up and require a local colormap */
-	goto local_colormap_required;
+            if (mapto == -1)
+                /* check for a pure-transparent color */
+                for (x = 0; x < ndestcol; x++)
+                    if (destcol[x].haspixel == 2) {
+                        mapto = x;
+                        destcol[mapto] = srccol[i];
+                        break;
+                    }
 
-      assert(mapto >= 0 && mapto < ndestcol);
-      assert(GIF_COLOREQ(&destcol[mapto], &srccol[i]));
+            if (mapto == -1)
+                /* give up and require a local colormap */
+                goto local_colormap_required;
 
-      srccol[i].pixel = mapto;
-      destcol[mapto].haspixel = 1;
-      if (mapto != i)
-	trivial_map = 0;
+            assert(mapto >= 0 && mapto < ndestcol);
+            assert(GIF_COLOREQ(&destcol[mapto], &srccol[i]));
 
-    } else if (srccol[i].haspixel & 2) {
-      /* a dedicated transparent color; if trivial_map & at end of colormap
-         insert it with haspixel == 2. (strictly not necessary; we do it to
-	 try to keep the map trivial.) */
-      if (trivial_map && i == ndestcol) {
-	destcol[ndestcol] = srccol[i];
-	ndestcol++;
-      }
+            srccol[i].pixel = mapto;
+            destcol[mapto].haspixel = 1;
+            if (mapto != i)
+                trivial_map = 0;
+
+        } else if (srccol[i].haspixel & 2) {
+            /* a dedicated transparent color; if trivial_map & at end of
+               colormap insert it with haspixel == 2. (strictly not
+               necessary; we do it to try to keep the map trivial.) */
+            if (trivial_map && i == ndestcol) {
+                destcol[ndestcol] = srccol[i];
+                ndestcol++;
+            }
+        }
     }
-  }
 
-  /* success! save new number of colors */
-  dest->ncol = ndestcol;
-  dest->userflags = dest_userflags;
-  return 1;
+    /* success! save new number of colors */
+    dest->ncol = ndestcol;
+    dest->userflags = dest_userflags;
+    return 1;
 
   /* failure: a local colormap is required */
  local_colormap_required:
@@ -230,80 +234,81 @@ merge_comments(Gif_Comment *destc, Gif_Comment *srcc)
 }
 
 
+static void merge_image_input_colors(uint8_t* inused, const Gif_Image* srci) {
+    int i, x, y, nleft = Gif_ImageColorBound(srci);
+    for (i = 0; i != 256; ++i)
+        inused[i] = 0;
+    for (y = 0; y != srci->height && nleft > 0; ++y) {
+        const uint8_t* data = srci->img[y];
+        for (x = 0; x != srci->width; ++x, ++data) {
+            nleft -= 1 - inused[*data];
+            inused[*data] = 1;
+        }
+    }
+    if (srci->transparent >= 0)
+        inused[srci->transparent] = 0;
+}
+
+
 Gif_Image *
 merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
 	    Gt_Frame* srcfr, int same_compressed_ok)
 {
   Gif_Colormap *imagecm;
-  Gif_Color *imagecol;
-  int islocal;
   int i;
   Gif_Colormap *localcm = 0;
   Gif_Colormap *destcm = dest->global;
 
   uint8_t map[256];		/* map[input pixel value] == output pixval */
-  int trivial_map = 1;		/* does the map take input pixval --> the same
+  int trivial_map;		/* does the map take input pixval --> the same
 				   pixel value for all colors in the image? */
+  uint8_t inused[256];          /* inused[input pival] == 1 iff used */
   uint8_t used[256];		/* used[output pixval K] == 1 iff K was used
 				   in the image */
 
   Gif_Image *desti;
 
   /* mark colors that were actually used in this image */
-  islocal = srci->local != 0;
-  imagecm = islocal ? srci->local : src->global;
-  if (!imagecm)
-      fatal_error("%s: no global or local colormap", srcfr->input_filename);
-  imagecol = imagecm->col;
-  {
-      int ncol = imagecm->ncol, nleft = 256 - ncol;
-      int w = srci->width, h = srci->height, i, j;
-      for (i = 0; i != ncol; ++i)
-          imagecol[i].haspixel &= ~4;
-      for (j = 0; j != h; ++j) {
-          uint8_t *data = srci->img[j];
-          for (i = 0; i != w; ++i, ++data)
-              if (*data < ncol && !(imagecol[*data].haspixel & 4)) {
-                  imagecol[*data].haspixel |= 4;
-                  --nleft;
-                  if (nleft == 0)
-                      goto done_mark;
-              }
+  imagecm = srci->local ? srci->local : src->global;
+  merge_image_input_colors(inused, srci);
+  for (i = imagecm ? imagecm->ncol : 0; i != 256; ++i)
+      if (inused[i]) {
+          warning(0, "%s: some colors undefined by colormap", srcfr->input_filename);
+          break;
       }
-  done_mark:
-      if (srci->transparent >= 0 && srci->transparent < ncol)
-          imagecol[srci->transparent].haspixel &= ~4;
-  }
 
   /* map[old_pixel_value] == new_pixel_value */
   for (i = 0; i < 256; i++)
-    map[i] = used[i] = 0;
+      map[i] = used[i] = 0;
 
   /* Merge the colormap */
   if (merge_colormap_if_possible(dest->global, imagecm)) {
-    /* Create 'map' and 'used' for global colormap. */
-    for (i = 0; i < imagecm->ncol; i++)
-      if (imagecol[i].haspixel & 4) {
-	map[i] = imagecol[i].pixel;
-	if (map[i] != i)
-            trivial_map = 0;
-	used[map[i]] = 1;
-      }
+      /* Create 'map' and 'used' for global colormap. */
+      for (i = 0; i != 256; ++i)
+          if (inused[i]) {
+              if (imagecm && i < imagecm->ncol)
+                  map[i] = imagecm->col[i].pixel;
+              else
+                  map[i] = 0;
+          }
 
   } else {
-    /* Need a local colormap. */
-    int ncol = 0;
-    destcm = localcm = Gif_NewFullColormap(0, 256);
-    for (i = 0; i < imagecm->ncol; i++)
-      if (imagecol[i].haspixel & 4) {
-	map[i] = ncol;
-	if (ncol != i)
-            trivial_map = 0;
-        used[ncol] = 1;
-	localcm->col[ ncol++ ] = imagecol[i];
-      }
-    localcm->ncol = ncol;
+      /* Need a local colormap. */
+      destcm = localcm = Gif_NewFullColormap(0, 256);
+      for (i = 0; i != 256; ++i)
+          if (inused[i]) {
+              map[i] = localcm->ncol;
+              localcm->col[localcm->ncol] = imagecm->col[i];
+              ++localcm->ncol;
+          }
   }
+
+  trivial_map = 1;
+  for (i = 0; i != 256; ++i)
+      if (inused[i]) {
+          used[map[i]] = 1;
+          trivial_map = trivial_map && map[i] == i;
+      }
 
   /* Decide on a transparent index */
   if (srci->transparent >= 0) {
@@ -325,8 +330,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
       /* 1.Aug.1999 - Don't update destcm->ncol -- we want the output colormap
          to be as small as possible. */
       c = &destcm->col[found_transparent];
-      if (srci->transparent < imagecm->ncol)
-	*c = imagecol[srci->transparent];
+      if (imagecm && srci->transparent < imagecm->ncol)
+	*c = imagecm->col[srci->transparent];
       c->haspixel = 2;
       assert(c->haspixel == 2 && found_transparent < 256);
     }
