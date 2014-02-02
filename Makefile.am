@@ -57,7 +57,7 @@ dist-ungif: dist
 	GZIP=$(GZIP_ENV) $(AMTAR) chozf ungifsicle-$(VERSION).tar.gz ungifsicle-$(VERSION)
 	rm -rf ungifsicle-$(VERSION)
 
-test:
+check:
 	$(top_srcdir)/test/testie -p $(top_builddir)/src $(top_srcdir)/test
 
-.PHONY: srclinks versionize rpm dist-ungif rpm-ungif test
+.PHONY: srclinks versionize rpm dist-ungif rpm-ungif check
