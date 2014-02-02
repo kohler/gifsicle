@@ -1585,7 +1585,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 	|| fr->flip_horizontal || fr->flip_vertical || fr->rotation)
       same_compressed_ok = 0;
 
-    desti = merge_image(dest, fr->stream, srci, same_compressed_ok);
+    desti = merge_image(dest, fr->stream, srci, fr, same_compressed_ok);
 
     srci->transparent = old_transp; /* restore real transparent value */
 

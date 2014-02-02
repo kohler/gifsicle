@@ -232,7 +232,7 @@ merge_comments(Gif_Comment *destc, Gif_Comment *srcc)
 
 Gif_Image *
 merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
-	    int same_compressed_ok)
+	    Gt_Frame* srcfr, int same_compressed_ok)
 {
   Gif_Colormap *imagecm;
   Gif_Color *imagecol;
@@ -253,7 +253,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   islocal = srci->local != 0;
   imagecm = islocal ? srci->local : src->global;
   if (!imagecm)
-    fatal_error("no global or local colormap for source image");
+      fatal_error("%s: no global or local colormap", srcfr->input_filename);
   imagecol = imagecm->col;
   {
       int ncol = imagecm->ncol, nleft = 256 - ncol;

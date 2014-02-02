@@ -202,8 +202,8 @@ int	merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 extern int warn_local_colormaps;
 void	merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void	merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
-Gif_Image *merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
-		       int same_compressed_ok);
+Gif_Image* merge_image(Gif_Stream* dest, Gif_Stream* src, Gif_Image* srci,
+		       Gt_Frame* srcfr, int same_compressed_ok);
 
 void	optimize_fragments(Gif_Stream *, int optimizeness, int huge_stream);
 
