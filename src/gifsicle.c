@@ -654,7 +654,7 @@ input_stream(const char *name)
   /* special processing for components after the first */
   if (componentno > 1) {
     if (mode == BATCHING || mode == INSERTING)
-      fatal_error("%s: --multifile is useful only in merge mode");
+      fatal_error("--multifile is useful only in merge mode");
     input_done();
   }
 
