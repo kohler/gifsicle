@@ -321,6 +321,12 @@ int Clp_CurOptionNameBuf(Clp_Parser *clp, char *buf, int len);
 /** @brief Extract the current option as a string. */
 const char *Clp_CurOptionName(Clp_Parser *clp);
 
+/** @brief Test if the current option had long name @a name. */
+int Clp_IsLong(Clp_Parser *clp, const char *long_name);
+
+/** @brief Test if the current option had short name @a name. */
+int Clp_IsShort(Clp_Parser *clp, int short_name);
+
 #undef CLP_SENTINEL
 #ifdef __cplusplus
 }

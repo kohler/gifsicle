@@ -2450,6 +2450,22 @@ Clp_CurOptionName(Clp_Parser *clp)
     return buf;
 }
 
+int
+Clp_IsLong(Clp_Parser *clp, const char *long_name)
+{
+    Clp_Internal *cli = clp->internal;
+    int optno = cli->current_option;
+    return optno >= 0 && strcmp(cli->opt[optno].long_name, long_name) == 0;
+}
+
+int
+Clp_IsShort(Clp_Parser *clp, int short_name)
+{
+    Clp_Internal *cli = clp->internal;
+    int optno = cli->current_option;
+    return optno >= 0 && cli->opt[optno].short_name == short_name;
+}
+
 #ifdef __cplusplus
 }
 #endif
