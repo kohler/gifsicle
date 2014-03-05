@@ -217,7 +217,8 @@ Whole-GIF options: Also --no-OPTION.\n\
   printf("\
       --resize WxH              Resize the output GIF to WxH.\n\
       --resize-width W          Resize to width W and proportional height.\n\
-      --resize-height H         Resize to height H and proportional width.\n");
+      --resize-height H         Resize to height H and proportional width.\n\
+      --resize-fit WxH          Resize if necessary to fit within WxH.\n");
   printf("\
       --scale XFACTOR[xYFACTOR] Scale the output GIF by XFACTORxYFACTOR.\n\
       --resize-method METHOD    Set resizing method.\n\
