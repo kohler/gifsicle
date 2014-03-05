@@ -20,6 +20,10 @@
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
+#ifndef M_PI
+/* -std=c89 does not define M_PI */
+# define M_PI		3.14159265358979323846
+#endif
 
 
 /******
