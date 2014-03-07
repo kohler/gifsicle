@@ -882,7 +882,15 @@ pixels wide without changing its aspect ratio. An analogous operation is
 performed for
 .RI _x height .
 Resizing happens after all input frames have been combined and before
-optimization. See also
+optimization. Resizing uses logical screen dimensions; if
+the input stream has an unusual logical screen (many GIF displayers ignore
+logical screens), you may want to provide
+.Op \-\-no\-logical\-screen
+(or
+.Op +S )
+to reset it so
+.B gifsicle
+uses image dimensions instead. See also
 .Op \-\-resize\-method .
 '
 .Sp
@@ -946,7 +954,7 @@ optimization.
 Set the method used to resize images. The \(oqsample\(cq method runs
 very quickly, but when shrinking images, it produces noisy results.
 The \(oqmix\(cq method is somewhat slower, but produces better-looking
-results. The default method, a good tradeoff for most images, is
+results. The default method is
 currently \(oqmix\(cq.
 .RS
 .Sp
@@ -966,10 +974,10 @@ produces somewhat blurrier results, but avoids such anomalies.
 .Sp
 .PP
 Gifsicle also supports several complex resamplers, including
-Catmull-Rom cubic resampling (\(oqcatrom\(cq), Mitchell-Netravali
+Catmull-Rom cubic resampling (\(oqcatrom\(cq), the Mitchell-Netravali
 filter (\(oqmitchell\(cq), a 2-lobed Lanczos filter
 (\(oqlanczos2\(cq), and a 3-lobed Lanczos filter (\(oqlanczos3\(cq).
-These filters are slower, but can give sharper, better results.
+These filters are slower still, but can give sharper, better results.
 .RE
 '
 .Sp
