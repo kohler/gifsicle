@@ -346,7 +346,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 
     /* Special processing if code == next_code: we didn't know code's final
        suffix when we called one_code, but we do now. */
-    if (code == next_code)
+    /* 7.Mar.2014 -- Avoid error if image has zero width/height. */
+    if (code == next_code && gfc->decodepos)
       gfc->image[gfc->decodepos - 1] = gfc->suffix[next_code];
 
     /* Increment next_code except for the 'clear_code' special case (that's

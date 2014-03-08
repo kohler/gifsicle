@@ -403,7 +403,8 @@ Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 		      int left, int top, int width, int height)
 {
   Pixmap pixmap =
-    XCreatePixmap(gfx->display, gfx->drawable, width, height, gfx->depth);
+    XCreatePixmap(gfx->display, gfx->drawable,
+                  width ? width : 1, height ? height : 1, gfx->depth);
   if (pixmap) {
     if (put_sub_image_colormap(gfx, gfi, gfcm, left, top, width, height,
 			       pixmap, 0, 0))
@@ -516,7 +517,8 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
 
   /* Create the pixmap */
   pixmap =
-    XCreatePixmap(gfx->display, gfx->drawable, width, height, 1);
+    XCreatePixmap(gfx->display, gfx->drawable,
+                  width ? width : 1, height ? height : 1, 1);
   if (!gfx->mask_gc)
     gfx->mask_gc = XCreateGC(gfx->display, pixmap, 0, 0);
 
