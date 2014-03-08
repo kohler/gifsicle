@@ -227,7 +227,11 @@ gfc_define(Gif_CodeTable *gfc, Gif_Node *work_node, uint8_t suffix,
 static inline const uint8_t *
 gif_imageline(Gif_Image *gfi, unsigned pos)
 {
-  unsigned y = pos / gfi->width, x = pos - y * gfi->width;
+  unsigned y, x;
+  if (gfi->width == 0)
+    return NULL;
+  y = pos / gfi->width;
+  x = pos - y * gfi->width;
   if (y == (unsigned) gfi->height)
     return NULL;
   else if (!gfi->interlace)

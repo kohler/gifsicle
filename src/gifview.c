@@ -732,8 +732,8 @@ create_viewer_window(Gt_Viewer *viewer, int w, int h)
   XSizeHints *sizeh = XAllocSizeHints(); /* sets all fields to 0 */
 
   /* Set the window's geometry */
-  sizeh->width = w;
-  sizeh->height = h;
+  sizeh->width = w ? w : 1;
+  sizeh->height = h ? h : 1;
   if (cur_geometry_spec) {
     int scr_width = DisplayWidth(viewer->display, viewer->screen_number);
     int scr_height = DisplayHeight(viewer->display, viewer->screen_number);
