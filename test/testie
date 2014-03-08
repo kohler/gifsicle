@@ -726,13 +726,15 @@ sub output_error ($$$$) {
 	return $tctr;
     }
 
-    my($errortext, $t, $lineno, $failure) = ('');
+    my($errortext, $subtest, $t, $lineno, $failure) = ('', '');
     while ($t = <ERR>) {
 	if ($t =~ /^testie_lineno:(.*)$/) {
 	    $lineno = $1;
 	    $errortext = '';
 	} elsif ($t =~ /^testie_failure:(.*)$/) {
 	    $failure = $1;
+        } elsif ($t =~ /^testie_subtest (.*)$/) {
+            $subtest = " subtest $1";
 	} else {
 	    $errortext .= $t;
 	}
@@ -763,6 +765,7 @@ sub output_error ($$$$) {
     # exit early if quiet
     return $tctr if $tt->{$script_type . '_quietline'}->{$lineno} && $::verbose <= 0;
 
+    $lineno .= $subtest;
     if ($errortext =~ /^testie_error:/) {
 	while ($errortext =~ /^testie_error:([^\n]*)/g) {
 	    $tt->eh->message($lineno, ": ", $1, "\n");
