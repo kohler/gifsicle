@@ -268,7 +268,7 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
   uint8_t *xdata;
 
   int i, j, k;
-  int bytes_per_line;
+  size_t bytes_per_line;
 
   unsigned long saved_transparent = 0;
   int release_uncompressed = 0;
@@ -461,7 +461,7 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
 
   int i, j;
   int transparent;
-  int bytes_per_line;
+  size_t bytes_per_line;
   int release_uncompressed = 0;
 
   /* Find the correct image */

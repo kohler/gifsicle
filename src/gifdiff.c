@@ -39,7 +39,7 @@ static const char *program_name;
 static const char *filename1;
 static const char *filename2;
 
-static int screen_width, screen_height;
+static unsigned screen_width, screen_height;
 #define TRANSP (0)
 
 static uint16_t *gdata[2];
@@ -252,6 +252,13 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
       || s1->screen_height != s2->screen_height) {
     different("screen sizes differ: <%dx%d >%dx%d", s1->screen_width,
 	      s1->screen_height, s2->screen_width, s2->screen_height);
+    return DIFFERENT;
+  }
+
+  if (s1->screen_width == 0 || s1->screen_height == 0
+      || s2->screen_width == 0 || s2->screen_height == 0) {
+    /* paranoia -- don't think this can happen */
+    different("zero screen sizes");
     return DIFFERENT;
   }
 

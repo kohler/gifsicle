@@ -310,7 +310,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
   int width = gfi->width;
   int height = gfi->height;
   uint8_t **img = gfi->img;
-  uint8_t *new_data = Gif_NewArray(uint8_t, width * height);
+  uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) width * height);
   uint8_t *trav = new_data;
 
   /* this function can only rotate by 90 or 270 degrees */

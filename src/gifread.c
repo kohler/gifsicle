@@ -507,7 +507,7 @@ uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
   gfc->width = gfi->width;
   gfc->height = gfi->height;
   gfc->image = gfi->image_data;
-  gfc->maximage = gfi->image_data + gfi->width * gfi->height;
+  gfc->maximage = gfi->image_data + (unsigned) gfi->width * (unsigned) gfi->height;
   read_image_data(gfc, grr);
   return 1;
 }

@@ -72,7 +72,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 {
   int have[257];
   int transparent = -1;
-  int size = gfs->screen_width * gfs->screen_height;
+  unsigned pos, size = gfs->screen_width * gfs->screen_height;
   uint16_t *move;
   int i;
 
@@ -80,7 +80,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
   assert(TRANSPARENT == 256);
   for (i = 0; i < 257; i++)
     have[i] = 0;
-  for (i = 0, move = screen; i < size; i++, move++)
+  for (pos = 0, move = screen; pos != size; ++pos, move++)
     have[*move] = 1;
 
   /* the new transparent color is a color unused in either */
@@ -99,7 +99,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 
   /* map the wide image onto the new data */
   *used_transparent = 0;
-  for (i = 0, move = screen; i < size; i++, move++, new_data++)
+  for (pos = 0, move = screen; pos != size; ++pos, move++, new_data++)
     if (*move == TRANSPARENT) {
       *new_data = transparent;
       *used_transparent = 1;
@@ -117,7 +117,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 static int
 unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
-  int size = gfs->screen_width * gfs->screen_height;
+  unsigned size = gfs->screen_width * gfs->screen_height;
   int used_transparent;
   uint8_t *new_data = Gif_NewArray(uint8_t, size);
   uint16_t *new_screen = screen;
@@ -177,7 +177,8 @@ int
 Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
 {
   int ok = 1;
-  int i, size;
+  int i;
+  unsigned pos, size;
   uint16_t *screen;
   uint16_t background;
   Gif_Image *gfi;
@@ -195,8 +196,8 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
   screen = Gif_NewArray(uint16_t, size);
   gfi = gfs->images[0];
   background = gfi->transparent >= 0 ? TRANSPARENT : gfs->background;
-  for (i = 0; i < size; i++)
-    screen[i] = background;
+  for (pos = 0; pos != size; ++pos)
+    screen[pos] = background;
 
   for (i = 0; i < gfs->nimages; i++)
     if (!unoptimize_image(gfs, gfs->images[i], screen))
