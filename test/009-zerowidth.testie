@@ -1,0 +1,68 @@
+%script
+gifsicle zerowidth-ok.gif | gifsicle -I
+
+%file -e zerowidth-ok.gif
+R0lGODlhgAKQAZECAAAAAKqqqgAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQFDwADACwAAAAA
+AAAAAQAC/oSPqcvtD6OctNqLs968+w+G4kiW5omm6sq27gvH8kzX9o3n+s73/g8MCofEovGITCqX
+zKbzCY1Kp9Sq9YrNarfcrvcLDovH5LL5jE6r1+y2+w2Py+f0uv2Oz+v3/L7/DxgoOEhYaHiImFgT
+wNjIqAgZKenl6Dh5iZmpucnZ6fkJGio6SlpqeoqaqrrK2ur6ChsrO0tba3uLm6u7y9vr+wscLDxM
+XGx8jJysvMzc7PwMHS09TV1tfY2drb3N3e39DR4uPk5ebn6Onq6+zt7u/g4fLz9PX29/j5+vv8/f
+7/8PMKDAgQQLGjyIMKHChQwbOnwIMaLEiRQrWryIMaPG/o0cO3r8CDKkyJEkS5o8iTKlypUsW7p8
+CTOmzJk0a9q8iTOnzp08e/r8CTSo0KFEixo9ijSp0qVMmzp9CjWq1KlUq1q9ijWr1q1cu3r9Cjas
+2LFky5o9izat2rVs27p9Czeu3Ll069q9izev3r18+/r9Cziw4MGECxs+jDix4sWMGzt+DDmy5MmU
+K1u+jDmz5s2cO3v+DDq06NGkS5s+jTq16tWsW7t+DTu27Nm0a9u+jTu37t28e/v+DTy48OHEixs/
+jjy58uXMmzt/Dj269OnUq1u/jj279u3cu3v/Dj68+PHky5s/jz69+vXs27t/Dz++/Pn069u/jz+/
+/v38/vv7/w9ggAIOSGCBBh6IYIIKLshggw4+CGGEEk5IYYUWXohhhhpuyGGHHn4IYogijkhiiSae
+iGKKKq7IYosuvghjjDLOSGONNt6IY4467shjjz7+CGSQQg5JZJFGHolkkkouyWSTTj4JZZRSTkll
+lVZeiWWWWm7JZZdefglmmGKOSWaZZp6JZppqrslmm26+CWeccs5JZ5123olnnnruyWeffv4JaKCC
+DkpooYYeimiiii7KaKOOPgpppJJOSmmlll6Kaaaabsppp55+Cmqooo5Kaqmmnopqqqquymqrrr4K
+a6yyzkprrbbeimuuuu7Ka6++/gpssMIOS2yxxh6LFmyyyi7LbLPOPgtttNJOS2211mpZAAAAIfkE
+BQ8AAwAsAAAOAAgAAgAAAgSEjwkFADs=
+
+%file -e zerowidth-bad.gif
+R0lGODdhQgFCAfcAAAAAAFUAAIAAAKoAANUAAP8AAAArAFUrAIArAKorANUrAP8rAABVAFVVAIBV
+AKpVANVVAP9VAACAAFWAAICAAKqAANWAAP+AAACqAFWqAICqAKqqANWqAP+qAADVAFXVAIDVAKrV
+ANXVAP/VAAD/AFX/AID/AKr/ANX/AP//AAAAVVUAVYAAVaoAVdUAVf8AVQArVVUrVYArVaorVdUr
+Vf8rVQBVVVVVVYBVVapVVdVVVf9VVQCAVVWAVYCAVaqAVdWAVf+AVQCqVVWqVYCqVaqqVdWqVf+q
+VQDVVVXVVYDVVarVVdXVVf/VVQD/VVX/VYD/Var/VdX/Vf//VQAAgFUAgIAAgKoAgNUAgP8AgAAr
+gFUrgIArgKorgNUrgP8rgABVgFVVgIBVgKpVgNVVgP9VgACAgFWAgICAgKqAgNWAgP+AgACqgFWq
+gICqgKqqgNWqgP+qgADVgFXVgIDVgKrVgNXVgP/VgAD/gFX/gID/gKr/gNX/gP//gAAAqlUAqoAA
+qqoAqtUAqv8AqgArqlUrqoArqqorqtUrqv8rqgBVqlVVqoBVqqpVqtVVqv9VqgCAqlWAqoCAqqqA
+qtWAqv+AqgCqqlWqqoCqqqqqqtWqqv+qqgDVqlXVqoDVqqrVqtXVqv/VqgD/qlX/qoD/qqr/qtX/
+qv//qgAA1VUA1YAA1aoA1dUA1f8A1QAr1VUr1YAr1aor1dUr1f8r1QBV1VVV1YBV1apV1dVV1f9V
+1QCA1VWA1YCA1aqA1dWA1f+A1QCq1VWq1YCq1aqq1dWq1f+q1QDV1VXV1YDV1arV1dXV1f/V1QD/
+1VX/1YD/1ar/1dX/1f//1QAA/1UA/4AA/6oA/9UA//8A/wAr/1Ur/4Ar/6or/9Ur//8r/wBV/1VV
+/4BV/6pV/9VV//9V/wCA/1WA/4CA/6qA/9WA//+A/wCq/1Wq/4Cq/6qq/9Wq//+q/wDV/1XV/4DV
+/6rV/9XV///V/wD//1X//4D//6r//9X//z8/P2tra5WVlcPDw////ywAAAAAAABCAQcI/wABCBxI
+sKDBgwgTKlzIsKHDhxAjSpxIsaLFixgt/vuXsaPHjyBDihxJsuTFjQA4mlzJsqXLlzBjJkSpUqbN
+mzhz6pS5sebOn0CDCh16sKdPokiTKl0K0ijTp1CjSkXodKrVq1iBVs3KtavXklu/ih1LNmLYsmjT
+qj2rtq1brmzfyp3LNC7du3h/2s3Lt+/LvX4DCw4JeLDhwxQLI17MWKHixpAjP45MGfHkypgDX87M
+Ge/mzqDffg5NGu3o0qi/nk7NGuvq1rCjvo5NW+ns2riF3s7NW+fu3sB59gxOXPbw4shtH0/OXPfy
+5tB9P49OXTjK6thj/s7O3eH27uBnTv8PT77j9/Loz6Mnr349+PbuucOPj30+fer270PPr585//7I
+/QcgcQIOCFyBBvKGYIK4LcggbQ4+CFuEErJGYYWoXYghaRpuCFqHHnIGYoiYjUgiZSaeCFmKKjLG
+YouWjQfjezLOKF+NNtaHY4747cjjfj7+6F+QQgZIZJEEHonkgUouqWCTTjYIZZQQTknlhFZeaWGW
+WmbIZZccfgnmh2KOKWKZZpaIZpoorsnmim6+6WKccsZ4XZ25vYinV3ruCRedfmoGaKB99UmoVYYe
+KlWiikLFaKN1DQrpXI9OmlSllhKFaabO3clpZ5t+qpekoppGaqlkhYoqTqqualOrrmr/d2qsXcFK
+q0u23spSrrqaxGuvJP0KrEjCDtvUrMYa52mygi7LbKHIPrtUsdKeFG21SFGLbWLXbtvpUd5S2m24
+ozpLrlvanuvduOqyym67r74Lr6zmzpuqvPbiim++u+7Lr6/+/htswAITS3DBx9aLsGsHL2xeww5j
+lK7DEy9cMcIXF5yxwBv/2zG/H+cbsr0jz1syvCe3m7K6K5/bMrkvhxuztzNvWzO2N1ebs7Q786xw
+xFNBDLRGPw/taNFGRwpu0osizfSlTj+tadRSd1o1olRfXa7WTS/NdbZZf+2u12JbXfa0YZ9Nr9rK
+kc22dG6/PbbcU8dNt3V3m5331nvz/9033H/vJHTeg99dON2Hy53424uz3bjaj58dedmTi13515dz
+nbnWm1/dedWfSx3606MzXXrSpxud+tCrA916xK9TnHbghM1O+0exW2z77Q/bzfvAvv9ucPDCJ1z8
+2sf/tXvyE+WO8fLMmwV99A85r/H01DdkPcfYZ7/Q9h537714xI/fvPjmGwQ+yOinT9D6IrfvvkDw
+kyz//PWbfL/7+aO8f/r9U9n/zBdAlg1wfAV02QG9l0CYLTB7DZTZA6kXQZpNMHoVtNkFmZdBnG0w
+eR3U2QePF0KflW9+6zohChlSwme1kFkvTFYMjTXDYdUQWDfsVQ51tcNb9ZBWP4xVEKBdNcRVFRFV
+RyxVEkW1xE81kVNPzFQULTXFSVURUldsVBYVtcVDdZFQXwxUGP00xj2VEU9nrFMa5bTGN7WRTW9M
+UxzNNMcx1RFMd+xSHrW0xyv1kUp/jFIgnTTIJRUSSYcsUiKFtMgfNZJHj8xRJG00yRlVEkaXbFEm
+VaTCFbKQJkYJpShHScpSmvKUqEylKlfJyla68pWwjKUsZ0lLWgakADs=
+
+%stdout
+* <stdin> 2 images
+  logical screen 640x400
+  global color table [2]
+  background 0
+  loop forever
+  + image #0 640x256 transparent 2
+    disposal asis delay 0.15s
+  + image #1 8x2 at 0,14 transparent 2
+    disposal asis delay 0.15s

@@ -52,7 +52,7 @@ typedef struct Gif_Reader {
   int is_record;
   int is_eoi;
   uint8_t (*byte_getter)(struct Gif_Reader *);
-  void (*block_getter)(uint8_t *, uint32_t, struct Gif_Reader *);
+  uint32_t (*block_getter)(uint8_t*, uint32_t, struct Gif_Reader*);
   uint32_t (*offseter)(struct Gif_Reader *);
   int (*eofer)(struct Gif_Reader *);
 
@@ -77,22 +77,23 @@ gifgetunsigned(Gif_Reader *grr)
 static uint8_t
 file_byte_getter(Gif_Reader *grr)
 {
-  int i = getc(grr->f);
-  return i == EOF ? 0 : (uint8_t)i;
+    int i = getc(grr->f);
+    return i == EOF ? 0 : (uint8_t)i;
 }
 
-static void
+static uint32_t
 file_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
 {
-  size_t nread = fread(p, 1, s, grr->f);
-  if (nread < s)
-    memset(p + nread, 0, s - nread);
+    size_t nread = fread(p, 1, s, grr->f);
+    if (nread < s)
+        memset(p + nread, 0, s - nread);
+    return nread;
 }
 
 static uint32_t
 file_offseter(Gif_Reader *grr)
 {
-  return ftell(grr->f);
+    return ftell(grr->f);
 }
 
 static int
@@ -114,15 +115,16 @@ record_byte_getter(Gif_Reader *grr)
   return grr->w ? (grr->w--, *grr->v++) : 0;
 }
 
-static void
+static uint32_t
 record_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
 {
-  uint32_t ncopy = s;
-  if (ncopy > grr->w) ncopy = grr->w;
-  memcpy(p, grr->v, ncopy);
-  grr->w -= ncopy, grr->v += ncopy;
-  if (ncopy < s)
-    memset(p + ncopy, 0, s - ncopy);
+    uint32_t ncopy = (s <= grr->w ? s : grr->w);
+    memcpy(p, grr->v, ncopy);
+    grr->w -= ncopy;
+    grr->v += ncopy;
+    if (ncopy < s)
+        memset(p + ncopy, 0, s - ncopy);
+    return ncopy;
 }
 
 static uint32_t
@@ -347,7 +349,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     /* Special processing if code == next_code: we didn't know code's final
        suffix when we called one_code, but we do now. */
     /* 7.Mar.2014 -- Avoid error if image has zero width/height. */
-    if (code == next_code && gfc->decodepos)
+    if (code == next_code)
       gfc->image[gfc->decodepos - 1] = gfc->suffix[next_code];
 
     /* Increment next_code except for the 'clear_code' special case (that's
@@ -506,7 +508,7 @@ uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
     gfc->width = gfi->width;
     gfc->height = gfi->height;
     gfc->image = gfi->image_data;
-    gfc->maximage = gfi->image_data + gfi->width * gfi->height;
+    gfc->maximage = gfi->image_data + (unsigned) gfi->width * (unsigned) gfi->height;
     read_image_data(gfc, grr);
     return 1;
 }
@@ -559,9 +561,21 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
   gfi->top = gifgetunsigned(grr);
   gfi->width = gifgetunsigned(grr);
   gfi->height = gifgetunsigned(grr);
-  packed = gifgetbyte(grr);
+  /* Mainline GIF processors (Firefox, etc.) process missing width (height)
+     as screen_width (screen_height). */
+  if (gfi->width == 0)
+      gfi->width = gfc->stream->screen_width;
+  if (gfi->height == 0)
+      gfi->height = gfc->stream->screen_height;
+  /* If still zero, error. */
+  if (gfi->width == 0 || gfi->height == 0) {
+      gif_read_error(gfc, 1, "image has zero width and/or height");
+      Gif_MakeImageEmpty(gfi);
+      read_flags = 0;
+  }
   GIF_DEBUG(("<%ux%u>", gfi->width, gfi->height));
 
+  packed = gifgetbyte(grr);
   if (packed & 0x80) { /* have a local color table */
     int ncol = 1 << ((packed & 0x07) + 1);
     gfi->local = read_color_table(ncol, grr);
@@ -709,7 +723,9 @@ read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
   gifgetblock(buffer, len, grr);
 
   /* Read the Netscape loop extension. */
-  if (len == 11 && memcmp(buffer, "NETSCAPE2.0", 11) == 0) {
+  if (len == 11
+      && (memcmp(buffer, "NETSCAPE2.0", 11) == 0
+          || memcmp(buffer, "ANIMEXTS1.0", 11) == 0)) {
 
     len = gifgetbyte(grr);
     if (len == 3) {

@@ -300,7 +300,7 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
         /* if this image has background disposal, count its size towards the
            background's pixel count */
         if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-            nbackground += gfi->width * gfi->height;
+            nbackground += (unsigned) gfi->width * (unsigned) gfi->height;
 
         /* throw out compressed image if necessary */
         if (only_compressed)
@@ -1087,7 +1087,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       d0 = 2, d1 = 0, d2 = 1, d3 = 2;
     }
     data = &gfi->img[j][x];
-    new_data = all_new_data + j * width + x;
+    new_data = all_new_data + j * (unsigned) width + x;
 
     for (i = 0; i < width + 2; i++)
       err1[i].a[0] = err1[i].a[1] = err1[i].a[2] = 0;
@@ -1382,7 +1382,7 @@ static void pow2_ordered_dither(Gif_Image* gfi, uint8_t* all_new_data,
     for (y = 0; y != gfi->height; ++y) {
         uint8_t *data, *new_data, *thisplan;
         data = gfi->img[y];
-        new_data = all_new_data + y * gfi->width;
+        new_data = all_new_data + y * (unsigned) gfi->width;
 
         for (x = 0; x != gfi->width; ++x)
             /* the transparent color never gets adjusted */
@@ -1427,7 +1427,7 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
         for (y = 0; y != gfi->height; ++y) {
             uint8_t *data, *new_data, *thisplan;
             data = gfi->img[y];
-            new_data = all_new_data + y * gfi->width;
+            new_data = all_new_data + y * (unsigned) gfi->width;
 
             for (x = 0; x != gfi->width; ++x)
                 /* the transparent color never gets adjusted */
@@ -1565,7 +1565,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 
     if (gfcm) {
       /* If there was an old colormap, change the image data */
-      uint8_t *new_data = Gif_NewArray(uint8_t, gfi->width * gfi->height);
+      uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) gfi->width * (unsigned) gfi->height);
       uint32_t histogram[256];
       unmark_colors(new_cm);
       unmark_colors(gfcm);
@@ -1598,7 +1598,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       if (gfi->transparent >= 0)
 	/* we don't have data on the number of used colors for transparency
 	   so fudge it. */
-	new_col[gfi->transparent].pixel += gfi->width * gfi->height / 8;
+        new_col[gfi->transparent].pixel += (unsigned) gfi->width * (unsigned) gfi->height / 8;
 
     } else {
       /* Can't compress new_cm afterwards if we didn't actively change colors
@@ -1676,7 +1676,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 	Gif_UncompressImage(gfi);
 
       data = gfi->image_data;
-      for (size = gfi->width * gfi->height; size > 0; size--, data++)
+      for (size = (unsigned) gfi->width * (unsigned) gfi->height; size > 0; size--, data++)
 	*data = map[*data];
       if (gfi->transparent >= 0)
 	gfi->transparent = map[gfi->transparent];

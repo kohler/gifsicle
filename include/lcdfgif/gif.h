@@ -43,8 +43,8 @@ struct Gif_Stream {
     Gif_Colormap *global;
     uint8_t background;
 
-    unsigned screen_width;
-    unsigned screen_height;
+    uint16_t screen_width;
+    uint16_t screen_height;
     long loopcount;		/* -1 means no loop count */
 
     Gif_Comment *comment;
@@ -96,8 +96,8 @@ struct Gif_Image {
     uint16_t left;
     uint16_t top;
 
-    unsigned width;
-    unsigned height;
+    uint16_t width;
+    uint16_t height;
 
     uint8_t interlace;
     uint8_t **img;		/* img[y][x] == image byte (x,y) */
@@ -125,6 +125,7 @@ void		Gif_DeleteImage(Gif_Image *gfi);
 int		Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi);
 void		Gif_RemoveImage(Gif_Stream *gfs, int i);
 Gif_Image *	Gif_CopyImage(Gif_Image *gfi);
+void            Gif_MakeImageEmpty(Gif_Image* gfi);
 
 Gif_Image *	Gif_GetImage(Gif_Stream *gfs, int i);
 Gif_Image *	Gif_GetNamedImage(Gif_Stream *gfs, const char *name);

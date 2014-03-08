@@ -398,7 +398,7 @@ Gif_CopyImage(Gif_Image *src)
   dest->interlace = src->interlace;
   if (src->img) {
     dest->img = Gif_NewArray(uint8_t *, dest->height + 1);
-    dest->image_data = Gif_NewArray(uint8_t, dest->width * dest->height);
+    dest->image_data = Gif_NewArray(uint8_t, (size_t) dest->width * (size_t) dest->height);
     dest->free_image_data = Gif_DeleteArrayFunc;
     if (!dest->img || !dest->image_data)
       goto failure;
@@ -425,6 +425,16 @@ Gif_CopyImage(Gif_Image *src)
  failure:
   Gif_DeleteImage(dest);
   return 0;
+}
+
+
+void Gif_MakeImageEmpty(Gif_Image* gfi) {
+    Gif_ReleaseUncompressedImage(gfi);
+    Gif_ReleaseCompressedImage(gfi);
+    gfi->width = gfi->height = 1;
+    gfi->transparent = 0;
+    Gif_CreateUncompressedImage(gfi, 0);
+    gfi->img[0][0] = 0;
 }
 
 
@@ -779,7 +789,7 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
 int
 Gif_CreateUncompressedImage(Gif_Image *gfi, int data_interlaced)
 {
-    size_t sz = gfi->width * gfi->height;
+    size_t sz = (size_t) gfi->width * (size_t) gfi->height;
     uint8_t *data = Gif_NewArray(uint8_t, sz ? sz : 1);
     return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
                                     data_interlaced);

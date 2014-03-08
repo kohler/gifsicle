@@ -1469,9 +1469,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
   /* decide whether stream is huge */
   {
-    int s;
+    size_t s;
     for (i = s = 0; i < nmerger; i++)
-      s += ((merger[i]->image->width * merger[i]->image->height) / 1024) + 1;
+        s += (((unsigned) merger[i]->image->width
+               * (unsigned) merger[i]->image->height) / 1024) + 1;
     *huge_stream = (s > 200 * 1024); /* 200 MB */
     if (*huge_stream && !compress_immediately) {
       warning(1, "huge GIF, conserving memory (processing may take a while)");
