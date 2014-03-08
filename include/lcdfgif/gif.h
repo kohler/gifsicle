@@ -43,8 +43,8 @@ struct Gif_Stream {
     Gif_Colormap *global;
     uint8_t background;
 
-    uint16_t screen_width;
-    uint16_t screen_height;
+    unsigned screen_width;
+    unsigned screen_height;
     long loopcount;		/* -1 means no loop count */
 
     Gif_Comment *comment;
@@ -96,8 +96,8 @@ struct Gif_Image {
     uint16_t left;
     uint16_t top;
 
-    uint16_t width;
-    uint16_t height;
+    unsigned width;
+    unsigned height;
 
     uint8_t interlace;
     uint8_t **img;		/* img[y][x] == image byte (x,y) */
