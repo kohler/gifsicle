@@ -125,6 +125,7 @@ void		Gif_DeleteImage(Gif_Image *gfi);
 int		Gif_AddImage(Gif_Stream *gfs, Gif_Image *gfi);
 void		Gif_RemoveImage(Gif_Stream *gfs, int i);
 Gif_Image *	Gif_CopyImage(Gif_Image *gfi);
+void            Gif_MakeImageEmpty(Gif_Image* gfi);
 
 Gif_Image *	Gif_GetImage(Gif_Stream *gfs, int i);
 Gif_Image *	Gif_GetNamedImage(Gif_Stream *gfs, const char *name);

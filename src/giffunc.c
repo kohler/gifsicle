@@ -428,6 +428,16 @@ Gif_CopyImage(Gif_Image *src)
 }
 
 
+void Gif_MakeImageEmpty(Gif_Image* gfi) {
+    Gif_ReleaseUncompressedImage(gfi);
+    Gif_ReleaseCompressedImage(gfi);
+    gfi->width = gfi->height = 1;
+    gfi->transparent = 0;
+    Gif_CreateUncompressedImage(gfi);
+    gfi->img[0][0] = 0;
+}
+
+
 /** DELETION **/
 
 typedef struct Gif_DeletionHook {
