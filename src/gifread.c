@@ -708,7 +708,9 @@ read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
   gifgetblock(buffer, len, grr);
 
   /* Read the Netscape loop extension. */
-  if (len == 11 && memcmp(buffer, "NETSCAPE2.0", 11) == 0) {
+  if (len == 11
+      && (memcmp(buffer, "NETSCAPE2.0", 11) == 0
+          || memcmp(buffer, "ANIMEXTS1.0", 11) == 0)) {
 
     len = gifgetbyte(grr);
     if (len == 3) {
