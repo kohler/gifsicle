@@ -1325,10 +1325,6 @@ main(int argc, char *argv[])
   initialize_def_frame();
   Gif_InitCompressInfo(&gif_write_info);
 
-#ifdef DMALLOC
-  dmalloc_verbose("fudge");
-#endif
-
   /* Yep, I'm an idiot.
      GIF dimensions are unsigned 16-bit integers. I assume that these
      numbers will fit in an 'int'. This assertion tests that assumption.
@@ -1937,9 +1933,6 @@ particular purpose.\n");
   if (any_output_successful)
     print_useless_options("output", active_next_output, output_option_types);
   blank_frameset(frames, 0, 0, 1);
-#ifdef DMALLOC
-  dmalloc_report();
-#endif
   Clp_DeleteParser(clp);
   return (error_count ? EXIT_ERR : EXIT_OK);
 }

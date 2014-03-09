@@ -603,8 +603,5 @@ particular purpose.\n");
 
   Gif_DeleteStream(gfs1);
   Gif_DeleteStream(gfs2);
-#ifdef DMALLOC
-  dmalloc_report();
-#endif
   return status;
 }
