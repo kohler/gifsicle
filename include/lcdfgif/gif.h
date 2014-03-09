@@ -303,23 +303,19 @@ void		Gif_Debug(char *x, ...);
 #define		GIF_DEBUG(x)
 #endif
 
+void*           Gif_Realloc(void* p, size_t s, size_t n,
+                            const char* file, int line);
+void            Gif_Free(void* p);
+#if !GIF_ALLOCATOR_DEFINED
+# define        Gif_Free        free
+#endif
+
 #ifndef Gif_New
-# ifndef xmalloc
-#  define xmalloc		malloc
-#  define xrealloc		realloc
-#  define xfree			free
-# endif
-# define Gif_New(t)		((t *)xmalloc(sizeof(t)))
-# define Gif_NewArray(t, n)	((t *)xmalloc(sizeof(t) * (n)))
-# define Gif_ReArray(p, t, n)	((p)=((t*)xrealloc((void*)(p),sizeof(t)*(n))))
-#endif
-#ifndef Gif_DeleteFunc
-# define Gif_DeleteFunc		(&xfree)
-# define Gif_DeleteArrayFunc	(&xfree)
-#endif
-#ifndef Gif_Delete
-# define Gif_Delete(p)		(*Gif_DeleteFunc)((void *)(p))
-# define Gif_DeleteArray(p)	(*Gif_DeleteArrayFunc)((void *)(p))
+# define Gif_New(t)		((t*) Gif_Realloc(0, sizeof(t), 1, __FILE__, __LINE__))
+# define Gif_NewArray(t, n)	((t*) Gif_Realloc(0, sizeof(t), (n), __FILE__, __LINE__))
+# define Gif_ReArray(p, t, n)	((p)=(t*) Gif_Realloc((void*) (p), sizeof(t), (n), __FILE__, __LINE__))
+# define Gif_Delete(p)          Gif_Free((void*) (p))
+# define Gif_DeleteArray(p)     Gif_Free((void*) (p))
 #endif
 
 #ifdef __cplusplus

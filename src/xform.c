@@ -342,7 +342,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
   Gif_ReleaseUncompressedImage(gfi);
   gfi->width = height;
   gfi->height = width;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+  Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 }
 
 

@@ -1412,8 +1412,5 @@ particular purpose.\n");
 
   if (viewers) loop();
 
-#ifdef DMALLOC
-  dmalloc_report();
-#endif
   return 0;
 }

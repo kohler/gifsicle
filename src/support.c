@@ -1042,7 +1042,7 @@ copy_extension(Gif_Extension *src)
     if (!dest) return 0;
     dest->data = Gif_NewArray(uint8_t, src->length);
     dest->length = src->length;
-    dest->free_data = Gif_DeleteArrayFunc;
+    dest->free_data = Gif_Free;
     if (!dest->data) {
         Gif_DeleteExtension(dest);
         return 0;

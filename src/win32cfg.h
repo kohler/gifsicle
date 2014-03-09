@@ -4,9 +4,6 @@
 #ifndef GIFSICLE_CONFIG_H
 #define GIFSICLE_CONFIG_H
 
-/* Define when using the debugging malloc library. */
-/* #undef DMALLOC */
-
 /* Define to the number of arguments to gettimeofday (gifview only). */
 /* #undef GETTIMEOFDAY_PROTO */
 
@@ -129,24 +126,19 @@
 #define popen _popen
 #define pclose _pclose
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Use either the clean-failing malloc library in fmalloc.c, or the debugging
    malloc library in dmalloc.c. */
-#ifdef DMALLOC
-# include "dmalloc.h"
-# define Gif_DeleteFunc		(&debug_free)
-# define Gif_DeleteArrayFunc	(&debug_free)
-#else
-# include <stddef.h>
-# define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
-# define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
-# define xfree			free
+#define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
+#define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
+#define xfree			free
 void *fail_die_malloc(size_t, const char *, int);
 void *fail_die_realloc(void *, size_t, const char *, int);
-#endif
 
 /* Prototype strerror if we don't have it. */
 #ifndef HAVE_STRERROR

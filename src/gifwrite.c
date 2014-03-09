@@ -513,7 +513,7 @@ save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
     if (ok) {
       gfi->compressed = grr->v;
       gfi->compressed_len = grr->pos;
-      gfi->free_compressed = Gif_DeleteArrayFunc;
+      gfi->free_compressed = Gif_Free;
       grr->v = 0;
       grr->cap = 0;
     } else

@@ -365,7 +365,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   if (trivial_map && same_compressed_ok && srci->compressed) {
     desti->compressed_len = srci->compressed_len;
     desti->compressed = Gif_NewArray(uint8_t, srci->compressed_len);
-    desti->free_compressed = Gif_DeleteArrayFunc;
+    desti->free_compressed = Gif_Free;
     memcpy(desti->compressed, srci->compressed, srci->compressed_len);
   } else {
     int i, j;

@@ -149,7 +149,7 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   gfi->width = gfs->screen_width;
   gfi->height = gfs->screen_height;
   gfi->disposal = used_transparent;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+  Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 
   return 1;
 }

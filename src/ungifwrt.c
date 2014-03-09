@@ -473,7 +473,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   }
   gfi->compressed = grr.v;
   gfi->compressed_len = grr.pos;
-  gfi->free_compressed = Gif_DeleteArrayFunc;
+  gfi->free_compressed = Gif_Free;
   Gif_DeleteArray(gfc.rle_next);
   return grr.v != 0;
 }

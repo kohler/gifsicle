@@ -112,18 +112,6 @@ AC_SUBST(OTHERMANS)dnl
 
 
 dnl
-dnl Set up malloc library
-dnl
-
-if test "x$use_dmalloc" = xyes ; then
-  AC_DEFINE(DMALLOC, 1, [Define when using the debugging malloc library.])
-  MALLOC_O=dmalloc.o
-else
-  MALLOC_O=fmalloc.o
-fi
-AC_SUBST(MALLOC_O)
-
-dnl
 dnl Set up `ungif' support
 dnl
 
@@ -204,24 +192,15 @@ fi
 AH_TOP([#ifndef GIFSICLE_CONFIG_H
 #define GIFSICLE_CONFIG_H])
 
-AH_BOTTOM([#ifdef __cplusplus
+AH_BOTTOM([#include <stddef.h>
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Use either the clean-failing malloc library in fmalloc.c, or the debugging
-   malloc library in dmalloc.c. */
-#ifdef DMALLOC
-# include "dmalloc.h"
-# define Gif_DeleteFunc		(&debug_free)
-# define Gif_DeleteArrayFunc	(&debug_free)
-#else
-# include <stddef.h>
-# define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
-# define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
-# define xfree			free
-void *fail_die_malloc(size_t, const char *, int);
-void *fail_die_realloc(void *, size_t, const char *, int);
-#endif
+/* Use the clean-failing malloc library in fmalloc.c. */
+#define GIF_ALLOCATOR_DEFINED   1
+#define Gif_Free free
 
 /* Prototype strerror if we don't have it. */
 #ifndef HAVE_STRERROR

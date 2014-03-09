@@ -34,7 +34,7 @@ const Clp_Option options[] = {
   { "version", 'v', VERSION_OPT, 0, 0 }
 };
 
-static const char *program_name;
+const char *program_name;
 
 static const char *filename1;
 static const char *filename2;
@@ -324,7 +324,7 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     /* compare pixels */
     if (memcmp(gdata[0], gdata[1],
 	       screen_width * screen_height * sizeof(uint16_t)) != 0) {
-      int d, c = screen_width * screen_height;
+      unsigned d, c = screen_width * screen_height;
       uint16_t *d1 = gdata[0], *d2 = gdata[1];
       for (d = 0; d < c; d++, d1++, d2++)
 	if (*d1 != *d2) {
@@ -591,8 +591,5 @@ particular purpose.\n");
 
   Gif_DeleteStream(gfs1);
   Gif_DeleteStream(gfs2);
-#ifdef DMALLOC
-  dmalloc_report();
-#endif
   return status;
 }

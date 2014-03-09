@@ -55,7 +55,7 @@ Gif_NewImage(void)
   gfi->interlace = 0;
   gfi->img = 0;
   gfi->image_data = 0;
-  gfi->free_image_data = Gif_DeleteArrayFunc;
+  gfi->free_image_data = Gif_Free;
   gfi->compressed_len = 0;
   gfi->compressed = 0;
   gfi->free_compressed = 0;
@@ -399,7 +399,7 @@ Gif_CopyImage(Gif_Image *src)
   if (src->img) {
     dest->img = Gif_NewArray(uint8_t *, dest->height + 1);
     dest->image_data = Gif_NewArray(uint8_t, (size_t) dest->width * (size_t) dest->height);
-    dest->free_image_data = Gif_DeleteArrayFunc;
+    dest->free_image_data = Gif_Free;
     if (!dest->img || !dest->image_data)
       goto failure;
     for (i = 0, data = dest->image_data; i < dest->height; i++) {
@@ -414,7 +414,7 @@ Gif_CopyImage(Gif_Image *src)
       dest->compressed = src->compressed;
     else {
       dest->compressed = Gif_NewArray(uint8_t, src->compressed_len);
-      dest->free_compressed = Gif_DeleteArrayFunc;
+      dest->free_compressed = Gif_Free;
       memcpy(dest->compressed, src->compressed, src->compressed_len);
     }
     dest->compressed_len = src->compressed_len;
@@ -791,8 +791,7 @@ Gif_CreateUncompressedImage(Gif_Image *gfi, int data_interlaced)
 {
     size_t sz = (size_t) gfi->width * (size_t) gfi->height;
     uint8_t *data = Gif_NewArray(uint8_t, sz ? sz : 1);
-    return Gif_SetUncompressedImage(gfi, data, Gif_DeleteArrayFunc,
-                                    data_interlaced);
+    return Gif_SetUncompressedImage(gfi, data, Gif_Free, data_interlaced);
 }
 
 void
@@ -805,12 +804,30 @@ Gif_InitCompressInfo(Gif_CompressInfo *gcinfo)
 void
 Gif_Debug(char *x, ...)
 {
-  va_list val;
-  va_start(val, x);
-  vfprintf(stderr, x, val);
-  fputc(' ', stderr);
-  va_end(val);
+    va_list val;
+    va_start(val, x);
+    vfprintf(stderr, x, val);
+    fputc(' ', stderr);
+    va_end(val);
 }
+
+
+#if !GIF_ALLOCATOR_DEFINED
+void* Gif_Realloc(void* p, size_t s, size_t n, const char* file, int line) {
+    (void) file, (void) line;
+    if (s == 0 || n == 0)
+        Gif_Free(p);
+    else if (s == 1 || n == 1 || s <= ((size_t) -1) / n)
+        return realloc(p, s * n);
+    else
+        return (void*) 0;
+}
+
+#undef Gif_Free
+void Gif_Free(void* p) {
+    free(p);
+}
+#endif
 
 #ifdef __cplusplus
 }
