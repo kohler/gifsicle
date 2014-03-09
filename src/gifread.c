@@ -453,7 +453,7 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
       gfi->free_compressed = 0;
     } else {
       gfi->compressed = Gif_NewArray(uint8_t, gfi->compressed_len);
-      gfi->free_compressed = Gif_DeleteArrayFunc;
+      gfi->free_compressed = Gif_Free;
       if (!gfi->compressed) return 0;
       memcpy(gfi->compressed, first, gfi->compressed_len);
     }
@@ -493,7 +493,7 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 
     gfi->compressed = comp;
     gfi->compressed_len = comp_len;
-    gfi->free_compressed = Gif_DeleteArrayFunc;
+    gfi->free_compressed = Gif_Free;
   }
 
   return 1;
@@ -694,7 +694,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char* appname, int applength,
         gfex = Gif_NewExtension(kind, appname, applength);
     if (gfex) {
         gfex->data = data;
-        gfex->free_data = Gif_DeleteArrayFunc;
+        gfex->free_data = Gif_Free;
         gfex->length = data_len;
         gfex->packetized = 1;
         data[data_len] = 0;

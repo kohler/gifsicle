@@ -1646,7 +1646,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       /* version 1.28 bug fix: release any compressed version or it'll cause
          bad images */
       Gif_ReleaseCompressedImage(gfi);
-      Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+      Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 
       if (only_compressed) {
 	Gif_FullCompressImage(gfs, gfi, &gif_write_info);

@@ -336,7 +336,7 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
   Gif_ReleaseUncompressedImage(gfi);
   gfi->width = height;
   gfi->height = width;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+  Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 }
 
 
@@ -399,7 +399,7 @@ scale_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t* xoff, uint16_t* yoff)
   gfi->top = yoff[0];
   gfi->width = new_width;
   gfi->height = new_height;
-  Gif_SetUncompressedImage(gfi, new_data, Gif_DeleteArrayFunc, 0);
+  Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
   if (was_compressed) {
     Gif_FullCompressImage(gfs, gfi, &gif_write_info);
     Gif_ReleaseUncompressedImage(gfi);

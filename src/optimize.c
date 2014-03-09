@@ -1114,7 +1114,7 @@ transp_frame_data(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
        two (or three). */
     Gif_FullCompressImage(gfs, gfi, gcinfo);
     if (t2_data) {
-	Gif_SetUncompressedImage(gfi, t2_data, Gif_DeleteArrayFunc, 0);
+	Gif_SetUncompressedImage(gfi, t2_data, Gif_Free, 0);
         Gif_FullCompressImage(gfs, gfi, gcinfo);
     }
     Gif_ReleaseUncompressedImage(gfi);
@@ -1187,7 +1187,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
     {
       uint8_t *map = prepare_colormap(cur_gfi, opt->needed_colors);
       uint8_t *data = Gif_NewArray(uint8_t, (size_t) cur_gfi->width * (size_t) cur_gfi->height);
-      Gif_SetUncompressedImage(cur_gfi, data, Gif_DeleteArrayFunc, 0);
+      Gif_SetUncompressedImage(cur_gfi, data, Gif_Free, 0);
 
       /* don't use transparency on first frame */
       if ((optimize_flags & GT_OPT_MASK) > 1 && image_index > 0
