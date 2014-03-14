@@ -1,5 +1,30 @@
 Gifsicle NEWS
 
+Version 1.79
+
+* Major improvements in image scaling. Work sponsored by Tumblr via
+  Mike Hurwitz.
+
+** Add new resize sampling methods `mix`, `box`, `catrom`, `mitchell`,
+   `lanczos2`, and `lanczos3`, selectable by `--resize-method`. The
+   `catrom` filter often gives good results; the slightly faster `mix`
+   method (a bilinear interpolator) is now the default. These new
+   sampling methods consider all of the image's input colors when
+   shrinking the image, producing better, less noisy output for most
+   images.
+
+** Add `--resize-colors`, which allows Gifsicle to enlarge the palette
+   when resizing images. This is particularly important when shrinking
+   images with small colormaps---e.g., shrinking a black-and-white
+   image should probably introduce shades of gray.
+
+* Support extensions such as XMP4 in which extension packet boundaries
+  matter. Reported by `ata4`.
+
+* Many bug fixes. Thanks to Bryan Stillwell, Tal Lev-Ami, "Marco," and
+  others.
+
+
 Version 1.78   9.Dec.2013
 
 * Correct an optimization bug introduced in 1.76. Reported by Tom
