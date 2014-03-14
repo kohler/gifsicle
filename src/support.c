@@ -1003,18 +1003,13 @@ clear_def_frame_once_options(void)
 
 
 Gt_Frame *
-add_frame(Gt_Frameset *fset, int number, Gif_Stream *gfs, Gif_Image *gfi)
+add_frame(Gt_Frameset *fset, Gif_Stream *gfs, Gif_Image *gfi)
 {
-  if (number < 0) {
-    while (fset->count >= fset->cap) {
-      fset->cap *= 2;
-      Gif_ReArray(fset->f, Gt_Frame, fset->cap);
+    int number = fset->count++;
+    while (number >= fset->cap) {
+        fset->cap *= 2;
+        Gif_ReArray(fset->f, Gt_Frame, fset->cap);
     }
-    number = fset->count++;
-  } else {
-    assert(number < fset->count);
-    blank_frameset(fset, number, number, 0);
-  }
 
   /* Mark the stream and the image both */
   gfs->refcount++;
@@ -1294,7 +1289,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
     if (merger[i]->crop == crop) {
       Gt_Frame *fr = merger[i];
       int ll, tt, rr, bb;
-      if (nframes <= 1) {
+      if (!fr->position_is_offset) {
 	ll = fr->image->left;
 	tt = fr->image->top;
 	rr = fr->image->left + fr->image->width;

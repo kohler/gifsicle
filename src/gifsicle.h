@@ -292,7 +292,7 @@ extern Gt_Frame def_frame;
 #define		FRAME(fs, i)	((fs)->f[i])
 
 Gt_Frameset *	new_frameset(int initial_cap);
-Gt_Frame *	add_frame(Gt_Frameset *, int num, Gif_Stream *, Gif_Image *);
+Gt_Frame*	add_frame(Gt_Frameset*, Gif_Stream*, Gif_Image*);
 void		clear_def_frame_once_options(void);
 
 Gif_Stream *	merge_frame_interval(Gt_Frameset *, int f1, int f2,
