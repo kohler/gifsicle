@@ -437,7 +437,7 @@ show_frame(int imagenumber, int usename)
    case BATCHING:
     if (!frames_done)
       clear_frameset(frames, first_input_frame);
-    frame = add_frame(frames, -1, input, gfi);
+    frame = add_frame(frames, input, gfi);
     if (usename)
       frame->explode_by_name = 1;
     break;
@@ -721,10 +721,9 @@ input_stream(const char *name)
 
   old_def_frame = def_frame;
   first_input_frame = frames->count;
-  if (gfs->nimages > 1)
-    def_frame.position_is_offset = 1;
+  def_frame.position_is_offset = 1;
   for (i = 0; i < gfs->nimages; i++)
-    add_frame(frames, -1, gfs, gfs->images[i]);
+    add_frame(frames, gfs, gfs->images[i]);
   def_frame = old_def_frame;
 
   if (unoptimizing)
