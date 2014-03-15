@@ -465,6 +465,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
 {
   static int last_is_error = 0;
   static int last_which_image = 0;
+  static int display_which_image = 0;
   static char last_message[256];
   static int different_error_count = 0;
   static int same_error_count = 0;
@@ -475,7 +476,7 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     return;
 
   if (gifread_error_count == 0) {
-    last_which_image = -1;
+    last_which_image = display_which_image = -1;
     last_message[0] = 0;
     different_error_count = 0;
   }
@@ -485,13 +486,16 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
       && (last_which_image != which_image || message == 0
 	  || strcmp(message, last_message) != 0)) {
     const char *etype = last_is_error ? "error" : "warning";
-    error(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
+    void (*f)(int, const char*, ...) = last_is_error ? error : warning;
+    if (last_which_image != display_which_image)
+      warncontext(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
     if (same_error_count == 1)
-      error(0, "  %s: %s", etype, last_message);
+      f(0, "  %s: %s", etype, last_message);
     else if (same_error_count > 0)
-      error(0, "  %s: %s (%d times)", etype, last_message, same_error_count);
+      f(0, "  %s: %s (%d times)", etype, last_message, same_error_count);
     same_error_count = 0;
     last_message[0] = 0;
+    display_which_image = last_which_image;
   }
 
   if (message) {

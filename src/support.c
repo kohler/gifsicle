@@ -32,7 +32,7 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
     const char* prefix = "";
     const char* iname = input_name;
     const char* xfmt;
-    int n;
+    int n, p;
 
     if (!iname)
         iname = "<stdin>";
@@ -67,12 +67,23 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
         xfmt = "%s%s%s warning: ";
     else
         xfmt = "%s%s%s ";
-    n = snprintf(buf, sizeof(buf), xfmt,
-                 initial_prefix, *initial_prefix ? ":" : "", prefix);
+    n = p = snprintf(buf, sizeof(buf), xfmt,
+                     initial_prefix, *initial_prefix ? ":" : "", prefix);
     n += Clp_vsnprintf(clp, buf + n, sizeof(buf) - n, fmt, val);
     if ((size_t) n + 1 < sizeof(buf)) {
         buf[n++] = '\n';
-        buf[n++] = 0;
+        buf[n] = 0;
+    }
+
+    /* remove `warning: warning:` */
+    if (seriousness == 1) {
+        int initp = p;
+        while (p < n && isspace((unsigned char) buf[p]))
+            ++p;
+        if (p < n - 9 && memcmp(&buf[p], "warning: ", 9) == 0) {
+            memmove(&buf[initp - 9], &buf[initp], n + 1 - initp);
+            n -= 9;
+        }
     }
 
     if (seriousness > 1)
