@@ -179,14 +179,16 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 
   /* failure: a local colormap is required */
  local_colormap_required:
-  if (warn_local_colormaps == 1) {
-    static int context = 0;
-    warning(1, "so many colors that local colormaps were required");
-    if (!context)
-      warncontext(1, "(You may want to try %<--colors 256%>.)");
-    warn_local_colormaps = 2;
-    context = 1;
-  }
+    if (warn_local_colormaps == 1) {
+        static int context = 0;
+        if (!context) {
+            warning(1, "too many colors, using local colormaps\n"
+                    "  (You may want to try %<--colors 256%>.)");
+            context = 1;
+        } else
+            warning(1, "too many colors, using local colormaps");
+        warn_local_colormaps = 2;
+    }
 
   /* 9.Dec.1998 - This must have been a longstanding bug! We MUST clear
      the cached mappings of any pixels in the source colormap we

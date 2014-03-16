@@ -2315,7 +2315,11 @@ Clp_vfprintf(Clp_Parser* clp, FILE* f, const char* format, va_list val)
  *
  * Format an error message from @a format and any additional arguments in
  * the ellipsis, according to the Clp_OptionError formatting conventions.
- * The resulting string is printed to @a f.
+ * The resulting string is written to @a str. At most @a size characters are
+ * written to @a str, including a terminating null byte. The return value is
+ * the number of characters that would have been written (excluding the
+ * terminating null byte) if @a size were large enough to contain the entire
+ * string.
  *
  * @sa Clp_OptionError */
 int

@@ -25,14 +25,15 @@ int no_warnings = 0;
 static void
 verror(int need_file, int seriousness, const char *fmt, va_list val)
 {
-    char buf[BUFSIZ];
+    static char saved_context[BUFSIZ];
+    char pbuf[256], buf[BUFSIZ], xbuf[BUFSIZ];
     static char* printed_file = 0;
-    static int just_printed_context = 0;
+    static int in_context = 0;
     const char* initial_prefix = program_name;
-    const char* prefix = "";
     const char* iname = input_name;
     const char* xfmt;
-    int n, p;
+    int n, i, p;
+    size_t xi;
 
     if (!iname)
         iname = "<stdin>";
@@ -46,20 +47,15 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
     if (need_file == 2 && !printed_file)
         initial_prefix = iname;
     else if (need_file && !printed_file) {
-        if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING) {
-            Clp_fprintf(clp, stderr, "%s: While processing %<%s%>:\n",
-                        program_name, iname);
-            just_printed_context = 1;
-            prefix = "  ";
-            initial_prefix = "";
-        }
+        if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
+            messagecontext(0, "While processing %<%s%>:\n", iname);
         printed_file = malloc(strlen(iname) + 1);
         strcpy(printed_file, iname);
-    } else if (just_printed_context && seriousness == 0) {
-        prefix = "  ";
-        initial_prefix = "";
-    } else
-        just_printed_context = 0;
+    }
+    if ((!fmt || !*fmt) && seriousness == 0) {
+        saved_context[0] = in_context = 0;
+        return;
+    }
 
     if (seriousness > 2)
         xfmt = "%s%s%s fatal error: ";
@@ -67,32 +63,48 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
         xfmt = "%s%s%s warning: ";
     else
         xfmt = "%s%s%s ";
-    n = p = snprintf(buf, sizeof(buf), xfmt,
-                     initial_prefix, *initial_prefix ? ":" : "", prefix);
-    n += Clp_vsnprintf(clp, buf + n, sizeof(buf) - n, fmt, val);
-    if ((size_t) n + 1 < sizeof(buf)) {
+    if (need_file != 2 && in_context)
+        initial_prefix = "";
+    snprintf(pbuf, sizeof(pbuf), xfmt,
+             initial_prefix, *initial_prefix ? ":" : "",
+             in_context ? " " : "");
+    p = strlen(pbuf);
+
+    Clp_vsnprintf(clp, buf, sizeof(buf), fmt, val);
+    n = strlen(buf);
+    if ((size_t) n + 1 < sizeof(buf) && (n == 0 || buf[n - 1] != '\n')) {
         buf[n++] = '\n';
         buf[n] = 0;
     }
 
-    /* remove `warning: warning:` */
-    if (seriousness == 1) {
-        int initp = p;
-        while (p < n && isspace((unsigned char) buf[p]))
-            ++p;
-        if (p < n - 9 && memcmp(&buf[p], "warning: ", 9) == 0) {
-            memmove(&buf[initp - 9], &buf[initp], n + 1 - initp);
-            n -= 9;
-        }
+    xi = 0;
+    if (saved_context[0] && seriousness != 0) {
+        strcpy(xbuf, saved_context);
+        xi = strlen(saved_context);
+    }
+    for (i = 0; i != n; ) {
+        /* char* pos = (char*) memchr(&buf[i], '\n', n - i);
+           int l = (pos ? &pos[1] - &buf[i] : n - i); */
+        int l = n - i;
+        int xd = snprintf(&xbuf[xi], sizeof(xbuf) - xi, "%.*s%.*s",
+                          (int) p, pbuf, (int) l, &buf[i]);
+        i += l;
+        xi = (xi + xd > sizeof(xbuf) ? sizeof(xbuf) : xi + xd);
     }
 
-    if (seriousness > 1)
-        error_count++;
-    else if (no_warnings)
+    if (seriousness == 0) {
+        size_t ncopy = xi >= sizeof(saved_context) ? sizeof(saved_context) - 1 : xi;
+        memcpy(saved_context, xbuf, ncopy);
+        saved_context[ncopy] = 0;
+        in_context = 1;
         return;
+    } else if (seriousness == 1 && no_warnings)
+        return;
+    else if (seriousness > 1)
+        error_count++;
 
     verbose_endline();
-    fputs(buf, stderr);
+    fwrite(xbuf, 1, xi, stderr);
 }
 
 void fatal_error(const char* format, ...) {
@@ -117,7 +129,7 @@ void warning(int need_file, const char* format, ...) {
     va_end(val);
 }
 
-void warncontext(int need_file, const char* format, ...) {
+void messagecontext(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
     verror(need_file, 0, format, val);
@@ -1149,12 +1161,13 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     if (output_data->background.haspixel) {
 	if (gfs->images[0]->transparent >= 0) {
 	    static int context = 0;
-	    warning(1, "irrelevant background color\n");
-	    if (!context) {
-		warncontext(1, "(The background will appear transparent because");
-		warncontext(1, "the first image contains transparency.)");
-		context = 1;
-	    }
+            if (!context) {
+                warning(1, "irrelevant background color\n"
+                        "  (The background will appear transparent because"
+                        "  the first image contains transparency.)");
+                context = 1;
+            } else
+                warning(1, "irrelevant background color");
 	}
 	background = output_data->background;
 	goto search;
@@ -1193,11 +1206,12 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* Report conflicts. */
     if (conflict || (want_transparent && gfs->images[0]->transparent < 0)) {
 	static int context = 0;
-	warning(1, "input images have conflicting background colors");
-	if (!context) {
-	  warncontext(1, "(This means some animation frames may appear incorrect.)");
-	  context = 1;
-	}
+        if (!context) {
+            warning(1, "input images have conflicting background colors\n"
+                    "  (This means some animation frames may appear incorrect.)");
+            context = 1;
+        } else
+            warning(1, "input images have conflicting background colors");
     }
 
     /* If no important background color, bag. */

@@ -485,14 +485,14 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
   if (last_message[0] && different_error_count <= 10
       && (last_which_image != which_image || message == 0
 	  || strcmp(message, last_message) != 0)) {
-    const char *etype = last_is_error ? "error" : "warning";
+    const char *etype = last_is_error ? "error: " : "";
     void (*f)(int, const char*, ...) = last_is_error ? error : warning;
     if (last_which_image != display_which_image)
-      warncontext(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
+      messagecontext(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
     if (same_error_count == 1)
-      f(0, "  %s: %s", etype, last_message);
+      f(0, "%s%s", etype, last_message);
     else if (same_error_count > 0)
-      f(0, "  %s: %s (%d times)", etype, last_message, same_error_count);
+      f(0, "%s%s (%d times)", etype, last_message, same_error_count);
     same_error_count = 0;
     last_message[0] = 0;
     display_which_image = last_which_image;
@@ -505,12 +505,13 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
     strcpy(last_message, message);
     last_which_image = which_image;
     last_is_error = is_error;
-  } else
+    if (different_error_count == 11 && message) {
+      error(0, "(more errors while reading %<%s%>)", filename);
+      different_error_count++;
+    }
+  } else {
     last_message[0] = 0;
-
-  if (different_error_count == 11 && message) {
-    error(0, "(more errors while reading %<%s%>)", filename);
-    different_error_count++;
+    messagecontext(0, (const char*) 0);
   }
 }
 
@@ -733,12 +734,14 @@ input_stream(const char *name)
   if (unoptimizing)
     if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
       static int context = 0;
-      warning(1, "GIF too complex to unoptimize", name);
       if (!context) {
-	warncontext(1, "(The reason was local color tables or complex transparency.");
-	warncontext(1, "Try running the GIF through %<gifsicle --colors=255%> first.)");
-      }
-      context = 1;
+        warning(1, "GIF too complex to unoptimize\n"
+                "  (The reason was local color tables or complex transparency.\n"
+                "  Try running the GIF through %<gifsicle --colors=255%> first.)",
+                name);
+        context = 1;
+      } else
+        warning(1, "GIF too complex to unoptimize", name);
     }
 
   apply_color_transforms(input_transforms, gfs);
@@ -1252,16 +1255,16 @@ combine_output_options(void)
 }
 
 static void
-redundant_option_warning(const char *option_type)
+redundant_option_warning(const char* opttype)
 {
   static int context = 0;
-  warning(0, "redundant %s option", option_type);
   if (!context) {
-    warncontext(0, "(The %s option was overridden by another %s option",
-		option_type, option_type);
-    warncontext(0, "before it had any effect.)");
-  }
-  context = 1;
+    warning(0, "redundant %s option\n"
+            "  (The %s option was overridden by another %s option\n"
+            "  before it had any effect.)", opttype, opttype, opttype);
+    context = 1;
+  } else
+    warning(0, "redundant %s option", opttype);
 }
 
 static void
@@ -1272,10 +1275,12 @@ print_useless_options(const char *type_name, int value, const char *names[])
   if (!value) return;
   for (i = 0; i < 32; i++)
     if (CHANGED(value, i)) {
-      warning(0, "useless %s-related %s option", names[i], type_name);
-      if (!explanation_printed)
-	warncontext(0, "(It didn%,t affect any %s.)", type_name);
-      explanation_printed = 1;
+      if (!explanation_printed) {
+        warning(0, "useless %s-related %s option\n"
+                "  (It didn%,t affect any %s.)", names[i], type_name, type_name);
+        explanation_printed = 1;
+      } else
+        warning(0, "useless %s-related %s option", names[i], type_name);
     }
 }
 
