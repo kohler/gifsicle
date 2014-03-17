@@ -1,6 +1,6 @@
 Gifsicle NEWS
 
-Version 1.79
+Version 1.79   17.Mar.2014
 
 * Major improvements in image scaling. Work sponsored by Tumblr via
   Mike Hurwitz.
@@ -21,8 +21,8 @@ Version 1.79
 * Support extensions such as XMP4 in which extension packet boundaries
   matter. Reported by `ata4`.
 
-* Many bug fixes. Thanks to Bryan Stillwell, Tal Lev-Ami, "Marco," and
-  others.
+* Many bug fixes, especially to cropping. Thanks to Tumblr and to
+  Bryan Stillwell, Tal Lev-Ami, "Marco," and others.
 
 
 Version 1.78   9.Dec.2013
