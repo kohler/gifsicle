@@ -1,0 +1,21 @@
+%script
+export LANG=C
+gifsicle blank.gif -o /dev/null 2>&1 && echo blank worked
+gifsicle -w blank.gif -o /dev/null 2>&1 && echo blank worked
+gifsicle blank-garbage.gif -o /dev/null 2>&1 && echo blank-garbage worked
+gifsicle -w blank-garbage.gif -o /dev/null 2>&1 && echo blank-garbage worked
+
+%file -e blank.gif
+R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==
+
+%file -e blank-garbage.gif
+R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAO2Rhc2prZm5zZGtqYW5m
+a2pkbnNha2YK
+
+%expect stdout
+blank worked
+blank worked
+gifsicle: While reading 'blank-garbage.gif' frame #1:
+  warning: trailing garbage after GIF ignored
+blank-garbage worked
+blank-garbage worked
