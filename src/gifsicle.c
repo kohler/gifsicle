@@ -471,7 +471,6 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
   static int same_error_count = 0;
   char landmark[256];
   int which_image = Gif_ImageNumber(gfs, gfi);
-  const char *filename = gfs->landmark;
   if (gfs && which_image < 0)
     which_image = gfs->nimages;
 
@@ -480,8 +479,9 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
     return;
 
   if (message) {
-    if (gfi)
-      snprintf(landmark, sizeof(landmark), "%s frame #%d",
+    const char *filename = gfs && gfs->landmark ? gfs->landmark : "<unknown>";
+    if (gfi && (which_image != 0 || gfs->nimages != 1))
+      snprintf(landmark, sizeof(landmark), "%s:#%d",
                filename, which_image < 0 ? gfs->nimages : which_image);
     else
       snprintf(landmark, sizeof(landmark), "%s", filename);
@@ -492,7 +492,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
       && (!message
           || strcmp(message, last_message) != 0
           || strcmp(landmark, last_landmark) != 0)) {
-    const char* etype = last_is_error ? "error: " : "";
+    const char* etype = last_is_error ? "read error: " : "";
     void (*f)(const char*, const char*, ...) = last_is_error ? lerror : lwarning;
     if (same_error_count == 1)
       f(last_landmark, "%s%s", etype, last_message);
@@ -545,7 +545,7 @@ open_giffile(const char *name)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdin))) {
-      error(0, "<stdin>: is a terminal");
+      lerror("<stdin>", "is a terminal");
       return NULL;
     }
 #endif
@@ -573,7 +573,7 @@ open_giffile(const char *name)
     stored_files = sf;
     strcpy(sf->name, name);
   } else if (!f)
-    error(0, "%s: %s", name, strerror(errno));
+    lerror(name, "%s", strerror(errno));
 
   return f;
 }
@@ -651,9 +651,9 @@ input_stream(const char *name)
   i = getc(f);
   if (i == EOF) {
     if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
-      error(0, "%s: empty file", name);
+      lerror(name, "empty file");
     else if (nextfile)
-      error(0, "%s: no more images in file", name);
+      lerror(name, "no more images in file");
     close_giffile(f, 1);
     return;
   }
@@ -669,9 +669,9 @@ input_stream(const char *name)
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
-      error(0, "%s: file not in GIF format", name);
+      lerror(name, "file not in GIF format");
     else
-      error(0, "%s: trailing garbage ignored", main_name);
+      lerror(name, "trailing garbage ignored");
     Gif_DeleteStream(gfs);
     if (verbosing)
       verbose_close('>');
@@ -746,13 +746,12 @@ input_stream(const char *name)
     if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
       static int context = 0;
       if (!context) {
-        warning(1, "GIF too complex to unoptimize\n"
-                "  (The reason was local color tables or complex transparency.\n"
-                "  Try running the GIF through %<gifsicle --colors=255%> first.)",
-                name);
+        lwarning(name, "GIF too complex to unoptimize\n"
+                 "  (The reason was local color tables or complex transparency.\n"
+                 "  Try running the GIF through %<gifsicle --colors=255%> first.)");
         context = 1;
       } else
-        warning(1, "GIF too complex to unoptimize", name);
+        lwarning(name, "GIF too complex to unoptimize");
     }
 
   apply_color_transforms(input_transforms, gfs);
@@ -889,7 +888,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
 #ifndef OUTPUT_GIF_TO_TERMINAL
     extern int isatty(int);
     if (isatty(fileno(stdout))) {
-      error(0, "<stdout>: is a terminal");
+      lerror("<stdout>", "is a terminal");
       return;
     }
 #endif
@@ -909,7 +908,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
     fclose(f);
     any_output_successful = 1;
   } else
-    error(0, "%s: %s", output_name, strerror(errno));
+    lerror(output_name, "%s", strerror(errno));
 }
 
 static void
@@ -982,7 +981,7 @@ output_information(const char *outfile)
   else {
     f = fopen(outfile, "w");
     if (!f) {
-      error(0, "%s: %s", outfile, strerror(errno));
+      lerror(outfile, "%s", strerror(errno));
       return;
     }
   }

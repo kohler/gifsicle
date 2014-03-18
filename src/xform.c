@@ -172,8 +172,8 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   errno = 0;
   status = pclose(f);
   if (status < 0) {
-    error(1, "color transformation error: %s", strerror(errno));
-    goto done;
+      error(1, "color transformation error: %s", strerror(errno));
+      goto done;
   } else if (status > 0) {
     error(1, "color transformation command failed");
     goto done;

@@ -260,10 +260,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   min_code_size = gifgetbyte(grr);
   GIF_DEBUG(("\n\nmin_code_size(%d)", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
-    gif_read_error(gfc, 1, "min_code_size too big");
+    gif_read_error(gfc, 1, "image corrupted, min_code_size too big");
     min_code_size = GIF_MAX_CODE_BITS - 1;
   } else if (min_code_size < 2) {
-    gif_read_error(gfc, 1, "min_code_size too small");
+    gif_read_error(gfc, 1, "image corrupted, min_code_size too small");
     min_code_size = 2;
   }
   clear_code = 1 << min_code_size;
@@ -333,7 +333,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 	 Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
 	 This happens at the end of a large GIF: see the next comment ("If no
 	 meaningful next code should be defined...."). */
-      gif_read_error(gfc, 1, "unexpected code");
+      if (gfc->errors < 20)
+          gif_read_error(gfc, 1, "image corrupted, code out of range");
+      else if (gfc->errors == 20)
+          gif_read_error(gfc, 1, "(not reporting more errors)");
       code = 0;
     }
 
@@ -650,13 +653,13 @@ read_graphic_control_extension(Gif_Context *gfc, Gif_Image *gfi,
   }
 
   if (len > 0) {
-    gif_read_error(gfc, 1, "odd graphic extension format");
+    gif_read_error(gfc, 1, "bad graphic extension");
     gifgetblock(crap, len, grr);
   }
 
   len = gifgetbyte(grr);
   while (len > 0) {
-    gif_read_error(gfc, 1, "odd graphic extension format");
+    gif_read_error(gfc, 1, "bad graphic extension");
     gifgetblock(crap, len, grr);
     len = gifgetbyte(grr);
   }
@@ -903,8 +906,10 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   if (gfs)
     gfs->errors = gfc.errors;
-  if (gfs && gfc.errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr))
-    gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
+  if (gfs && gfc.errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
+      gfc.gfi = 0;
+      gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
+  }
   /* finally, export last message */
   gif_read_error(&gfc, -1, 0);
 

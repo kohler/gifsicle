@@ -23,51 +23,30 @@ int no_warnings = 0;
 
 
 static void
-verror(const char* iname, int need_file,
+verror(const char* landmark, int need_file,
        int seriousness, const char *fmt, va_list val)
 {
-    static char saved_context[BUFSIZ];
     char pbuf[256], buf[BUFSIZ], xbuf[BUFSIZ];
-    static char* printed_file = 0;
-    static int in_context = 0;
-    const char* initial_prefix = program_name;
     const char* xfmt;
     int n, i, p;
     size_t xi;
 
-    if (!iname)
-        iname = input_name ? input_name : "<stdin>";
-    if (mode == EXPLODING && active_output_data.active_output_name)
-        iname = active_output_data.active_output_name;
-
-    if (printed_file && strcmp(printed_file, iname) != 0) {
-        free(printed_file);
-        printed_file = 0;
-    }
-    if (need_file == 2)
-        initial_prefix = iname;
-    else if (need_file && !printed_file) {
-        if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
-            messagecontext(0, "While processing %<%s%>:\n", iname);
-        printed_file = malloc(strlen(iname) + 1);
-        strcpy(printed_file, iname);
-    }
-    if (seriousness == 0)
-        in_context = 0;
-    if (seriousness == 0 && (!fmt || !*fmt)) {
-        saved_context[0] = 0;
+    if (!fmt || !*fmt)
         return;
-    }
+
+    if (!landmark && need_file && active_output_data.active_output_name
+        && mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
+        landmark = active_output_data.active_output_name;
+    else if (!landmark)
+        landmark = "";
 
     if (seriousness > 2)
-        xfmt = "%s%s%s fatal error: ";
+        xfmt = "%s:%s%s fatal error: ";
     else if (seriousness == 1)
-        xfmt = "%s%s%s warning: ";
+        xfmt = "%s:%s%s warning: ";
     else
-        xfmt = "%s%s%s ";
-    snprintf(pbuf, sizeof(pbuf), xfmt,
-             initial_prefix, *initial_prefix ? ":" : "",
-             in_context ? "  " : "");
+        xfmt = "%s:%s%s ";
+    snprintf(pbuf, sizeof(pbuf), xfmt, program_name, landmark, *landmark ? ":" : "");
     p = strlen(pbuf);
 
     Clp_vsnprintf(clp, buf, sizeof(buf), fmt, val);
@@ -78,10 +57,6 @@ verror(const char* iname, int need_file,
     }
 
     xi = 0;
-    if (saved_context[0] && seriousness != 0) {
-        strcpy(xbuf, saved_context);
-        xi = strlen(saved_context);
-    }
     for (i = 0; i != n; ) {
         /* char* pos = (char*) memchr(&buf[i], '\n', n - i);
            int l = (pos ? &pos[1] - &buf[i] : n - i); */
@@ -92,13 +67,7 @@ verror(const char* iname, int need_file,
         xi = (xi + xd > sizeof(xbuf) ? sizeof(xbuf) : xi + xd);
     }
 
-    if (seriousness == 0) {
-        size_t ncopy = xi >= sizeof(saved_context) ? sizeof(saved_context) - 1 : xi;
-        memcpy(saved_context, xbuf, ncopy);
-        saved_context[ncopy] = 0;
-        in_context = 1;
-        return;
-    } else if (seriousness == 1 && no_warnings)
+    if (seriousness == 1 && no_warnings)
         return;
     else if (seriousness > 1)
         error_count++;
@@ -140,13 +109,6 @@ void warning(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
     verror((const char*) 0, need_file, 1, format, val);
-    va_end(val);
-}
-
-void messagecontext(int need_file, const char* format, ...) {
-    va_list val;
-    va_start(val, format);
-    verror((const char*) 0, need_file, 0, format, val);
     va_end(val);
 }
 
@@ -929,7 +891,7 @@ read_text_colormap(FILE *f, const char *name)
       if (green > 255) green = 255;
       if (blue > 255) blue = 255;
       if (ncol >= 256) {
-	error(0, "%s: maximum 256 colors allowed in colormap", name);
+	lerror(name, "maximum 256 colors allowed in colormap");
 	break;
       } else {
 	col[ncol].gfc_red = red;
@@ -948,13 +910,19 @@ read_text_colormap(FILE *f, const char *name)
   }
 
   if (ncol == 0) {
-    error(0, "%s: file not in colormap format", name);
+    lerror(name, "file not in colormap format");
     Gif_DeleteColormap(cm);
     return 0;
   } else {
     cm->ncol = ncol;
     return cm;
   }
+}
+
+static void
+no_gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
+                 int is_error, const char *message) {
+    (void) gfs, (void) gfi, (void) is_error, (void) message;
 }
 
 Gif_Colormap *
@@ -973,7 +941,7 @@ read_colormap_file(const char *name, FILE *f)
     else
       f = fopen(name, "rb");
     if (!f) {
-      error(0, "%s: %s", name, strerror(errno));
+      lerror(name, "%s", name, strerror(errno));
       return 0;
     }
   }
@@ -984,15 +952,16 @@ read_colormap_file(const char *name, FILE *f)
   c = getc(f);
   ungetc(c, f);
   if (c == 'G') {
-    Gif_Stream *gfs = Gif_ReadFile(f);
+    Gif_Stream *gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, 0, no_gifread_error);
     if (!gfs)
-      error(0, "%s: file not in GIF format", name);
-    else if (!gfs->global)
-      error(0, "%s: can%,t use as palette (no global color table)", name);
+      lerror(name, "file not in GIF format");
+    else if (!gfs->global
+             && (gfs->nimages == 0 || !gfs->images[0]->local))
+      lerror(name, "can%,t use as palette (no global color table)");
     else {
       if (gfs->errors)
-	warning(0, "%s: there were errors reading this GIF", name);
-      cm = Gif_CopyColormap(gfs->global);
+	lwarning(name, "there were errors reading this GIF");
+      cm = Gif_CopyColormap(gfs->global ? gfs->global : gfs->images[0]->local);
     }
 
     Gif_DeleteStream(gfs);
@@ -1146,14 +1115,14 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
       return color->pixel;
     else {
       if (color_context)
-	  error(2, "%s color out of range", color_context);
+	  lerror(gfs->landmark, "%s color out of range", color_context);
       return -1;
     }
   }
 
   index = Gif_FindColor(gfcm, color);
   if (index < 0 && color_context)
-    error(2, "%s color not in colormap", color_context);
+    lerror(gfs->landmark, "%s color not in colormap", color_context);
   return index;
 }
 
@@ -1324,11 +1293,14 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 {
   int i, nframes = 0;
   int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
+  Gif_Stream* cropped_gfs;
 
   /* count frames to which this crop applies */
   for (i = 0; i < nmerger; i++)
-    if (merger[i]->crop == crop)
-      nframes++;
+      if (merger[i]->crop == crop) {
+          cropped_gfs = merger[i]->stream;
+          nframes++;
+      }
 
   /* find border of frames */
   for (i = 0; i < nmerger; i++)
@@ -1367,10 +1339,11 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
       || crop->x + crop->w > r || crop->y + crop->h > b) {
-    error(1, "cropping dimensions don%,t fit image");
-    crop->ready = 2;
+      lerror(cropped_gfs ? cropped_gfs->landmark : (const char*) 0,
+             "cropping dimensions don%,t fit image");
+      crop->ready = 2;
   } else
-    crop->ready = 1;
+      crop->ready = 1;
 
   /* Remove transparent edges. */
   if (crop->transparent_edges && crop->ready == 1) {
@@ -1508,6 +1481,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
   global->ncol = 0;
   dest->global = global;
+  if (output_data->active_output_name)
+      dest->landmark = output_data->active_output_name;
   /* 11/23/98 A new stream's screen size is 0x0; we'll use the max of the
      merged-together streams' screen sizes by default (in merge_stream()) */
 

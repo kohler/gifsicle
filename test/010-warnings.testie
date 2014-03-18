@@ -15,6 +15,6 @@ a2pkbnNha2YK
 %expect stdout
 blank worked
 blank worked
-blank-garbage.gif frame #1: warning: trailing garbage after GIF ignored
+gifsicle:blank-garbage.gif: warning: trailing garbage after GIF ignored
 blank-garbage worked
 blank-garbage worked
