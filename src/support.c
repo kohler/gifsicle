@@ -1293,7 +1293,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 {
   int i, nframes = 0;
   int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
-  Gif_Stream* cropped_gfs;
+  Gif_Stream* cropped_gfs = 0;
 
   /* count frames to which this crop applies */
   for (i = 0; i < nmerger; i++)
