@@ -219,7 +219,7 @@ void kchist_add(kchist* kch, kcolor k, unsigned count) {
     }
     kch->h[hash1].count += count;
     if (kch->h[hash1].count < count)
-        kch->h[hash1].count = (uint32_t) -1;
+        kch->h[hash1].count = (kchist_count_t) -1;
 }
 
 static void kchist_grow(kchist* kch) {

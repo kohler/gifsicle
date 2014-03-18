@@ -193,9 +193,10 @@ static inline void kd3_enable_all(kd3_tree* kd3) {
 }
 
 
+typedef uint32_t kchist_count_t;
 typedef struct kchistitem {
     kacolor ka;
-    uint32_t count;
+    kchist_count_t count;
 } kchistitem;
 
 typedef struct kchist {

@@ -590,8 +590,8 @@ static int scale_image_add_colors(scale_context* sctx, Gif_Image* gfo) {
     kchist_compress(&kch);
 
     kcdiversity_init(&div, &kch, 0);
-    for (i = 0; i != gfcm->ncol; ++i)
-        kcdiversity_choose(&div, kcdiversity_find_popular(&div), 0);
+    for (i = 0; i != kch.n && kch.h[i].count == (kchist_count_t) -1; ++i)
+        kcdiversity_choose(&div, i, 0);
 
     nadded = 0;
     while (gfcm->ncol < sctx->scale_colors) {
