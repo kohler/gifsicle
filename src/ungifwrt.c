@@ -394,7 +394,7 @@ calculate_min_code_bits(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
   if ((grr->gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE)
       && gfi->compressed && gfi->compressed[0] != min_code_bits) {
     /* if compressed image disagrees with careful min_code_bits, recompress */
-    if (Gif_UncompressImage(gfi))
+    if (Gif_UncompressImage(gfs, gfi))
       Gif_FullCompressImage(gfs, gfi, &grr->gcinfo);
   }
 

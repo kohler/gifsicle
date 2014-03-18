@@ -37,8 +37,9 @@ typedef struct {
 
   unsigned decodepos;
 
+  Gif_Image* gfi;
   Gif_ReadErrorHandler handler;
-  void *handler_thunk;
+  int errors;
 
 } Gif_Context;
 
@@ -57,6 +58,8 @@ typedef struct Gif_Reader {
   int (*eofer)(struct Gif_Reader *);
 
 } Gif_Reader;
+
+static Gif_ReadErrorHandler default_error_handler = 0;
 
 
 #define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
@@ -157,9 +160,11 @@ make_data_reader(Gif_Reader *grr, const uint8_t *data, uint32_t length)
 static void
 gif_read_error(Gif_Context *gfc, int is_error, const char *text)
 {
-  gfc->stream->errors++;
-  if (gfc->handler)
-      gfc->handler(is_error, text, gfc->stream->nimages, gfc->handler_thunk);
+    Gif_ReadErrorHandler handler = gfc->handler ? gfc->handler : default_error_handler;
+    if (is_error > 0)
+        gfc->errors++;
+    if (handler)
+        handler(gfc->stream, gfc->gfi, is_error, text);
 }
 
 
@@ -517,10 +522,10 @@ uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
 
 
 int
-Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
+Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
+                        Gif_ReadErrorHandler h)
 {
   Gif_Context gfc;
-  Gif_Stream fake_gfs;
   Gif_Reader grr;
   int ok = 0;
 
@@ -533,13 +538,13 @@ Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
        this shouldn't happen */
     return 0;
 
-  fake_gfs.errors = 0;
-  gfc.stream = &fake_gfs;
+  gfc.stream = gfs;
+  gfc.gfi = gfi;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(uint8_t, GIF_MAX_CODE);
   gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = h;
-  gfc.handler_thunk = hthunk;
+  gfc.errors = 0;
 
   if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
@@ -549,7 +554,9 @@ Gif_FullUncompressImage(Gif_Image *gfi, Gif_ReadErrorHandler h, void *hthunk)
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
-  return ok && !fake_gfs.errors;
+  if (gfc.errors)
+      gif_read_error(&gfc, -1, 0);
+  return ok && !gfc.errors;
 }
 
 
@@ -775,11 +782,10 @@ read_comment_extension(Gif_Image *gfi, Gif_Reader *grr)
 
 static Gif_Stream *
 read_gif(Gif_Reader *grr, int read_flags,
-	 Gif_ReadErrorHandler handler, void *handler_thunk)
+	 const char* landmark, Gif_ReadErrorHandler handler)
 {
   Gif_Stream *gfs;
   Gif_Image *gfi;
-  Gif_Image *new_gfi;
   Gif_Context gfc;
   int extension_position = 0;
   int unknown_block_type = 0;
@@ -794,13 +800,15 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   gfs = Gif_NewStream();
   gfi = Gif_NewImage();
+  gfs->landmark = landmark;
 
   gfc.stream = gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
   gfc.suffix = Gif_NewArray(uint8_t, GIF_MAX_CODE);
   gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = handler;
-  gfc.handler_thunk = handler_thunk;
+  gfc.gfi = gfi;
+  gfc.errors = 0;
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
@@ -821,16 +829,16 @@ read_gif(Gif_Reader *grr, int read_flags,
 
       gfi->identifier = last_name;
       last_name = 0;
-      if (!read_image(grr, &gfc, gfi, read_flags)
-	  || !Gif_AddImage(gfs, gfi)) {
-	Gif_DeleteImage(gfi);
-	goto done;
+      if (!Gif_AddImage(gfs, gfi))
+          goto done;
+      else if (!read_image(grr, &gfc, gfi, read_flags)) {
+          Gif_RemoveImage(gfs, gfs->nimages - 1);
+          goto done;
       }
 
-      new_gfi = Gif_NewImage();
-      if (!new_gfi) goto done;
-
-      gfi = new_gfi;
+      gfc.gfi = gfi = Gif_NewImage();
+      if (!gfi)
+          goto done;
       extension_position++;
       break;
 
@@ -893,11 +901,12 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
 
-  if (gfs && gfs->errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
+  if (gfs)
+    gfs->errors = gfc.errors;
+  if (gfs && gfc.errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr))
     gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
-    /* but clear error count, since the GIF itself was all right */
-    gfs->errors = 0;
-  }
+  /* finally, export last message */
+  gif_read_error(&gfc, -1, 0);
 
   return gfs;
 }
@@ -905,7 +914,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
 Gif_Stream *
 Gif_FullReadFile(FILE *f, int read_flags,
-		 Gif_ReadErrorHandler h, void *hthunk)
+		 const char* landmark, Gif_ReadErrorHandler h)
 {
   Gif_Reader grr;
   if (!f) return 0;
@@ -915,19 +924,19 @@ Gif_FullReadFile(FILE *f, int read_flags,
   grr.block_getter = file_block_getter;
   grr.offseter = file_offseter;
   grr.eofer = file_eofer;
-  return read_gif(&grr, read_flags, h, hthunk);
+  return read_gif(&grr, read_flags, landmark, h);
 }
 
 Gif_Stream *
 Gif_FullReadRecord(const Gif_Record *gifrec, int read_flags,
-		   Gif_ReadErrorHandler h, void *hthunk)
+		   const char* landmark, Gif_ReadErrorHandler h)
 {
   Gif_Reader grr;
   if (!gifrec) return 0;
   make_data_reader(&grr, gifrec->data, gifrec->length);
   if (read_flags & GIF_READ_CONST_RECORD)
     read_flags |= GIF_READ_COMPRESSED;
-  return read_gif(&grr, read_flags, h, hthunk);
+  return read_gif(&grr, read_flags, landmark, h);
 }
 
 
@@ -946,6 +955,10 @@ Gif_ReadRecord(const Gif_Record *gifrec)
   return Gif_FullReadRecord(gifrec, GIF_READ_UNCOMPRESSED, 0, 0);
 }
 
+void
+Gif_SetErrorHandler(Gif_ReadErrorHandler handler) {
+    default_error_handler = handler;
+}
 
 #ifdef __cplusplus
 }

@@ -260,7 +260,8 @@ Gif_XClaimStreamColors(Gif_XContext *gfx, Gif_Stream *gfs, int *np_store)
 #define BYTESIZE 8
 
 static int
-put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
+put_sub_image_colormap(Gif_XContext *gfx,
+                       Gif_Stream* gfs, Gif_Image *gfi, Gif_Colormap *gfcm,
 		       int left, int top, int width, int height,
 		       Pixmap pixmap, int pixmap_x, int pixmap_y)
 {
@@ -284,8 +285,8 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 
   /* Make sure the image is uncompressed */
   if (!gfi->img && !gfi->image_data && gfi->compressed) {
-    Gif_UncompressImage(gfi);
-    release_uncompressed = 1;
+      Gif_UncompressImage(gfs, gfi);
+      release_uncompressed = 1;
   }
 
   /* Check subimage dimensions */
@@ -399,14 +400,15 @@ put_sub_image_colormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
 
 
 Pixmap
-Gif_XSubImageColormap(Gif_XContext *gfx, Gif_Image *gfi, Gif_Colormap *gfcm,
+Gif_XSubImageColormap(Gif_XContext *gfx,
+                      Gif_Stream* gfs, Gif_Image *gfi, Gif_Colormap *gfcm,
 		      int left, int top, int width, int height)
 {
   Pixmap pixmap =
     XCreatePixmap(gfx->display, gfx->drawable,
                   width ? width : 1, height ? height : 1, gfx->depth);
   if (pixmap) {
-    if (put_sub_image_colormap(gfx, gfi, gfcm, left, top, width, height,
+    if (put_sub_image_colormap(gfx, gfs, gfi, gfcm, left, top, width, height,
 			       pixmap, 0, 0))
       return pixmap;
     else
@@ -423,7 +425,7 @@ Gif_XImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
   if (!gfi) return None;
   gfcm = gfi->local;
   if (!gfcm) gfcm = gfs->global;
-  return Gif_XSubImageColormap(gfx, gfi, gfcm,
+  return Gif_XSubImageColormap(gfx, gfs, gfi, gfcm,
 			       0, 0, gfi->width, gfi->height);
 }
 
@@ -433,7 +435,7 @@ Gif_XImageColormap(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Colormap *gfcm,
 {
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
-  return Gif_XSubImageColormap(gfx, gfi, gfcm,
+  return Gif_XSubImageColormap(gfx, gfs, gfi, gfcm,
 			       0, 0, gfi->width, gfi->height);
 }
 
@@ -446,13 +448,13 @@ Gif_XSubImage(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi,
   if (!gfi) return None;
   gfcm = gfi->local;
   if (!gfcm) gfcm = gfs->global;
-  return Gif_XSubImageColormap(gfx, gfi, gfcm,
+  return Gif_XSubImageColormap(gfx, gfs, gfi, gfcm,
 			       left, top, width, height);
 }
 
 
 Pixmap
-Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
+Gif_XSubMask(Gif_XContext* gfx, Gif_Stream* gfs, Gif_Image* gfi,
 	     int left, int top, int width, int height)
 {
   Pixmap pixmap = None;
@@ -475,8 +477,8 @@ Gif_XSubMask(Gif_XContext *gfx, Gif_Image *gfi,
 
   /* Make sure the image is uncompressed */
   if (!gfi->img && !gfi->image_data && gfi->compressed) {
-    Gif_UncompressImage(gfi);
-    release_uncompressed = 1;
+      Gif_UncompressImage(gfs, gfi);
+      release_uncompressed = 1;
   }
 
   /* Create the X image */
@@ -542,7 +544,7 @@ Gif_XMask(Gif_XContext *gfx, Gif_Stream *gfs, Gif_Image *gfi)
 {
   if (!gfi && gfs->nimages) gfi = gfs->images[0];
   if (!gfi) return None;
-  return Gif_XSubMask(gfx, gfi, 0, 0, gfi->width, gfi->height);
+  return Gif_XSubMask(gfx, gfs, gfi, 0, 0, gfi->width, gfi->height);
 }
 
 static Pixmap

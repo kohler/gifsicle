@@ -23,20 +23,20 @@ int no_warnings = 0;
 
 
 static void
-verror(int need_file, int seriousness, const char *fmt, va_list val)
+verror(const char* iname, int need_file,
+       int seriousness, const char *fmt, va_list val)
 {
     static char saved_context[BUFSIZ];
     char pbuf[256], buf[BUFSIZ], xbuf[BUFSIZ];
     static char* printed_file = 0;
     static int in_context = 0;
     const char* initial_prefix = program_name;
-    const char* iname = input_name;
     const char* xfmt;
     int n, i, p;
     size_t xi;
 
     if (!iname)
-        iname = "<stdin>";
+        iname = input_name ? input_name : "<stdin>";
     if (mode == EXPLODING && active_output_data.active_output_name)
         iname = active_output_data.active_output_name;
 
@@ -44,7 +44,7 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
         free(printed_file);
         printed_file = 0;
     }
-    if (need_file == 2 && !printed_file)
+    if (need_file == 2)
         initial_prefix = iname;
     else if (need_file && !printed_file) {
         if (mode != BLANK_MODE && mode != MERGING && nested_mode != MERGING)
@@ -110,29 +110,43 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
 void fatal_error(const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror(0, 3, format, val);
+    verror((const char*) 0, 0, 3, format, val);
     va_end(val);
     exit(EXIT_USER_ERR);
+}
+
+void lerror(const char* landmark, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(landmark, 2, 2, format, val);
+    va_end(val);
 }
 
 void error(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror(need_file, 2, format, val);
+    verror((const char*) 0, need_file, 2, format, val);
+    va_end(val);
+}
+
+void lwarning(const char* landmark, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror(landmark, 2, 1, format, val);
     va_end(val);
 }
 
 void warning(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror(need_file, 1, format, val);
+    verror((const char*) 0, need_file, 1, format, val);
     va_end(val);
 }
 
 void messagecontext(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror(need_file, 0, format, val);
+    verror((const char*) 0, need_file, 0, format, val);
     va_end(val);
 }
 
@@ -1378,7 +1392,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 	if (srci->transparent >= 0) {
 	  int x, y;
 	  uint8_t **img;
-	  Gif_UncompressImage(srci);
+	  Gif_UncompressImage(fr->stream, srci);
 	  img = srci->img;
 
 	  /* Move top edge down over transparency */
@@ -1600,7 +1614,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     if (fr->crop) {
       int preserve_total_crop;
       srci = Gif_CopyImage(fr->image);
-      Gif_UncompressImage(srci);
+      Gif_UncompressImage(fr->stream, srci);
 
       /* Zero-delay frames are a special case.  You might think it was OK to
 	 get rid of totally-cropped delay-0 frames, but many browsers treat
@@ -1617,7 +1631,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       }
     } else {
       srci = fr->image;
-      Gif_UncompressImage(srci);
+      Gif_UncompressImage(fr->stream, srci);
     }
 
     /* It was pretty stupid to remove this code, which I did between 1.2b6 and
@@ -1681,7 +1695,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       } else if (desti->compressed)
 	Gif_ReleaseCompressedImage(desti);
     } else if (compress_immediately <= 0) {
-      Gif_UncompressImage(desti);
+      Gif_UncompressImage(dest, desti);
       Gif_ReleaseCompressedImage(desti);
     }
 

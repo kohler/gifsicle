@@ -277,7 +277,7 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
 
         /* unoptimize the image if necessary */
         if (only_compressed)
-            Gif_UncompressImage(gfi);
+            Gif_UncompressImage(gfs, gfi);
 
         /* sweep over the image data, counting pixels */
         for (y = 0; y < gfi->height; ++y) {
@@ -1571,7 +1571,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       unmark_colors(gfcm);
 
       if (only_compressed)
-	Gif_UncompressImage(gfi);
+          Gif_UncompressImage(gfs, gfi);
 
       kd3_enable_all(&kd3);
       do {
@@ -1673,7 +1673,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       uint32_t size;
       uint8_t *data;
       if (only_compressed)
-	Gif_UncompressImage(gfi);
+          Gif_UncompressImage(gfs, gfi);
 
       data = gfi->image_data;
       for (size = (unsigned) gfi->width * (unsigned) gfi->height; size > 0; size--, data++)

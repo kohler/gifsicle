@@ -461,41 +461,45 @@ show_frame(int imagenumber, int usename)
 static int gifread_error_count;
 
 static void
-gifread_error(int is_error, const char *message, int which_image, void *thunk)
+gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
+              int is_error, const char *message)
 {
   static int last_is_error = 0;
-  static int last_which_image = 0;
-  static int display_which_image = 0;
+  static char last_landmark[256];
   static char last_message[256];
   static int different_error_count = 0;
   static int same_error_count = 0;
-  const char *filename = (const char *)thunk;
+  char landmark[256];
+  int which_image = Gif_ImageNumber(gfs, gfi);
+  const char *filename = gfs->landmark;
+  if (gfs && which_image < 0)
+    which_image = gfs->nimages;
 
   /* ignore warnings if "no_warning" */
   if (no_warnings && is_error == 0)
     return;
 
-  if (gifread_error_count == 0) {
-    last_which_image = display_which_image = -1;
-    last_message[0] = 0;
-    different_error_count = 0;
+  if (message) {
+    if (gfi)
+      snprintf(landmark, sizeof(landmark), "%s frame #%d",
+               filename, which_image < 0 ? gfs->nimages : which_image);
+    else
+      snprintf(landmark, sizeof(landmark), "%s", filename);
   }
 
-  gifread_error_count++;
-  if (last_message[0] && different_error_count <= 10
-      && (last_which_image != which_image || message == 0
-	  || strcmp(message, last_message) != 0)) {
-    const char *etype = last_is_error ? "error: " : "";
-    void (*f)(int, const char*, ...) = last_is_error ? error : warning;
-    if (last_which_image != display_which_image)
-      messagecontext(0, "While reading %<%s%> frame #%d:", filename, last_which_image);
+  if (last_message[0]
+      && different_error_count <= 10
+      && (!message
+          || strcmp(message, last_message) != 0
+          || strcmp(landmark, last_landmark) != 0)) {
+    const char* etype = last_is_error ? "error: " : "";
+    void (*f)(const char*, const char*, ...) = last_is_error ? lerror : lwarning;
     if (same_error_count == 1)
-      f(0, "%s%s", etype, last_message);
+      f(last_landmark, "%s%s", etype, last_message);
     else if (same_error_count > 0)
-      f(0, "%s%s (%d times)", etype, last_message, same_error_count);
+      f(last_landmark, "%s%s (%d times)", etype, last_message, same_error_count);
     same_error_count = 0;
     last_message[0] = 0;
-    display_which_image = last_which_image;
   }
 
   if (message) {
@@ -503,15 +507,23 @@ gifread_error(int is_error, const char *message, int which_image, void *thunk)
       different_error_count++;
     same_error_count++;
     strcpy(last_message, message);
-    last_which_image = which_image;
+    strcpy(last_landmark, landmark);
     last_is_error = is_error;
-    if (different_error_count == 11 && message) {
-      error(0, "(more errors while reading %<%s%>)", filename);
+    if (different_error_count == 11) {
+      error(0, "(plus more errors; is this GIF corrupt?)");
       different_error_count++;
     }
-  } else {
+  } else
     last_message[0] = 0;
-    messagecontext(0, (const char*) 0);
+
+  {
+    unsigned long missing;
+    if (message && sscanf(message, "missing %lu pixels", &missing) == 1
+        && missing > 10000) {
+      gifread_error(gfs, 0, -1, 0);
+      lerror(landmark, "fatal error: too many missing pixels, giving up");
+      exit(1);
+    }
   }
 }
 
@@ -653,8 +665,7 @@ input_stream(const char *name)
   /* read file */
   gifread_error_count = 0;
   gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
-			 gifread_error, (void *)name);
-  gifread_error(-1, 0, -1, (void *)name); /* print out last error message */
+			 name, gifread_error);
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
@@ -1368,6 +1379,7 @@ main(int argc, char *argv[])
   frames = new_frameset(16);
   initialize_def_frame();
   Gif_InitCompressInfo(&gif_write_info);
+  Gif_SetErrorHandler(gifread_error);
 
   /* Yep, I'm an idiot.
      GIF dimensions are unsigned 16-bit integers. I assume that these

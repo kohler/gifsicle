@@ -64,7 +64,7 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
     if (nleft == 0)
         return;
 
-    if (gfi->img || Gif_UncompressImage(gfi) == 2)
+    if (gfi->img || Gif_UncompressImage(gfs, gfi) == 2)
         compress_immediately = 0;
 
     /* Loop over every pixel (until we've seen all colors) */
@@ -275,7 +275,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   merge_image_input_colors(inused, srci);
   for (i = imagecm ? imagecm->ncol : 0; i != 256; ++i)
       if (inused[i]) {
-          warning(0, "%s: some colors undefined by colormap", srcfr->input_filename);
+          lwarning(srcfr->input_filename, "some colors undefined by colormap");
           break;
       }
 

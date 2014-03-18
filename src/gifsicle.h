@@ -172,8 +172,10 @@ extern Gif_CompressInfo gif_write_info;
 
 void fatal_error(const char* format, ...) NORETURN;
 void warning(int need_file, const char* format, ...);
+void lwarning(const char* landmark, const char* format, ...);
 void messagecontext(int need_file, const char* format, ...);
 void error(int need_file, const char* format, ...);
+void lerror(const char* landmark, const char* format, ...);
 void clp_error_handler(Clp_Parser *clp, const char *clp_message);
 void usage(void);
 void short_usage(void);

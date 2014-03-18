@@ -1015,7 +1015,7 @@ static void scale_image(scale_context* sctx, int method) {
     }
 
     if (was_compressed)
-        Gif_UncompressImage(gfi);
+        Gif_UncompressImage(sctx->gfs, gfi);
     Gif_CreateUncompressedImage(&gfo, 0);
 
     if (method == SCALE_METHOD_MIX)
@@ -1044,7 +1044,7 @@ static void scale_image(scale_context* sctx, int method) {
 }
 
 void
-resize_stream(Gif_Stream *gfs,
+resize_stream(Gif_Stream* gfs,
               double new_width, double new_height,
               int fit, int method, int scale_colors)
 {

@@ -35,6 +35,7 @@ Gif_NewStream(void)
   gfs->errors = 0;
   gfs->userflags = 0;
   gfs->refcount = 0;
+  gfs->landmark = 0;
   return gfs;
 }
 
@@ -265,11 +266,12 @@ Gif_AddExtension(Gif_Stream *gfs, Gif_Extension *gfex, int pos)
 int
 Gif_ImageNumber(Gif_Stream *gfs, Gif_Image *gfi)
 {
-  int i;
-  for (i = 0; i < gfs->nimages; i++)
-    if (gfs->images[i] == gfi)
-      return i;
-  return -1;
+    int i;
+    if (gfs && gfi)
+        for (i = 0; i != gfs->nimages; ++i)
+            if (gfs->images[i] == gfi)
+                return i;
+    return -1;
 }
 
 

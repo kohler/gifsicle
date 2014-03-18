@@ -132,7 +132,7 @@ apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
   }
 
   /* uncompress and clip */
-  Gif_UncompressImage(gfi);
+  Gif_UncompressImage(gfs, gfi);
   Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
 
   any_change = imageno == 0;
@@ -426,14 +426,18 @@ void error(const char* format, ...) {
 static int gifread_error_count;
 
 static void
-gifread_error(int is_error, const char *message, int which_image, void *thunk)
+gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
+              int is_error, const char *message)
 {
   static int last_is_error = 0;
   static int last_which_image = 0;
   static char last_message[256];
   static int different_error_count = 0;
   static int same_error_count = 0;
-  const char *filename = (const char *)thunk;
+  int which_image = Gif_ImageNumber(gfs, gfi);
+  const char *filename = gfs->landmark;
+  if (gfs && which_image < 0)
+    which_image = gfs->nimages;
 
   if (gifread_error_count == 0) {
     last_which_image = -1;
@@ -503,8 +507,7 @@ read_stream(const char **filename)
 	    fatal_error("%s: %s\n", *filename, strerror(errno));
     }
     gifread_error_count = 0;
-    gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, gifread_error, (void *) *filename);
-    gifread_error(-1, 0, -1, (void *) *filename); /* print out last error message */
+    gfs = Gif_FullReadFile(f, GIF_READ_COMPRESSED, *filename, gifread_error);
     if (!gfs)
 	fatal_error("%s: file not in GIF format\n", *filename);
     return gfs;

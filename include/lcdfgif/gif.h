@@ -58,6 +58,7 @@ struct Gif_Stream {
     unsigned errors;
 
     int userflags;
+    const char* landmark;
     int refcount;
 
 };
@@ -138,18 +139,19 @@ int		Gif_ImageNumber(Gif_Stream *gfs, Gif_Image *gfi);
 #define		Gif_SetImageUserData(gfi, v)	((gfi)->userdata = v)
 int             Gif_ImageColorBound(const Gif_Image* gfi);
 
-typedef		void (*Gif_ReadErrorHandler)(int is_error,
-					     const char *error_text,
-					     int frame_number,
-					     void *user_data);
+typedef		void (*Gif_ReadErrorHandler)(Gif_Stream* gfs,
+                                             Gif_Image* gfi,
+					     int is_error,
+					     const char* error_text);
 
 typedef struct {
     int flags;
     void *padding[7];
 } Gif_CompressInfo;
 
-#define		Gif_UncompressImage(gfi)     Gif_FullUncompressImage((gfi),0,0)
-int		Gif_FullUncompressImage(Gif_Image *gfs,Gif_ReadErrorHandler,void*);
+#define		Gif_UncompressImage(gfs, gfi) Gif_FullUncompressImage((gfs),(gfi),0)
+int		Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
+                                        Gif_ReadErrorHandler handler);
 int		Gif_CompressImage(Gif_Stream *gfs, Gif_Image *gfi);
 int		Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
 				      const Gif_CompressInfo *gcinfo);
@@ -268,12 +270,14 @@ struct Gif_Record {
 #define GIF_WRITE_OPTIMIZE		4
 #define GIF_WRITE_SHRINK		8
 
-Gif_Stream *	Gif_ReadFile(FILE *);
-Gif_Stream *	Gif_FullReadFile(FILE *, int flags, Gif_ReadErrorHandler,
-				 void *);
-Gif_Stream *	Gif_ReadRecord(const Gif_Record *);
-Gif_Stream *	Gif_FullReadRecord(const Gif_Record *, int flags,
-				   Gif_ReadErrorHandler, void *);
+void            Gif_SetErrorHandler(Gif_ReadErrorHandler handler);
+Gif_Stream*	Gif_ReadFile(FILE* f);
+Gif_Stream*	Gif_FullReadFile(FILE* f, int flags, const char* landmark,
+                                 Gif_ReadErrorHandler handler);
+Gif_Stream*	Gif_ReadRecord(const Gif_Record* record);
+Gif_Stream*	Gif_FullReadRecord(const Gif_Record* record, int flags,
+				   const char* landmark,
+                                   Gif_ReadErrorHandler handler);
 int		Gif_WriteFile(Gif_Stream *gfs, FILE *f);
 int		Gif_FullWriteFile(Gif_Stream *gfs,
 				  const Gif_CompressInfo *gcinfo, FILE *f);

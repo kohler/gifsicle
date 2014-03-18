@@ -671,7 +671,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
     }
 
   } else if (!gfi->img) {
-    Gif_UncompressImage(gfi);
+    Gif_UncompressImage(gfs, gfi);
     write_compressed_data(gfi, min_code_bits, gfc, grr);
     Gif_ReleaseUncompressedImage(gfi);
 

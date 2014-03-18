@@ -236,7 +236,8 @@ erase_screen(uint16_t *dst)
  **/
 
 static void
-apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
+apply_frame(uint16_t *dst, Gif_Stream* gfs, Gif_Image* gfi,
+            int replace, int save_uncompressed)
 {
   int i, y, was_compressed = 0;
   uint16_t map[256];
@@ -245,7 +246,7 @@ apply_frame(uint16_t *dst, Gif_Image *gfi, int replace, int save_uncompressed)
 
   if (!gfi->img) {
     was_compressed = 1;
-    Gif_UncompressImage(gfi);
+    Gif_UncompressImage(gfs, gfi);
   }
 
   /* make sure transparency maps to TRANSP */
@@ -621,7 +622,7 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
       next_data = temp;
       next_data_valid = 0;
     } else
-      apply_frame(this_data, gfi, 0, save_uncompressed);
+        apply_frame(this_data, gfs, gfi, 0, save_uncompressed);
 
  retry_frame:
     /* find minimum area of difference between this image and last image */
@@ -645,7 +646,7 @@ create_subimages(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
       /* set up next_data */
       Gif_Image *next_gfi = gfs->images[image_index + 1];
       apply_frame_disposal(next_data, this_data, previous_data, gfi);
-      apply_frame(next_data, next_gfi, 0, save_uncompressed);
+      apply_frame(next_data, gfs, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
       /* expand border as necessary */
       if (expand_difference_bounds(subimage, gfi))
@@ -1167,7 +1168,7 @@ create_new_image_data(Gif_Stream *gfs, int optimize_flags)
     }
 
     /* set up this_data to be equal to the current image */
-    apply_frame(this_data, cur_gfi, 0, 0);
+    apply_frame(this_data, gfs, cur_gfi, 0, 0);
 
     /* save actual bounds and disposal from unoptimized version so we can
        apply the disposal correctly next time through */
@@ -1326,7 +1327,7 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
 	    || gfi->disposal == GIF_DISPOSAL_NONE
 	    || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
 	&& gfi->delay && gfs->images[i-1]->delay) {
-      Gif_UncompressImage(gfi);
+      Gif_UncompressImage(gfs, gfi);
       if (gfi->img[0][0] == gfi->transparent
 	  && (gfs->images[i-1]->disposal == GIF_DISPOSAL_ASIS
 	      || gfs->images[i-1]->disposal == GIF_DISPOSAL_NONE)) {

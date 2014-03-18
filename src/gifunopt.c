@@ -124,7 +124,7 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   if (!new_data) return 0;
 
   /* Oops! May need to uncompress it */
-  Gif_UncompressImage(gfi);
+  Gif_UncompressImage(gfs, gfi);
   Gif_ReleaseCompressedImage(gfi);
 
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
