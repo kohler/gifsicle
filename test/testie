@@ -393,6 +393,7 @@ sub braces_to_regex ($$) {
 	    $x = $before . $after;
 	} else {
 	    $before = quotemeta($before) if $mode == 1;
+            $middle =~ s,(\A|[^\\]|\\\\)/,$1\\/,g; # not 100% right sadly
             $re .= $before . "(?:" . $middle . ")";
 	    $x = $after;
 	}
@@ -952,11 +953,11 @@ sub _create_ignores ($$) {
     if ($ignores eq "" && $wignores eq "") {
 	return undef;
     } elsif ($wignores eq "") {
-	$ignores =~ s{^([ \t]*\S[^\n]*)}{\$t =~ s\376^$1\[ \\t\]*\$\376\\377\376mg;}mg;
+	$ignores =~ s{^([ \t]*\S[^\n]*)}{\$t =~ s/^$1\[ \\t\]*\$/\\377/mg;}mg;
 	$body = "sub (\$) { my(\$t) = \@_; $ignores \$t; }\n";
     } else {
-	$ignores =~ s{^([ \t]*\S[^\n]*)}{s\376\\A$1\[ \\t\]*\\z\376\\377\376;}mg;
-	$wignores =~ s{^(\S[^\n]*)}{\$_ = "\\377" if \$x =~ m\376\\A$1\\z\376;}mg;
+	$ignores =~ s{^([ \t]*\S[^\n]*)}{s/\\A$1\[ \\t\]*\\z/\\377/;}mg;
+	$wignores =~ s{^(\S[^\n]*)}{\$_ = "\\377" if \$x =~ m/\\A$1\\z/;}mg;
 	$body = "sub (\$) { my(\$t) = \@_; my(\$x); join(\"\\n\", map { "
 	    . "\$x = \$_; \$x =~ tr/ \\f\\r\\t\\013//d;\n$ignores$wignores "
 	    . "\"\$_\\n\" } split /\\n/, \"\$t\\n\"); }\n";
