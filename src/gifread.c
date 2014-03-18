@@ -575,6 +575,13 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
+  /* If position out of range, error. */
+  if ((unsigned) gfi->left + (unsigned) gfi->width > 0xFFFF
+      || (unsigned) gfi->top + (unsigned) gfi->height > 0xFFFF) {
+      gif_read_error(gfc, 1, "image position and/or dimensions out of range");
+      Gif_MakeImageEmpty(gfi);
+      read_flags = 0;
+  }
   GIF_DEBUG(("<%ux%u>", gfi->width, gfi->height));
 
   packed = gifgetbyte(grr);
