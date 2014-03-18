@@ -803,7 +803,9 @@ Clp_SetOptions(Clp_Parser *clp, int nopt, const Clp_Option *opt)
     cli->current_option = -1;
 
     /* Massage the options to make them usable */
-    for (i = 0; i < nopt; i++) {
+    for (i = 0; i < nopt; ++i) {
+	memset(&iopt[i], 0, sizeof(iopt[i]));
+
 	/* Ignore negative option_ids, which are internal to CLP */
 	if (opt[i].option_id < 0) {
 	    Clp_OptionError(clp, "CLP internal error: option %d has negative option_id", i);
@@ -1090,7 +1092,7 @@ parse_string(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 }
 
 static int
-parse_int(Clp_Parser *clp, const char *arg, int complain, void* user_data)
+parse_int(Clp_Parser* clp, const char* arg, int complain, void* user_data)
 {
     const char *val;
     uintptr_t type = (uintptr_t) user_data;
@@ -1113,13 +1115,15 @@ parse_int(Clp_Parser *clp, const char *arg, int complain, void* user_data)
         clp->val.u = (unsigned) clp->val.ul;
     if (*arg != 0 && *val == 0)
 	return 1;
-    else if (complain) {
-	const char *message = type & 1
-	    ? "%<%O%> expects a nonnegative integer, not %<%s%>"
-	    : "%<%O%> expects an integer, not %<%s%>";
-	return Clp_OptionError(clp, message, arg);
-    } else
-	return 0;
+    else {
+        if (complain) {
+            const char *message = type & 1
+                ? "%<%O%> expects a nonnegative integer, not %<%s%>"
+                : "%<%O%> expects an integer, not %<%s%>";
+            Clp_OptionError(clp, message, arg);
+        }
+        return 0;
+    }
 }
 
 static int
@@ -1133,10 +1137,11 @@ parse_double(Clp_Parser *clp, const char *arg, int complain, void *user_data)
 	clp->val.d = strtod(arg, (char **) &val);
     if (*arg != 0 && *val == 0)
 	return 1;
-    else if (complain)
-	return Clp_OptionError(clp, "%<%O%> expects a real number, not %<%s%>", arg);
-    else
+    else {
+        if (complain)
+            Clp_OptionError(clp, "%<%O%> expects a real number, not %<%s%>", arg);
 	return 0;
+    }
 }
 
 static int
@@ -1207,7 +1212,7 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
 	}
 	return ambiguity_error
 	    (clp, ambiguous, ambiguous_values, sl->items, sl->iopt,
-	     "", "option %<%O%> value %<%s%> is %s", arg, complaint);
+	     "", "option %<%V%> is %s", complaint);
     } else
 	return 0;
 }
@@ -2126,29 +2131,37 @@ Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
 	      break;
 	  }
 
-	  case 'O': {
-	      int optno = cli->current_option;
-	      const Clp_Option *opt = &cli->opt[optno];
-	      if (optno < 0)
-		  append_build_string(bs, "(no current option!)", -1);
-	      else if (cli->current_short) {
-		  append_build_string(bs, cli->option_chars, -1);
-		  if (ENSURE_BUILD_STRING(bs, 5)) {
-		      if (cli->utf8)
-			  bs->pos = encode_utf8(bs->pos, 5, opt->short_name);
-		      else
-			  *bs->pos++ = opt->short_name;
-		  }
-	      } else if (cli->negated_by_no) {
-		  append_build_string(bs, cli->option_chars, -1);
-		  append_build_string(bs, "no-", 3);
-		  append_build_string(bs, opt->long_name + cli->iopt[optno].ilongoff, -1);
-	      } else {
-		  append_build_string(bs, cli->option_chars, -1);
-		  append_build_string(bs, opt->long_name + cli->iopt[optno].ilongoff, -1);
-	      }
-	      break;
-	  }
+        case 'O':
+        case 'V': {
+            int optno = cli->current_option;
+            const Clp_Option *opt = &cli->opt[optno];
+            if (optno < 0)
+                append_build_string(bs, "(no current option!)", -1);
+            else if (cli->current_short) {
+                append_build_string(bs, cli->option_chars, -1);
+                if (ENSURE_BUILD_STRING(bs, 5)) {
+                    if (cli->utf8)
+                        bs->pos = encode_utf8(bs->pos, 5, opt->short_name);
+                    else
+                        *bs->pos++ = opt->short_name;
+                }
+            } else if (cli->negated_by_no) {
+                append_build_string(bs, cli->option_chars, -1);
+                append_build_string(bs, "no-", 3);
+                append_build_string(bs, opt->long_name + cli->iopt[optno].ilongoff, -1);
+            } else {
+                append_build_string(bs, cli->option_chars, -1);
+                append_build_string(bs, opt->long_name + cli->iopt[optno].ilongoff, -1);
+            }
+            if (optno >= 0 && clp->have_val && *percent == 'V') {
+                if (cli->current_short && !cli->iopt[optno].ioptional)
+                    append_build_string(bs, " ", 1);
+                else if (!cli->current_short)
+                    append_build_string(bs, "=", 1);
+                append_build_string(bs, clp->vstr, -1);
+            }
+            break;
+        }
 
 	  case '%':
 	    if (ENSURE_BUILD_STRING(bs, 1))
@@ -2206,9 +2219,10 @@ do_error(Clp_Parser *clp, Clp_BuildString *bs)
 /** @param clp the parser
  * @param format error format
  *
- * Format an error message from @a format and any additional arguments in the
- * ellipsis.  The resulting error string by printing it to standard error or
- * passing it to Clp_SetErrorHandler.
+ * Format an error message from @a format and any additional arguments in
+ * the ellipsis. The resulting error string is then printed to standard
+ * error (or passed to the error handler specified by Clp_SetErrorHandler).
+ * Returns the number of characters printed.
  *
  * The following format characters are accepted:
  *
@@ -2229,6 +2243,9 @@ do_error(Clp_Parser *clp, Clp_BuildString *bs)
  * <dt><tt>%</tt><tt>O</tt></dt>
  * <dd>The current option.  No values are read from the argument list; the
  * current option is defined in the Clp_Parser object itself.</dd>
+ * <dt><tt>%</tt><tt>V</tt></dt>
+ * <dd>Like <tt>%</tt><tt>O</tt>, but also includes the current value,
+ * if any.</dd>
  * <dt><tt>%%</tt></dt>
  * <dd>Prints a percent character.</dd>
  * <dt><tt>%</tt><tt>&lt;</tt></dt>
