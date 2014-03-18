@@ -759,9 +759,9 @@ Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
 			 void (*free_data)(void *), int data_interlaced)
 {
   /* NB does not affect compressed image (and must not) */
-  int i;
-  int width = gfi->width;
-  int height = gfi->height;
+  unsigned i;
+  unsigned width = gfi->width;
+  unsigned height = gfi->height;
   uint8_t **img;
 
   Gif_ReleaseUncompressedImage(gfi);
