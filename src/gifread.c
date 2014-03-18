@@ -377,11 +377,13 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 
   /* zero-length block reached. */
  zero_length_block:
-
-  if (gfc->image + gfc->decodepos < gfc->maximage)
-    gif_read_error(gfc, 1, "not enough image data for image size");
-  else if (gfc->image + gfc->decodepos > gfc->maximage)
-    gif_read_error(gfc, 1, "too much image data for image size");
+  if (gfc->image + gfc->decodepos < gfc->maximage) {
+      char buf[BUFSIZ];
+      sprintf(buf, "missing %lu pixels of image data",
+              (unsigned long) (gfc->maximage - (gfc->image + gfc->decodepos)));
+      gif_read_error(gfc, 1, buf);
+  } else if (gfc->image + gfc->decodepos > gfc->maximage)
+      gif_read_error(gfc, 1, "too much image data for image size");
 }
 
 
