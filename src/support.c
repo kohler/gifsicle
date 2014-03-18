@@ -1132,7 +1132,7 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
       return color->pixel;
     else {
       if (color_context)
-	  error(0, "%s color out of range", color_context);
+	  error(2, "%s color out of range", color_context);
       return -1;
     }
   }
@@ -1192,7 +1192,8 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 	    else if (original_bg_transparent)
 		want_transparent = 1;
 	    else if (merger[i]->transparent.haspixel) {
-		if (background.haspixel && !GIF_COLOREQ(&background, &merger[i]->transparent))
+		if (background.haspixel
+                    && !GIF_COLOREQ(&background, &merger[i]->transparent))
 		    conflict = 1;
 		else {
 		    background = merger[i]->transparent;
@@ -1464,6 +1465,24 @@ apply_frame_transparent(Gif_Image *gfi, Gt_Frame *fr)
     return old_transparent;
 }
 
+static void mark_used_background_color(Gt_Frame* fr) {
+    Gif_Stream* gfs = fr->stream;
+    Gif_Image* gfi = fr->image;
+    if ((fr->transparent.haspixel != 0
+         ? fr->transparent.haspixel != 255
+         : gfi->transparent < 0)
+        && ((fr->disposal >= 0
+             ? fr->disposal
+             : gfi->disposal) == GIF_DISPOSAL_BACKGROUND
+            || gfi->left != 0
+            || gfi->top != 0
+            || gfi->width != gfs->screen_width
+            || gfi->height != gfs->screen_height)
+        && gfs->global
+        && gfs->background < gfs->global->ncol)
+        gfs->global->col[gfs->background].haspixel |= 1;
+}
+
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 		     Gt_OutputData *output_data, int compress_immediately,
@@ -1542,6 +1561,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       mark_used_colors(merger[i]->stream, merger[i]->image, merger[i]->crop,
                        compress_immediately);
       merger[i]->image->transparent = old_transp;
+      mark_used_background_color(merger[i]);
   }
 
   /* copy stream-wide information from output_data */
@@ -1669,7 +1689,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* 6/17/02 store information about image's background */
     if (fr->stream->images[0]->transparent >= 0)
 	fr->transparent.haspixel = 2;
-    else if (fr->stream->global && fr->stream->background < fr->stream->global->ncol) {
+    else if (fr->stream->global
+             && fr->stream->background < fr->stream->global->ncol) {
 	fr->transparent = fr->stream->global->col[fr->stream->background];
 	fr->transparent.haspixel = 1;
     } else
