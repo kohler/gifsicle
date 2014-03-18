@@ -39,7 +39,7 @@ typedef struct {
 
   Gif_Image* gfi;
   Gif_ReadErrorHandler handler;
-  int errors;
+  int errors[2];
 
 } Gif_Context;
 
@@ -161,8 +161,7 @@ static void
 gif_read_error(Gif_Context *gfc, int is_error, const char *text)
 {
     Gif_ReadErrorHandler handler = gfc->handler ? gfc->handler : default_error_handler;
-    if (is_error > 0)
-        gfc->errors++;
+    gfc->errors[is_error > 0] += 1;
     if (handler)
         handler(gfc->stream, gfc->gfi, is_error, text);
 }
@@ -174,27 +173,19 @@ one_code(Gif_Context *gfc, Gif_Code code)
   uint8_t *suffixes = gfc->suffix;
   Gif_Code *prefixes = gfc->prefix;
   uint8_t *ptr;
-  int lastsuffix;
-  uint16_t codelength = gfc->length[code];
+  int lastsuffix = 0;
+  int codelength = gfc->length[code];
 
   gfc->decodepos += codelength;
   ptr = gfc->image + gfc->decodepos;
-  if (ptr > gfc->maximage || !codelength) {
-    gif_read_error(gfc, 1, (!codelength ? "bad code" : "too much image data"));
-    /* 5/26/98 It's not good enough simply to count an error, because in the
-       read_image_data function, if code == next_code, we will store a byte in
-       gfc->image[gfc->decodepos-1]. Thus, fix decodepos so it's w/in the
-       image. */
-    gfc->decodepos = gfc->maximage - gfc->image;
-    return 0;
+  while (codelength > 0) {
+      lastsuffix = suffixes[code];
+      code = prefixes[code];
+      --ptr;
+      if (ptr < gfc->maximage)
+          *ptr = lastsuffix;
+      --codelength;
   }
-
-  /* codelength will always be greater than 0. */
-  do {
-    lastsuffix = suffixes[code];
-    *--ptr = lastsuffix;
-    code = prefixes[code];
-  } while (--codelength > 0);
 
   /* return the first pixel in the code, which, since we walked backwards
      through the code, was the last suffix we processed. */
@@ -333,9 +324,9 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 	 Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
 	 This happens at the end of a large GIF: see the next comment ("If no
 	 meaningful next code should be defined...."). */
-      if (gfc->errors < 20)
+      if (gfc->errors[1] < 20)
           gif_read_error(gfc, 1, "image corrupted, code out of range");
-      else if (gfc->errors == 20)
+      else if (gfc->errors[1] == 20)
           gif_read_error(gfc, 1, "(not reporting more errors)");
       code = 0;
     }
@@ -357,7 +348,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     /* Special processing if code == next_code: we didn't know code's final
        suffix when we called one_code, but we do now. */
     /* 7.Mar.2014 -- Avoid error if image has zero width/height. */
-    if (code == next_code)
+    if (code == next_code && gfc->image + gfc->decodepos <= gfc->maximage)
       gfc->image[gfc->decodepos - 1] = gfc->suffix[next_code];
 
     /* Increment next_code except for the 'clear_code' special case (that's
@@ -384,14 +375,19 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   }
 
   /* zero-length block reached. */
- zero_length_block:
-  if (gfc->image + gfc->decodepos < gfc->maximage) {
+ zero_length_block: {
+      long delta = (long) (gfc->maximage - gfc->image) - (long) gfc->decodepos;
       char buf[BUFSIZ];
-      sprintf(buf, "missing %lu pixels of image data",
-              (unsigned long) (gfc->maximage - (gfc->image + gfc->decodepos)));
-      gif_read_error(gfc, 1, buf);
-  } else if (gfc->image + gfc->decodepos > gfc->maximage)
-      gif_read_error(gfc, 1, "too much image data for image size");
+      if (delta > 0) {
+          sprintf(buf, "missing %ld pixels of image data", delta);
+          gif_read_error(gfc, 1, buf);
+      } else if (delta < -1) {
+          /* One pixel of superfluous data is OK; that could be the
+             code == next_code case. */
+          sprintf(buf, "%ld superfluous pixels of image data", -delta);
+          gif_read_error(gfc, 0, buf);
+      }
+  }
 }
 
 
@@ -547,7 +543,7 @@ Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
   gfc.suffix = Gif_NewArray(uint8_t, GIF_MAX_CODE);
   gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = h;
-  gfc.errors = 0;
+  gfc.errors[0] = gfc.errors[1] = 0;
 
   if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
@@ -557,9 +553,9 @@ Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
-  if (gfc.errors)
+  if (gfc.errors[0] || gfc.errors[1])
       gif_read_error(&gfc, -1, 0);
-  return ok && !gfc.errors;
+  return ok && !gfc.errors[1];
 }
 
 
@@ -811,7 +807,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   gfc.length = Gif_NewArray(uint16_t, GIF_MAX_CODE);
   gfc.handler = handler;
   gfc.gfi = gfi;
-  gfc.errors = 0;
+  gfc.errors[0] = gfc.errors[1] = 0;
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
@@ -905,8 +901,10 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.length);
 
   if (gfs)
-    gfs->errors = gfc.errors;
-  if (gfs && gfc.errors == 0 && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !grr->eofer(grr)) {
+    gfs->errors = gfc.errors[1];
+  if (gfs && gfc.errors[1] == 0
+      && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK)
+      && !grr->eofer(grr)) {
       gfc.gfi = 0;
       gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
   }
