@@ -187,7 +187,7 @@ void kchist_cleanup(kchist* kch) {
     kch->h = NULL;
 }
 
-void kchist_add(kchist* kch, kcolor k, unsigned count) {
+void kchist_add(kchist* kch, kcolor k, kchist_count_t count) {
     unsigned hash1, hash2 = 0;
     kacolor ka;
     ka.k = k;

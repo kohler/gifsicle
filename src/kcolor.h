@@ -208,7 +208,7 @@ typedef struct kchist {
 void kchist_init(kchist* kch);
 void kchist_cleanup(kchist* kch);
 void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp);
-void kchist_add(kchist* kch, kcolor color, unsigned count);
+void kchist_add(kchist* kch, kcolor color, kchist_count_t count);
 void kchist_compress(kchist* kch);
 
 
