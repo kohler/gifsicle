@@ -52,8 +52,10 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
         printed_file = malloc(strlen(iname) + 1);
         strcpy(printed_file, iname);
     }
-    if ((!fmt || !*fmt) && seriousness == 0) {
-        saved_context[0] = in_context = 0;
+    if (seriousness == 0)
+        in_context = 0;
+    if (seriousness == 0 && (!fmt || !*fmt)) {
+        saved_context[0] = 0;
         return;
     }
 
@@ -63,11 +65,9 @@ verror(int need_file, int seriousness, const char *fmt, va_list val)
         xfmt = "%s%s%s warning: ";
     else
         xfmt = "%s%s%s ";
-    if (need_file != 2 && in_context)
-        initial_prefix = "";
     snprintf(pbuf, sizeof(pbuf), xfmt,
              initial_prefix, *initial_prefix ? ":" : "",
-             in_context ? " " : "");
+             in_context ? "  " : "");
     p = strlen(pbuf);
 
     Clp_vsnprintf(clp, buf, sizeof(buf), fmt, val);
