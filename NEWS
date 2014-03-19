@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.80   18.Mar.2014
+
+* Bug fixes and improved error messages.
+
+
 Version 1.79   17.Mar.2014
 
 * Major improvements in image scaling. Work sponsored by Tumblr via
