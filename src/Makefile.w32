@@ -24,7 +24,7 @@ GIFWRITE_OBJ = gifwrite.obj
 # probably need to change it if you're using a different compiler. You can
 # define it to the empty string, in which case Gifsicle will compile fine,
 # but you won't be able to use wildcards in file name arguments.
-SETARGV_OBJ = $(MSDEVDIR)\lib\setargv.obj
+SETARGV_OBJ = "$(VSINSTALLDIR)\VC\lib\setargv.obj"
 
 CC = cl
 CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /ML -O2
