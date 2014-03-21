@@ -178,6 +178,43 @@ gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
   }
 }
 
+struct rgb {int r,g,b;};
+
+static inline int color_diff(const Gif_Colormap *gfcm, uint8_t one, uint8_t two, struct rgb dither)
+{
+  Gif_Color a = gfcm->col[one];
+  Gif_Color b = gfcm->col[two];
+
+  if ((a.haspixel&2) != (b.haspixel&2)) return 1<<25;
+  if (a.haspixel&2) return 0;
+
+  int dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
+  + (a.gfc_green-b.gfc_green+dither.g)*(a.gfc_green-b.gfc_green+dither.g)
+  + (a.gfc_blue-b.gfc_blue+dither.b)*(a.gfc_blue-b.gfc_blue+dither.b);
+
+  int undith = (a.gfc_red-b.gfc_red+dither.r/2)*(a.gfc_red-b.gfc_red+dither.r/2)
+  + (a.gfc_green-b.gfc_green+dither.g/2)*(a.gfc_green-b.gfc_green+dither.g/2)
+  + (a.gfc_blue-b.gfc_blue+dither.b/2)*(a.gfc_blue-b.gfc_blue+dither.b/2);
+
+  return dith < undith ? dith : undith;
+}
+
+struct rgb color_diff_rgb(const Gif_Colormap *gfcm, uint8_t one, uint8_t two)
+{
+  Gif_Color a = gfcm->col[one];
+  Gif_Color b = gfcm->col[two];
+
+  if ((a.haspixel&2) != (b.haspixel&2)) return (struct rgb){0,0,0};
+
+  return (struct rgb) {
+    a.gfc_red-b.gfc_red,
+    a.gfc_green-b.gfc_green,
+    a.gfc_blue-b.gfc_blue,
+  };
+}
+
+static inline const uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
+
 static void
 gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
                          Gif_Node *next_node)
@@ -247,10 +284,82 @@ gif_line_endpos(Gif_Image *gfi, unsigned pos)
   return (y + 1) * gfi->width;
 }
 
+struct selected_node {
+  Gif_Node *node; unsigned long pos, diff;
+};
+
+struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, int pos, unsigned long base_diff, struct rgb dither)
+{
+  const int max_diff = (1L<<8); // That controls quality
+
+  unsigned image_endpos = gfi->width * gfi->height;
+  if (pos >= image_endpos) return (struct selected_node){work_node, pos, base_diff};
+
+  struct selected_node best_t = {work_node, pos+1, base_diff}, t;
+  Gif_Node *node = work_node;
+  uint8_t suffix = gif_pixel_at_pos(gfi, pos);
+  assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
+  assert(suffix < gfc->clear_code);
+  if (!node) {
+    int i;
+    if (&gfc->nodes[suffix]) { // prefix of the new node must be same as suffix of previously added node
+      return gfc_lookup_lossy(&gfc->nodes[suffix], gfc, gfcm, gfi, pos+1, base_diff, (struct rgb){0,0,0});
+    }
+    for(i=0; i < gfc->clear_code; i++) {
+      if (!&gfc->nodes[i]) continue;
+      int diff = color_diff(gfcm, suffix, i, dither);
+      if (diff <= max_diff) {
+        t = gfc_lookup_lossy(&gfc->nodes[i], gfc, gfcm, gfi, pos+1, base_diff + diff, color_diff_rgb(gfcm, suffix, i));
+        if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
+          best_t = t;
+        }
+      }
+    }
+  }
+  else if (node->type == TABLE_TYPE) {
+    int i;
+    for(i=0; i < gfc->clear_code; i++) {
+      if (!node->child.m[i]) continue;
+      int diff = color_diff(gfcm, suffix, i, dither);
+      if (diff <= max_diff) {
+        t = gfc_lookup_lossy(node->child.m[i], gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, i));
+        if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
+          best_t = t;
+        }
+      }
+    }
+  }
+  else {
+    for (node = node->child.s; node; node = node->sibling) {
+      int diff = color_diff(gfcm, suffix, node->suffix, dither);
+      if (diff <= max_diff) {
+        t = gfc_lookup_lossy(node, gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, node->suffix));
+        if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
+          best_t = t;
+        }
+      }
+    }
+  }
+
+  return best_t;
+}
+
+static inline const uint8_t
+gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
+{
+  unsigned y = pos / gfi->width, x = pos - y * gfi->width;
+  if (!gfi->interlace)
+    return gfi->img[y][x];
+  else
+    return gfi->img[Gif_InterlaceLine(y, gfi->height)][x];
+}
+
 static int
-write_compressed_data(Gif_Image *gfi,
+write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
 {
+  uint8_t lossy = 1;
+
   uint8_t stack_buffer[232];
   uint8_t *buf = stack_buffer;
   unsigned bufpos = 0;
@@ -259,6 +368,7 @@ write_compressed_data(Gif_Image *gfi,
   unsigned pos;
   unsigned clear_bufpos, clear_pos;
   unsigned line_endpos;
+  unsigned image_endpos;
   const uint8_t *imageline;
 
   Gif_Node *work_node;
@@ -291,10 +401,17 @@ write_compressed_data(Gif_Image *gfi,
   output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
+     
+  Gif_Colormap *gfcm;
 
   pos = clear_pos = clear_bufpos = 0;
-  line_endpos = gfi->width;
-  imageline = gif_imageline(gfi, pos);
+  if (lossy) {
+    image_endpos = gfi->height * gfi->width;
+    gfcm = (gfi->local ? gfi->local : gfs->global);
+  } else {
+    line_endpos = gfi->width;
+    imageline = gif_imageline(gfi, pos);
+  }
 
   while (1) {
 
@@ -349,91 +466,154 @@ write_compressed_data(Gif_Image *gfi,
 
     /*****
      * Find the next code to output. */
+    if (lossy) {
+        int lastpos = pos;
+        struct selected_node t = gfc_lookup_lossy(0, gfc, gfcm, gfi, pos, 0, (struct rgb){0,0,0});
+        pos = t.pos;
+        work_node = t.node;
+        run = pos - lastpos - 1;
 
-    /* If height is 0 -- no more pixels to write -- we output work_node next
-       time around. */
-    while (imageline) {
-      suffix = *imageline;
-      next_node = gfc_lookup(gfc, work_node, suffix);
+        if (pos < image_endpos) {
+          /* Output the current code. */
+          if (next_code < GIF_MAX_CODE) {
+            gfc_define(gfc, work_node, gif_pixel_at_pos(gfi, pos-1), next_code);
+            next_code++;
+          } else
+            next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
 
-      imageline++;
-      pos++;
-      if (pos == line_endpos) {
-	imageline = gif_imageline(gfi, pos);
-        line_endpos += gfi->width;
-      }
+          /* Check whether to clear table. */
+          if (next_code > 4094) {
+            int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
 
-      if (!next_node) {
-	/* Output the current code. */
-	if (next_code < GIF_MAX_CODE) {
-          gfc_define(gfc, work_node, suffix, next_code);
-          next_code++;
-	} else
-	  next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
+            if (!do_clear) {
+              unsigned pixels_left = image_endpos - pos;
+              if (pixels_left) {
+                /* Always clear if run_ewma gets small relative to
+                   min_code_bits. Otherwise, clear if #images/run is smaller
+                   than an empirical threshold, meaning it will take more than
+                   3000 or so average runs to complete the image. */
+                if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
+                    || pixels_left > UINT_MAX / RUN_INV_THRESH
+                    || run_ewma < pixels_left * RUN_INV_THRESH)
+                  do_clear = 1;
+              }
+            }
 
-        /* Check whether to clear table. */
-        if (next_code > 4094) {
-          int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
+            if ((do_clear || run < 7) && !clear_pos) {
+              clear_pos = pos - (run + 1);
+              clear_bufpos = bufpos;
+            } else if (!do_clear && run > 50)
+              clear_pos = clear_bufpos = 0;
 
-          if (!do_clear) {
-            unsigned pixels_left = gfi->width * gfi->height - pos;
-            if (pixels_left) {
-              /* Always clear if run_ewma gets small relative to
-                 min_code_bits. Otherwise, clear if #images/run is smaller
-                 than an empirical threshold, meaning it will take more than
-                 3000 or so average runs to complete the image. */
-              if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
-                  || pixels_left > UINT_MAX / RUN_INV_THRESH
-                  || run_ewma < pixels_left * RUN_INV_THRESH)
-                do_clear = 1;
+            if (do_clear) {
+              GIF_DEBUG(("rewind %u pixels/%d bits", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
+              output_code = CLEAR_CODE;
+              pos = clear_pos;
+
+              bufpos = clear_bufpos;
+              buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
+              grr->cleared = 1;
+              continue;
             }
           }
 
-          if ((do_clear || run < 7) && !clear_pos) {
-            clear_pos = pos - (run + 1);
-            clear_bufpos = bufpos;
-          } else if (!do_clear && run > 50)
-            clear_pos = clear_bufpos = 0;
+          /* Adjust current run length average. */
+          run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
+          if (run < run_ewma)
+            run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
+          else
+            run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
 
-          if (do_clear) {
-            GIF_DEBUG(("rewind %u pixels/%d bits", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
-            output_code = CLEAR_CODE;
-            pos = clear_pos;
-            imageline = gif_imageline(gfi, pos);
-            line_endpos = gif_line_endpos(gfi, pos);
-            bufpos = clear_bufpos;
-            buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
-            work_node = 0;
-            run = 0;
-            grr->cleared = 1;
-            goto found_output_code;
-          }
+          pos--;
         }
 
-        /* Adjust current run length average. */
-        run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
-        if (run < run_ewma)
-          run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
-        else
-          run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
+        output_code = (work_node ? work_node->code : EOI_CODE);
+    } else {
+        /* If height is 0 -- no more pixels to write -- we output work_node next
+           time around. */
+        while (imageline) {
+          suffix = *imageline;
+          next_node = gfc_lookup(gfc, work_node, suffix);
 
-	/* Output the current code. */
-	output_code = work_node->code;
-	work_node = &gfc->nodes[suffix];
-	run = 1;
-	goto found_output_code;
-      }
+          imageline++;
+          pos++;
+          if (pos == line_endpos) {
+        imageline = gif_imageline(gfi, pos);
+            line_endpos += gfi->width;
+          }
 
-      work_node = next_node;
-      ++run;
-    }
+          if (!next_node) {
+        /* Output the current code. */
+        if (next_code < GIF_MAX_CODE) {
+              gfc_define(gfc, work_node, suffix, next_code);
+              next_code++;
+        } else
+          next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
 
-    /* Ran out of data if we get here. */
-    output_code = (work_node ? work_node->code : EOI_CODE);
-    work_node = 0;
-    run = 0;
+            /* Check whether to clear table. */
+            if (next_code > 4094) {
+              int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
 
-   found_output_code: ;
+              if (!do_clear) {
+                unsigned pixels_left = gfi->width * gfi->height - pos;
+                if (pixels_left) {
+                  /* Always clear if run_ewma gets small relative to
+                     min_code_bits. Otherwise, clear if #images/run is smaller
+                     than an empirical threshold, meaning it will take more than
+                     3000 or so average runs to complete the image. */
+                  if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
+                      || pixels_left > UINT_MAX / RUN_INV_THRESH
+                      || run_ewma < pixels_left * RUN_INV_THRESH)
+                    do_clear = 1;
+                }
+              }
+
+              if ((do_clear || run < 7) && !clear_pos) {
+                clear_pos = pos - (run + 1);
+                clear_bufpos = bufpos;
+              } else if (!do_clear && run > 50)
+                clear_pos = clear_bufpos = 0;
+
+              if (do_clear) {
+                GIF_DEBUG(("rewind %u pixels/%d bits", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
+                output_code = CLEAR_CODE;
+                pos = clear_pos;
+                imageline = gif_imageline(gfi, pos);
+                line_endpos = gif_line_endpos(gfi, pos);
+                bufpos = clear_bufpos;
+                buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
+                work_node = 0;
+                run = 0;
+                grr->cleared = 1;
+                goto found_output_code;
+              }
+            }
+
+            /* Adjust current run length average. */
+            run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
+            if (run < run_ewma)
+              run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
+            else
+              run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
+
+        /* Output the current code. */
+        output_code = work_node->code;
+        work_node = &gfc->nodes[suffix];
+        run = 1;
+        goto found_output_code;
+          }
+
+          work_node = next_node;
+          ++run;
+        }
+
+        /* Ran out of data if we get here. */
+        output_code = (work_node ? work_node->code : EOI_CODE);
+        work_node = 0;
+        run = 0;
+
+       found_output_code: ;
+   }
   }
 
   /* Output memory buffer to stream. */
@@ -552,14 +732,14 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   }
 
   min_code_bits = calculate_min_code_bits(gfi, &grr);
-  ok = write_compressed_data(gfi, min_code_bits, &gfc, &grr);
+  ok = write_compressed_data(gfs, gfi, min_code_bits, &gfc, &grr);
   save_compression_result(gfi, &grr, ok);
 
   if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
       == GIF_WRITE_OPTIMIZE
       && grr.cleared && ok) {
     grr.gcinfo.flags |= GIF_WRITE_EAGER_CLEAR | GIF_WRITE_SHRINK;
-    if (write_compressed_data(gfi, min_code_bits, &gfc, &grr))
+    if (write_compressed_data(gfs, gfi, min_code_bits, &gfc, &grr))
       save_compression_result(gfi, &grr, 1);
   }
 
@@ -672,11 +852,11 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
 
   } else if (!gfi->img) {
     Gif_UncompressImage(gfs, gfi);
-    write_compressed_data(gfi, min_code_bits, gfc, grr);
+    write_compressed_data(gfs, gfi, min_code_bits, gfc, grr);
     Gif_ReleaseUncompressedImage(gfi);
 
   } else
-    write_compressed_data(gfi, min_code_bits, gfc, grr);
+    write_compressed_data(gfs, gfi, min_code_bits, gfc, grr);
 
   return 1;
 }
