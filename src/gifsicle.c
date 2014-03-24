@@ -191,6 +191,7 @@ static const char *output_option_types[] = {
 #define GRAY_OPT		369
 #define RESIZE_METHOD_OPT	370
 #define RESIZE_COLORS_OPT	371
+#define LOSSY_OPT		372
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -255,6 +256,7 @@ const Clp_Option options[] = {
 
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
+  { "lossy", 0, LOSSY_OPT, Clp_ValInt, Clp_Optional },
 
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
@@ -1899,6 +1901,13 @@ main(int argc, char *argv[])
         error(0, "%s can be at most 256", Clp_CurOptionName(clp));
         def_output_data.scale_colors = 256;
       }
+      break;
+
+    case LOSSY_OPT:
+      if (clp->have_val)
+        gif_write_info.loss = clp->val.i;
+      else
+        gif_write_info.loss = 20;
       break;
 
       /* RANDOM OPTIONS */

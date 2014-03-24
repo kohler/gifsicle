@@ -288,10 +288,8 @@ struct selected_node {
   Gif_Node *node; unsigned long pos, diff;
 };
 
-struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, int pos, unsigned long base_diff, struct rgb dither)
+struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, unsigned pos, unsigned long base_diff, struct rgb dither, const int max_diff)
 {
-  const int max_diff = (1L<<8); // That controls quality
-
   unsigned image_endpos = gfi->width * gfi->height;
   if (pos >= image_endpos) return (struct selected_node){work_node, pos, base_diff};
 
@@ -303,13 +301,13 @@ struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, c
   if (!node) {
     int i;
     if (&gfc->nodes[suffix]) { // prefix of the new node must be same as suffix of previously added node
-      return gfc_lookup_lossy(&gfc->nodes[suffix], gfc, gfcm, gfi, pos+1, base_diff, (struct rgb){0,0,0});
+      return gfc_lookup_lossy(&gfc->nodes[suffix], gfc, gfcm, gfi, pos+1, base_diff, (struct rgb){0,0,0}, max_diff);
     }
     for(i=0; i < gfc->clear_code; i++) {
       if (!&gfc->nodes[i]) continue;
       int diff = color_diff(gfcm, suffix, i, dither);
       if (diff <= max_diff) {
-        t = gfc_lookup_lossy(&gfc->nodes[i], gfc, gfcm, gfi, pos+1, base_diff + diff, color_diff_rgb(gfcm, suffix, i));
+        t = gfc_lookup_lossy(&gfc->nodes[i], gfc, gfcm, gfi, pos+1, base_diff + diff, color_diff_rgb(gfcm, suffix, i), max_diff);
         if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
           best_t = t;
         }
@@ -322,7 +320,7 @@ struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, c
       if (!node->child.m[i]) continue;
       int diff = color_diff(gfcm, suffix, i, dither);
       if (diff <= max_diff) {
-        t = gfc_lookup_lossy(node->child.m[i], gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, i));
+        t = gfc_lookup_lossy(node->child.m[i], gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, i), max_diff);
         if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
           best_t = t;
         }
@@ -333,7 +331,7 @@ struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, c
     for (node = node->child.s; node; node = node->sibling) {
       int diff = color_diff(gfcm, suffix, node->suffix, dither);
       if (diff <= max_diff) {
-        t = gfc_lookup_lossy(node, gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, node->suffix));
+        t = gfc_lookup_lossy(node, gfc, gfcm, gfi, pos+1, base_diff + diff,  color_diff_rgb(gfcm, suffix, node->suffix), max_diff);
         if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
           best_t = t;
         }
@@ -358,8 +356,6 @@ static int
 write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
 {
-  uint8_t lossy = 1;
-
   uint8_t stack_buffer[232];
   uint8_t *buf = stack_buffer;
   unsigned bufpos = 0;
@@ -405,7 +401,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   Gif_Colormap *gfcm;
 
   pos = clear_pos = clear_bufpos = 0;
-  if (lossy) {
+  if (grr->gcinfo.loss) {
     image_endpos = gfi->height * gfi->width;
     gfcm = (gfi->local ? gfi->local : gfs->global);
   } else {
@@ -466,9 +462,9 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
     /*****
      * Find the next code to output. */
-    if (lossy) {
+    if (grr->gcinfo.loss) {
       int lastpos = pos;
-      struct selected_node t = gfc_lookup_lossy(0, gfc, gfcm, gfi, pos, 0, (struct rgb){0,0,0});
+      struct selected_node t = gfc_lookup_lossy(0, gfc, gfcm, gfi, pos, 0, (struct rgb){0,0,0}, grr->gcinfo.loss * 10);
       pos = t.pos;
       work_node = t.node;
       run = pos - lastpos - 1;

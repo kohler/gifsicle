@@ -214,6 +214,8 @@ Whole-GIF options: Also --no-OPTION.\n\
       --gamma G                 Set gamma for color reduction [2.2].\n");
 #endif
   printf("\
+      --lossy[=STRENGTH]        Order pixel patterns to create smaller\n\
+                                GIFs at cost of artifacts and noise.\n\
       --resize WxH              Resize the output GIF to WxH.\n\
       --resize-width W          Resize to width W and proportional height.\n\
       --resize-height H         Resize to height H and proportional width.\n\
