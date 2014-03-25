@@ -666,11 +666,29 @@ typedef struct pixel_range {
     int hi;
 } pixel_range;
 
+typedef struct pixel_range2 {
+    double bounds[2];
+    int lo;
+    int hi;
+} pixel_range2;
+
 static inline pixel_range make_pixel_range(int xi, int maxi,
                                            int maxo, double f) {
     pixel_range pr;
     pr.lo = (int) (xi * f);
     pr.hi = (int) ((xi + 1) * f);
+    pr.hi = (xi + 1 == maxi ? maxo : pr.hi);
+    pr.hi = (pr.hi == pr.lo ? pr.hi + 1 : pr.hi);
+    return pr;
+}
+
+static inline pixel_range2 make_pixel_range2(int xi, int maxi,
+                                             int maxo, double f) {
+    pixel_range2 pr;
+    pr.bounds[0] = xi * f;
+    pr.bounds[1] = (xi + 1) * f;
+    pr.lo = (int) pr.bounds[0];
+    pr.hi = (int) pr.bounds[1];
     pr.hi = (xi + 1 == maxi ? maxo : pr.hi);
     pr.hi = (pr.hi == pr.lo ? pr.hi + 1 : pr.hi);
     return pr;
@@ -742,31 +760,28 @@ static inline double mix_factor(int val, const double bounds[2]) {
 
 static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
     int xo, yo, i, j, k;
-    double bounds[4];
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
 
     scale_image_prepare(sctx);
 
-    bounds[3] = gfo->top * sctx->oyf;
     for (yo = 0; yo != gfo->height; ++yo) {
-        bounds[2] = bounds[3];
-        bounds[3] = (gfo->top + yo + 1) * sctx->oyf;
+        pixel_range2 ypr = make_pixel_range2(yo + gfo->top, sctx->oscr.height,
+                                             sctx->iscr.height, sctx->oyf);
 
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&sc[xo]);
 
         /* collect input mixes */
-        for (j = (int) bounds[2]; j < bounds[3]; ++j) {
-            double jf = mix_factor(j, &bounds[2]) * sctx->ixf * sctx->iyf;
+        for (j = ypr.lo; j < ypr.hi; ++j) {
+            double jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
             const kacolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
-            bounds[1] = gfo->left * sctx->oxf;
             for (xo = 0; xo != gfo->width; ++xo) {
-                bounds[0] = bounds[1];
-                bounds[1] = (gfo->left + xo + 1) * sctx->oxf;
+                pixel_range2 xpr = make_pixel_range2(xo + gfo->left, sctx->oscr.width,
+                                                     sctx->iscr.width, sctx->oxf);
 
-                for (i = (int) bounds[0]; i < bounds[1]; ++i) {
-                    double f = mix_factor(i, &bounds[0]) * jf;
+                for (i = xpr.lo; i < xpr.hi; ++i) {
+                    double f = mix_factor(i, xpr.bounds) * jf;
                     for (k = 0; k != 4; ++k)
                         sc[xo].a[k] += indata[i].a[k] * f;
                 }
