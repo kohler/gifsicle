@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.81   24.Mar.2014
+
+* Correct bug in `mix` sampling method reported by Bryan Stillwell.
+
+
 Version 1.80   18.Mar.2014
 
 * Bug fixes and improved error messages.
