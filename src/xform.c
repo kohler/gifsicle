@@ -688,9 +688,12 @@ static inline pixel_range2 make_pixel_range2(int xi, int maxi,
     pr.bounds[0] = xi * f;
     pr.bounds[1] = (xi + 1) * f;
     pr.lo = (int) pr.bounds[0];
-    pr.hi = (int) pr.bounds[1];
-    pr.hi = (xi + 1 == maxi ? maxo : pr.hi);
-    pr.hi = (pr.hi == pr.lo ? pr.hi + 1 : pr.hi);
+    if (xi + 1 == maxi)
+        pr.hi = maxo;
+    else
+        pr.hi = (int) ceil(pr.bounds[1]);
+    if (pr.hi == pr.lo)
+        ++pr.hi;
     return pr;
 }
 
