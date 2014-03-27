@@ -68,7 +68,7 @@
 #define PACKAGE_NAME "gifsicle"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "gifsicle 1.81"
+#define PACKAGE_STRING "gifsicle 1.82"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gifsicle"
@@ -77,7 +77,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.81"
+#define PACKAGE_VERSION "1.82"
 
 /* Pathname separator character ('/' on Unix). */
 #define PATHNAME_SEPARATOR '\\'
@@ -106,7 +106,7 @@
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "1.81 (Windows)"
+#define VERSION "1.82 (Windows)"
 
 /* Define if X is not available. */
 #define X_DISPLAY_MISSING 1
