@@ -305,7 +305,7 @@ struct selected_node {
 struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, unsigned pos, unsigned long base_diff, struct rgb dither, const int max_diff)
 {
   unsigned image_endpos = gfi->width * gfi->height;
-  if (pos >= image_endpos) return (struct selected_node){work_node, pos, base_diff};
+  if (pos >= image_endpos) return (struct selected_node){work_node, pos+1, base_diff};
 
   struct selected_node best_t = {work_node, pos+1, base_diff}, t;
   Gif_Node *node = work_node;
@@ -411,7 +411,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
-     
+
   Gif_Colormap *gfcm;
 
   pos = clear_pos = clear_bufpos = 0;
