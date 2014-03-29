@@ -300,15 +300,15 @@ struct selected_node {
 };
 
 // Recursive loop
-// Find node that is descendant of work_node (or start new search if work_node is null) that best matches pixels starting at pos
+// Find node that is descendant of node (or start new search if work_node is null) that best matches pixels starting at pos
 // base_diff and dither are distortion from search made so far
-struct selected_node gfc_lookup_lossy(Gif_Node *work_node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, unsigned pos, unsigned long base_diff, struct rgb dither, const int max_diff)
+struct selected_node gfc_lookup_lossy(Gif_Node *node, Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi, unsigned pos, unsigned long base_diff, struct rgb dither, const int max_diff)
 {
   unsigned image_endpos = gfi->width * gfi->height;
-  if (pos >= image_endpos) return (struct selected_node){work_node, pos+1, base_diff};
 
-  struct selected_node best_t = {work_node, pos+1, base_diff}, t;
-  Gif_Node *node = work_node;
+  struct selected_node t,  best_t = {node, pos+1, base_diff};
+  if (pos >= image_endpos) return best_t;
+
   uint8_t suffix = gif_pixel_at_pos(gfi, pos);
   assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
   assert(suffix < gfc->clear_code);
