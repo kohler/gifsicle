@@ -483,7 +483,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
       work_node = t.node;
       run = pos - lastpos - 1;
 
-      if (pos < image_endpos) {
+      if (pos <= image_endpos) {
         /* Output the current code. */
         if (next_code < GIF_MAX_CODE) {
           gfc_define(gfc, work_node, gif_pixel_at_pos(gfi, pos-1), next_code);
