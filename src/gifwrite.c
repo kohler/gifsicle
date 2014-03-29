@@ -313,22 +313,11 @@ struct selected_node gfc_lookup_lossy(Gif_Node *node, Gif_CodeTable *gfc, const 
   assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
   assert(suffix < gfc->clear_code);
   if (!node) {
-    int i;
-    if (&gfc->nodes[suffix]) { // prefix of the new node must be same as suffix of previously added node
-      return gfc_lookup_lossy(&gfc->nodes[suffix], gfc, gfcm, gfi, pos+1, base_diff, (struct rgb){0,0,0}, max_diff);
-    }
-    for(i=0; i < gfc->clear_code; i++) {
-      if (!&gfc->nodes[i]) continue;
-      int diff = color_diff(gfcm, suffix, i, dither);
-      if (diff <= max_diff) {
-        t = gfc_lookup_lossy(&gfc->nodes[i], gfc, gfcm, gfi, pos+1, base_diff + diff, color_diff_rgb(gfcm, suffix, i), max_diff);
-        if (t.pos > best_t.pos || (t.pos == best_t.pos && t.diff < best_t.diff)) {
-          best_t = t;
-        }
-      }
-    }
+    // prefix of the new node must be same as suffix of previously added node
+    return gfc_lookup_lossy(&gfc->nodes[suffix], gfc, gfcm, gfi, pos+1, base_diff, (struct rgb){0,0,0}, max_diff);
   }
-  else if (node->type == TABLE_TYPE) {
+
+  if (node->type == TABLE_TYPE) {
     int i;
     for(i=0; i < gfc->clear_code; i++) {
       if (!node->child.m[i]) continue;
