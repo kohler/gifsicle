@@ -170,19 +170,16 @@ void		Gif_InitCompressInfo(Gif_CompressInfo *gcinfo);
 
 typedef struct {
     uint8_t haspixel;
-    union {
+    struct {
         struct {
             uint8_t red;
             uint8_t green;
             uint8_t blue;
         } comp;
-        uint8_t a[3];
     } c;
 #define gfc_red   c.comp.red
 #define gfc_green c.comp.green
 #define gfc_blue  c.comp.blue
-#define gfc_array c.a
-
     uint32_t pixel;
 } Gif_Color;
 
