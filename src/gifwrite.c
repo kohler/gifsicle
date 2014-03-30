@@ -145,6 +145,13 @@ gfc_init(Gif_CodeTable *gfc)
   return gfc->nodes && gfc->links;
 }
 
+static void
+gfc_deinit(Gif_CodeTable *gfc)
+{
+  Gif_DeleteArray(gfc->nodes);
+  Gif_DeleteArray(gfc->links);
+}
+
 static inline void
 gfc_clear(Gif_CodeTable *gfc, Gif_Code clear_code)
 {
@@ -565,8 +572,7 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
 
  done:
   Gif_DeleteArray(grr.v);
-  Gif_DeleteArray(gfc.nodes);
-  Gif_DeleteArray(gfc.links);
+  gfc_deinit(&gfc);
   return grr.v != 0;
 }
 
@@ -869,8 +875,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   ok = 1;
 
  done:
-  Gif_DeleteArray(gfc.nodes);
-  Gif_DeleteArray(gfc.links);
+  gfc_deinit(&gfc);
   return ok;
 }
 
