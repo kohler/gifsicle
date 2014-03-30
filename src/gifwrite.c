@@ -182,14 +182,14 @@ gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
 struct rgb {int r,g,b;};
 
 /* Difference (MSE) between given color indexes + dithering error */
-static inline unsigned int color_diff(Gif_Color a, Gif_Color b, struct rgb dither)
+static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transaprent, int b_transparent, struct rgb dither)
 {
   /* if one is transparent and the other is not, then return maximum difference */
   /* TODO: figure out what color is in the canvas under the transparent pixel and match against that */
-  if ((a.haspixel&2) != (b.haspixel&2)) return 1<<25;
+  if (a_transaprent != b_transparent) return 1<<25;
 
   /* Two transparent colors are identical */
-  if (a.haspixel&2) return 0;
+  if (a_transaprent) return 0;
 
   /* squared error with or without dithering. */
   unsigned int dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
@@ -205,14 +205,14 @@ static inline unsigned int color_diff(Gif_Color a, Gif_Color b, struct rgb dithe
 }
 
 /* difference between expected color a+dither and color b (used to calculate dithering required) */
-static inline struct rgb diffused_difference(Gif_Color a, Gif_Color b, struct rgb dither)
+static inline struct rgb diffused_difference(Gif_Color a, Gif_Color b, int a_transaprent, int b_transaprent, struct rgb dither)
 {
-  if ((a.haspixel&2) != (b.haspixel&2)) return (struct rgb){0,0,0};
+  if (a_transaprent != b_transaprent) return (struct rgb){0,0,0};
 
   return (struct rgb) {
-    a.gfc_red - b.gfc_red + dither.r * 15/16,
-    a.gfc_green - b.gfc_green + dither.g * 15/16,
-    a.gfc_blue - b.gfc_blue + dither.b * 15/16,
+    a.gfc_red - b.gfc_red + dither.r * 3/4,
+    a.gfc_green - b.gfc_green + dither.g * 3/4,
+    a.gfc_blue - b.gfc_blue + dither.b * 3/4,
   };
 }
 
@@ -351,9 +351,9 @@ gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Imag
   unsigned pos, Gif_Node *node, uint8_t suffix, uint8_t next_suffix,
   struct rgb dither, unsigned long base_diff, const int max_diff, struct selected_node *best_t)
 {
-  unsigned int diff = color_diff(gfcm->col[suffix], gfcm->col[next_suffix], dither);
+  unsigned int diff = suffix == next_suffix ? 0 : color_diff(gfcm->col[suffix], gfcm->col[next_suffix], suffix == gfi->transparent, next_suffix == gfi->transparent, dither);
   if (diff <= max_diff) {
-    struct rgb new_dither = diffused_difference(gfcm->col[suffix], gfcm->col[next_suffix], dither);
+    struct rgb new_dither = diffused_difference(gfcm->col[suffix], gfcm->col[next_suffix], suffix == gfi->transparent, next_suffix == gfi->transparent, dither);
     /* if the candidate pixel is good enough, check all possible continuations of that dictionary string */
     struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, node, base_diff + diff, new_dither, max_diff);
 
