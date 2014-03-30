@@ -204,18 +204,15 @@ static inline unsigned int color_diff(Gif_Color a, Gif_Color b, struct rgb dithe
   return dith < undith ? dith : undith;
 }
 
-/* difference between two colors (used to calculate dithering required) */
-struct rgb color_diff_rgb(const Gif_Colormap *gfcm, uint8_t one, uint8_t two)
+/* difference between expected color a+dither and color b (used to calculate dithering required) */
+static inline struct rgb diffused_difference(Gif_Color a, Gif_Color b, struct rgb dither)
 {
-  Gif_Color a = gfcm->col[one];
-  Gif_Color b = gfcm->col[two];
-
   if ((a.haspixel&2) != (b.haspixel&2)) return (struct rgb){0,0,0};
 
   return (struct rgb) {
-    a.gfc_red-b.gfc_red,
-    a.gfc_green-b.gfc_green,
-    a.gfc_blue-b.gfc_blue,
+    a.gfc_red - b.gfc_red + dither.r * 15/16,
+    a.gfc_green - b.gfc_green + dither.g * 15/16,
+    a.gfc_blue - b.gfc_blue + dither.b * 15/16,
   };
 }
 
@@ -356,8 +353,9 @@ gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Imag
 {
   unsigned int diff = color_diff(gfcm->col[suffix], gfcm->col[next_suffix], dither);
   if (diff <= max_diff) {
+    struct rgb new_dither = diffused_difference(gfcm->col[suffix], gfcm->col[next_suffix], dither);
     /* if the candidate pixel is good enough, check all possible continuations of that dictionary string */
-    struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, node, base_diff + diff, color_diff_rgb(gfcm, suffix, next_suffix), max_diff);
+    struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, node, base_diff + diff, new_dither, max_diff);
 
     /* search is biased towards finding longest candidate that is below treshold rather than a match with minimum average error */
     if (t.pos > best_t->pos || (t.pos == best_t->pos && t.diff < best_t->diff)) {
