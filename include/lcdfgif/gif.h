@@ -256,6 +256,9 @@ Gif_Extension*  Gif_GetExtension(Gif_Stream* gfs, int kind,
 
 /** READING AND WRITING **/
 
+struct Gif_Writer;
+typedef struct Gif_Writer Gif_Writer;
+
 struct Gif_Record {
     const unsigned char *data;
     uint32_t length;
@@ -281,6 +284,12 @@ Gif_Stream*	Gif_FullReadRecord(const Gif_Record* record, int flags,
 int		Gif_WriteFile(Gif_Stream *gfs, FILE *f);
 int		Gif_FullWriteFile(Gif_Stream *gfs,
 				  const Gif_CompressInfo *gcinfo, FILE *f);
+
+Gif_Writer* Gif_WriteStart(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
+                            FILE *f, uint8_t isgif89a);
+int
+Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi);
+void    Gif_WriteEnd(Gif_Stream *gfs, Gif_Writer *grr);
 
 #define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)
 #define	Gif_ReadRecord(r)	Gif_FullReadRecord((r),GIF_READ_UNCOMPRESSED,0,0)

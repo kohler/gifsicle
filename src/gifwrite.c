@@ -813,44 +813,40 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
   gifputbyte(0, grr);
 }
 
-
-static int
-write_gif(Gif_Stream *gfs, Gif_Writer *grr)
-{
-  int ok = 0;
+static int write_gif_isgif89a(Gif_Stream *gfs) {
   int i;
-  Gif_Image *gfi;
-  Gif_Extension *gfex = gfs->extensions;
-  Gif_CodeTable gfc;
-
-  gfc_init(&gfc);
-  if (!gfc.nodes || !gfc.links)
-    goto done;
-
-  {
-    uint8_t isgif89a = 0;
-    if (gfs->comment || gfs->loopcount > -1)
-      isgif89a = 1;
-    for (i = 0; i < gfs->nimages && !isgif89a; i++) {
-      gfi = gfs->images[i];
-      if (gfi->identifier || gfi->transparent != -1 || gfi->disposal ||
-	  gfi->delay || gfi->comment)
-	isgif89a = 1;
+  if (gfs->comment || gfs->loopcount > -1)
+    return 1;
+  else for (i = 0; i < gfs->nimages; i++) {
+    Gif_Image *gfi = gfs->images[i];
+    if (gfi->identifier || gfi->transparent != -1 || gfi->disposal ||
+      gfi->delay || gfi->comment) {
+      return 1;
     }
-    if (isgif89a)
-      gifputblock((const uint8_t *)"GIF89a", 6, grr);
-    else
-      gifputblock((const uint8_t *)"GIF87a", 6, grr);
   }
+  return 1;
+}
+
+static void
+write_gif_start(Gif_Stream *gfs, Gif_Writer *grr, uint8_t isgif89a)
+{
+  if (isgif89a)
+    gifputblock((const uint8_t *)"GIF89a", 6, grr);
+  else
+    gifputblock((const uint8_t *)"GIF87a", 6, grr);
 
   write_logical_screen_descriptor(gfs, grr);
 
   if (gfs->loopcount > -1)
     write_netscape_loop_extension(gfs->loopcount, grr);
+}
 
-  for (i = 0; i < gfs->nimages; i++) {
-    Gif_Image *gfi = gfs->images[i];
-    while (gfex && gfex->position == i) {
+static int
+write_gif_write_image_and_extensions(Gif_Stream *gfs, Gif_Writer *grr, Gif_CodeTable *gfc, Gif_Image *gfi, int image_number)
+{
+    Gif_Extension *gfex = gfs->extensions;
+
+    while (gfex && gfex->position == image_number) {
       write_generic_extension(gfex, grr);
       gfex = gfex->next;
     }
@@ -860,9 +856,14 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
       write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
       write_graphic_control_extension(gfi, grr);
-    if (!write_image(gfs, gfi, &gfc, grr))
-      goto done;
-  }
+
+    return write_image(gfs, gfi, gfc, grr);
+}
+
+static void
+write_gif_end(Gif_Stream *gfs, Gif_Writer *grr)
+{
+  Gif_Extension *gfex = gfs->extensions;
 
   while (gfex) {
     write_generic_extension(gfex, grr);
@@ -872,28 +873,98 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
     write_comment_extensions(gfs->comment, grr);
 
   gifputbyte(';', grr);
-  ok = 1;
+}
 
- done:
+/**
+ * Write GIF header only. This is intended for streamed writing where all images aren't in memory at the same time.
+ * Use Gif_FullWriteFile instead if all images have already been added to Gif_Stream.
+ *
+ * Returns NULL on error.
+ * If non-null value is returned it must be followed by calls to Gif_WriteImage and Gif_WriteEnd.
+ * You must set isgif89a to 1 if you use any extensions (animation, identifiers, comments).
+ */
+Gif_Writer *
+Gif_WriteStart(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo, FILE *f, uint8_t isgif89a)
+{
+  Gif_Writer *grr = Gif_New(Gif_Writer);
+  grr->f = f;
+  grr->byte_putter = file_byte_putter;
+  grr->block_putter = file_block_putter;
+  if (gcinfo)
+    grr->gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr->gcinfo);
+
+  grr->errors = 0;
+  write_gif_start(gfs, grr, isgif89a || write_gif_isgif89a(gfs));
+
+  if (grr->errors) {
+    Gif_WriteEnd(gfs, grr);
+    return NULL;
+  }
+
+  return grr;
+}
+
+/**
+ * Write single image to disk. You must call this on all images in order they've been added to Gif_Stream.
+ * If image isn't in the Gif_Stream it'll be added.
+ * Returns 0 on failure.
+ */
+int
+Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi)
+{
+  int i = Gif_ImageNumber(gfs, gfi);
+  if (i < 0) {
+    if (!Gif_AddImage(gfs, gfi))
+      return 0;
+    i = gfs->nimages-1;
+  }
+
+  Gif_CodeTable gfc;
+  if (!gfc_init(&gfc))
+    return 0;
+
+  int ok = write_gif_write_image_and_extensions(gfs, grr, &gfc, gfi, i);
+
   gfc_deinit(&gfc);
   return ok;
 }
 
-
 int
 Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
-		  FILE *f)
+      FILE *f)
 {
-  Gif_Writer grr;
-  grr.f = f;
-  grr.byte_putter = file_byte_putter;
-  grr.block_putter = file_block_putter;
-  if (gcinfo)
-    grr.gcinfo = *gcinfo;
-  else
-    Gif_InitCompressInfo(&grr.gcinfo);
-  grr.errors = 0;
-  return write_gif(gfs, &grr);
+
+  Gif_CodeTable gfc;
+  if (!gfc_init(&gfc))
+    return 0;
+
+  Gif_Writer *grr = Gif_WriteStart(gfs, gcinfo, f, write_gif_isgif89a(gfs));
+  if (!grr)
+    return 0;
+
+  int ok = 0;
+  int i;
+  for (i = 0; i < gfs->nimages; i++) {
+    ok = write_gif_write_image_and_extensions(gfs, grr, &gfc, gfs->images[i], i);
+    if (!ok) break;
+  }
+
+  gfc_deinit(&gfc);
+  Gif_WriteEnd(gfs, grr);
+
+  return ok;
+}
+
+/**
+ * Finish writing images. Must be called after Gif_WriteStart/Gif_WriteImage.
+ */
+void
+Gif_WriteEnd(Gif_Stream *gfs, Gif_Writer *grr)
+{
+  write_gif_end(gfs, grr);
+  Gif_Free(grr);
 }
 
 
