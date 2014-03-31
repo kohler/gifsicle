@@ -70,7 +70,7 @@ typedef struct Gif_CodeTable {
 } Gif_CodeTable;
 
 
-typedef struct Gif_Writer {
+struct Gif_Writer {
   FILE *f;
   uint8_t *v;
   uint32_t pos;
@@ -82,7 +82,7 @@ typedef struct Gif_Writer {
   int cleared;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(const uint8_t *, uint16_t, struct Gif_Writer *);
-} Gif_Writer;
+};
 
 
 #define gifputbyte(b, grr)	((*grr->byte_putter)(b, grr))
