@@ -288,7 +288,7 @@ int		Gif_FullWriteFile(Gif_Stream *gfs,
 Gif_Writer* Gif_WriteStart(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
                             FILE *f, uint8_t isgif89a);
 int
-Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi);
+Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi, const Gif_CompressInfo *gcinfo);
 void    Gif_WriteEnd(Gif_Stream *gfs, Gif_Writer *grr);
 
 #define	Gif_ReadFile(f)		Gif_FullReadFile((f),GIF_READ_UNCOMPRESSED,0,0)

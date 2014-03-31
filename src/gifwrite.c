@@ -909,10 +909,11 @@ Gif_WriteStart(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo, FILE *f, uint8_t
 /**
  * Write single image to disk. You must call this on all images in order they've been added to Gif_Stream.
  * If image isn't in the Gif_Stream it'll be added.
+ * gcinfo is optional.
  * Returns 0 on failure.
  */
 int
-Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi)
+Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi, const Gif_CompressInfo *gcinfo)
 {
   int i = Gif_ImageNumber(gfs, gfi);
   if (i < 0) {
@@ -924,6 +925,10 @@ Gif_WriteImage(Gif_Stream *gfs, Gif_Writer *grr, Gif_Image *gfi)
   Gif_CodeTable gfc;
   if (!gfc_init(&gfc))
     return 0;
+
+  if (gcinfo) {
+    grr->gcinfo = *gcinfo;
+  }
 
   int ok = write_gif_write_image_and_extensions(gfs, grr, &gfc, gfi, i);
 
