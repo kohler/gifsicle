@@ -296,14 +296,14 @@ struct selected_node {
 static inline void
 gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   unsigned pos, Gif_Node *node, uint8_t suffix, uint8_t next_suffix,
-  struct rgb dither, unsigned long base_diff, const int max_diff, struct selected_node *best_t);
+  struct rgb dither, unsigned long base_diff, const unsigned int max_diff, struct selected_node *best_t);
 
 /* Recursive loop
  * Find node that is descendant of node (or start new search if work_node is null) that best matches pixels starting at pos
  * base_diff and dither are distortion from search made so far */
 static struct selected_node
 gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
-  unsigned pos, Gif_Node *node, unsigned long base_diff, struct rgb dither, const int max_diff)
+  unsigned pos, Gif_Node *node, unsigned long base_diff, struct rgb dither, const unsigned int max_diff)
 {
   unsigned image_endpos = gfi->width * gfi->height;
 
@@ -349,7 +349,7 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
 static inline void
 gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   unsigned pos, Gif_Node *node, uint8_t suffix, uint8_t next_suffix,
-  struct rgb dither, unsigned long base_diff, const int max_diff, struct selected_node *best_t)
+  struct rgb dither, unsigned long base_diff, const unsigned int max_diff, struct selected_node *best_t)
 {
   unsigned int diff = suffix == next_suffix ? 0 : color_diff(gfcm->col[suffix], gfcm->col[next_suffix], suffix == gfi->transparent, next_suffix == gfi->transparent, dither);
   if (diff <= max_diff) {
