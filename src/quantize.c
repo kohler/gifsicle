@@ -132,7 +132,7 @@ void kc_set_gamma(int type, double gamma) {
             gamma_tables[1][j] = (int) (pow(i/256.0, 1/gamma) * 32767);
             for (i = 0; i != 2; ++i)
                 while (j && gamma_tables[i][j] <= gamma_tables[i][j-1]
-                       && gamma_tables[i][j] < 3267)
+                       && gamma_tables[i][j] < 32767)
                     ++gamma_tables[i][j];
         }
     }
