@@ -207,7 +207,7 @@ static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transapren
 /* difference between expected color a+dither and color b (used to calculate dithering required) */
 static inline gfc_rgbdiff diffused_difference(Gif_Color a, Gif_Color b, int a_transaprent, int b_transaprent, gfc_rgbdiff dither)
 {
-  if (a_transaprent != b_transaprent) return (gfc_rgbdiff){0,0,0};
+  if (a_transaprent || b_transaprent) return (gfc_rgbdiff){0,0,0};
 
   return (gfc_rgbdiff) {
     a.gfc_red - b.gfc_red + dither.r * 3/4,
