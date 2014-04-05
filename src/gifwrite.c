@@ -307,7 +307,7 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
 {
   unsigned image_endpos = gfi->width * gfi->height;
 
-  struct selected_node t,  best_t = {node, pos+1, base_diff};
+  struct selected_node best_t = {node, pos, base_diff};
   if (pos >= image_endpos) return best_t;
 
   uint8_t suffix = gif_pixel_at_pos(gfi, pos);
@@ -485,16 +485,16 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
     /*****
      * Find the next code to output. */
     if (grr->gcinfo.loss) {
-      int lastpos = pos;
       struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos, NULL, 0, (gfc_rgbdiff){0,0,0}, grr->gcinfo.loss * 10);
-      pos = t.pos;
-      work_node = t.node;
-      run = pos - lastpos - 1;
 
-      if (pos <= image_endpos) {
+      work_node = t.node;
+      run = t.pos - pos;
+      pos = t.pos;
+
+      if (pos < image_endpos) {
         /* Output the current code. */
         if (next_code < GIF_MAX_CODE) {
-          gfc_define(gfc, work_node, gif_pixel_at_pos(gfi, pos-1), next_code);
+          gfc_define(gfc, work_node, gif_pixel_at_pos(gfi, pos), next_code);
           next_code++;
         } else
           next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
@@ -504,7 +504,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
 
           if (!do_clear) {
-            unsigned pixels_left = image_endpos - pos;
+            unsigned pixels_left = image_endpos - pos - 1;
             if (pixels_left) {
               /* Always clear if run_ewma gets small relative to
                  min_code_bits. Otherwise, clear if #images/run is smaller
@@ -518,13 +518,13 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           }
 
           if ((do_clear || run < 7) && !clear_pos) {
-            clear_pos = pos - (run + 1);
+            clear_pos = pos - run;
             clear_bufpos = bufpos;
           } else if (!do_clear && run > 50)
             clear_pos = clear_bufpos = 0;
 
           if (do_clear) {
-            GIF_DEBUG(("rewind %u pixels/%d bits", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
+            GIF_DEBUG(("rewind %u pixels/%d bits", pos + 1 - clear_pos, bufpos + cur_code_bits - clear_bufpos));
             output_code = CLEAR_CODE;
             pos = clear_pos;
 
@@ -541,8 +541,6 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
         else
           run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
-
-        pos--;
       }
 
       output_code = (work_node ? work_node->code : EOI_CODE);
@@ -631,7 +629,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
       run = 0;
 
       found_output_code: ;
-   }
+    }
   }
 
   /* Output memory buffer to stream. */
