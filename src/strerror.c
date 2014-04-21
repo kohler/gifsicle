@@ -2,7 +2,7 @@
    This file provides a definition which David Mazieres <dm@lcs.mit.edu>
    assures me works. */
 
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 # include <config.h>
 #endif
 #ifdef __cplusplus

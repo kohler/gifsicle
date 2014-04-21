@@ -17,12 +17,16 @@
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
+#if HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 /* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
 /* Need _fsetmode under OS/2 for the same reason */
 #if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
 # include <fcntl.h>
 # include <io.h>
+# define isatty _isatty
 #endif
 
 #define static_assert(x, msg) switch ((int) (x)) case 0: case !!((int) (x)):
@@ -543,7 +547,6 @@ open_giffile(const char *name)
 
   if (name == 0 || strcmp(name, "-") == 0) {
 #ifndef OUTPUT_GIF_TO_TERMINAL
-    extern int isatty(int);
     if (isatty(fileno(stdin))) {
       lerror("<stdin>", "is a terminal");
       return NULL;
@@ -642,7 +645,7 @@ input_stream(const char *name)
   componentno++;
   if (componentno > 1) {
     free(component_namebuf);
-    component_namebuf = malloc(strlen(main_name) + 10);
+    component_namebuf = (char*) malloc(strlen(main_name) + 10);
     sprintf(component_namebuf, "%s~%d", main_name, componentno);
     name = component_namebuf;
   }
@@ -886,7 +889,6 @@ write_stream(const char *output_name, Gif_Stream *gfs)
     f = fopen(output_name, "wb");
   else {
 #ifndef OUTPUT_GIF_TO_TERMINAL
-    extern int isatty(int);
     if (isatty(fileno(stdout))) {
       lerror("<stdout>", "is a terminal");
       return;

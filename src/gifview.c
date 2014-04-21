@@ -19,7 +19,7 @@
 #include <X11/Xos.h>
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
-#ifdef HAVE_SYS_SELECT_H
+#if HAVE_SYS_SELECT_H
 # include <sys/select.h>
 #endif
 #include <string.h>
@@ -29,12 +29,16 @@
 #include <ctype.h>
 #include <errno.h>
 #include <assert.h>
+#if HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 /* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
 /* Need _fsetmode under OS/2 for the same reason */
 #if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
 # include <fcntl.h>
 # include <io.h>
+# define isatty _isatty
 #endif
 
 #ifdef __cplusplus
@@ -531,7 +535,6 @@ get_input_stream(const char *name)
 
   if (name == 0 || strcmp(name, "-") == 0) {
 #ifndef OUTPUT_GIF_TO_TERMINAL
-    extern int isatty(int);
     if (isatty(fileno(stdin))) {
       error("<stdin>: is a terminal\n");
       return NULL;

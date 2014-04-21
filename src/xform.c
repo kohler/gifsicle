@@ -17,7 +17,7 @@
 #include <math.h>
 #include <limits.h>
 #include "kcolor.h"
-#ifdef HAVE_UNISTD_H
+#if HAVE_UNISTD_H
 # include <unistd.h>
 #endif
 #ifndef M_PI

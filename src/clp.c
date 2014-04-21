@@ -19,7 +19,7 @@
  * OR IMPLIED. This notice is a summary of the Click LICENSE file; the
  * license in that file is binding. */
 
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include <lcdf/clp.h>

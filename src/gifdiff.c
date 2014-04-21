@@ -14,12 +14,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#if HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 /* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
 /* Need _fsetmode under OS/2 for the same reason */
 #if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
 # include <fcntl.h>
 # include <io.h>
+# define isatty _isatty
 #endif
 
 #define QUIET_OPT		300
@@ -485,7 +489,6 @@ read_stream(const char **filename)
 	/* Since gifdiff always takes explicit filename arguments,
 	   allow explicit reads from terminal. */
 #ifndef OUTPUT_GIF_TO_TERMINAL
-	extern int isatty(int);
 	if (isatty(fileno(stdin))) {
 	    fatal_error("<stdin>: is a terminal\n");
 	    return NULL;

@@ -320,7 +320,7 @@ safe_puts(const char *s, uint32_t len, FILE *f)
 
 
 static void
-comment_info(FILE *where, Gif_Comment *gfcom, char *prefix)
+comment_info(FILE *where, Gif_Comment *gfcom, const char *prefix)
 {
   int i;
   for (i = 0; i < gfcom->count; i++) {
@@ -334,7 +334,7 @@ comment_info(FILE *where, Gif_Comment *gfcom, char *prefix)
 #define COLORMAP_COLS	4
 
 static void
-colormap_info(FILE *where, Gif_Colormap *gfcm, char *prefix)
+colormap_info(FILE *where, Gif_Colormap *gfcm, const char *prefix)
 {
   int i, j;
   int nrows = ((gfcm->ncol - 1) / COLORMAP_COLS) + 1;
@@ -443,7 +443,7 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename, int flags)
 }
 
 
-static char *disposal_names[] = {
+static const char *disposal_names[] = {
   "none", "asis", "background", "previous", "4", "5", "6", "7"
 };
 
@@ -1104,7 +1104,7 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 
 static int
 find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
-		    char *color_context)
+		    const char *color_context)
 {
   Gif_Colormap *gfcm = gfs->global;
   int index;
