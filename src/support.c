@@ -21,6 +21,11 @@ static int verbose_pos = 0;
 int error_count = 0;
 int no_warnings = 0;
 
+/* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
+/* Need _fsetmode under OS/2 for the same reason */
+#if !defined(snprintf)
+# define snprintf _snprintf
+#endif
 
 static void
 verror(const char* landmark, int need_file,

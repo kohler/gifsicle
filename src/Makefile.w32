@@ -27,7 +27,7 @@ GIFWRITE_OBJ = gifwrite.obj
 SETARGV_OBJ = $(MSDevDir)\lib\setargv.obj
 
 CC = cl
-CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /ML -O2
+CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /O2
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
 	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
@@ -40,10 +40,10 @@ GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj \
 	$(CC) $(CFLAGS) /c $<
 
 gifsicle.exe: $(GIFSICLE_OBJS)
-	$(CC) $(CFLAGS) /ogifsicle.exe $(GIFSICLE_OBJS)
+	$(CC) $(CFLAGS) /Fegifsicle.exe $(GIFSICLE_OBJS)
 
 gifdiff.exe: $(GIFDIFF_OBJS)
-	$(CC) $(CFLAGS) /ogifdiff.exe $(GIFDIFF_OBJS)
+	$(CC) $(CFLAGS) /Fegifdiff.exe $(GIFDIFF_OBJS)
 
 clp.obj: ..\config.h ..\include\lcdf\clp.h clp.c
 
