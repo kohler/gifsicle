@@ -2,7 +2,7 @@
 # Updates by Eddie Kohler <ekohler@gmail.com> and
 # Steven Marthouse <comments@vrml3d.com>
 
-# This makefile will work under Win32 (95/98/NT/whatever) or Win64.
+# This makefile should work under Win32 (95/98/NT/whatever) or Win64.
 # It should work out-of-the-box with Visual C++ 5.
 #
 # C:\GIFSICLE> nmake -f Makefile.w32
@@ -24,7 +24,7 @@ GIFWRITE_OBJ = gifwrite.obj
 # probably need to change it if you're using a different compiler. You can
 # define it to the empty string, in which case Gifsicle will compile fine,
 # but you won't be able to use wildcards in file name arguments.
-SETARGV_OBJ = $(MSDEVDIR)\lib\setargv.obj
+SETARGV_OBJ = $(MSDevDir)\lib\setargv.obj
 
 CC = cl
 CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /ML -O2
