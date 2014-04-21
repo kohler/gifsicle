@@ -19,6 +19,9 @@
 /* Define to 1 if you have the `mkstemp' function. */
 /* #undef HAVE_MKSTEMP */
 
+/* Define to 1 if you have the `pow' function. */
+#define HAVE_POW 1
+
 /* Define to 1 if you have the <stdint.h> header file. */
 /* #undef HAVE_STDINT_H */
 
@@ -132,13 +135,9 @@
 extern "C" {
 #endif
 
-/* Use either the clean-failing malloc library in fmalloc.c, or the debugging
-   malloc library in dmalloc.c. */
-#define xmalloc(s)		fail_die_malloc((s),__FILE__,__LINE__)
-#define xrealloc(p,s)		fail_die_realloc((p),(s),__FILE__,__LINE__)
-#define xfree			free
-void *fail_die_malloc(size_t, const char *, int);
-void *fail_die_realloc(void *, size_t, const char *, int);
+/* Use the clean-failing malloc library in fmalloc.c. */
+#define GIF_ALLOCATOR_DEFINED   1
+#define Gif_Free free
 
 /* Prototype strerror if we don't have it. */
 #ifndef HAVE_STRERROR
