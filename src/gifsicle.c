@@ -29,6 +29,10 @@
 # define isatty _isatty
 #endif
 
+#if !defined(snprintf)
+# define snprintf _snprintf
+#endif
+
 #define static_assert(x, msg) switch ((int) (x)) case 0: case !!((int) (x)):
 
 
