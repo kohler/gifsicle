@@ -150,4 +150,14 @@ char *strerror(int errno);
 # define inline inline
 #endif
 
+/* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
+/* Need _fsetmode under OS/2 for the same reason */
+/* Windows has _isatty and _snprintf, not the normal versions */
+#if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
+# include <fcntl.h>
+# include <io.h>
+# define isatty _isatty
+# define snprintf _snprintf
+#endif
+
 #endif /* GIFSICLE_CONFIG_H */
