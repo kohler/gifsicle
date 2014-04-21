@@ -2,7 +2,7 @@
 # Updates by Eddie Kohler <ekohler@gmail.com> and
 # Steven Marthouse <comments@vrml3d.com>
 
-# This makefile will work under Win32 (95/98/NT/whatever) or Win64.
+# This makefile should work under Win32 (95/98/NT/whatever) or Win64.
 # It should work out-of-the-box with Visual C++ 5.
 #
 # C:\GIFSICLE> nmake -f Makefile.w32
