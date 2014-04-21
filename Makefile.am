@@ -8,7 +8,19 @@ man_MANS = gifsicle.1 @OTHERMANS@
 EXTRA_DIST = COPYING README.md gifsicle.spec \
 	include/lcdf/clp.h include/lcdf/inttypes.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
-	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif
+	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif \
+	test/testie \
+	test/001-transexpand.testie \
+	test/002-cropresize.testie \
+	test/003-bgopt.testie \
+	test/004-careful.testie \
+	test/005-resize.testie \
+	test/006-unoptdisposal.testie \
+	test/007-alltransp.testie \
+	test/008-resizemix.testie \
+	test/009-zerowidth.testie \
+	test/010-warnings.testie \
+	test/011-resizemix.testie
 
 gifsicle:
 	@cd src && $(MAKE) gifsicle
