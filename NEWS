@@ -1,5 +1,12 @@
 Gifsicle NEWS
 
+Version 1.83   21.Apr.2014
+
+* Correct bug in custom gamma values reported by Kornel Lesiński.
+
+* Update Windows build.
+
+
 Version 1.82   27.Mar.2014
 
 * Correct bug in `mix` sampling method reported by Bryan Stillwell.
