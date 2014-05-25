@@ -128,10 +128,6 @@
 /* Windows doesn't have popen, but it does have _popen. */
 #define popen _popen
 #define pclose _pclose
-#define snprintf _snprintf
-
-/* Fixes redefinition error in giffunc.c */
-#define GIF_ALLOCATOR_DEFINED 1
 
 #include <stddef.h>
 
