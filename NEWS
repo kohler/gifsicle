@@ -1,5 +1,11 @@
 Gifsicle NEWS
 
+Version 1.84   29.Jun.2014
+
+* Correct optimizer bug that affected GIFs with 65535 or more total
+  colors. Reported by Jernej Simončič.
+
+
 Version 1.83   21.Apr.2014
 
 * Correct bug in custom gamma values reported by Kornel Lesiński.
