@@ -1408,7 +1408,7 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 	  }
 
 	found_right:
-	  if (compress_immediately)
+	  if (compress_immediately > 0)
 	    Gif_ReleaseUncompressedImage(srci);
 	}
 

@@ -921,12 +921,12 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
     || active_output_data.colormap_fixed;
   warn_local_colormaps = !colormap_change;
 
-  compress_immediately = 1;
-  if (!active_output_data.conserve_memory
-      && (active_output_data.scaling
-	  || (active_output_data.optimizing & GT_OPT_MASK)
-	  || colormap_change))
-    compress_immediately = 0;
+  if (!(active_output_data.scaling
+        || (active_output_data.optimizing & GT_OPT_MASK)
+        || colormap_change))
+    compress_immediately = 1;
+  else
+    compress_immediately = active_output_data.conserve_memory;
 
   out = merge_frame_interval(frames, f1, f2, &active_output_data,
 			     compress_immediately, &huge_stream);
@@ -1907,7 +1907,7 @@ main(int argc, char *argv[])
 
      case CONSERVE_MEMORY_OPT:
       MARK_CH(output, CH_MEMORY);
-      def_output_data.conserve_memory = !clp->negated;
+      def_output_data.conserve_memory = clp->negated ? -1 : 1;
       break;
 
      case MULTIFILE_OPT:

@@ -93,7 +93,7 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
     }
 
   done:
-    if (compress_immediately)
+    if (compress_immediately > 0)
         Gif_ReleaseUncompressedImage(gfi);
 }
 
