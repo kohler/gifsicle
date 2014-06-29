@@ -166,7 +166,7 @@ elif test "$ac_cv_u_int_t" = yes; then
     AC_DEFINE([HAVE_U_INT_TYPES], [1], [Define if you have u_intXX_t types but not uintXX_t types.])
 fi
 
-AC_CHECK_TYPES([uintptr_t], [], [],
+AC_CHECK_TYPES([uintptr_t, int64_t], [], [],
 [#if HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
