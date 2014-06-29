@@ -30,5 +30,5 @@ gifdiff_SOURCES = clp.c fmalloc.c \
 
 AM_CPPFLAGS = $(X_CFLAGS) $(WERROR) -I$(top_srcdir)/include
 
-EXTRA_DIST = gifwrite.c ungifwrt.c \
+EXTRA_DIST = gifwrite.c ungifwrt.c opttemplate.c \
 	Makefile.bcc Makefile.w32 win32cfg.h
