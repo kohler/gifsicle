@@ -33,7 +33,7 @@ SETARGV_OBJ = $(MYBCCDIR)\LIB\WILDARGS.OBJ
 
 
 CC = bcc32
-CFLAGS = -I.. -I..\INCLUDE -DHAVE_CONFIG_H -D_CONSOLE -O2 -D_setmode=setmode
+CFLAGS = -I.. -I..\INCLUDE -DHAVE_CONFIG_H=1 -D_CONSOLE -O2 -D_setmode=setmode
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
 	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
