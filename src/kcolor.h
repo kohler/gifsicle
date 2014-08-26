@@ -77,15 +77,7 @@ static inline kacolor kac_transparent() {
 const char* kc_debug_str(kcolor x);
 
 /* set `*x` to the reverse gamma transformation of `*x` */
-static inline void kc_revgamma_transform(kcolor* x) {
-    int d;
-    for (d = 0; d != 3; ++d) {
-        int c = gamma_tables[1][x->a[d] >> 7];
-        while (c < 0x7F80 && x->a[d] >= gamma_tables[0][(c + 0x80) >> 7])
-            c += 0x80;
-        x->a[d] = c;
-    }
-}
+void kc_revgamma_transform(kcolor* x);
 
 /* return the reverse gramma transformation of `*x` as a Gif_Color */
 static inline Gif_Color kc_togfcg(const kcolor* x) {

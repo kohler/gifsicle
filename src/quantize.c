@@ -149,6 +149,16 @@ void kc_set_gamma(int type, double gamma) {
 #endif
 }
 
+void kc_revgamma_transform(kcolor* x) {
+    int d;
+    for (d = 0; d != 3; ++d) {
+        int c = gamma_tables[1][x->a[d] >> 7];
+        while (c < 0x7F80 && x->a[d] >= gamma_tables[0][(c + 0x80) >> 7])
+            c += 0x80;
+        x->a[d] = c;
+    }
+}
+
 #if 0
 static void kc_test_gamma() {
     int x, y, z;

@@ -1003,9 +1003,9 @@ static void scale_image(scale_context* sctx, int method) {
     gfo.width = (int) ceil((gfi->left + gfi->width) * sctx->ixf) - gfo.left;
     gfo.height = (int) ceil((gfi->top + gfi->height) * sctx->iyf) - gfo.top;
     /* account for floating point errors at bottom right edge */
-    if (gfi->left + gfi->width == sctx->iscr.width)
+    if ((unsigned) gfi->left + gfi->width == sctx->iscr.width)
         gfo.width = sctx->oscr.width - gfo.left;
-    if (gfi->top + gfi->height == sctx->iscr.height)
+    if ((unsigned) gfi->top + gfi->height == sctx->iscr.height)
         gfo.height = sctx->oscr.height - gfo.top;
 
     /* Point scaling method is special: rather than rendering the input
