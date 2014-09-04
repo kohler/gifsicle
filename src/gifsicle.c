@@ -236,6 +236,7 @@ const Clp_Option options[] = {
   { "explode", 'e', 'e', 0, 0 },
   { "explode-by-name", 'E', 'E', 0, 0 },
   { "extension", 0, EXTENSION_OPT, Clp_ValString, 0 },
+  { "no-extension", 0, NO_EXTENSIONS_OPT, 0, 0 },
   { "no-extensions", 'x', NO_EXTENSIONS_OPT, 0, 0 },
   { "extension-info", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
 
