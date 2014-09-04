@@ -48,6 +48,7 @@ typedef struct Gt_Frame {
   int explode_by_name;
 
   int no_extensions;
+  int no_app_extensions;
   Gif_Extension *extensions;
 
   unsigned flip_horizontal: 1;

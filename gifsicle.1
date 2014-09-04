@@ -645,8 +645,6 @@ includes names, comments, and generic extensions.
 .Sp
 .PD 0
 .TP 5
-.Oa \-x app\-name " " extension
-.TP
 .Oa \-\-app\-extension app\-name " " extension
 '
 Add an application extension named
@@ -654,6 +652,8 @@ Add an application extension named
 and with the value
 .I extension
 to the output GIF.
+.Op \-\-no\-app\-extensions
+removes application extensions from the input images.
 '
 .Sp
 .TP
@@ -665,13 +665,8 @@ Add a comment,
 .IR text ,
 to the output GIF. The comment will be placed before the next frame in
 the stream.
-.Sp
 .Op \-\-no\-comments
-and
-.Op \-\-same\-comments
-affect all the images following, and apply only to input GIF comments,
-not ones added with
-.Op \-\-comment .
+removes comments from the input images.
 '
 .Sp
 .TP
@@ -685,13 +680,10 @@ to the output GIF.
 .I Number
 can be in decimal, octal, hex, or it can be a single character like \(oqn\(cq,
 whose ASCII value is used.
-.Sp
 .Op \-\-no\-extensions
 (or
 .Op +x )
-and
-.Op \-\-same\-extensions
-affect all the images following, and apply only to input GIF extensions.
+removes extensions from the input images.
 '
 .Sp
 .TP
@@ -703,13 +695,8 @@ Set the next frame's name to
 .IR text .
 This name is stored as an extension in the output GIF (extension number
 0xCE, followed by the characters of the frame name).
-.Sp
 .Op \-\-no\-names
-and
-.Op \-\-same\-names
-affect all the images following. They apply only to input GIF names,
-not ones added with
-.Op \-\-name .
+removes name extensions from the input images.
 '
 .PD
 '

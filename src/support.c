@@ -188,11 +188,13 @@ Image options: Also --no-OPTION and --same-OPTION.\n\
                                 Rotate the image.\n\
   -t, --transparent COL         Make COL transparent.\n\n");
   printf("\
-Extension options: Also --no-OPTION and --same-OPTION.\n\
-  -x, --app-extension N D       Add an app extension named N with data D.\n\
+Extension options:\n\
+      --app-extension N D       Add an app extension named N with data D.\n\
   -c, --comment TEXT            Add a comment before the next frame.\n\
       --extension N D           Add an extension number N with data D.\n\
-  -n, --name TEXT               Set next frame's name.\n\n");
+  -n, --name TEXT               Set next frame's name.\n\
+      --no-comments, --no-names, --no-extensions\n\
+                                Remove comments (names, extensions) from input.\n");
   printf("\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
   -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
@@ -1572,8 +1574,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       for (j = 0; fr->stream->images[j] != fr->image; j++) ;
       while (gfex && gfex->position < j)
 	gfex = gfex->next;
-      while (!fr->no_extensions && gfex && gfex->position == j) {
-	Gif_AddExtension(dest, copy_extension(gfex), i);
+      while (gfex && gfex->position == j) {
+        if (!fr->no_extensions
+            && !(gfex->kind == 255 && fr->no_app_extensions))
+          Gif_AddExtension(dest, copy_extension(gfex), i);
 	gfex = gfex->next;
       }
       gfex = fr->extensions;

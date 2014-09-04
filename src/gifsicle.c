@@ -187,6 +187,8 @@ static const char *output_option_types[] = {
 #define GRAY_OPT		369
 #define RESIZE_METHOD_OPT	370
 #define RESIZE_COLORS_OPT	371
+#define NO_APP_EXTENSIONS_OPT	372
+#define SAME_APP_EXTENSIONS_OPT 373
 
 #define LOOP_TYPE		(Clp_ValFirstUser)
 #define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
@@ -205,6 +207,7 @@ const Clp_Option options[] = {
 
   { "append", 0, APPEND_OPT, 0, 0 },
   { "app-extension", 'x', APP_EXTENSION_OPT, Clp_ValString, 0 },
+  { "no-app-extensions", 0, NO_APP_EXTENSIONS_OPT, 0, 0 },
 
   { "background", 'B', BACKGROUND_OPT, COLOR_TYPE, Clp_Negate },
   { "batch", 'b', 'b', 0, 0 },
@@ -284,6 +287,7 @@ const Clp_Option options[] = {
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
   { "no-rotate", 0, NO_ROTATE_OPT, 0, 0 },
 
+  { "same-app-extensions", 0, SAME_APP_EXTENSIONS_OPT, 0, 0 },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-bg", 0, SAME_BACKGROUND_OPT, 0, 0 },
   { "same-clip", 0, SAME_CROP_OPT, 0, 0 },
@@ -1156,6 +1160,7 @@ initialize_def_frame(void)
   def_frame.explode_by_name = 0;
 
   def_frame.no_extensions = 0;
+  def_frame.no_app_extensions = 0;
   def_frame.extensions = 0;
 
   def_frame.flip_horizontal = 0;
@@ -1610,8 +1615,16 @@ main(int argc, char *argv[])
       def_frame.no_extensions = 1;
       break;
 
+    case NO_APP_EXTENSIONS_OPT:
+      def_frame.no_app_extensions = 1;
+      break;
+
      case SAME_EXTENSIONS_OPT:
       def_frame.no_extensions = 0;
+      break;
+
+    case SAME_APP_EXTENSIONS_OPT:
+      def_frame.no_app_extensions = 0;
       break;
 
      case EXTENSION_OPT:
