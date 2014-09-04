@@ -392,7 +392,7 @@ uses its first three frames; and
 .Xs
 \fBgifsicle happy.gif "#-1-0"\fR
 .Xe
-uses \(oqhappy.gif\(cqs frames in reverse order (starting from frame #-1\*Ethe
+uses its frames in reverse order (starting from frame #-1\*Ethe
 last frame\*Eand ending at frame #0\*Ethe first).
 .PP
 The action performed with the selected frames depends on the current
@@ -827,9 +827,10 @@ Other optimization flags provide finer-grained control.
 Preserve empty transparent frames (they are dropped by default).
 .Sp
 .PP
-There is no
-.Op \-\-same\-optimize
-option.
+You may also be interested in other options for shrinking GIFs, such as
+.Op \-k
+and
+.Op \-\-no\-extensions .
 .RE
 '
 .Sp
@@ -848,10 +849,6 @@ difficult to edit.
 changes optimized input GIFs into unoptimized GIFs, where each frame is a
 faithful representation of what a user would see at that point in the
 animation.
-.Sp
-There is no
-.Op \-\-same\-unoptimize
-option.
 .RE
 '
 .PD
