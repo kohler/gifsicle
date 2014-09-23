@@ -161,21 +161,6 @@ fix_difference_bounds(Gif_OptData *bounds)
  * CALCULATE OUTPUT GLOBAL COLORMAP
  **/
 
-/* create_out_global_map: The interface function to this pass. It creates
-   out_global_map and sets pixel values on all_colormap appropriately.
-   Specifically:
-
-   all_colormap->col[P].pixel >= 256 ==> P is not in the global colormap.
-
-   Otherwise, all_colormap->col[P].pixel == the J so that
-   GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]).
-
-   On return, the 'colormap_penalty' component of an image's Gif_OptData
-   structure is <0 iff that image will need a local colormap.
-
-   20.Aug.1999 - updated to new version that arranges the entire colormap, not
-   just the stuff above 256 colors. */
-
 static void
 increment_penalties(Gif_OptData *opt, penalty_type *penalty, int32_t delta)
 {
