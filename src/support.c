@@ -1263,12 +1263,14 @@ handle_screen(Gif_Stream *dest, uint16_t width, uint16_t height)
 }
 
 static void
-handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr)
+handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr, Gt_Crop* crop)
 {
   Gif_Stream *gfs = fr->stream;
 
   uint16_t screen_width = gfs->screen_width;
   uint16_t screen_height = gfs->screen_height;
+  desti->left += (crop ? crop->left_offset : 0);
+  desti->top += (crop ? crop->top_offset : 0);
 
   if (fr->flip_horizontal)
     flip_image(desti, screen_width, screen_height, 0);
@@ -1282,6 +1284,9 @@ handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr)
     flip_image(desti, screen_width, screen_height, 1);
   } else if (fr->rotation == 3)
     rotate_image(desti, screen_width, screen_height, 3);
+
+  desti->left -= (crop ? crop->left_offset : 0);
+  desti->top -= (crop ? crop->top_offset : 0);
 
   /* handle screen size, which might have height & width exchanged */
   if (fr->rotation == 1 || fr->rotation == 3)
@@ -1632,9 +1637,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     /* Flipping and rotating, and also setting the screen size */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-      handle_flip_and_screen(dest, desti, fr);
+        handle_flip_and_screen(dest, desti, fr, fr->crop);
     else
-      handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
+        handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
 
     /* Names and comments */
     if (fr->name || fr->no_name) {
