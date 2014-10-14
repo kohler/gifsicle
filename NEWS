@@ -1,5 +1,15 @@
 Gifsicle NEWS
 
+Version 1.85   14.Oct.2014
+
+* Greatly improve optimization time for images with many colors.
+
+* Add --no-extensions (with the s) and document those options more.
+
+* Fix bug in interaction of --resize and --rotate reported by Michał
+  Ziemba.
+
+
 Version 1.84   29.Jun.2014
 
 * Correct optimizer bug that affected GIFs with 65535 or more total
