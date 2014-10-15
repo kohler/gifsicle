@@ -1254,49 +1254,49 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 static void
 handle_screen(Gif_Stream *dest, uint16_t width, uint16_t height)
 {
-  /* Set the screen width & height, if the current input width and height are
-     larger */
-  if (dest->screen_width < width)
-    dest->screen_width = width;
-  if (dest->screen_height < height)
-    dest->screen_height = height;
+    /* Set the screen width & height, if the current input width and height are
+       larger */
+    if (dest->screen_width < width)
+        dest->screen_width = width;
+    if (dest->screen_height < height)
+        dest->screen_height = height;
 }
 
 static void
-handle_flip_and_screen(Gif_Stream *dest, Gif_Image *desti, Gt_Frame *fr, Gt_Crop* crop)
+handle_flip_and_screen(Gif_Stream* dest, Gif_Image* desti, Gt_Frame* fr)
 {
-  Gif_Stream *gfs = fr->stream;
+    Gif_Stream* gfs = fr->stream;
 
-  uint16_t screen_width = gfs->screen_width;
-  uint16_t screen_height = gfs->screen_height;
-  desti->left += (crop ? crop->left_offset : 0);
-  desti->top += (crop ? crop->top_offset : 0);
+    uint16_t screen_width = gfs->screen_width;
+    uint16_t screen_height = gfs->screen_height;
+    desti->left += fr->left_offset;
+    desti->top += fr->top_offset;
 
-  if (fr->flip_horizontal)
-    flip_image(desti, screen_width, screen_height, 0);
-  if (fr->flip_vertical)
-    flip_image(desti, screen_width, screen_height, 1);
+    if (fr->flip_horizontal)
+        flip_image(desti, fr, 0);
+    if (fr->flip_vertical)
+        flip_image(desti, fr, 1);
 
-  if (fr->rotation == 1)
-    rotate_image(desti, screen_width, screen_height, 1);
-  else if (fr->rotation == 2) {
-    flip_image(desti, screen_width, screen_height, 0);
-    flip_image(desti, screen_width, screen_height, 1);
-  } else if (fr->rotation == 3)
-    rotate_image(desti, screen_width, screen_height, 3);
+    if (fr->rotation == 1)
+        rotate_image(desti, fr, 1);
+    else if (fr->rotation == 2) {
+        flip_image(desti, fr, 0);
+        flip_image(desti, fr, 1);
+    } else if (fr->rotation == 3)
+        rotate_image(desti, fr, 3);
 
-  desti->left -= (crop ? crop->left_offset : 0);
-  desti->top -= (crop ? crop->top_offset : 0);
+    desti->left -= fr->left_offset;
+    desti->top -= fr->top_offset;
 
-  /* handle screen size, which might have height & width exchanged */
-  if (fr->rotation == 1 || fr->rotation == 3)
-    handle_screen(dest, screen_height, screen_width);
-  else
-    handle_screen(dest, screen_width, screen_height);
+    /* handle screen size, which might have height & width exchanged */
+    if (fr->rotation == 1 || fr->rotation == 3)
+        handle_screen(dest, gfs->screen_height, gfs->screen_width);
+    else
+        handle_screen(dest, gfs->screen_width, gfs->screen_height);
 }
 
 static void
-analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
+analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
 {
   int i, nframes = 0;
   int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
@@ -1340,8 +1340,8 @@ analyze_crop(int nmerger, Gt_Crop *crop, int compress_immediately)
 
   crop->x = crop->spec_x + l;
   crop->y = crop->spec_y + t;
-  crop->w = crop->spec_w <= 0 ? (r - crop->x) + crop->spec_w : crop->spec_w;
-  crop->h = crop->spec_h <= 0 ? (b - crop->y) + crop->spec_h : crop->spec_h;
+  crop->w = crop->spec_w + (crop->spec_w <= 0 ? r - crop->x : 0);
+  crop->h = crop->spec_h + (crop->spec_h <= 0 ? b - crop->y : 0);
   crop->left_offset = crop->x;
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
@@ -1595,6 +1595,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     }
 
     /* Make a copy of the image and crop it if we're cropping */
+    fr->left_offset = fr->top_offset = 0;
     if (fr->crop) {
       int preserve_total_crop;
       srci = Gif_CopyImage(fr->image);
@@ -1607,7 +1608,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       preserve_total_crop = (dest->nimages == 0 || fr->delay == 0
 			     || (fr->delay < 0 && srci->delay == 0));
 
-      if (!crop_image(srci, fr->crop, preserve_total_crop)) {
+      if (!crop_image(srci, fr, preserve_total_crop)) {
 	/* We cropped the image out of existence! Be careful not to make 0x0
 	   frames. */
 	fix_total_crop(dest, srci, i);
@@ -1637,7 +1638,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     /* Flipping and rotating, and also setting the screen size */
     if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-        handle_flip_and_screen(dest, desti, fr, fr->crop);
+        handle_flip_and_screen(dest, desti, fr);
     else
         handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
 
@@ -1720,11 +1721,15 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   if (merger[0]->crop && merger[0]->crop == merger[nmerger - 1]->crop) {
     /* 13.May.2008: Set the logical screen to the cropped dimensions */
     /* 18.May.2008: Unless --crop-transparency is on */
-    if (merger[0]->crop->transparent_edges)
-      dest->screen_width = dest->screen_height = 0;
-    else {
-      dest->screen_width = (merger[0]->crop->w > 0 ? merger[0]->crop->w : 0);
-      dest->screen_height = (merger[0]->crop->h > 0 ? merger[0]->crop->h : 0);
+    Gt_Crop* crop = merger[0]->crop;
+    if (crop->transparent_edges)
+        dest->screen_width = dest->screen_height = 0;
+    else if (merger[0]->rotation == 1 || merger[0]->rotation == 3) {
+        dest->screen_width = (crop->h > 0 ? crop->h : 0);
+        dest->screen_height = (crop->w > 0 ? crop->w : 0);
+    } else {
+        dest->screen_width = (crop->w > 0 ? crop->w : 0);
+        dest->screen_height = (crop->h > 0 ? crop->h : 0);
     }
   }
 

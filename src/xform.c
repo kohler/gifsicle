@@ -234,41 +234,43 @@ combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi)
 }
 
 int
-crop_image(Gif_Image *gfi, Gt_Crop *crop, int preserve_total_crop)
+crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
 {
     Gt_Crop c;
     int j;
     uint8_t **img;
 
-    combine_crop(&c, crop, gfi);
+    combine_crop(&c, fr->crop, gfi);
 
-  if (c.w > 0 && c.h > 0) {
-    img = Gif_NewArray(uint8_t *, c.h + 1);
-    for (j = 0; j < c.h; j++)
-      img[j] = gfi->img[c.y + j] + c.x;
-    img[c.h] = 0;
+    if (c.w > 0 && c.h > 0) {
+        img = Gif_NewArray(uint8_t *, c.h + 1);
+        for (j = 0; j < c.h; j++)
+            img[j] = gfi->img[c.y + j] + c.x;
+        img[c.h] = 0;
 
-    gfi->left += c.x - crop->left_offset;
-    gfi->top += c.y - crop->top_offset;
+        fr->left_offset = fr->crop->left_offset;
+        fr->top_offset = fr->crop->top_offset;
+        gfi->left += c.x - fr->left_offset;
+        gfi->top += c.y - fr->top_offset;
 
-  } else if (preserve_total_crop) {
-    c.w = c.h = 1;
-    img = Gif_NewArray(uint8_t *, c.h + 1);
-    img[0] = gfi->img[0];
-    img[1] = 0;
-    gfi->transparent = img[0][0];
+    } else if (preserve_total_crop) {
+        c.w = c.h = 1;
+        img = Gif_NewArray(uint8_t*, c.h + 1);
+        img[0] = gfi->img[0];
+        img[1] = 0;
+        gfi->transparent = img[0][0];
 
-  } else {
-    /* Empty image */
-    c.w = c.h = 0;
-    img = 0;
-  }
+    } else {
+        /* Empty image */
+        c.w = c.h = 0;
+        img = 0;
+    }
 
-  Gif_DeleteArray(gfi->img);
-  gfi->img = img;
-  gfi->width = c.w;
-  gfi->height = c.h;
-  return gfi->img != 0;
+    Gif_DeleteArray(gfi->img);
+    gfi->img = img;
+    gfi->width = c.w;
+    gfi->height = c.h;
+    return gfi->img != 0;
 }
 
 
@@ -277,7 +279,7 @@ crop_image(Gif_Image *gfi, Gt_Crop *crop, int preserve_total_crop)
  **/
 
 void
-flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
+flip_image(Gif_Image* gfi, Gt_Frame *fr, int is_vert)
 {
   int x, y;
   int width = gfi->width;
@@ -294,7 +296,9 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
       for (x = 0; x < width; x++)
 	*trav-- = buffer[x];
     }
-    gfi->left = screen_width - (gfi->left + width);
+    gfi->left = fr->stream->screen_width - (gfi->left + width);
+    if (fr->crop)
+        fr->left_offset = fr->stream->screen_width - (fr->left_offset + fr->crop->w);
     Gif_DeleteArray(buffer);
   }
 
@@ -304,13 +308,15 @@ flip_image(Gif_Image *gfi, int screen_width, int screen_height, int is_vert)
     memcpy(buffer, img, height * sizeof(uint8_t *));
     for (y = 0; y < height; y++)
       img[y] = buffer[height - y - 1];
-    gfi->top = screen_height - (gfi->top + height);
+    gfi->top = fr->stream->screen_height - (gfi->top + height);
+    if (fr->crop)
+        fr->top_offset = fr->stream->screen_height - (fr->top_offset + fr->crop->h);
     Gif_DeleteArray(buffer);
   }
 }
 
 void
-rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
+rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
 {
   int x, y;
   int width = gfi->width;
@@ -327,16 +333,26 @@ rotate_image(Gif_Image *gfi, int screen_width, int screen_height, int rotation)
       for (y = height - 1; y >= 0; y--)
 	*trav++ = img[y][x];
     x = gfi->left;
-    gfi->left = screen_height - (gfi->top + height);
+    gfi->left = fr->stream->screen_height - (gfi->top + height);
     gfi->top = x;
+    if (fr->crop) {
+        x = fr->left_offset;
+        fr->left_offset = fr->stream->screen_height - (fr->top_offset + fr->crop->h);
+        fr->top_offset = x;
+    }
 
   } else {
     for (x = width - 1; x >= 0; x--)
       for (y = 0; y < height; y++)
 	*trav++ = img[y][x];
     y = gfi->top;
-    gfi->top = screen_width - (gfi->left + width);
+    gfi->top = fr->stream->screen_width - (gfi->left + width);
     gfi->left = y;
+    if (fr->crop) {
+        y = fr->top_offset;
+        fr->top_offset = fr->stream->screen_width - (fr->left_offset + fr->crop->w);
+        fr->left_offset = y;
+    }
   }
 
   Gif_ReleaseUncompressedImage(gfi);

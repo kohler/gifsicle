@@ -40,6 +40,8 @@ typedef struct Gt_Frame {
   int top;
 
   Gt_Crop *crop;
+  int left_offset;
+  int top_offset;
 
   int delay;
   int disposal;
@@ -239,10 +241,10 @@ Gt_ColorTransform *append_color_change
 void	pipe_color_transformer(Gif_Colormap *, void *);
 
 void	combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi);
-int	crop_image(Gif_Image *, Gt_Crop *, int preserve_total_crop);
+int	crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop);
 
-void	flip_image(Gif_Image *, int scr_width, int scr_height, int is_vert);
-void	rotate_image(Gif_Image *, int scr_width, int scr_height, int rotation);
+void	flip_image(Gif_Image* gfi, Gt_Frame* fr, int is_vert);
+void	rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation);
 void	resize_stream(Gif_Stream* gfs, double new_width, double new_height,
                       int fit, int method, int scale_colors);
 

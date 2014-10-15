@@ -1,5 +1,10 @@
 Gifsicle NEWS
 
+Version 1.86   14.Oct.2014
+
+* Further fix --rotate + --crop.
+
+
 Version 1.85   14.Oct.2014
 
 * Greatly improve optimization time for images with many colors.
