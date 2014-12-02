@@ -186,8 +186,8 @@ different(const char *format, ...)
   va_list val;
   va_start(val, format);
   if (!brief) {
-    vfprintf(stderr, format, val);
-    fputc('\n', stderr);
+    vfprintf(stdout, format, val);
+    fputc('\n', stdout);
   }
   va_end(val);
   was_different = 1;
