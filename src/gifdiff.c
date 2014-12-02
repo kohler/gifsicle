@@ -22,11 +22,19 @@
 #define HELP_OPT		301
 #define VERSION_OPT		302
 #define IGNORE_REDUNDANCY_OPT	303
+#define REDUNDANCY_OPT          304
+#define IGNORE_BACKGROUND_OPT	305
+#define BACKGROUND_OPT          306
 
 const Clp_Option options[] = {
   { "help", 'h', HELP_OPT, 0, 0 },
   { "brief", 'q', QUIET_OPT, 0, Clp_Negate },
+  { "redudancy", 0, REDUNDANCY_OPT, 0, Clp_Negate },
   { "ignore-redundancy", 'w', IGNORE_REDUNDANCY_OPT, 0, Clp_Negate },
+  { "bg", 0, BACKGROUND_OPT, 0, Clp_Negate },
+  { "ignore-bg", 0, IGNORE_BACKGROUND_OPT, 0, Clp_Negate },
+  { "background", 0, BACKGROUND_OPT, 0, Clp_Negate },
+  { "ignore-background", 'B', IGNORE_BACKGROUND_OPT, 0, Clp_Negate },
   { "version", 'v', VERSION_OPT, 0, 0 }
 };
 
@@ -45,6 +53,7 @@ static uint16_t *line;
 
 static int brief;
 static int ignore_redundancy;
+static int ignore_background;
 
 static Clp_Parser* clp;
 
@@ -284,13 +293,15 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 
   /* Choose the background values and clear the image data arrays */
   if ((s1->nimages == 0 || s1->images[0]->transparent < 0)
-      && s1->global && s1->background < s1->global->ncol)
+      && s1->global && s1->background < s1->global->ncol
+      && !ignore_background)
     background1 = s1->global->col[ s1->background ].pixel;
   else
     background1 = TRANSP;
 
   if ((s2->nimages == 0 || s2->images[0]->transparent < 0)
-      && s2->global && s2->background < s2->global->ncol)
+      && s2->global && s2->background < s2->global->ncol
+      && !ignore_background)
     background2 = s2->global->col[ s2->background ].pixel;
   else
     background2 = TRANSP;
@@ -393,6 +404,7 @@ Usage: %s [OPTION]... FILE1 FILE2\n\n", program_name);
 Options:\n\
   -q, --brief                   Don%,t report detailed differences.\n\
   -w, --ignore-redundancy       Ignore differences in redundant frames.\n\
+  -B, --ignore-background       Ignore differences in background colors.\n\
   -h, --help                    Print this message and exit.\n\
   -v, --version                 Print version number and exit.\n\
 \n\
@@ -548,6 +560,18 @@ particular purpose.\n");
 
      case IGNORE_REDUNDANCY_OPT:
       ignore_redundancy = !clp->negated;
+      break;
+
+     case REDUNDANCY_OPT:
+      ignore_redundancy = !!clp->negated;
+      break;
+
+     case IGNORE_BACKGROUND_OPT:
+      ignore_background = !clp->negated;
+      break;
+
+     case BACKGROUND_OPT:
+      ignore_background = !!clp->negated;
       break;
 
      case Clp_NotOption:
