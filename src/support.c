@@ -1470,8 +1470,7 @@ static void mark_used_background_color(Gt_Frame* fr) {
             || gfi->top != 0
             || gfi->width != gfs->screen_width
             || gfi->height != gfs->screen_height)
-        && gfs->global
-        && gfs->background < gfs->global->ncol)
+        && gfs->global && gfs->background < gfs->global->ncol)
         gfs->global->col[gfs->background].haspixel |= 1;
 }
 

@@ -328,8 +328,8 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
             Gif_ReleaseUncompressedImage(gfi);
     }
 
-    if (gfs->images[0]->transparent < 0 && gfs->global
-        && gfs->background < gfs->global->ncol)
+    if (gfs->images[0]->transparent < 0
+        && gfs->global && gfs->background < gfs->global->ncol)
         gcount[gfs->background] += nbackground;
     else
         ntransparent += nbackground;
@@ -1551,7 +1551,6 @@ void
 colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 {
   kd3_tree kd3;
-  int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
   int new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
@@ -1639,13 +1638,15 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
   new_cm->ncol = new_ncol;
 
   /* change the background. I hate the background by now */
-  if (background_transparent)
-    gfs->background = gfs->images[0]->transparent;
-  else if (gfs->global && gfs->background < gfs->global->ncol) {
-    Gif_Color *c = &gfs->global->col[gfs->background];
-    gfs->background = kd3_closest8g(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
-    new_col[gfs->background].pixel++;
-  }
+  if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
+      && gfs->global && gfs->background < gfs->global->ncol) {
+      Gif_Color *c = &gfs->global->col[gfs->background];
+      gfs->background = kd3_closest8g(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      new_col[gfs->background].pixel++;
+  } else if (gfs->nimages > 0 && gfs->images[0]->transparent >= 0)
+      gfs->background = gfs->images[0]->transparent;
+  else
+      gfs->background = 0;
 
   Gif_DeleteColormap(gfs->global);
   kd3_cleanup(&kd3);
@@ -1687,7 +1688,8 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       }
 
     /* map the image data, transparencies, and background */
-    gfs->background = map[gfs->background];
+    if (gfs->global && gfs->background < gfs->global->ncol)
+        gfs->background = map[gfs->background];
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_Image *gfi = gfs->images[imagei];
       int only_compressed = (gfi->img == 0);

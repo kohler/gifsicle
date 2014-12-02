@@ -51,12 +51,11 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   if (gfi->left + w > gfs->screen_width) w = gfs->screen_width - gfi->left;
   if (gfi->top + h > gfs->screen_height) h = gfs->screen_height - gfi->top;
 
-  if (gfi->transparent >= 0)
-    solid = TRANSPARENT;
-  else if (gfs->images[0]->transparent >= 0)
-    solid = TRANSPARENT;
+  if (gfi->transparent < 0 && gfs->images[0]->transparent < 0
+      && gfs->global && gfs->background < gfs->global->ncol)
+      solid = gfs->background;
   else
-    solid = gfs->background;
+      solid = TRANSPARENT;
 
   for (y = 0; y < h; y++) {
     uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
@@ -195,7 +194,11 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
 
   screen = Gif_NewArray(uint16_t, size);
   gfi = gfs->images[0];
-  background = gfi->transparent >= 0 ? TRANSPARENT : gfs->background;
+  if (gfi->transparent < 0
+      && gfs->global && gfs->background < gfs->global->ncol)
+      background = gfs->background;
+  else
+      background = TRANSPARENT;
   for (pos = 0; pos != size; ++pos)
     screen[pos] = background;
 

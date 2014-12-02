@@ -25,7 +25,7 @@ Gif_NewStream(void)
   if (!gfs)
     return 0;
   gfs->global = 0;
-  gfs->background = 0;
+  gfs->background = 256;
   gfs->screen_width = gfs->screen_height = 0;
   gfs->loopcount = -1;
   gfs->comment = 0;

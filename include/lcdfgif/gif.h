@@ -41,7 +41,7 @@ typedef uint16_t Gif_Code;
 struct Gif_Stream {
 
     Gif_Colormap *global;
-    uint8_t background;
+    uint16_t background;        /* 256 means no background */
 
     uint16_t screen_width;
     uint16_t screen_height;

@@ -381,7 +381,7 @@ initialize_optimizer(Gif_Stream *gfs)
 
   /* choose background */
   if (gfs->images[0]->transparent < 0
-      && gfs->background < in_global_map->ncol)
+      && gfs->global && gfs->background < in_global_map->ncol)
     background = in_global_map->col[gfs->background].pixel;
   else
     background = TRANSP;

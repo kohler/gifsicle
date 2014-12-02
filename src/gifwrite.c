@@ -700,7 +700,10 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   }
 
   gifputbyte(packed, grr);
-  gifputbyte(gfs->background, grr);
+  if (gfs->background < grr->global_size)
+    gifputbyte(gfs->background, grr);
+  else
+    gifputbyte(255, grr);
   gifputbyte(0, grr);		/* no aspect ratio information */
 
   if (grr->global_size > 0)

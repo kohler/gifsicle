@@ -390,16 +390,14 @@ static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
     kcs->height = sh <= 0 ? gfs->screen_height : sh;
     sz = (unsigned) kcs->width * kcs->height;
     kcs->data = Gif_NewArray(kacolor, sz);
-    if (gfs->nimages > 0 && gfs->images[0]->transparent >= 0) {
-        kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
-        for (i = 0; i != sz; ++i)
-            kcs->data[i] = kcs->bg;
-    } else {
+    if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
+        && gfs->global && gfs->background < gfs->global->ncol) {
         kcs->bg.k = kc_makegfcg(&gfs->global->col[gfs->background]);
         kcs->bg.a[3] = KC_MAX;
-        for (i = 0; i != sz; ++i)
-            kcs->data[i] = kcs->bg;
-    }
+    } else
+        kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
+    for (i = 0; i != sz; ++i)
+        kcs->data[i] = kcs->bg;
 }
 
 /* free memory associated with `kcs` */

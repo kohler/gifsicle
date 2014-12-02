@@ -283,15 +283,17 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     combine_colormaps(s2->images[imageno2]->local, newcm);
 
   /* Choose the background values and clear the image data arrays */
-  if (s1->images[0]->transparent >= 0 || !s1->global)
-    background1 = TRANSP;
-  else
+  if ((s1->nimages == 0 || s1->images[0]->transparent < 0)
+      && s1->global && s1->background < s1->global->ncol)
     background1 = s1->global->col[ s1->background ].pixel;
-
-  if (s2->images[0]->transparent >= 0 || !s2->global)
-    background2 = TRANSP;
   else
+    background1 = TRANSP;
+
+  if ((s2->nimages == 0 || s2->images[0]->transparent < 0)
+      && s2->global && s2->background < s2->global->ncol)
     background2 = s2->global->col[ s2->background ].pixel;
+  else
+    background2 = TRANSP;
 
   fill_area(gdata[0], 0, 0, screen_width, screen_height, background1);
   fill_area(gdata[1], 0, 0, screen_width, screen_height, background2);
