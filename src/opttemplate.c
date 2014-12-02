@@ -92,28 +92,27 @@ X(copy_data_area_subimage)(palindex_type *dst, palindex_type *src,
 }
 
 static void
-X(fill_data_area)(palindex_type *dst, palindex_type value, Gif_Image *area)
+X(erase_data_area)(palindex_type *dst, Gif_Image *area)
 {
   int x, y;
   Gif_OptBounds ob = safe_bounds(area);
   dst += ob.top * (unsigned) screen_width + ob.left;
   for (y = 0; y < ob.height; y++) {
     for (x = 0; x < ob.width; x++)
-      dst[x] = value;
+      dst[x] = TRANSP;
     dst += screen_width;
   }
 }
 
 static void
-X(fill_data_area_subimage)(palindex_type *dst, palindex_type value,
-                           Gif_OptData *area)
+X(erase_data_area_subimage)(palindex_type *dst, Gif_OptData *area)
 {
   Gif_Image img;
   img.left = area->left;
   img.top = area->top;
   img.width = area->width;
   img.height = area->height;
-  X(fill_data_area)(dst, value, &img);
+  X(erase_data_area)(dst, &img);
 }
 
 static void
@@ -122,7 +121,7 @@ X(erase_screen)(palindex_type *dst)
   uint32_t i;
   uint32_t screen_size = (unsigned) screen_width * (unsigned) screen_height;
   for (i = 0; i < screen_size; i++)
-    *dst++ = background;
+    *dst++ = TRANSP;
 }
 
 /*****
@@ -187,7 +186,7 @@ X(apply_frame_disposal)(palindex_type *into_data, palindex_type *from_data,
   else {
     memcpy(into_data, from_data, sizeof(palindex_type) * screen_size);
     if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-      X(fill_data_area)(into_data, background, gfi);
+      X(erase_data_area)(into_data, gfi);
   }
 }
 
@@ -513,11 +512,9 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
       subimage->height = ob.height;
     }
 
-    /* might need to expand difference border if transparent background &
-       background disposal */
+    /* might need to expand difference border on background disposal */
     if ((gfi->disposal == GIF_DISPOSAL_BACKGROUND
 	 || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-	&& background == TRANSP
 	&& image_index < gfs->nimages - 1) {
       /* set up next_data */
       Gif_Image *next_gfi = gfs->images[image_index + 1];
@@ -568,12 +565,12 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
        disposal) with what WILL be left after the previous OPTIMIZED image's
        disposal. This fix is repeated in create_new_image_data */
     if (subimage->disposal == GIF_DISPOSAL_BACKGROUND)
-        X(fill_data_area_subimage)(X(last_data), background, subimage);
+        X(erase_data_area_subimage)(X(last_data), subimage);
     else
         X(copy_data_area_subimage)(X(last_data), X(this_data), subimage);
 
     if (last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-        X(fill_data_area)(X(this_data), background, last_gfi);
+        X(erase_data_area)(X(this_data), last_gfi);
     else if (last_gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
         palindex_type *temp = previous_data;
         previous_data = X(this_data);
@@ -936,12 +933,12 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
 	|| cur_gfi->disposal == GIF_DISPOSAL_ASIS)
         X(copy_data_area)(X(last_data), X(this_data), cur_gfi);
     else if (cur_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-        X(fill_data_area)(X(last_data), background, cur_gfi);
+        X(erase_data_area)(X(last_data), cur_gfi);
     else if (cur_gfi->disposal != GIF_DISPOSAL_PREVIOUS)
         assert(0 && "optimized frame has strange disposal");
 
     if (cur_unopt_gfi.disposal == GIF_DISPOSAL_BACKGROUND)
-        X(fill_data_area)(X(this_data), background, &cur_unopt_gfi);
+        X(erase_data_area)(X(this_data), &cur_unopt_gfi);
     else if (cur_unopt_gfi.disposal == GIF_DISPOSAL_PREVIOUS)
         X(copy_data_area)(X(this_data), previous_data, &cur_unopt_gfi);
   }
