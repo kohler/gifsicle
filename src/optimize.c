@@ -58,8 +58,6 @@ static Gif_Colormap *out_global_map;
 static unsigned background;
 static int image_index;
 
-static int gif_color_count;
-
 static penalty_type *permuting_sort_values;
 
 #define REQUIRED	2
@@ -380,11 +378,6 @@ initialize_optimizer(Gif_Stream *gfs)
   screen_height = gfs->screen_height;
   for (i = 0; i < gfs->nimages; i++)
     Gif_ClipImage(gfs->images[i], 0, 0, screen_width, screen_height);
-
-  /* set up colormaps */
-  gif_color_count = 2;
-  while (gif_color_count < gfs->global->ncol && gif_color_count < 256)
-    gif_color_count *= 2;
 
   /* choose background */
   if (gfs->images[0]->transparent < 0

@@ -1267,8 +1267,6 @@ handle_flip_and_screen(Gif_Stream* dest, Gif_Image* desti, Gt_Frame* fr)
 {
     Gif_Stream* gfs = fr->stream;
 
-    uint16_t screen_width = gfs->screen_width;
-    uint16_t screen_height = gfs->screen_height;
     desti->left += fr->left_offset;
     desti->top += fr->top_offset;
 
