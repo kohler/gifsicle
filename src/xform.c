@@ -22,7 +22,7 @@
 #endif
 #ifndef M_PI
 /* -std=c89 does not define M_PI */
-# define M_PI		3.14159265358979323846
+# define M_PI           3.14159265358979323846
 #endif
 
 
@@ -32,7 +32,7 @@
 
 Gt_ColorTransform *
 append_color_transform(Gt_ColorTransform *list,
-		       color_transform_func func, void *data)
+                       color_transform_func func, void *data)
 {
   Gt_ColorTransform *trav;
   Gt_ColorTransform *xform = Gif_New(Gt_ColorTransform);
@@ -76,7 +76,7 @@ apply_color_transforms(Gt_ColorTransform *list, Gif_Stream *gfs)
       xform->func(gfs->global, xform->data);
     for (i = 0; i < gfs->nimages; i++)
       if (gfs->images[i]->local)
-	xform->func(gfs->images[i]->local, xform->data);
+        xform->func(gfs->images[i]->local, xform->data);
   }
 }
 
@@ -98,20 +98,20 @@ color_change_transformer(Gif_Colormap *gfcm, void *thunk)
   for (i = 0; i < gfcm->ncol; i++)
     for (change = first_change; change; change = change->next) {
       if (!change->old_color.haspixel)
-	have = GIF_COLOREQ(&gfcm->col[i], &change->old_color);
+        have = GIF_COLOREQ(&gfcm->col[i], &change->old_color);
       else
-	have = (change->old_color.pixel == (uint32_t)i);
+        have = (change->old_color.pixel == (uint32_t)i);
 
       if (have) {
-	gfcm->col[i] = change->new_color;
-	break;			/* ignore remaining color changes */
+        gfcm->col[i] = change->new_color;
+        break;                  /* ignore remaining color changes */
       }
     }
 }
 
 Gt_ColorTransform *
 append_color_change(Gt_ColorTransform *list,
-		    Gif_Color old_color, Gif_Color new_color)
+                    Gif_Color old_color, Gif_Color new_color)
 {
   Gt_ColorTransform *xform;
   Gt_ColorChange *change = Gif_New(Gt_ColorChange);
@@ -220,13 +220,13 @@ combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi)
 
     /* Check that the rectangle actually intersects with the image. */
     if (dstcrop->x < 0)
-	dstcrop->w += dstcrop->x, dstcrop->x = 0;
+        dstcrop->w += dstcrop->x, dstcrop->x = 0;
     if (dstcrop->y < 0)
-	dstcrop->h += dstcrop->y, dstcrop->y = 0;
+        dstcrop->h += dstcrop->y, dstcrop->y = 0;
     if (dstcrop->w > 0 && dstcrop->x + dstcrop->w > gfi->width)
-	dstcrop->w = gfi->width - dstcrop->x;
+        dstcrop->w = gfi->width - dstcrop->x;
     if (dstcrop->h > 0 && dstcrop->y + dstcrop->h > gfi->height)
-	dstcrop->h = gfi->height - dstcrop->y;
+        dstcrop->h = gfi->height - dstcrop->y;
     if (dstcrop->w < 0)
         dstcrop->w = 0;
     if (dstcrop->h < 0)
@@ -294,7 +294,7 @@ flip_image(Gif_Image* gfi, Gt_Frame *fr, int is_vert)
       memcpy(buffer, img[y], width);
       trav = img[y] + width - 1;
       for (x = 0; x < width; x++)
-	*trav-- = buffer[x];
+        *trav-- = buffer[x];
     }
     gfi->left = fr->stream->screen_width - (gfi->left + width);
     if (fr->crop)
@@ -331,7 +331,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
   if (rotation == 1) {
     for (x = 0; x < width; x++)
       for (y = height - 1; y >= 0; y--)
-	*trav++ = img[y][x];
+        *trav++ = img[y][x];
     x = gfi->left;
     gfi->left = fr->stream->screen_height - (gfi->top + height);
     gfi->top = x;
@@ -344,7 +344,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
   } else {
     for (x = width - 1; x >= 0; x--)
       for (y = 0; y < height; y++)
-	*trav++ = img[y][x];
+        *trav++ = img[y][x];
     y = gfi->top;
     gfi->top = fr->stream->screen_width - (gfi->left + width);
     gfi->left = y;

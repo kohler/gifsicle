@@ -126,7 +126,7 @@ short_usage(void)
 {
   fprintf(stderr, "Usage: %s [OPTION | FILE | FRAME]...\n\
 Try '%s --help' for more information.\n",
-	  program_name, program_name);
+          program_name, program_name);
 }
 
 
@@ -295,9 +295,9 @@ safe_puts(const char *s, uint32_t len, FILE *f)
   for (; len > 0; len--, s++)
     if (*s < ' ' || *s >= 0x7F || *s == '\\') {
       if (last_safe != s) {
-	size_t n = s - last_safe;
-	if (fwrite(last_safe, 1, n, f) != n)
-	  return;
+        size_t n = s - last_safe;
+        if (fwrite(last_safe, 1, n, f) != n)
+          return;
       }
       last_safe = s + 1;
       switch (*s) {
@@ -309,8 +309,8 @@ safe_puts(const char *s, uint32_t len, FILE *f)
        case '\t': fputs("\\t", f); break;
        case '\v': fputs("\\v", f); break;
        case '\\': fputs("\\\\", f); break;
-       case 0:	  if (len > 1) fputs("\\000", f); break;
-       default:	  fprintf(f, "\\%03o", *s); break;
+       case 0:    if (len > 1) fputs("\\000", f); break;
+       default:   fprintf(f, "\\%03o", *s); break;
       }
     }
   if (last_safe != s) {
@@ -333,7 +333,7 @@ comment_info(FILE *where, Gif_Comment *gfcom, const char *prefix)
 }
 
 
-#define COLORMAP_COLS	4
+#define COLORMAP_COLS   4
 
 static void
 colormap_info(FILE *where, Gif_Colormap *gfcm, const char *prefix)
@@ -347,7 +347,7 @@ colormap_info(FILE *where, Gif_Colormap *gfcm, const char *prefix)
     for (i = 0; i < COLORMAP_COLS && which < gfcm->ncol; i++, which += nrows) {
       if (i) fputs("    ", where);
       fprintf(where, " %3d: #%02X%02X%02X", which, gfcm->col[which].gfc_red,
-	      gfcm->col[which].gfc_green, gfcm->col[which].gfc_blue);
+              gfcm->col[which].gfc_green, gfcm->col[which].gfc_blue);
     }
     fputc('\n', where);
   }
@@ -389,9 +389,9 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex, int count)
 
     for (i = 0; i < row; i += 2) {
       if (i + 1 >= row)
-	fprintf(where, "%02x   ", data[i]);
+        fprintf(where, "%02x   ", data[i]);
       else
-	fprintf(where, "%02x%02x ", data[i], data[i+1]);
+        fprintf(where, "%02x%02x ", data[i], data[i+1]);
     }
     for (; i < 16; i += 2)
       fputs("     ", where);
@@ -418,9 +418,9 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename, int flags)
 
   verbose_endline();
   fprintf(where, "* %s %d image%s\n", (filename ? filename : "<stdin>"),
-	  gfs->nimages, gfs->nimages == 1 ? "" : "s");
+          gfs->nimages, gfs->nimages == 1 ? "" : "s");
   fprintf(where, "  logical screen %dx%d\n",
-	  gfs->screen_width, gfs->screen_height);
+          gfs->screen_width, gfs->screen_height);
 
   if (gfs->global) {
     fprintf(where, "  global color table [%d]\n", gfs->global->ncol);
@@ -492,7 +492,7 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int flags)
       fprintf(where, " disposal %s", disposal_names[gfi->disposal]);
     if (gfi->delay)
       fprintf(where, " delay %d.%02ds",
-	      gfi->delay / 100, gfi->delay % 100);
+              gfi->delay / 100, gfi->delay % 100);
     fprintf(where, "\n");
   }
 }
@@ -590,10 +590,10 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
       frame_spec_name = (char *)arg;
       frame_spec_1 = frame_spec_2 = Gif_ImageNumber(input, gfi);
       return 1;
-    } else if (complain < 0)	/* -1 is special value meaning 'don't complain
+    } else if (complain < 0)    /* -1 is special value meaning 'don't complain
                                    about frame NAMES, but do complain about
                                    frame numbers.' */
-      return -97;		/* Return -97 on bad frame name. */
+      return -97;               /* Return -97 on bad frame name. */
     else if (complain)
       return Clp_OptionError(clp, "no frame named %<#%s%>", arg);
     else
@@ -601,7 +601,7 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   } else {
     if (frame_spec_1 >= 0 && frame_spec_1 < Gif_ImageCount(input)
-	&& frame_spec_2 >= 0 && frame_spec_2 < Gif_ImageCount(input))
+        && frame_spec_2 >= 0 && frame_spec_2 < Gif_ImageCount(input))
       return 1;
     else if (!complain)
       return 0;
@@ -705,17 +705,17 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     int y = position_y = strtol(val + 1, &val, 10);
     if (*val == '-' && parse_position(clp, val + 1, 0, 0)) {
       if (x >= 0 && y >= 0
-	  && (position_x <= 0 || x < position_x)
-	  && (position_y <= 0 || y < position_y)) {
-	/* 18.May.2008: Found it unintuitive that X,Y-0,0 acted like X,Y+-Xx-Y.
-	   Therefore changed it so that X,Y-0,0 acts like X,Y+0,0, and similar
-	   for negative dimensions.  Probably safe to change this behavior
-	   since only X,Y+0,0 was documented. */
-	dimensions_x = (position_x <= 0 ? -position_x : position_x - x);
-	dimensions_y = (position_y <= 0 ? -position_y : position_y - y);
-	position_x = x;
-	position_y = y;
-	return 1;
+          && (position_x <= 0 || x < position_x)
+          && (position_y <= 0 || y < position_y)) {
+        /* 18.May.2008: Found it unintuitive that X,Y-0,0 acted like X,Y+-Xx-Y.
+           Therefore changed it so that X,Y-0,0 acts like X,Y+0,0, and similar
+           for negative dimensions.  Probably safe to change this behavior
+           since only X,Y+0,0 was documented. */
+        dimensions_x = (position_x <= 0 ? -position_x : position_x - x);
+        dimensions_y = (position_y <= 0 ? -position_y : position_y - y);
+        position_x = x;
+        position_y = y;
+        return 1;
       }
     } else if (*val == '+' && parse_dimensions(clp, val + 1, 0, 0))
       return 1;
@@ -775,15 +775,15 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (*arg == '#') {
     int len = strlen(++arg);
     if (len == 0 || len % 3 != 0
-	|| (int)strspn(arg, "0123456789ABCDEFabcdef") != len) {
+        || (int)strspn(arg, "0123456789ABCDEFabcdef") != len) {
       if (complain)
-	Clp_OptionError(clp, "invalid color %<%s%> (want #RGB or #RRGGBB)",
-			input_arg);
+        Clp_OptionError(clp, "invalid color %<%s%> (want #RGB or #RRGGBB)",
+                        input_arg);
       return 0;
     }
 
     len /= 3;
-    red	  = parse_hex_color_channel(&arg[ 0 * len ], len);
+    red   = parse_hex_color_channel(&arg[ 0 * len ], len);
     green = parse_hex_color_channel(&arg[ 1 * len ], len);
     blue  = parse_hex_color_channel(&arg[ 2 * len ], len);
     goto gotrgb;
@@ -893,13 +893,13 @@ read_text_colormap(FILE *f, const char *name)
       if (green > 255) green = 255;
       if (blue > 255) blue = 255;
       if (ncol >= 256) {
-	lerror(name, "maximum 256 colors allowed in colormap");
-	break;
+        lerror(name, "maximum 256 colors allowed in colormap");
+        break;
       } else {
-	col[ncol].gfc_red = red;
-	col[ncol].gfc_green = green;
-	col[ncol].gfc_blue = blue;
-	ncol++;
+        col[ncol].gfc_red = red;
+        col[ncol].gfc_green = green;
+        col[ncol].gfc_blue = blue;
+        ncol++;
       }
     }
 
@@ -907,7 +907,7 @@ read_text_colormap(FILE *f, const char *name)
     if (strchr(buf, '\n') == 0) {
       int c;
       for (c = getc(f); c != '\n' && c != EOF; c = getc(f))
-	;
+        ;
     }
   }
 
@@ -962,7 +962,7 @@ read_colormap_file(const char *name, FILE *f)
       lerror(name, "can%,t use as palette (no global color table)");
     else {
       if (gfs->errors)
-	lwarning(name, "there were errors reading this GIF");
+        lwarning(name, "there were errors reading this GIF");
       cm = Gif_CopyColormap(gfs->global ? gfs->global : gfs->images[0]->local);
     }
 
@@ -1085,15 +1085,15 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 
     if (nest && nest->count > 0) {
       if (FRAME(fset, i).use < 0 && nest->count == 1) {
-	/* use < 0 means use the frame's delay, disposal and name (if not
-	   explicitly overridden), but not the frame itself. */
-	if (FRAME(nest, 0).delay < 0)
-	  FRAME(nest, 0).delay = FRAME(fset, i).image->delay;
-	if (FRAME(nest, 0).disposal < 0)
-	  FRAME(nest, 0).disposal = FRAME(fset, i).image->disposal;
-	if (FRAME(nest, 0).name == 0 && FRAME(nest, 0).no_name == 0)
-	  FRAME(nest, 0).name =
-	    Gif_CopyString(FRAME(fset, i).image->identifier);
+        /* use < 0 means use the frame's delay, disposal and name (if not
+           explicitly overridden), but not the frame itself. */
+        if (FRAME(nest, 0).delay < 0)
+          FRAME(nest, 0).delay = FRAME(fset, i).image->delay;
+        if (FRAME(nest, 0).disposal < 0)
+          FRAME(nest, 0).disposal = FRAME(fset, i).image->disposal;
+        if (FRAME(nest, 0).name == 0 && FRAME(nest, 0).no_name == 0)
+          FRAME(nest, 0).name =
+            Gif_CopyString(FRAME(fset, i).image->identifier);
       }
       merger_flatten(nest, 0, nest->count - 1);
     }
@@ -1106,18 +1106,18 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 
 static int
 find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
-		    const char *color_context)
+                    const char *color_context)
 {
   Gif_Colormap *gfcm = gfs->global;
   int index;
   if (gfi && gfi->local) gfcm = gfi->local;
 
-  if (color->haspixel == 2) {	/* have pixel value, not color */
+  if (color->haspixel == 2) {   /* have pixel value, not color */
     if (color->pixel < (uint32_t)gfcm->ncol)
       return color->pixel;
     else {
       if (color_context)
-	  lerror(gfs->landmark, "%s color out of range", color_context);
+          lerror(gfs->landmark, "%s color out of range", color_context);
       return -1;
     }
   }
@@ -1138,14 +1138,14 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* Check for user-specified background. */
     /* If they specified the number, silently cooperate. */
     if (output_data->background.haspixel == 2) {
-	gfs->background = output_data->background.pixel;
-	return;
+        gfs->background = output_data->background.pixel;
+        return;
     }
 
     /* Otherwise, if they specified a color, search for it. */
     if (output_data->background.haspixel) {
-	if (gfs->images[0]->transparent >= 0) {
-	    static int context = 0;
+        if (gfs->images[0]->transparent >= 0) {
+            static int context = 0;
             if (!context) {
                 warning(1, "irrelevant background color\n"
                         "  (The background will appear transparent because"
@@ -1153,45 +1153,45 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
                 context = 1;
             } else
                 warning(1, "irrelevant background color");
-	}
-	background = output_data->background;
-	goto search;
+        }
+        background = output_data->background;
+        goto search;
     }
 
     /* If we get here, user doesn't care about background. */
     /* Search for required background colors. */
     conflict = want_transparent = background.haspixel = 0;
     for (i = j = 0; i < nmerger; i++) {
-	if (merger[i]->total_crop) /* frame does not correspond to an image */
-	    continue;
-	gfi = gfs->images[j];
-	if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
-	    || (j == 0 && (gfi->left != 0 || gfi->top != 0
-			   || gfi->width != gfs->screen_width
-			   || gfi->height != gfs->screen_height))) {
-	    /* transparent.haspixel set below, at merge_frame_done */
-	    int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
-	    if ((original_bg_transparent && background.haspixel)
-		|| (!original_bg_transparent && want_transparent))
-		conflict = 2;
-	    else if (original_bg_transparent)
-		want_transparent = 1;
-	    else if (merger[i]->transparent.haspixel) {
-		if (background.haspixel
+        if (merger[i]->total_crop) /* frame does not correspond to an image */
+            continue;
+        gfi = gfs->images[j];
+        if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
+            || (j == 0 && (gfi->left != 0 || gfi->top != 0
+                           || gfi->width != gfs->screen_width
+                           || gfi->height != gfs->screen_height))) {
+            /* transparent.haspixel set below, at merge_frame_done */
+            int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
+            if ((original_bg_transparent && background.haspixel)
+                || (!original_bg_transparent && want_transparent))
+                conflict = 2;
+            else if (original_bg_transparent)
+                want_transparent = 1;
+            else if (merger[i]->transparent.haspixel) {
+                if (background.haspixel
                     && !GIF_COLOREQ(&background, &merger[i]->transparent))
-		    conflict = 1;
-		else {
-		    background = merger[i]->transparent;
-		    background.haspixel = 1;
-		}
-	    }
-	}
-	j++;
+                    conflict = 1;
+                else {
+                    background = merger[i]->transparent;
+                    background.haspixel = 1;
+                }
+            }
+        }
+        j++;
     }
 
     /* Report conflicts. */
     if (conflict || (want_transparent && gfs->images[0]->transparent < 0)) {
-	static int context = 0;
+        static int context = 0;
         if (!context) {
             warning(1, "input images have conflicting background colors\n"
                     "  (This means some animation frames may appear incorrect.)");
@@ -1202,8 +1202,8 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 
     /* If no important background color, bag. */
     if (!background.haspixel) {
-	gfs->background = 0;
-	return;
+        gfs->background = 0;
+        return;
     }
 
   search:
@@ -1313,23 +1313,23 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
       Gt_Frame *fr = merger[i];
       int ll, tt, rr, bb;
       if (!fr->position_is_offset) {
-	ll = fr->image->left;
-	tt = fr->image->top;
-	rr = fr->image->left + fr->image->width;
-	bb = fr->image->top + fr->image->height;
+        ll = fr->image->left;
+        tt = fr->image->top;
+        rr = fr->image->left + fr->image->width;
+        bb = fr->image->top + fr->image->height;
       } else {
-	ll = tt = 0;
-	rr = fr->stream->screen_width;
-	bb = fr->stream->screen_height;
+        ll = tt = 0;
+        rr = fr->stream->screen_width;
+        bb = fr->stream->screen_height;
       }
       if (ll < l)
-	l = ll;
+        l = ll;
       if (tt < t)
-	t = tt;
+        t = tt;
       if (rr > r)
-	r = rr;
+        r = rr;
       if (bb > b)
-	b = bb;
+        b = bb;
     }
 
   if (t > b)
@@ -1357,76 +1357,76 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
     l = t = 0x7FFFFFFF, r = b = 0;
 
     for (i = 0;
-	 i < nmerger && (l > have_l || t > have_t || r < have_r || b < have_b);
-	 ++i)
+         i < nmerger && (l > have_l || t > have_t || r < have_r || b < have_b);
+         ++i)
       if (merger[i]->crop == crop) {
-	Gt_Frame *fr = merger[i];
-	Gif_Image *srci = fr->image;
-	int ll = constrain(have_l, srci->left, have_r),
-	  tt = constrain(have_t, srci->top, have_b),
-	  rr = constrain(have_l, srci->left + srci->width, have_r),
-	  bb = constrain(have_t, srci->top + srci->height, have_b);
+        Gt_Frame *fr = merger[i];
+        Gif_Image *srci = fr->image;
+        int ll = constrain(have_l, srci->left, have_r),
+          tt = constrain(have_t, srci->top, have_b),
+          rr = constrain(have_l, srci->left + srci->width, have_r),
+          bb = constrain(have_t, srci->top + srci->height, have_b);
 
-	if (srci->transparent >= 0) {
-	  int x, y;
-	  uint8_t **img;
-	  Gif_UncompressImage(fr->stream, srci);
-	  img = srci->img;
+        if (srci->transparent >= 0) {
+          int x, y;
+          uint8_t **img;
+          Gif_UncompressImage(fr->stream, srci);
+          img = srci->img;
 
-	  /* Move top edge down over transparency */
-	  while (tt < bb && tt < t) {
-	    uint8_t *data = img[tt - srci->top];
-	    for (x = 0; x < srci->width; ++x)
-	      if (data[x] != srci->transparent)
-		goto found_top;
-	    ++tt;
-	  }
+          /* Move top edge down over transparency */
+          while (tt < bb && tt < t) {
+            uint8_t *data = img[tt - srci->top];
+            for (x = 0; x < srci->width; ++x)
+              if (data[x] != srci->transparent)
+                goto found_top;
+            ++tt;
+          }
 
-	found_top:
-	  /* Move bottom edge up over transparency */
-	  while (bb > tt + 1 && bb > b) {
-	    uint8_t *data = img[bb - 1 - srci->top];
-	    for (x = 0; x < srci->width; ++x)
-	      if (data[x] != srci->transparent)
-		goto found_bottom;
-	    --bb;
-	  }
+        found_top:
+          /* Move bottom edge up over transparency */
+          while (bb > tt + 1 && bb > b) {
+            uint8_t *data = img[bb - 1 - srci->top];
+            for (x = 0; x < srci->width; ++x)
+              if (data[x] != srci->transparent)
+                goto found_bottom;
+            --bb;
+          }
 
-	found_bottom:
-	  if (tt < bb) {
-	    /* Move left edge right over transparency */
-	    while (ll < rr && ll < l) {
-	      for (y = tt - srci->top; y < bb - srci->top; ++y)
-		if (img[y][ll - srci->left] != srci->transparent)
-		  goto found_left;
-	      ++ll;
-	    }
+        found_bottom:
+          if (tt < bb) {
+            /* Move left edge right over transparency */
+            while (ll < rr && ll < l) {
+              for (y = tt - srci->top; y < bb - srci->top; ++y)
+                if (img[y][ll - srci->left] != srci->transparent)
+                  goto found_left;
+              ++ll;
+            }
 
-	  found_left:
-	    /* Move right edge left over transparency */
-	    while (rr > ll + 1 && rr > r) {
-	      for (y = tt - srci->top; y < bb - srci->top; ++y)
-		if (img[y][rr - 1 - srci->left] != srci->transparent)
-		  goto found_right;
-	      --rr;
-	    }
-	  }
+          found_left:
+            /* Move right edge left over transparency */
+            while (rr > ll + 1 && rr > r) {
+              for (y = tt - srci->top; y < bb - srci->top; ++y)
+                if (img[y][rr - 1 - srci->left] != srci->transparent)
+                  goto found_right;
+              --rr;
+            }
+          }
 
-	found_right:
-	  if (compress_immediately > 0)
-	    Gif_ReleaseUncompressedImage(srci);
-	}
+        found_right:
+          if (compress_immediately > 0)
+            Gif_ReleaseUncompressedImage(srci);
+        }
 
-	if (tt < bb) {
-	  if (ll < l)
-	    l = ll;
-	  if (tt < t)
-	    t = tt;
-	  if (rr > r)
-	    r = rr;
-	  if (bb > b)
-	    b = bb;
-	}
+        if (tt < bb) {
+          if (ll < l)
+            l = ll;
+          if (tt < t)
+            t = tt;
+          if (rr > r)
+            r = rr;
+          if (bb > b)
+            b = bb;
+        }
       }
 
     if (t > b)
@@ -1476,8 +1476,8 @@ static void mark_used_background_color(Gt_Frame* fr) {
 
 Gif_Stream *
 merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
-		     Gt_OutputData *output_data, int compress_immediately,
-		     int *huge_stream)
+                     Gt_OutputData *output_data, int compress_immediately,
+                     int *huge_stream)
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
@@ -1575,18 +1575,18 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_Extension *gfex = fr->stream->extensions;
       for (j = 0; fr->stream->images[j] != fr->image; j++) ;
       while (gfex && gfex->position < j)
-	gfex = gfex->next;
+        gfex = gfex->next;
       while (gfex && gfex->position == j) {
         if (!fr->no_extensions
             && !(gfex->kind == 255 && fr->no_app_extensions))
           Gif_AddExtension(dest, copy_extension(gfex), i);
-	gfex = gfex->next;
+        gfex = gfex->next;
       }
       gfex = fr->extensions;
       while (gfex) {
-	Gif_Extension *next = gfex->next;
-	Gif_AddExtension(dest, gfex, i);
-	gfex = next;
+        Gif_Extension *next = gfex->next;
+        Gif_AddExtension(dest, gfex, i);
+        gfex = next;
       }
       fr->extensions = 0;
     }
@@ -1599,17 +1599,17 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_UncompressImage(fr->stream, srci);
 
       /* Zero-delay frames are a special case.  You might think it was OK to
-	 get rid of totally-cropped delay-0 frames, but many browsers treat
-	 zero-delay frames as 100ms.  So don't completely crop a zero-delay
-	 frame: leave it around.  Problem reported by Calle Kabo. */
+         get rid of totally-cropped delay-0 frames, but many browsers treat
+         zero-delay frames as 100ms.  So don't completely crop a zero-delay
+         frame: leave it around.  Problem reported by Calle Kabo. */
       preserve_total_crop = (dest->nimages == 0 || fr->delay == 0
-			     || (fr->delay < 0 && srci->delay == 0));
+                             || (fr->delay < 0 && srci->delay == 0));
 
       if (!crop_image(srci, fr, preserve_total_crop)) {
-	/* We cropped the image out of existence! Be careful not to make 0x0
-	   frames. */
-	fix_total_crop(dest, srci, i);
-	goto merge_frame_done;
+        /* We cropped the image out of existence! Be careful not to make 0x0
+           frames. */
+        fix_total_crop(dest, srci, i);
+        goto merge_frame_done;
       }
     } else {
       srci = fr->image;
@@ -1626,7 +1626,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
        Lasley <Dan_Lasley@hilton.com>. */
     same_compressed_ok = all_same_compressed_ok;
     if ((fr->interlacing >= 0 && fr->interlacing != srci->interlace)
-	|| fr->flip_horizontal || fr->flip_vertical || fr->rotation)
+        || fr->flip_horizontal || fr->flip_vertical || fr->rotation)
       same_compressed_ok = 0;
 
     desti = merge_image(dest, fr->stream, srci, fr, same_compressed_ok);
@@ -1652,7 +1652,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       if (!desti->comment) desti->comment = Gif_NewComment();
       merge_comments(desti->comment, fr->comment);
       /* delete the comment early to help with memory; set field to 0 so we
-	 don't re-free it later */
+         don't re-free it later */
       Gif_DeleteComment(fr->comment);
       fr->comment = 0;
     }
@@ -1672,10 +1672,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* compress immediately if possible to save on memory */
     if (desti->img) {
       if (compress_immediately > 0) {
-	Gif_FullCompressImage(dest, desti, &gif_write_info);
-	Gif_ReleaseUncompressedImage(desti);
+        Gif_FullCompressImage(dest, desti, &gif_write_info);
+        Gif_ReleaseUncompressedImage(desti);
       } else if (desti->compressed)
-	Gif_ReleaseCompressedImage(desti);
+        Gif_ReleaseCompressedImage(desti);
     } else if (compress_immediately <= 0) {
       Gif_UncompressImage(dest, desti);
       Gif_ReleaseCompressedImage(desti);
@@ -1684,13 +1684,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
    merge_frame_done:
     /* 6/17/02 store information about image's background */
     if (fr->stream->images[0]->transparent >= 0)
-	fr->transparent.haspixel = 2;
+        fr->transparent.haspixel = 2;
     else if (fr->stream->global
              && fr->stream->background < fr->stream->global->ncol) {
-	fr->transparent = fr->stream->global->col[fr->stream->background];
-	fr->transparent.haspixel = 1;
+        fr->transparent = fr->stream->global->col[fr->stream->background];
+        fr->transparent.haspixel = 1;
     } else
-	fr->transparent.haspixel = 0;
+        fr->transparent.haspixel = 0;
 
     /* Destroy the copied, cropped image if necessary */
     if (fr->crop)

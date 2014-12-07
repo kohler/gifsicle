@@ -69,16 +69,16 @@ mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
 
     /* Loop over every pixel (until we've seen all colors) */
     if (crop) {
-	Gt_Crop c;
-	combine_crop(&c, crop, gfi);
-	l = c.x;
-	t = c.y;
-	r = l + c.w;
-	b = t + c.h;
+        Gt_Crop c;
+        combine_crop(&c, crop, gfi);
+        l = c.x;
+        t = c.y;
+        r = l + c.w;
+        b = t + c.h;
     } else {
-	l = t = 0;
-	r = gfi->width;
-	b = gfi->height;
+        l = t = 0;
+        r = gfi->width;
+        b = gfi->height;
     }
 
     for (j = t; j != b; ++j) {
@@ -254,19 +254,19 @@ static void merge_image_input_colors(uint8_t* inused, const Gif_Image* srci) {
 
 Gif_Image *
 merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
-	    Gt_Frame* srcfr, int same_compressed_ok)
+            Gt_Frame* srcfr, int same_compressed_ok)
 {
   Gif_Colormap *imagecm;
   int i;
   Gif_Colormap *localcm = 0;
   Gif_Colormap *destcm = dest->global;
 
-  uint8_t map[256];		/* map[input pixel value] == output pixval */
-  int trivial_map;		/* does the map take input pixval --> the same
-				   pixel value for all colors in the image? */
+  uint8_t map[256];             /* map[input pixel value] == output pixval */
+  int trivial_map;              /* does the map take input pixval --> the same
+                                   pixel value for all colors in the image? */
   uint8_t inused[256];          /* inused[input pival] == 1 iff used */
-  uint8_t used[256];		/* used[output pixval K] == 1 iff K was used
-				   in the image */
+  uint8_t used[256];            /* used[output pixval K] == 1 iff K was used
+                                   in the image */
 
   Gif_Image *desti;
 
@@ -321,8 +321,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
       found_transparent = srci->transparent;
     else
       for (i = destcm->ncol - 1; i >= 0; i--)
-	if (!used[i])
-	  found_transparent = i;
+        if (!used[i])
+          found_transparent = i;
 
     /* 1.Aug.1999 - Allow for the case that the transparent index is bigger
        than the number of colors we've created thus far. */
@@ -333,7 +333,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
          to be as small as possible. */
       c = &destcm->col[found_transparent];
       if (imagecm && srci->transparent < imagecm->ncol)
-	*c = imagecm->col[srci->transparent];
+        *c = imagecm->col[srci->transparent];
       c->haspixel = 2;
       assert(c->haspixel == 2 && found_transparent < 256);
     }
@@ -375,14 +375,14 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
 
     if (trivial_map)
       for (j = 0; j < desti->height; j++)
-	memcpy(desti->img[j], srci->img[j], desti->width);
+        memcpy(desti->img[j], srci->img[j], desti->width);
 
     else
       for (j = 0; j < desti->height; j++) {
-	uint8_t *srcdata = srci->img[j];
-	uint8_t *destdata = desti->img[j];
-	for (i = 0; i < desti->width; i++, srcdata++, destdata++)
-	  *destdata = map[*srcdata];
+        uint8_t *srcdata = srci->img[j];
+        uint8_t *destdata = desti->img[j];
+        for (i = 0; i < desti->width; i++, srcdata++, destdata++)
+          *destdata = map[*srcdata];
       }
   }
 

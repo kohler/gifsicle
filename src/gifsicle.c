@@ -53,27 +53,27 @@ static int infoing = 0;
 int verbosing = 0;
 
 
-#define CHANGED(next, flag)	(((next) & (1<<(flag))) != 0)
-#define UNCHECKED_MARK_CH(where, what)			\
+#define CHANGED(next, flag)     (((next) & (1<<(flag))) != 0)
+#define UNCHECKED_MARK_CH(where, what)                  \
   next_##where |= 1<<what;
-#define MARK_CH(where, what)				\
-  if (CHANGED(next_##where, what))			\
+#define MARK_CH(where, what)                            \
+  if (CHANGED(next_##where, what))                      \
     redundant_option_warning(where##_option_types[what]); \
   UNCHECKED_MARK_CH(where, what)
 
 /* frame option types */
 static int next_frame = 0;
-#define CH_INTERLACE		0
-#define CH_DISPOSAL		1
-#define CH_DELAY		2
-#define CH_TRANSPARENT		3
-#define CH_COMMENT		4
-#define CH_NAME			5
-#define CH_POSITION		6
-#define CH_CROP			7
-#define CH_EXTENSION		8
-#define CH_FLIP			9
-#define CH_ROTATE		10
+#define CH_INTERLACE            0
+#define CH_DISPOSAL             1
+#define CH_DELAY                2
+#define CH_TRANSPARENT          3
+#define CH_COMMENT              4
+#define CH_NAME                 5
+#define CH_POSITION             6
+#define CH_CROP                 7
+#define CH_EXTENSION            8
+#define CH_FLIP                 9
+#define CH_ROTATE               10
 static const char *frame_option_types[] = {
   "interlace", "disposal", "delay", "transparency",
   "comment", "name", "position", "crop",
@@ -82,8 +82,8 @@ static const char *frame_option_types[] = {
 
 /* input option types */
 static int next_input = 0;
-#define CH_UNOPTIMIZE		0
-#define CH_CHANGE_COLOR		1
+#define CH_UNOPTIMIZE           0
+#define CH_CHANGE_COLOR         1
 static const char *input_option_types[] = {
   "unoptimization", "color change"
 };
@@ -94,21 +94,21 @@ Gt_OutputData active_output_data;
 static int next_output = 0;
 static int active_next_output = 0;
 static int any_output_successful = 0;
-#define CH_LOOPCOUNT		0
-#define CH_LOGICAL_SCREEN	1
-#define CH_OPTIMIZE		2
-#define CH_OUTPUT		3
-#define CH_COLORMAP		4
-#define CH_DITHER		5
-#define CH_USE_COLORMAP		6
-#define CH_COLORMAP_METHOD	7
-#define CH_BACKGROUND		8
-#define CH_COLOR_TRANSFORM	9
-#define CH_RESIZE		10
-#define CH_MEMORY		11
-#define CH_GAMMA		12
-#define CH_RESIZE_METHOD	13
-#define CH_SCALE_COLORS		14
+#define CH_LOOPCOUNT            0
+#define CH_LOGICAL_SCREEN       1
+#define CH_OPTIMIZE             2
+#define CH_OUTPUT               3
+#define CH_COLORMAP             4
+#define CH_DITHER               5
+#define CH_USE_COLORMAP         6
+#define CH_COLORMAP_METHOD      7
+#define CH_BACKGROUND           8
+#define CH_COLOR_TRANSFORM      9
+#define CH_RESIZE               10
+#define CH_MEMORY               11
+#define CH_GAMMA                12
+#define CH_RESIZE_METHOD        13
+#define CH_SCALE_COLORS         14
 static const char *output_option_types[] = {
   "loopcount", "logical screen", "optimization", "output file",
   "colormap size", "dither", "colormap", "colormap method",
@@ -117,91 +117,91 @@ static const char *output_option_types[] = {
 };
 
 
-#define SAME_INTERLACE_OPT	300
-#define INFO_OPT		301
-#define DISPOSAL_OPT		302
-#define SAME_LOOPCOUNT_OPT	303
-#define SAME_DISPOSAL_OPT	304
-#define SAME_DELAY_OPT		305
-#define SAME_TRANSPARENT_OPT	308
-#define LOGICAL_SCREEN_OPT	309
-#define COMMENT_OPT		310
-#define UNOPTIMIZE_OPT		311
-#define CAREFUL_OPT		312
-#define OPTIMIZE_OPT		313
+#define SAME_INTERLACE_OPT      300
+#define INFO_OPT                301
+#define DISPOSAL_OPT            302
+#define SAME_LOOPCOUNT_OPT      303
+#define SAME_DISPOSAL_OPT       304
+#define SAME_DELAY_OPT          305
+#define SAME_TRANSPARENT_OPT    308
+#define LOGICAL_SCREEN_OPT      309
+#define COMMENT_OPT             310
+#define UNOPTIMIZE_OPT          311
+#define CAREFUL_OPT             312
+#define OPTIMIZE_OPT            313
 #define SAME_LOGICAL_SCREEN_OPT 314
-#define DELETE_OPT		315
-#define REPLACE_OPT		316
-#define INSERT_OPT		317
-#define ALTER_DONE_OPT		318
-#define APPEND_OPT		319
-#define COLOR_INFO_OPT		320
-#define VERBOSE_OPT		321
-#define NO_COMMENTS_OPT		322
-#define SAME_COMMENTS_OPT	323
-#define NAME_OPT		324
-#define SAME_NAME_OPT		325
-#define NO_NAME_OPT		326
-#define POSITION_OPT		327
-#define SAME_POSITION_OPT	328
-#define VERSION_OPT		329
-#define HELP_OPT		330
-#define OUTPUT_OPT		331
-#define CROP_OPT		332
-#define SAME_CROP_OPT		333
-#define CHANGE_COLOR_OPT	334
-#define COLORMAP_OPT		335
-#define COLORMAP_ALGORITHM_OPT	336
-#define DITHER_OPT		337
-#define USE_COLORMAP_OPT	338
-#define NO_EXTENSIONS_OPT	339
-#define SAME_EXTENSIONS_OPT	340
-#define EXTENSION_INFO_OPT	341
-#define BACKGROUND_OPT		342
-#define SAME_BACKGROUND_OPT	343
-#define FLIP_HORIZ_OPT		344
-#define FLIP_VERT_OPT		345
-#define NO_FLIP_OPT		346
-#define ROTATE_90_OPT		347
-#define ROTATE_180_OPT		348
-#define ROTATE_270_OPT		349
-#define NO_ROTATE_OPT		350
-#define APP_EXTENSION_OPT	351
-#define EXTENSION_OPT		352
-#define COLOR_TRANSFORM_OPT	353
-#define RESIZE_OPT		354
-#define SCALE_OPT		355
-#define NO_WARNINGS_OPT		356
-#define WARNINGS_OPT		357
-#define RESIZE_WIDTH_OPT	358
-#define RESIZE_HEIGHT_OPT	359
-#define CROP_TRANSPARENCY_OPT	360
-#define CONSERVE_MEMORY_OPT	361
-#define MULTIFILE_OPT		362
-#define NEXTFILE_OPT		363
-#define RESIZE_FIT_OPT		364
-#define RESIZE_FIT_WIDTH_OPT	365
-#define RESIZE_FIT_HEIGHT_OPT	366
-#define SIZE_INFO_OPT		367
-#define GAMMA_OPT		368
-#define GRAY_OPT		369
-#define RESIZE_METHOD_OPT	370
-#define RESIZE_COLORS_OPT	371
-#define NO_APP_EXTENSIONS_OPT	372
+#define DELETE_OPT              315
+#define REPLACE_OPT             316
+#define INSERT_OPT              317
+#define ALTER_DONE_OPT          318
+#define APPEND_OPT              319
+#define COLOR_INFO_OPT          320
+#define VERBOSE_OPT             321
+#define NO_COMMENTS_OPT         322
+#define SAME_COMMENTS_OPT       323
+#define NAME_OPT                324
+#define SAME_NAME_OPT           325
+#define NO_NAME_OPT             326
+#define POSITION_OPT            327
+#define SAME_POSITION_OPT       328
+#define VERSION_OPT             329
+#define HELP_OPT                330
+#define OUTPUT_OPT              331
+#define CROP_OPT                332
+#define SAME_CROP_OPT           333
+#define CHANGE_COLOR_OPT        334
+#define COLORMAP_OPT            335
+#define COLORMAP_ALGORITHM_OPT  336
+#define DITHER_OPT              337
+#define USE_COLORMAP_OPT        338
+#define NO_EXTENSIONS_OPT       339
+#define SAME_EXTENSIONS_OPT     340
+#define EXTENSION_INFO_OPT      341
+#define BACKGROUND_OPT          342
+#define SAME_BACKGROUND_OPT     343
+#define FLIP_HORIZ_OPT          344
+#define FLIP_VERT_OPT           345
+#define NO_FLIP_OPT             346
+#define ROTATE_90_OPT           347
+#define ROTATE_180_OPT          348
+#define ROTATE_270_OPT          349
+#define NO_ROTATE_OPT           350
+#define APP_EXTENSION_OPT       351
+#define EXTENSION_OPT           352
+#define COLOR_TRANSFORM_OPT     353
+#define RESIZE_OPT              354
+#define SCALE_OPT               355
+#define NO_WARNINGS_OPT         356
+#define WARNINGS_OPT            357
+#define RESIZE_WIDTH_OPT        358
+#define RESIZE_HEIGHT_OPT       359
+#define CROP_TRANSPARENCY_OPT   360
+#define CONSERVE_MEMORY_OPT     361
+#define MULTIFILE_OPT           362
+#define NEXTFILE_OPT            363
+#define RESIZE_FIT_OPT          364
+#define RESIZE_FIT_WIDTH_OPT    365
+#define RESIZE_FIT_HEIGHT_OPT   366
+#define SIZE_INFO_OPT           367
+#define GAMMA_OPT               368
+#define GRAY_OPT                369
+#define RESIZE_METHOD_OPT       370
+#define RESIZE_COLORS_OPT       371
+#define NO_APP_EXTENSIONS_OPT   372
 #define SAME_APP_EXTENSIONS_OPT 373
 
-#define LOOP_TYPE		(Clp_ValFirstUser)
-#define DISPOSAL_TYPE		(Clp_ValFirstUser + 1)
-#define DIMENSIONS_TYPE		(Clp_ValFirstUser + 2)
-#define FRAME_SPEC_TYPE		(Clp_ValFirstUser + 3)
-#define COLOR_TYPE		(Clp_ValFirstUser + 4)
-#define POSITION_TYPE		(Clp_ValFirstUser + 5)
-#define RECTANGLE_TYPE		(Clp_ValFirstUser + 6)
-#define TWO_COLORS_TYPE		(Clp_ValFirstUser + 7)
-#define COLORMAP_ALG_TYPE	(Clp_ValFirstUser + 8)
-#define SCALE_FACTOR_TYPE	(Clp_ValFirstUser + 9)
-#define OPTIMIZE_TYPE		(Clp_ValFirstUser + 10)
-#define RESIZE_METHOD_TYPE	(Clp_ValFirstUser + 11)
+#define LOOP_TYPE               (Clp_ValFirstUser)
+#define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
+#define DIMENSIONS_TYPE         (Clp_ValFirstUser + 2)
+#define FRAME_SPEC_TYPE         (Clp_ValFirstUser + 3)
+#define COLOR_TYPE              (Clp_ValFirstUser + 4)
+#define POSITION_TYPE           (Clp_ValFirstUser + 5)
+#define RECTANGLE_TYPE          (Clp_ValFirstUser + 6)
+#define TWO_COLORS_TYPE         (Clp_ValFirstUser + 7)
+#define COLORMAP_ALG_TYPE       (Clp_ValFirstUser + 8)
+#define SCALE_FACTOR_TYPE       (Clp_ValFirstUser + 9)
+#define OPTIMIZE_TYPE           (Clp_ValFirstUser + 10)
+#define RESIZE_METHOD_TYPE      (Clp_ValFirstUser + 11)
 
 const Clp_Option options[] = {
 
@@ -562,7 +562,7 @@ open_giffile(const char *name)
   if (nextfile)
     for (sf = stored_files; sf; sf = sf->next)
       if (strcmp(name, sf->name) == 0)
-	return sf->f;
+        return sf->f;
 
   f = fopen(name, "rb");
 
@@ -594,9 +594,9 @@ close_giffile(FILE *f, int final)
   for (sf_pprev = &stored_files; (sf = *sf_pprev); sf_pprev = &sf->next)
     if (sf->f == f) {
       if (final) {
-	fclose(f);
-	*sf_pprev = sf->next;
-	free((void *) sf);
+        fclose(f);
+        *sf_pprev = sf->next;
+        free((void *) sf);
       }
       return;
     }
@@ -665,7 +665,7 @@ input_stream(const char *name)
   /* read file */
   gifread_error_count = 0;
   gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
-			 name, gifread_error);
+                         name, gifread_error);
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
@@ -701,9 +701,9 @@ input_stream(const char *name)
       const char *explode_name = (input_name ? input_name : "#stdin#");
       const char *slash = strrchr(explode_name, PATHNAME_SEPARATOR);
       if (slash)
-	active_output_data.output_name = slash + 1;
+        active_output_data.output_name = slash + 1;
       else
-	active_output_data.output_name = explode_name;
+        active_output_data.output_name = explode_name;
     }
   }
 
@@ -799,7 +799,7 @@ set_new_fixed_colormap(const char *name)
     def_output_data.colormap_fixed = cm;
 
   } else if (name && (strcmp(name, "gray") == 0
-		      || strcmp(name, "grey") == 0)) {
+                      || strcmp(name, "grey") == 0)) {
     Gif_Colormap *cm = Gif_NewFullColormap(256, 256);
     Gif_Color *col = cm->col;
     for (i = 0; i < 256; i++)
@@ -837,15 +837,15 @@ do_colormap_change(Gif_Stream *gfs)
       uint32_t ntransp;
       int i, any_locals = 0;
       for (i = 0; i < gfs->nimages; i++)
-	if (gfs->images[i]->local)
-	  any_locals = 1;
+        if (gfs->images[i]->local)
+          any_locals = 1;
       kchist_make(&kch, gfs, &ntransp);
       if (kch.n <= active_output_data.colormap_size
           && !any_locals
           && !active_output_data.colormap_fixed) {
-	warning(1, "trivial adaptive palette (only %d colors in source)", kch.n);
+        warning(1, "trivial adaptive palette (only %d colors in source)", kch.n);
         kchist_cleanup(&kch);
-	return;
+        return;
       }
       active_output_data.colormap_needs_transparency = ntransp > 0;
     }
@@ -934,7 +934,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
     compress_immediately = active_output_data.conserve_memory;
 
   out = merge_frame_interval(frames, f1, f2, &active_output_data,
-			     compress_immediately, &huge_stream);
+                             compress_immediately, &huge_stream);
 
   if (out) {
     double w, h;
@@ -995,10 +995,10 @@ output_information(const char *outfile)
       gfs->userflags = 0;
       stream_info(f, gfs, fr->input_filename, fr->info_flags);
       for (j = i; j < frames->count; j++)
-	if (FRAME(frames, j).stream == gfs) {
-	  fr = &FRAME(frames, j);
-	  image_info(f, gfs, fr->image, fr->info_flags);
-	}
+        if (FRAME(frames, j).stream == gfs) {
+          fr = &FRAME(frames, j);
+          image_info(f, gfs, fr->image, fr->info_flags);
+        }
     }
 
   if (f != stderr && f != stdout)
@@ -1031,30 +1031,30 @@ output_frames(void)
 
      case EXPLODING: {
        /* Use the current output name for consistency, even though that means
-	  we can't explode different frames to different names. Not a big deal
-	  anyway; they can always repeat the gif on the cmd line. */
+          we can't explode different frames to different names. Not a big deal
+          anyway; they can always repeat the gif on the cmd line. */
        int max_nimages = 0;
        for (i = 0; i < frames->count; i++) {
-	 Gt_Frame *fr = &FRAME(frames, i);
-	 if (fr->stream->nimages > max_nimages)
-	   max_nimages = fr->stream->nimages;
+         Gt_Frame *fr = &FRAME(frames, i);
+         if (fr->stream->nimages > max_nimages)
+           max_nimages = fr->stream->nimages;
        }
 
        if (!outfile) /* Watch out! */
-	 outfile = "-";
+         outfile = "-";
 
        for (i = 0; i < frames->count; i++) {
-	 Gt_Frame *fr = &FRAME(frames, i);
-	 int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
-	 char *explodename;
+         Gt_Frame *fr = &FRAME(frames, i);
+         int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
+         char *explodename;
 
-	 const char *imagename = 0;
-	 if (fr->explode_by_name)
-	   imagename = fr->name ? fr->name : fr->image->identifier;
+         const char *imagename = 0;
+         if (fr->explode_by_name)
+           imagename = fr->name ? fr->name : fr->image->identifier;
 
-	 explodename = explode_filename(outfile, imagenumber, imagename,
-					max_nimages);
-	 merge_and_write_frames(explodename, i, i);
+         explodename = explode_filename(outfile, imagenumber, imagename,
+                                        max_nimages);
+         merge_and_write_frames(explodename, i, i);
        }
        break;
      }
@@ -1199,10 +1199,10 @@ combine_output_options(void)
 {
   int recent = next_output;
   next_output = active_next_output;
-#define COMBINE_ONE_OUTPUT_OPTION(value, field)		\
-  if (CHANGED(recent, value)) {				\
-    MARK_CH(output, value);				\
-    active_output_data.field = def_output_data.field;	\
+#define COMBINE_ONE_OUTPUT_OPTION(value, field)         \
+  if (CHANGED(recent, value)) {                         \
+    MARK_CH(output, value);                             \
+    active_output_data.field = def_output_data.field;   \
   }
 
   COMBINE_ONE_OUTPUT_OPTION(CH_OUTPUT, output_name);
@@ -1419,40 +1419,40 @@ main(int argc, char *argv[])
 
      case INFO_OPT:
       if (clp->negated)
-	infoing = 0;
+        infoing = 0;
       else
-	/* switch between infoing == 1 (suppress regular output) and 2 (don't
+        /* switch between infoing == 1 (suppress regular output) and 2 (don't
            suppress) */
-	infoing = (infoing == 1 ? 2 : 1);
+        infoing = (infoing == 1 ? 2 : 1);
       break;
 
      case COLOR_INFO_OPT:
       if (clp->negated)
-	def_frame.info_flags &= ~INFO_COLORMAPS;
+        def_frame.info_flags &= ~INFO_COLORMAPS;
       else {
-	def_frame.info_flags |= INFO_COLORMAPS;
-	if (!infoing)
-	  infoing = 1;
+        def_frame.info_flags |= INFO_COLORMAPS;
+        if (!infoing)
+          infoing = 1;
       }
       break;
 
      case EXTENSION_INFO_OPT:
       if (clp->negated)
-	def_frame.info_flags &= ~INFO_EXTENSIONS;
+        def_frame.info_flags &= ~INFO_EXTENSIONS;
       else {
-	def_frame.info_flags |= INFO_EXTENSIONS;
-	if (!infoing)
-	  infoing = 1;
+        def_frame.info_flags |= INFO_EXTENSIONS;
+        if (!infoing)
+          infoing = 1;
       }
       break;
 
      case SIZE_INFO_OPT:
       if (clp->negated)
-	def_frame.info_flags &= ~INFO_SIZES;
+        def_frame.info_flags &= ~INFO_SIZES;
       else {
-	def_frame.info_flags |= INFO_SIZES;
-	if (!infoing)
-	  infoing = 1;
+        def_frame.info_flags |= INFO_SIZES;
+        if (!infoing)
+          infoing = 1;
       }
       break;
 
@@ -1535,10 +1535,10 @@ main(int argc, char *argv[])
      case 't':
       MARK_CH(frame, CH_TRANSPARENT);
       if (clp->negated)
-	def_frame.transparent.haspixel = 255;
+        def_frame.transparent.haspixel = 255;
       else {
-	def_frame.transparent = parsed_color;
-	def_frame.transparent.haspixel = parsed_color.haspixel ? 2 : 1;
+        def_frame.transparent = parsed_color;
+        def_frame.transparent.haspixel = parsed_color.haspixel ? 2 : 1;
       }
       break;
 
@@ -1549,11 +1549,11 @@ main(int argc, char *argv[])
      case BACKGROUND_OPT:
       MARK_CH(output, CH_BACKGROUND);
       if (clp->negated) {
-	def_output_data.background.haspixel = 2;
-	def_output_data.background.pixel = 0;
+        def_output_data.background.haspixel = 2;
+        def_output_data.background.pixel = 0;
       } else {
-	def_output_data.background = parsed_color;
-	def_output_data.background.haspixel = parsed_color.haspixel ? 2 : 1;
+        def_output_data.background = parsed_color;
+        def_output_data.background.haspixel = parsed_color.haspixel ? 2 : 1;
       }
       break;
 
@@ -1565,10 +1565,10 @@ main(int argc, char *argv[])
      case LOGICAL_SCREEN_OPT:
       MARK_CH(output, CH_LOGICAL_SCREEN);
       if (clp->negated)
-	def_output_data.screen_width = def_output_data.screen_height = 0;
+        def_output_data.screen_width = def_output_data.screen_height = 0;
       else {
-	def_output_data.screen_width = dimensions_x;
-	def_output_data.screen_height = dimensions_y;
+        def_output_data.screen_width = dimensions_x;
+        def_output_data.screen_height = dimensions_y;
       }
       break;
 
@@ -1581,13 +1581,13 @@ main(int argc, char *argv[])
       if (clp->negated) goto no_crop;
       MARK_CH(frame, CH_CROP);
       {
-	Gt_Crop *crop = copy_crop(def_frame.crop);
-	/* Memory leak on crops, but this just is NOT a problem. */
-	crop->spec_x = position_x;
-	crop->spec_y = position_y;
-	crop->spec_w = dimensions_x;
-	crop->spec_h = dimensions_y;
-	def_frame.crop = crop;
+        Gt_Crop *crop = copy_crop(def_frame.crop);
+        /* Memory leak on crops, but this just is NOT a problem. */
+        crop->spec_x = position_x;
+        crop->spec_y = position_y;
+        crop->spec_w = dimensions_x;
+        crop->spec_h = dimensions_y;
+        def_frame.crop = crop;
       }
       break;
 
@@ -1598,15 +1598,15 @@ main(int argc, char *argv[])
 
      case CROP_TRANSPARENCY_OPT:
       if (clp->negated)
-	goto no_crop_transparency;
+        goto no_crop_transparency;
       def_frame.crop = copy_crop(def_frame.crop);
       def_frame.crop->transparent_edges = 1;
       break;
 
      no_crop_transparency:
       if (def_frame.crop && def_frame.crop->transparent_edges) {
-	def_frame.crop = copy_crop(def_frame.crop);
-	def_frame.crop->transparent_edges = 0;
+        def_frame.crop = copy_crop(def_frame.crop);
+        def_frame.crop->transparent_edges = 0;
       }
       break;
 
@@ -1630,12 +1630,12 @@ main(int argc, char *argv[])
 
      case EXTENSION_OPT:
       if (!handle_extension(clp, 0))
-	goto bad_option;
+        goto bad_option;
       break;
 
      case APP_EXTENSION_OPT:
       if (!handle_extension(clp, 1))
-	goto bad_option;
+        goto bad_option;
       break;
 
       /* IMAGE DATA OPTIONS */
@@ -1687,11 +1687,11 @@ main(int argc, char *argv[])
      case DISPOSAL_OPT:
       MARK_CH(frame, CH_DISPOSAL);
       if (clp->negated)
-	def_frame.disposal = GIF_DISPOSAL_NONE;
+        def_frame.disposal = GIF_DISPOSAL_NONE;
       else if (clp->val.i < 0 || clp->val.i > 7)
-	error(0, "disposal must be between 0 and 7");
+        error(0, "disposal must be between 0 and 7");
       else
-	def_frame.disposal = clp->val.i;
+        def_frame.disposal = clp->val.i;
       break;
 
      case SAME_DISPOSAL_OPT:
@@ -1701,9 +1701,9 @@ main(int argc, char *argv[])
      case 'l':
       MARK_CH(output, CH_LOOPCOUNT);
       if (clp->negated)
-	def_output_data.loopcount = -1;
+        def_output_data.loopcount = -1;
       else
-	def_output_data.loopcount = (clp->have_val ? clp->val.i : 0);
+        def_output_data.loopcount = (clp->have_val ? clp->val.i : 0);
       break;
 
      case SAME_LOOPCOUNT_OPT:
@@ -1715,15 +1715,15 @@ main(int argc, char *argv[])
       int o;
       UNCHECKED_MARK_CH(output, CH_OPTIMIZE);
       if (clp->negated || (clp->have_val && clp->val.i < 0))
-	o = 0;
+        o = 0;
       else
-	o = (clp->have_val ? clp->val.i : 1);
+        o = (clp->have_val ? clp->val.i : 1);
       if (o > GT_OPT_MASK && (o & 1))
-	def_output_data.optimizing |= o - 1;
+        def_output_data.optimizing |= o - 1;
       else if (o > GT_OPT_MASK)
-	def_output_data.optimizing &= ~o;
+        def_output_data.optimizing &= ~o;
       else
-	def_output_data.optimizing = (def_output_data.optimizing & ~GT_OPT_MASK) | o;
+        def_output_data.optimizing = (def_output_data.optimizing & ~GT_OPT_MASK) | o;
       break;
     }
 
@@ -1736,46 +1736,46 @@ main(int argc, char *argv[])
 
      case CAREFUL_OPT: {
        if (clp->negated)
-	 gif_write_info.flags = 0;
+         gif_write_info.flags = 0;
        else
-	 gif_write_info.flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE | GIF_WRITE_EAGER_CLEAR;
+         gif_write_info.flags = GIF_WRITE_CAREFUL_MIN_CODE_SIZE | GIF_WRITE_EAGER_CLEAR;
        break;
      }
 
      case CHANGE_COLOR_OPT: {
        next_input |= 1 << CH_CHANGE_COLOR;
        if (clp->negated)
-	 input_transforms = delete_color_transforms
-	   (input_transforms, &color_change_transformer);
+         input_transforms = delete_color_transforms
+           (input_transforms, &color_change_transformer);
        else if (parsed_color2.haspixel)
-	 error(0, "COLOR2 must be in RGB format in %<--change-color COLOR1 COLOR2%>");
+         error(0, "COLOR2 must be in RGB format in %<--change-color COLOR1 COLOR2%>");
        else
-	 input_transforms = append_color_change
-	   (input_transforms, parsed_color, parsed_color2);
+         input_transforms = append_color_change
+           (input_transforms, parsed_color, parsed_color2);
        break;
      }
 
     case COLOR_TRANSFORM_OPT:
       next_output |= 1 << CH_COLOR_TRANSFORM;
       if (clp->negated)
-	output_transforms = delete_color_transforms
-	  (output_transforms, &pipe_color_transformer);
+        output_transforms = delete_color_transforms
+          (output_transforms, &pipe_color_transformer);
       else
-	output_transforms = append_color_transform
-	  (output_transforms, &pipe_color_transformer, (void *)clp->vstr);
+        output_transforms = append_color_transform
+          (output_transforms, &pipe_color_transformer, (void *)clp->vstr);
       break;
 
      case COLORMAP_OPT:
       MARK_CH(output, CH_COLORMAP);
       if (clp->negated)
-	def_output_data.colormap_size = 0;
+        def_output_data.colormap_size = 0;
       else {
-	def_output_data.colormap_size = clp->val.i;
-	if (def_output_data.colormap_size < 2
-	    || def_output_data.colormap_size > 256) {
-	  Clp_OptionError(clp, "argument to %O must be between 2 and 256");
-	  def_output_data.colormap_size = 0;
-	}
+        def_output_data.colormap_size = clp->val.i;
+        if (def_output_data.colormap_size < 2
+            || def_output_data.colormap_size > 256) {
+          Clp_OptionError(clp, "argument to %O must be between 2 and 256");
+          def_output_data.colormap_size = 0;
+        }
       }
       break;
 
@@ -1789,9 +1789,9 @@ main(int argc, char *argv[])
       MARK_CH(output, CH_USE_COLORMAP);
       Gif_DeleteColormap(def_output_data.colormap_fixed);
       if (clp->negated)
-	def_output_data.colormap_fixed = 0;
+        def_output_data.colormap_fixed = 0;
       else
-	set_new_fixed_colormap(clp->vstr);
+        set_new_fixed_colormap(clp->vstr);
       break;
 
      case COLORMAP_ALGORITHM_OPT:
@@ -1848,14 +1848,14 @@ main(int argc, char *argv[])
     case RESIZE_FIT_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = GT_SCALING_NONE;
+        def_output_data.scaling = GT_SCALING_NONE;
       else if (dimensions_x <= 0 && dimensions_y <= 0) {
-	error(0, "one of W and H must be positive in %<%s WxH%>", Clp_CurOptionName(clp));
-	def_output_data.scaling = GT_SCALING_NONE;
+        error(0, "one of W and H must be positive in %<%s WxH%>", Clp_CurOptionName(clp));
+        def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	def_output_data.scaling = (opt == RESIZE_FIT_OPT ? GT_SCALING_RESIZE_FIT : GT_SCALING_RESIZE);
-	def_output_data.resize_width = dimensions_x;
-	def_output_data.resize_height = dimensions_y;
+        def_output_data.scaling = (opt == RESIZE_FIT_OPT ? GT_SCALING_RESIZE_FIT : GT_SCALING_RESIZE);
+        def_output_data.resize_width = dimensions_x;
+        def_output_data.resize_height = dimensions_y;
       }
       break;
 
@@ -1865,33 +1865,33 @@ main(int argc, char *argv[])
     case RESIZE_FIT_HEIGHT_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = GT_SCALING_NONE;
+        def_output_data.scaling = GT_SCALING_NONE;
       else if (clp->val.u == 0) {
-	error(0, "%s argument must be positive", Clp_CurOptionName(clp));
-	def_output_data.scaling = GT_SCALING_NONE;
+        error(0, "%s argument must be positive", Clp_CurOptionName(clp));
+        def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	unsigned dimen[2] = {0, 0};
-	dimen[(opt == RESIZE_HEIGHT_OPT || opt == RESIZE_FIT_HEIGHT_OPT)] = clp->val.u;
-	if (opt == RESIZE_FIT_WIDTH_OPT || opt == RESIZE_FIT_HEIGHT_OPT)
-	  def_output_data.scaling = GT_SCALING_RESIZE_FIT;
-	else
-	  def_output_data.scaling = GT_SCALING_RESIZE;
-	def_output_data.resize_width = dimen[0];
-	def_output_data.resize_height = dimen[1];
+        unsigned dimen[2] = {0, 0};
+        dimen[(opt == RESIZE_HEIGHT_OPT || opt == RESIZE_FIT_HEIGHT_OPT)] = clp->val.u;
+        if (opt == RESIZE_FIT_WIDTH_OPT || opt == RESIZE_FIT_HEIGHT_OPT)
+          def_output_data.scaling = GT_SCALING_RESIZE_FIT;
+        else
+          def_output_data.scaling = GT_SCALING_RESIZE;
+        def_output_data.resize_width = dimen[0];
+        def_output_data.resize_height = dimen[1];
       }
       break;
 
      case SCALE_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
-	def_output_data.scaling = GT_SCALING_NONE;
+        def_output_data.scaling = GT_SCALING_NONE;
       else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
-	error(0, "%s X and Y factors must be positive", Clp_CurOptionName(clp));
-	def_output_data.scaling = GT_SCALING_NONE;
+        error(0, "%s X and Y factors must be positive", Clp_CurOptionName(clp));
+        def_output_data.scaling = GT_SCALING_NONE;
       } else {
-	def_output_data.scaling = GT_SCALING_SCALE;
-	def_output_data.scale_x = parsed_scale_factor_x;
-	def_output_data.scale_y = parsed_scale_factor_y;
+        def_output_data.scaling = GT_SCALING_SCALE;
+        def_output_data.scale_x = parsed_scale_factor_x;
+        def_output_data.scale_y = parsed_scale_factor_y;
       }
       break;
 
@@ -1926,10 +1926,10 @@ main(int argc, char *argv[])
 
      case MULTIFILE_OPT:
       if (clp->negated)
-	gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
+        gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
       else {
-	gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
-	nextfile = 0;
+        gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+        nextfile = 0;
       }
       break;
 
@@ -1937,8 +1937,8 @@ main(int argc, char *argv[])
       if (clp->negated)
         gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
       else {
-	gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
-	nextfile = 1;
+        gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+        nextfile = 1;
       }
       break;
 
@@ -1963,17 +1963,17 @@ particular purpose.\n");
      case OUTPUT_OPT:
       MARK_CH(output, CH_OUTPUT);
       if (strcmp(clp->vstr, "-") == 0)
-	def_output_data.output_name = 0;
+        def_output_data.output_name = 0;
       else
-	def_output_data.output_name = clp->vstr;
+        def_output_data.output_name = clp->vstr;
       break;
 
       /* NONOPTIONS */
 
      case Clp_NotOption:
       if (clp->vstr[0] != '#' || !frame_argument(clp, clp->vstr)) {
-	input_done();
-	input_stream(clp->vstr);
+        input_done();
+        input_stream(clp->vstr);
       }
       break;
 
