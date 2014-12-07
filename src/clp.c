@@ -1964,7 +1964,7 @@ Clp_Next(Clp_Parser *clp)
 	if (atr->func(clp, clp->vstr, complain, atr->user_data) <= 0) {
 	    /* parser failed */
 	    clp->have_val = 0;
-	    if (cli->iopt[optno].imandatory) {
+	    if (complain) {
 		clp->option = &clp_option_sentinel[-Clp_BadOption];
 		return Clp_BadOption;
 	    } else {
