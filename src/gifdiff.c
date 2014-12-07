@@ -291,23 +291,18 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   for (imageno2 = 0; imageno2 < s2->nimages; ++imageno2)
     combine_colormaps(s2->images[imageno2]->local, newcm);
 
-  /* Choose the background values and clear the image data arrays */
+  /* Choose the background values */
+  background1 = background2 = TRANSP;
   if ((s1->nimages == 0 || s1->images[0]->transparent < 0)
-      && s1->global && s1->background < s1->global->ncol
-      && !ignore_background)
-    background1 = s1->global->col[ s1->background ].pixel;
-  else
-    background1 = TRANSP;
-
+      && s1->global && s1->background < s1->global->ncol)
+      background1 = s1->global->col[ s1->background ].pixel;
   if ((s2->nimages == 0 || s2->images[0]->transparent < 0)
-      && s2->global && s2->background < s2->global->ncol
-      && !ignore_background)
-    background2 = s2->global->col[ s2->background ].pixel;
-  else
-    background2 = TRANSP;
+      && s2->global && s2->background < s2->global->ncol)
+      background2 = s2->global->col[ s2->background ].pixel;
 
-  fill_area(gdata[0], 0, 0, screen_width, screen_height, background1);
-  fill_area(gdata[1], 0, 0, screen_width, screen_height, background2);
+  /* Clear screens */
+  fill_area(gdata[0], 0, 0, screen_width, screen_height, TRANSP);
+  fill_area(gdata[1], 0, 0, screen_width, screen_height, TRANSP);
 
   /* Loopcounts differ? */
   if (s1->loopcount != s2->loopcount) {
@@ -343,6 +338,23 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
                     fbuf, d % screen_width, d / screen_width, buf1, buf2);
           break;
         }
+    }
+
+    /* compare background */
+    if (!ignore_background && background1 != background2
+        && (imageno1 == 0 || s1->images[imageno1 - 1]->disposal == GIF_DISPOSAL_BACKGROUND)
+        && (imageno2 == 0 || s2->images[imageno2 - 1]->disposal == GIF_DISPOSAL_BACKGROUND)) {
+        unsigned d, c = screen_width * screen_height;
+        uint16_t *d1 = gdata[0], *d2 = gdata[1];
+        for (d = 0; d < c; ++d, ++d1, ++d2)
+            if (*d1 == TRANSP || *d2 == TRANSP) {
+                name_color(background1, newcm, buf1);
+                name_color(background2, newcm, buf2);
+                different("frame %s background pixels differ: %d,%d <%s >%s",
+                          fbuf, d % screen_width, d / screen_width, buf1, buf2);
+                background1 = background2 = TRANSP;
+                break;
+            }
     }
 
     /* move to next images, skipping redundancy */
