@@ -211,26 +211,27 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
  **/
 
 void
-combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi)
+combine_crop(Gt_Crop* dstcrop, const Gt_Crop* srccrop, const Gif_Image* gfi)
 {
-    dstcrop->x = srccrop->x - gfi->left;
-    dstcrop->y = srccrop->y - gfi->top;
-    dstcrop->w = srccrop->w;
-    dstcrop->h = srccrop->h;
+    int cl = srccrop->x - gfi->left, cr = cl + srccrop->w,
+        ct = srccrop->y - gfi->top, cb = ct + srccrop->h,
+        dl = cl > 0 ? cl : 0, dr = cr < gfi->width ? cr : gfi->width,
+        dt = ct > 0 ? ct : 0, db = cb < gfi->height ? cb : gfi->height;
 
-    /* Check that the rectangle actually intersects with the image. */
-    if (dstcrop->x < 0)
-        dstcrop->w += dstcrop->x, dstcrop->x = 0;
-    if (dstcrop->y < 0)
-        dstcrop->h += dstcrop->y, dstcrop->y = 0;
-    if (dstcrop->w > 0 && dstcrop->x + dstcrop->w > gfi->width)
-        dstcrop->w = gfi->width - dstcrop->x;
-    if (dstcrop->h > 0 && dstcrop->y + dstcrop->h > gfi->height)
-        dstcrop->h = gfi->height - dstcrop->y;
-    if (dstcrop->w < 0)
+    if (dl < dr) {
+        dstcrop->x = dl;
+        dstcrop->w = dr - dl;
+    } else {
+        dstcrop->x = (cl <= 0 ? 0 : srccrop->w - 1) + (srccrop->left_offset - gfi->left);
         dstcrop->w = 0;
-    if (dstcrop->h < 0)
+    }
+    if (dt < db) {
+        dstcrop->y = dt;
+        dstcrop->h = db - dt;
+    } else {
+        dstcrop->y = (ct <= 0 ? 0 : srccrop->h - 1) + (srccrop->top_offset - gfi->top);
         dstcrop->h = 0;
+    }
 }
 
 int
@@ -238,38 +239,31 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
 {
     Gt_Crop c;
     int j;
-    uint8_t **img;
 
     combine_crop(&c, fr->crop, gfi);
 
+    fr->left_offset = fr->crop->left_offset;
+    fr->top_offset = fr->crop->top_offset;
+
     if (c.w > 0 && c.h > 0) {
-        img = Gif_NewArray(uint8_t *, c.h + 1);
+        uint8_t** old_img = gfi->img;
+        gfi->img = Gif_NewArray(uint8_t *, c.h + 1);
         for (j = 0; j < c.h; j++)
-            img[j] = gfi->img[c.y + j] + c.x;
-        img[c.h] = 0;
-
-        fr->left_offset = fr->crop->left_offset;
-        fr->top_offset = fr->crop->top_offset;
-        gfi->left += c.x - fr->left_offset;
-        gfi->top += c.y - fr->top_offset;
-
-    } else if (preserve_total_crop) {
-        c.w = c.h = 1;
-        img = Gif_NewArray(uint8_t*, c.h + 1);
-        img[0] = gfi->img[0];
-        img[1] = 0;
-        gfi->transparent = img[0][0];
-
-    } else {
-        /* Empty image */
-        c.w = c.h = 0;
-        img = 0;
+            gfi->img[j] = old_img[c.y + j] + c.x;
+        gfi->img[c.h] = 0;
+        Gif_DeleteArray(old_img);
+        gfi->width = c.w;
+        gfi->height = c.h;
+    } else if (preserve_total_crop)
+        Gif_MakeImageEmpty(gfi);
+    else {
+        Gif_DeleteArray(gfi->img);
+        gfi->img = 0;
+        gfi->width = gfi->height = 0;
     }
 
-    Gif_DeleteArray(gfi->img);
-    gfi->img = img;
-    gfi->width = c.w;
-    gfi->height = c.h;
+    gfi->left += c.x - fr->left_offset;
+    gfi->top += c.y - fr->top_offset;
     return gfi->img != 0;
 }
 
