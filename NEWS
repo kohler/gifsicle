@@ -1,5 +1,14 @@
 Gifsicle NEWS
 
+Version 1.87   9.Dec.2014
+
+* Always optimize as if the background is transparent. This fixes some
+  rare bugs reported by Lars Dieckow.
+
+* Fix --crop issue with must-be-preserved frames that are out of the
+  crop window.
+
+
 Version 1.86   14.Oct.2014
 
 * Further fix --rotate + --crop.
