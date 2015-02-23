@@ -1117,7 +1117,7 @@ parse_int(Clp_Parser* clp, const char* arg, int complain, void* user_data)
 	return 1;
     else {
         if (complain) {
-            const char *message = type & 1
+            const char *message = (type & 1)
                 ? "%<%O%> expects a nonnegative integer, not %<%s%>"
                 : "%<%O%> expects an integer, not %<%s%>";
             Clp_OptionError(clp, message, arg);
@@ -1704,7 +1704,7 @@ switch_to_short_argument(Clp_Parser *clp)
     int ocharskip, oclass = get_oclass(clp, text, &ocharskip);
     assert(cli->could_be_short);
     cli->is_short = 1;
-    cli->whole_negated = (oclass & Clp_ShortNegated ? 1 : 0);
+    cli->whole_negated = !!(oclass & Clp_ShortNegated);
     set_option_text(cli, cli->argv[0], ocharskip);
 }
 
