@@ -51,6 +51,7 @@ int nested_mode = 0;
 
 static int infoing = 0;
 int verbosing = 0;
+static int no_ignore_errors = 0;
 
 
 #define CHANGED(next, flag)     (((next) & (1<<(flag))) != 0)
@@ -189,6 +190,7 @@ static const char *output_option_types[] = {
 #define RESIZE_COLORS_OPT       371
 #define NO_APP_EXTENSIONS_OPT   372
 #define SAME_APP_EXTENSIONS_OPT 373
+#define IGNORE_ERRORS_OPT       374
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -249,6 +251,7 @@ const Clp_Option options[] = {
 
   { "help", 'h', HELP_OPT, 0, 0 },
 
+  { "ignore-errors", 0, IGNORE_ERRORS_OPT, 0, Clp_Negate },
   { "info", 'I', INFO_OPT, 0, Clp_Negate },
   { "insert-before", 0, INSERT_OPT, FRAME_SPEC_TYPE, 0 },
   { "interlace", 'i', 'i', 0, Clp_Negate },
@@ -520,7 +523,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
   {
     unsigned long missing;
     if (message && sscanf(message, "missing %lu pixels", &missing) == 1
-        && missing > 10000) {
+        && missing > 10000 && no_ignore_errors) {
       gifread_error(gfs, 0, -1, 0);
       lerror(landmark, "fatal error: too many missing pixels, giving up");
       exit(1);
@@ -1917,6 +1920,10 @@ main(int argc, char *argv[])
 
      case WARNINGS_OPT:
       no_warnings = clp->negated;
+      break;
+
+     case IGNORE_ERRORS_OPT:
+      no_ignore_errors = clp->negated;
       break;
 
      case CONSERVE_MEMORY_OPT:

@@ -160,6 +160,7 @@ General options: Also --no-OPTION for info and verbose.\n\
       --version                 Print version number and exit.\n\
   -o, --output FILE             Write output to FILE.\n\
   -w, --no-warnings             Don't report warnings.\n\
+      --no-ignore-errors        Quit on very erroneous input GIFs.\n\
       --conserve-memory         Conserve memory at the expense of speed.\n\
       --multifile               Support concatenated GIF files.\n\
 \n");
