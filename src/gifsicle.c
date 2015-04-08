@@ -466,7 +466,7 @@ static int gifread_error_count;
 
 static void
 gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
-              int is_error, const char *message)
+              int is_error, const char* message)
 {
   static int last_is_error = 0;
   static char last_landmark[256];
@@ -498,7 +498,9 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
           || strcmp(landmark, last_landmark) != 0)) {
     const char* etype = last_is_error ? "read error: " : "";
     void (*f)(const char*, const char*, ...) = last_is_error ? lerror : lwarning;
-    if (same_error_count == 1)
+    if (gfi && gfi->user_flags)
+      /* error already reported */;
+    else if (same_error_count == 1)
       f(last_landmark, "%s%s", etype, last_message);
     else if (same_error_count > 0)
       f(last_landmark, "%s%s (%d times)", etype, last_message, same_error_count);
@@ -514,7 +516,8 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
     strcpy(last_landmark, landmark);
     last_is_error = is_error;
     if (different_error_count == 11) {
-      error(0, "(plus more errors; is this GIF corrupt?)");
+      if (!(gfi && gfi->user_flags))
+        error(0, "(plus more errors; is this GIF corrupt?)");
       different_error_count++;
     }
   } else
@@ -522,13 +525,16 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
 
   {
     unsigned long missing;
-    if (message && sscanf(message, "missing %lu pixels", &missing) == 1
+    if (message && sscanf(message, "missing %lu pixel", &missing) == 1
         && missing > 10000 && no_ignore_errors) {
       gifread_error(gfs, 0, -1, 0);
       lerror(landmark, "fatal error: too many missing pixels, giving up");
       exit(1);
     }
   }
+
+  if (gfi && is_error < 0)
+    gfi->user_flags |= 1;
 }
 
 struct StoredFile {

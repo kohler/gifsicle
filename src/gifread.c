@@ -161,7 +161,8 @@ static void
 gif_read_error(Gif_Context *gfc, int is_error, const char *text)
 {
     Gif_ReadErrorHandler handler = gfc->handler ? gfc->handler : default_error_handler;
-    gfc->errors[is_error > 0] += 1;
+    if (is_error >= 0)
+        gfc->errors[is_error > 0] += 1;
     if (handler)
         handler(gfc->stream, gfc->gfi, is_error, text);
 }
@@ -379,7 +380,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       long delta = (long) (gfc->maximage - gfc->image) - (long) gfc->decodepos;
       char buf[BUFSIZ];
       if (delta > 0) {
-          sprintf(buf, "missing %ld pixels of image data", delta);
+          sprintf(buf, "missing %ld %s of image data", delta,
+                  delta == 1 ? "pixel" : "pixels");
           gif_read_error(gfc, 1, buf);
       } else if (delta < -1) {
           /* One pixel of superfluous data is OK; that could be the

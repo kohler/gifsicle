@@ -53,6 +53,7 @@ Gif_NewImage(void)
   gfi->disposal = GIF_DISPOSAL_NONE;
   gfi->delay = 0;
   gfi->left = gfi->top = gfi->width = gfi->height = 0;
+  gfi->user_flags = 0;
   gfi->interlace = 0;
   gfi->img = 0;
   gfi->image_data = 0;

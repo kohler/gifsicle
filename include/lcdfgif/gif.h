@@ -100,6 +100,8 @@ struct Gif_Image {
     uint16_t width;
     uint16_t height;
 
+    uint16_t user_flags;
+
     uint8_t interlace;
     uint8_t **img;		/* img[y][x] == image byte (x,y) */
     uint8_t *image_data;
