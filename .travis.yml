@@ -1,0 +1,6 @@
+language: c
+env:
+  - CC="gcc"
+  - CC="gcc -std=c89"
+  - CC="clang"
+script: ./configure && make check
