@@ -592,7 +592,7 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
         for (i = 0; i != div->nchosen; ++i) {
             kcolor x = hist[chosen].ka.k, *y = &hist[div->chosen[i]].ka.k;
             /* penalize combinations with large luminance difference */
-            double dL = fabs(kc_luminance(&x) - kc_luminance(y));
+            double dL = abs(kc_luminance(&x) - kc_luminance(y));
             dL = (dL > 8192 ? dL * 4 / 32767. : 1);
             /* create combination */
             for (k = 0; k != 3; ++k)
