@@ -1080,8 +1080,6 @@ resize_stream(Gif_Stream* gfs,
 
     Gif_CalculateScreenSize(gfs, 0);
     assert(gfs->nimages > 0);
-    assert(gfs->images[0]->transparent >= 0
-           || (int) gfs->background < gfs->global->ncol);
 
     if (new_width < 0.5 && new_height < 0.5)
         /* do nothing */
