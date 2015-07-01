@@ -1,5 +1,13 @@
 Gifsicle NEWS
 
+Version 1.88   1.Jul.2015
+
+* Fix bug where long comments were read incorrectly. Reported by
+  kazarny.
+
+* Add --no-ignore-errors option.
+
+
 Version 1.87   9.Dec.2014
 
 * Always optimize as if the background is transparent. This fixes some
