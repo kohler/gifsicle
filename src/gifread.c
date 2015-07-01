@@ -677,7 +677,7 @@ suck_data(char *data, int *store_len, Gif_Reader *grr)
   while (len > 0) {
     Gif_ReArray(data, char, total_len + len + 1);
     if (!data) return 0;
-    gifgetblock((uint8_t *)data, len, grr);
+    gifgetblock((uint8_t *)data + total_len, len, grr);
 
     total_len += len;
     data[total_len] = 0;
