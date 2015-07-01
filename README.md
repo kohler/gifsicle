@@ -23,8 +23,8 @@ The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of
 merchantability and fitness for a particular purpose.
 
-See `NEWS` in this directory for a detailed listing of changes in
-recent versions. The Gifsicle home page is:
+See `NEWS` in this directory for changes in recent versions. The Gifsicle home
+page is:
 
 http://www.lcdf.org/gifsicle/
 
@@ -37,9 +37,9 @@ Type `./configure`, then `make`.
 If `./configure` does not exist (you downloaded from Github), run
 `autoreconf -i` first.
 
-`./configure` accepts the usual options; see `INSTALL` for more
-details. To build without gifview (for example, if you don't have
-X11), use `./configure --disable-gifview`. To build without gifdiff,
+`./configure` accepts the usual options; see `INSTALL` for details.
+To build without gifview (for example, if you don't have X11), use
+`./configure --disable-gifview`. To build without gifdiff,
 use `./configure --disable-gifdiff`.
 
 `make install` will build and install Gifsicle and its manual page
