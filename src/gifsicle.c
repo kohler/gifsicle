@@ -21,8 +21,9 @@
 # include <unistd.h>
 #endif
 
+#ifndef static_assert
 #define static_assert(x, msg) switch ((int) (x)) case 0: case !!((int) (x)):
-
+#endif
 
 Gt_Frame def_frame;
 
