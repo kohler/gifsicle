@@ -1500,6 +1500,8 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
 
   if (old_cm)
     transp_value = old_cm->col[transparent];
+  else
+    GIF_SETCOLOR(&transp_value, 0, 0, 0);
 
   /* look for an unused pixel in the existing colormap; prefer the same color
      we had */
