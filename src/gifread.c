@@ -548,7 +548,7 @@ Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
   gfc.handler = h;
   gfc.errors[0] = gfc.errors[1] = 0;
 
-  if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
+  if (gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
     ok = uncompress_image(&gfc, gfi, &grr);
   }
@@ -802,7 +802,6 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   gfs = Gif_NewStream();
   gfi = Gif_NewImage();
-  gfs->landmark = landmark;
 
   gfc.stream = gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
@@ -814,6 +813,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
+  gfs->landmark = landmark;
 
   GIF_DEBUG(("\nGIF"));
   if (!read_logical_screen_descriptor(gfs, grr))

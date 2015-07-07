@@ -138,7 +138,7 @@ AC_REPLACE_FUNCS([strerror])
 AC_CHECK_FUNCS([strtoul mkstemp])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
 
-AC_CHECK_HEADERS([sys/select.h inttypes.h unistd.h])
+AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
 
 
 dnl

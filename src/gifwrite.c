@@ -304,7 +304,7 @@ write_compressed_data(Gif_Image *gfi,
       unsigned ncap = bufcap * 2 + (24 << 3);
       uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
       if (!nbuf)
-        return 0;
+        goto error;
       memcpy(nbuf, buf, bufcap >> 3);
       if (buf != stack_buffer)
         Gif_DeleteArray(buf);
@@ -451,8 +451,12 @@ write_compressed_data(Gif_Image *gfi,
 
   if (buf != stack_buffer)
     Gif_DeleteArray(buf);
-
   return 1;
+
+ error:
+  if (buf != stack_buffer)
+    Gif_DeleteArray(buf);
+  return 0;
 }
 
 

@@ -842,8 +842,8 @@ Gif_DeleteXContext(Gif_XContext *gfx)
   if (gfx->mask_gc)
     XFreeGC(gfx->display, gfx->mask_gc);
   Gif_DeleteArray(gfx->closest);
-  Gif_Delete(gfx);
   Gif_RemoveDeletionHook(GIF_T_COLORMAP, delete_colormap_hook, gfx);
+  Gif_Delete(gfx);
 }
 
 

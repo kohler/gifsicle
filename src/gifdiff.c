@@ -118,11 +118,10 @@ apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
   Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
 
   /* set up colormap */
-  for (i = 0; i < 256; i++)
+  for (i = 0; i < gfcm->ncol; ++i)
+    map[i] = gfcm->col[i].pixel;
+  for (i = gfcm->ncol; i < 256; ++i)
     map[i] = 1;
-  if (gfs)
-    for (i = 0; i < gfcm->ncol; i++)
-      map[i] = gfcm->col[i].pixel;
   if (gfi->transparent >= 0 && gfi->transparent < 256)
     map[gfi->transparent] = TRANSP;
 
@@ -458,7 +457,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
   static int same_error_count = 0;
   int which_image = Gif_ImageNumber(gfs, gfi);
   const char *filename = gfs->landmark;
-  if (gfs && which_image < 0)
+  if (which_image < 0)
     which_image = gfs->nimages;
 
   if (gifread_error_count == 0) {

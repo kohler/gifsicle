@@ -1690,7 +1690,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       }
 
     /* map the image data, transparencies, and background */
-    if (gfs->global && gfs->background < gfs->global->ncol)
+    if (gfs->background < gfs->global->ncol)
         gfs->background = map[gfs->background];
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_Image *gfi = gfs->images[imagei];

@@ -513,8 +513,10 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
     if (last_message[0] == 0)
       different_error_count++;
     same_error_count++;
-    strcpy(last_message, message);
-    strcpy(last_landmark, landmark);
+    strncpy(last_message, message, sizeof(last_message));
+    last_message[sizeof(last_message) - 1] = 0;
+    strncpy(last_landmark, landmark, sizeof(last_landmark));
+    last_landmark[sizeof(last_landmark) - 1] = 0;
     last_is_error = is_error;
     if (different_error_count == 11) {
       if (!(gfi && gfi->user_flags))
@@ -618,7 +620,7 @@ close_giffile(FILE *f, int final)
 void
 input_stream(const char *name)
 {
-  static char *component_namebuf = 0;
+  char* component_namebuf;
   FILE *f;
   Gif_Stream *gfs;
   int i;
@@ -651,11 +653,11 @@ input_stream(const char *name)
   /* change filename for component files */
   componentno++;
   if (componentno > 1) {
-    free(component_namebuf);
     component_namebuf = (char*) malloc(strlen(main_name) + 10);
     sprintf(component_namebuf, "%s~%d", main_name, componentno);
     name = component_namebuf;
-  }
+  } else
+    component_namebuf = 0;
 
   /* check for empty file */
   i = getc(f);
@@ -664,8 +666,7 @@ input_stream(const char *name)
       lerror(name, "empty file");
     else if (nextfile)
       lerror(name, "no more images in file");
-    close_giffile(f, 1);
-    return;
+    goto error;
   }
   ungetc(i, f);
 
@@ -685,8 +686,7 @@ input_stream(const char *name)
     Gif_DeleteStream(gfs);
     if (verbosing)
       verbose_close('>');
-    close_giffile(f, 1);
-    return;
+    goto error;
   }
 
   /* special processing for components after the first */
@@ -768,9 +768,15 @@ input_stream(const char *name)
   gfs->refcount++;
 
   /* Read more files. */
+  free(component_namebuf);
   if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile)
     goto retry_file;
   close_giffile(f, 0);
+  return;
+
+ error:
+  free(component_namebuf);
+  close_giffile(f, 1);
 }
 
 void

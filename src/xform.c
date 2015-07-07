@@ -20,6 +20,10 @@
 #if HAVE_UNISTD_H
 # include <unistd.h>
 #endif
+#if HAVE_SYS_TYPES_H && HAVE_SYS_STAT_H
+# include <sys/types.h>
+# include <sys/stat.h>
+#endif
 #ifndef M_PI
 /* -std=c89 does not define M_PI */
 # define M_PI           3.14159265358979323846
@@ -152,8 +156,12 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   char *new_command;
 
 #ifdef HAVE_MKSTEMP
-  if (mkstemp(tmp_file) < 0)
-    fatal_error("can%,t create temporary file!");
+  {
+    mode_t old_mode = umask(077);
+    if (mkstemp(tmp_file) < 0)
+      fatal_error("can%,t create temporary file!");
+    umask(old_mode);
+  }
 #else
   if (!tmp_file)
     fatal_error("can%,t create temporary file!");
@@ -562,11 +570,11 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
                                      + gfo->left];
 
     for (xo = 0; xo != gfo->width; ++xo)
-        if (sc[xo].a[3] <= KC_MAX / 4)
+        if (sc[xo].a[3] <= (int) (KC_MAX / 4))
             oscr[xo] = kac_transparent();
         else {
             /* don't effectively mix partially transparent pixels with black */
-            if (sc[xo].a[3] <= KC_MAX * 31 / 32)
+            if (sc[xo].a[3] <= (int) (KC_MAX * 31 / 32))
                 for (k = 0; k != 3; ++k)
                     sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
             /* find closest color */

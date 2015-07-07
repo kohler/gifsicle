@@ -87,8 +87,10 @@ Gif_Colormap *
 Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm || capacity <= 0 || count < 0)
+  if (!gfcm || capacity <= 0 || count < 0) {
+    Gif_Delete(gfcm);
     return 0;
+  }
   if (count > capacity)
     capacity = count;
   gfcm->ncol = count;
