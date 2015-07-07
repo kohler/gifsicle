@@ -58,10 +58,11 @@ static int no_ignore_errors = 0;
 #define CHANGED(next, flag)     (((next) & (1<<(flag))) != 0)
 #define UNCHECKED_MARK_CH(where, what)                  \
   next_##where |= 1<<what;
-#define MARK_CH(where, what)                            \
-  if (CHANGED(next_##where, what))                      \
-    redundant_option_warning(where##_option_types[what]); \
-  UNCHECKED_MARK_CH(where, what)
+#define MARK_CH(where, what)    do {                        \
+    if (CHANGED(next_##where, what))                        \
+      redundant_option_warning(where##_option_types[what]); \
+    UNCHECKED_MARK_CH(where, what);                         \
+  } while (0)
 
 /* frame option types */
 static int next_frame = 0;
