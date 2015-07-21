@@ -24,6 +24,13 @@ if test "x$enableval" != xyes ; then
   build_gifdiff=no
 fi)
 
+build_threaded=yes
+AC_ARG_ENABLE(threaded,
+[  --disable-threaded      do not build gifsicle with resize threading ability],
+if test "x$enableval" != xyes ; then
+  build_threaded=no
+fi)
+
 use_dmalloc=
 AC_ARG_ENABLE(dmalloc,
 [  --enable-dmalloc        build with debugging malloc library],
@@ -65,6 +72,11 @@ dnl
 
 OTHERPROGRAMS=""
 OTHERMANS=""
+
+if test "x$build_threaded" = xyes; then
+    LIBS=-lpthread
+    AC_DEFINE(ENABLE_THREADED, 1, [Define if threading is enabled for gifsicle resizing])
+fi
 
 if test "x$build_gifview" = xyes -o "x$build_gifview" = xmaybe; then
     AC_PATH_XTRA
