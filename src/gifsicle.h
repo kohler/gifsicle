@@ -23,6 +23,9 @@ typedef struct Gt_Frameset Gt_Frameset;
 typedef struct Gt_Crop Gt_Crop;
 typedef struct Gt_ColorTransform Gt_ColorTransform;
 
+#include <pthread.h>
+pthread_mutex_t kd3_sort_lock;
+
 typedef struct Gt_Frame {
 
   Gif_Stream *stream;
@@ -246,7 +249,8 @@ int     crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop);
 void    flip_image(Gif_Image* gfi, Gt_Frame* fr, int is_vert);
 void    rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation);
 void    resize_stream(Gif_Stream* gfs, double new_width, double new_height,
-                      int fit, int method, int scale_colors);
+                      int fit, int method, int scale_colors,
+                      int resize_threads);
 
 /*****
  * quantization
