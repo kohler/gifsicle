@@ -203,6 +203,8 @@ Animation options: Also --no-OPTION and --same-OPTION.\n\
   -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
   -O, --optimize[=LEVEL]        Optimize output GIFs.\n\
   -U, --unoptimize              Unoptimize input GIFs.\n\
+  -T, --threaded-resize[=THREADS]\n\
+                                Make your resizes SCREAM using threaded gifsicle.\n\
 \n");
   printf("\
 Whole-GIF options: Also --no-OPTION.\n\

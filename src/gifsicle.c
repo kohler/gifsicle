@@ -35,6 +35,9 @@ Gif_Stream *input = 0;
 const char *input_name = 0;
 static int unoptimizing = 0;
 
+const int GIFSICLE_DEFAULT_THREAD_COUNT = 32;
+static int resize_threads = 0;
+
 static int gif_read_flags = 0;
 static int nextfile = 0;
 Gif_CompressInfo gif_write_info;
@@ -193,6 +196,7 @@ static const char *output_option_types[] = {
 #define NO_APP_EXTENSIONS_OPT   372
 #define SAME_APP_EXTENSIONS_OPT 373
 #define IGNORE_ERRORS_OPT       374
+#define THREADED_RESIZE_OPT     375
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -331,6 +335,7 @@ const Clp_Option options[] = {
   { "warnings", 0, WARNINGS_OPT, 0, Clp_Negate },
 
   { "xinfo", 0, EXTENSION_INFO_OPT, 0, Clp_Negate },
+  { "threaded-resize", 'T', THREADED_RESIZE_OPT, Clp_ValUnsigned, Clp_Optional | Clp_Negate },
 
 };
 
@@ -966,7 +971,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       resize_stream(out, w, h,
                     active_output_data.scaling == GT_SCALING_RESIZE_FIT,
                     active_output_data.scale_method,
-                    active_output_data.scale_colors);
+                    active_output_data.scale_colors,
+                    resize_threads);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -1747,6 +1753,12 @@ main(int argc, char *argv[])
      case UNOPTIMIZE_OPT:
       UNCHECKED_MARK_CH(input, CH_UNOPTIMIZE);
       unoptimizing = clp->negated ? 0 : 1;
+      break;
+
+     case THREADED_RESIZE_OPT:
+      UNCHECKED_MARK_CH(input, CH_UNOPTIMIZE);
+      unoptimizing = clp->negated ? 0 : 1;
+      resize_threads = (clp->have_val ? clp->val.i : GIFSICLE_DEFAULT_THREAD_COUNT);
       break;
 
       /* WHOLE-GIF OPTIONS */

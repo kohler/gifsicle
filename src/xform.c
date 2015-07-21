@@ -507,6 +507,8 @@ static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
     sctx->xweights.n = sctx->yweights.n = 0;
     sctx->max_desired_dist = 16000;
     sctx->scale_colors = 0;
+    sctx->kd3 = NULL;
+    sctx->imageno = 0;
 }
 
 static void sctx_cleanup(scale_context* sctx) {
@@ -1078,12 +1080,23 @@ static void scale_image(scale_context* sctx, int method) {
     }
 }
 
+typedef struct {
+    scale_context sctx;
+    int method;
+} scale_thread_context;
+
+void* scale_image_threaded(void* args) {
+    scale_thread_context* ctx = (scale_thread_context*) args;
+    scale_image(&(ctx->sctx), ctx->method);
+    return 0;
+}
+
 void
 resize_stream(Gif_Stream* gfs,
               double new_width, double new_height,
-              int fit, int method, int scale_colors)
+              int fit, int method, int scale_colors,
+              int resize_threads)
 {
-    scale_context sctx;
     int nw, nh;
 
     Gif_CalculateScreenSize(gfs, 0);
@@ -1123,10 +1136,6 @@ resize_stream(Gif_Stream* gfs,
     if (nh == 0)
         nh = 1;
 
-    /* create scale context */
-    sctx_init(&sctx, gfs, nw, nh);
-    sctx.scale_colors = scale_colors;
-
     /* no point to MIX or BOX method if we're expanding the image in
        both dimens */
     if (method == SCALE_METHOD_BOX
@@ -1142,12 +1151,49 @@ resize_stream(Gif_Stream* gfs,
         && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
 
-    for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {
-        sctx.gfi = gfs->images[sctx.imageno];
-        scale_image(&sctx, method);
+    pthread_mutex_init(&kd3_sort_lock, 0);
+
+    int i;
+    if (resize_threads > 0) {
+        scale_thread_context* contexts = malloc(gfs->nimages * sizeof(scale_thread_context));
+        pthread_t * pthreads = malloc(gfs->nimages * sizeof(pthread_t));
+
+        for (i = 0; i < gfs->nimages;) {
+            int start = i;
+            int end = min(i + resize_threads, gfs->nimages);
+            for (; i < end; ++i) {
+                sctx_init(&(contexts[i].sctx), gfs, nw, nh);
+                contexts[i].sctx.imageno = i;
+                contexts[i].sctx.scale_colors = scale_colors;
+                contexts[i].sctx.gfi = gfs->images[i];
+                contexts[i].method = method;
+
+                /* Create worker thread */
+                pthread_create(&pthreads[i], NULL, scale_image_threaded, &contexts[i]);
+            }
+            int j = start;
+            for (; j < end; ++j) {
+                pthread_join(pthreads[j], NULL);
+            }
+        }
+
+        for (i = 0; i < gfs->nimages; ++i) {
+            sctx_cleanup(&contexts[i].sctx);
+        }
+        free(contexts);
+        free(pthreads);
+    } else {
+        scale_context sctx;
+        sctx_init(&sctx, gfs, nw, nh);
+        sctx.scale_colors = scale_colors;
+
+        for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {
+            sctx.gfi = gfs->images[sctx.imageno];
+            scale_image(&sctx, method);
+        }
+        sctx_cleanup(&sctx);
     }
 
-    sctx_cleanup(&sctx);
     gfs->screen_width = nw;
     gfs->screen_height = nh;
 }
