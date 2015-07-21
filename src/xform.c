@@ -1151,10 +1151,13 @@ resize_stream(Gif_Stream* gfs,
         && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
 
+#ifdef ENABLE_THREADED
     pthread_mutex_init(&kd3_sort_lock, 0);
+#endif
 
     int i;
     if (resize_threads > 0) {
+#ifdef ENABLE_THREADED
         scale_thread_context* contexts = malloc(gfs->nimages * sizeof(scale_thread_context));
         pthread_t * pthreads = malloc(gfs->nimages * sizeof(pthread_t));
 
@@ -1182,6 +1185,10 @@ resize_stream(Gif_Stream* gfs,
         }
         free(contexts);
         free(pthreads);
+#else
+        printf("Threaded resize requested, but gifsicle built without threading enabled. Exiting.\n");
+        exit(1);
+#endif
     } else {
         scale_context sctx;
         sctx_init(&sctx, gfs, nw, nh);
