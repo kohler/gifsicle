@@ -74,7 +74,16 @@ OTHERPROGRAMS=""
 OTHERMANS=""
 
 if test "x$build_threaded" = xyes; then
-    LIBS=-lpthread
+    AC_CHECK_LIB(
+      [pthread],
+      [pthread_mutex_init],
+      [],
+      [AC_MSG_ERROR([
+******************************************************************************
+Cannot find pthread but threaded support was requested.
+You may need to install the pthread library or build gifsicle
+with the '--disable-threaded' option])]
+    )
     AC_DEFINE(ENABLE_THREADED, 1, [Define if threading is enabled for gifsicle resizing])
 fi
 
