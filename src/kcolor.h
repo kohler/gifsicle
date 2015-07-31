@@ -235,11 +235,20 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 
 typedef struct scale_color {
-    double a[4];
+    float a[4];
 } scale_color;
 
 static inline void sc_clear(scale_color* x) {
     x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
+}
+
+static inline scale_color sc_makekc(const kcolor* k) {
+    scale_color sc;
+    sc.a[0] = k->a[0];
+    sc.a[1] = k->a[1];
+    sc.a[2] = k->a[2];
+    sc.a[3] = KC_MAX;
+    return sc;
 }
 
 #endif
