@@ -858,11 +858,33 @@ static inline float mix_factor(int val, const float bounds[2]) {
         return 1.0;
 }
 
+typedef struct scale_mixinfo {
+    uint16_t xi;
+    uint16_t xo;
+    float f;
+} scale_mixinfo;
+
 static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
-    int xo, yo, i, j;
+    int xo, yo, i, j, nmix = 0, mixcap = sctx->iscr.width * 2;
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
+    scale_mixinfo* mix = Gif_NewArray(scale_mixinfo, mixcap);
 
     scale_image_prepare(sctx);
+
+    /* construct mixinfo */
+    for (xo = 0; xo != gfo->width; ++xo) {
+        pixel_range2 xpr = make_pixel_range2(xo + gfo->left, sctx->oscr.width,
+                                             sctx->iscr.width, sctx->oxf);
+        while (nmix + xpr.hi - xpr.lo > mixcap) {
+            mixcap *= 2;
+            Gif_ReArray(mix, scale_mixinfo, mixcap);
+        }
+        for (i = xpr.lo; i < xpr.hi; ++i, ++nmix) {
+            mix[nmix].xi = i;
+            mix[nmix].xo = xo;
+            mix[nmix].f = mix_factor(i, xpr.bounds);
+        }
+    }
 
     for (yo = 0; yo != gfo->height; ++yo) {
         pixel_range2 ypr = make_pixel_range2(yo + gfo->top, sctx->oscr.height,
@@ -876,15 +898,8 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
             float jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
             const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
-            for (xo = 0; xo != gfo->width; ++xo) {
-                pixel_range2 xpr = make_pixel_range2(xo + gfo->left, sctx->oscr.width,
-                                                     sctx->iscr.width, sctx->oxf);
-
-                for (i = xpr.lo; i < xpr.hi; ++i) {
-                    float f = mix_factor(i, xpr.bounds) * jf;
-                    sc[xo].vec += indata[i].vec * f;
-                }
-            }
+            for (i = 0; i != nmix; ++i)
+                sc[mix[i].xo].vec += indata[mix[i].xi].vec * (float) (mix[i].f * jf);
         }
 
         /* generate output */
@@ -894,6 +909,7 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
     scale_image_complete(sctx, gfo);
 
     Gif_DeleteArray(sc);
+    Gif_DeleteArray(mix);
 }
 
 
