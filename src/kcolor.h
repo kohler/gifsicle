@@ -1,5 +1,5 @@
 /* kcolor.h - Color-oriented function declarations for gifsicle.
-   Copyright (C) 2013-2014 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 2013-2015 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -30,6 +30,7 @@ typedef struct kcolor {
 typedef union kacolor {
     kcolor k;
     int16_t a[4];
+    uint64_t q;
 } kacolor;
 
 
@@ -234,8 +235,15 @@ Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
 Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 
-typedef struct scale_color {
+#if __clang__
+typedef float float4 __attribute__((ext_vector_type (4)));
+#else
+typedef float float4 __attribute__((vector_size (16)));
+#endif
+
+typedef union scale_color {
     float a[4];
+    float4 vec;
 } scale_color;
 
 static inline void sc_clear(scale_color* x) {

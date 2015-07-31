@@ -539,7 +539,7 @@ static void ksscreen_dispose(ksscreen* kss, const Gif_Image* gfi) {
 
 
 typedef struct {
-    double w;
+    float w;
     int ipos;
     int opos;
 } scale_weight;
@@ -659,8 +659,7 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
         else {
             /* don't effectively mix partially transparent pixels with black */
             if (sc[xo].a[3] <= (int) (KC_MAX * 31 / 32))
-                for (k = 0; k != 3; ++k)
-                    sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
+                sc[xo].vec *= KC_MAX / sc[xo].a[3];
             /* find closest color */
             for (k = 0; k != 3; ++k) {
                 int v = (int) (sc[xo].a[k] + 0.5);
@@ -767,13 +766,13 @@ typedef struct pixel_range {
 } pixel_range;
 
 typedef struct pixel_range2 {
-    double bounds[2];
+    float bounds[2];
     int lo;
     int hi;
 } pixel_range2;
 
 static inline pixel_range make_pixel_range(int xi, int maxi,
-                                           int maxo, double f) {
+                                           int maxo, float f) {
     pixel_range pr;
     pr.lo = (int) (xi * f);
     pr.hi = (int) ((xi + 1) * f);
@@ -783,7 +782,7 @@ static inline pixel_range make_pixel_range(int xi, int maxi,
 }
 
 static inline pixel_range2 make_pixel_range2(int xi, int maxi,
-                                             int maxo, double f) {
+                                             int maxo, float f) {
     pixel_range2 pr;
     pr.bounds[0] = xi * f;
     pr.bounds[1] = (xi + 1) * f;
@@ -801,7 +800,7 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
     uint16_t* xoff = Gif_NewArray(uint16_t, sctx->iscr.width);
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
     int* nsc = Gif_NewArray(int, gfo->width);
-    int xi0, xi1, xo, yo, i, j, k;
+    int xi0, xi1, xo, yo, i, j;
     scale_image_prepare(sctx);
 
     /* develop scale mapping of input -> output pixels */
@@ -829,15 +828,13 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
             const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
             for (i = xi0; i != xi1; ++i) {
                 ++nsc[xoff[i]];
-                for (k = 0; k != 4; ++k)
-                    sc[xoff[i]].a[k] += indata[i].a[k];
+                sc[xoff[i]].vec += indata[i].vec;
             }
         }
 
         /* scale channels */
         for (xo = 0; xo != gfo->width; ++xo)
-            for (k = 0; k != 4; ++k)
-                sc[xo].a[k] /= nsc[xo];
+            sc[xo].vec /= (float) nsc[xo];
 
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
@@ -850,7 +847,7 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
     Gif_DeleteArray(nsc);
 }
 
-static inline double mix_factor(int val, const double bounds[2]) {
+static inline float mix_factor(int val, const float bounds[2]) {
     if (val < bounds[0] && bounds[1] < val + 1)
         return bounds[1] - bounds[0];
     else if (val < bounds[0])
@@ -862,7 +859,7 @@ static inline double mix_factor(int val, const double bounds[2]) {
 }
 
 static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
-    int xo, yo, i, j, k;
+    int xo, yo, i, j;
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
 
     scale_image_prepare(sctx);
@@ -876,7 +873,7 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
 
         /* collect input mixes */
         for (j = ypr.lo; j < ypr.hi; ++j) {
-            double jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
+            float jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
             const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
             for (xo = 0; xo != gfo->width; ++xo) {
@@ -884,9 +881,8 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
                                                      sctx->iscr.width, sctx->oxf);
 
                 for (i = xpr.lo; i < xpr.hi; ++i) {
-                    double f = mix_factor(i, xpr.bounds) * jf;
-                    for (k = 0; k != 4; ++k)
-                        sc[xo].a[k] += indata[i].a[k] * f;
+                    float f = mix_factor(i, xpr.bounds) * jf;
+                    sc[xo].vec += indata[i].vec * f;
                 }
             }
         }
@@ -996,9 +992,9 @@ static void scale_weightset_create(scale_weightset* wset, int nin, int nout,
 static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
                                       double (*weightf)(double),
                                       double radius) {
-    int yi, yi0, yi1, xo, yo, k;
+    int yi, yi0, yi1, xo, yo;
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
-    kacolor* kcx = Gif_NewArray(kacolor, gfo->width * sctx->iscr.height);
+    scale_color* kcx = Gif_NewArray(scale_color, gfo->width * sctx->iscr.height);
     const scale_weight* w, *ww;
 
     if (!sctx->xweights.ws) {
@@ -1023,18 +1019,11 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         /* skip */;
     for (yi = yi0; yi != yi1; ++yi) {
         const scale_color* iscr = &sctx->iscr.data[sctx->iscr.width * yi];
-        kacolor* oscr = &kcx[gfo->width * yi];
+        scale_color* oscr = &kcx[gfo->width * yi];
         for (xo = 0; xo != gfo->width; ++xo)
-            sc_clear(&sc[xo]);
+            sc_clear(&oscr[xo]);
         for (w = ww; w->opos < gfo->left + gfo->width; ++w)
-            for (k = 0; k != 4; ++k)
-                sc[w->opos - gfo->left].a[k] += iscr[w->ipos].a[k] * w->w;
-        for (xo = 0; xo != gfo->width; ++xo)
-            for (k = 0; k != 4; ++k)
-                /* The sc[] value might be a bit too big, or even a bit
-                   negative. The KC_QUARTER offset handles that cleanly;
-                   subtract KC_QUARTER on storage, add it back on use. */
-                oscr[xo].a[k] = (int) (sc[xo].a[k] + 0.5) - KC_QUARTER;
+            oscr[w->opos - gfo->left].vec += iscr[w->ipos].vec * w->w;
     }
 
     /* scale the resulting rows by the y factor */
@@ -1044,11 +1033,10 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&sc[xo]);
         for (; w->opos < gfo->top + yo + 1; ++w) {
-            const kacolor* iscr = &kcx[gfo->width * w->ipos];
+            const scale_color* iscr = &kcx[gfo->width * w->ipos];
             assert(w->ipos >= yi0 && w->ipos < yi1);
             for (xo = 0; xo != gfo->width; ++xo)
-                for (k = 0; k != 4; ++k)
-                    sc[xo].a[k] += (iscr[xo].a[k] + KC_QUARTER) * w->w;
+                sc[xo].vec += iscr[xo].vec * w->w;
         }
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
