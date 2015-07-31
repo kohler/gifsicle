@@ -199,7 +199,11 @@ AC_ARG_ENABLE([simd],
     [], [enable_simd=maybe])
 
 if test $ac_cv_vector_size_vector_types = no -a $ac_cv_ext_vector_type_vector_types = no; then
-    if test x$have_simd != xmaybe -a x$have_simd != xno; then
+    if test x$have_simd = xmaybe; then
+        AC_MSG_WARN([
+Not using SIMD since your compiler's support for SIMD types is inadequate.
+])
+    elif test x$have_simd != xno; then
         AC_MSG_ERROR([
 ******************************************************************************
 `--enable-simd' was supplied, but this compiler does not support SIMD types.])
