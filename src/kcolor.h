@@ -259,4 +259,17 @@ static inline scale_color sc_makekc(const kcolor* k) {
     return sc;
 }
 
+#if 1
+#define SCVEC_ADDV(sc, sc2) (sc).vec += (sc2).vec
+#define SCVEC_MULF(sc, f) (sc).vec *= (f)
+#define SCVEC_DIVF(sc, f) (sc).vec /= (f)
+#define SCVEC_ADDVxF(sc, sc2, f) (sc).vec += (sc2).vec * (f)
+#else
+#define SCVEC_FOREACH(t) do { int k__; for (k__ = 0; k__ != 4; ++k__) { t; } } while (0)
+#define SCVEC_ADDV(sc, sc2) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__])
+#define SCVEC_MULF(sc, f) SCVEC_FOREACH((sc).a[k__] *= (f))
+#define SCVEC_DIVF(sc, f) SCVEC_FOREACH((sc).a[k__] /= (f))
+#define SCVEC_ADDVxF(sc, sc2, f) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__] * (f))
+#endif
+
 #endif

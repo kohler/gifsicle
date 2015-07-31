@@ -1,5 +1,5 @@
 /* xform.c - Image transformation functions for gifsicle.
-   Copyright (C) 1997-2014 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2015 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -659,7 +659,7 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
         else {
             /* don't effectively mix partially transparent pixels with black */
             if (sc[xo].a[3] <= (int) (KC_MAX * 31 / 32))
-                sc[xo].vec *= KC_MAX / sc[xo].a[3];
+                SCVEC_MULF(sc[xo], KC_MAX / sc[xo].a[3]);
             /* find closest color */
             for (k = 0; k != 3; ++k) {
                 int v = (int) (sc[xo].a[k] + 0.5);
@@ -828,13 +828,13 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
             const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
             for (i = xi0; i != xi1; ++i) {
                 ++nsc[xoff[i]];
-                sc[xoff[i]].vec += indata[i].vec;
+                SCVEC_ADDV(sc[xoff[i]], indata[i]);
             }
         }
 
         /* scale channels */
         for (xo = 0; xo != gfo->width; ++xo)
-            sc[xo].vec /= (float) nsc[xo];
+            SCVEC_DIVF(sc[xo], (float) nsc[xo]);
 
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
@@ -899,7 +899,8 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
             const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
             for (i = 0; i != nmix; ++i)
-                sc[mix[i].xo].vec += indata[mix[i].xi].vec * (float) (mix[i].f * jf);
+                SCVEC_ADDVxF(sc[mix[i].xo], indata[mix[i].xi],
+                             (float) (mix[i].f * jf));
         }
 
         /* generate output */
@@ -1039,7 +1040,7 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&oscr[xo]);
         for (w = ww; w->opos < gfo->left + gfo->width; ++w)
-            oscr[w->opos - gfo->left].vec += iscr[w->ipos].vec * w->w;
+            SCVEC_ADDVxF(oscr[w->opos - gfo->left], iscr[w->ipos], w->w);
     }
 
     /* scale the resulting rows by the y factor */
@@ -1052,7 +1053,7 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
             const scale_color* iscr = &kcx[gfo->width * w->ipos];
             assert(w->ipos >= yi0 && w->ipos < yi1);
             for (xo = 0; xo != gfo->width; ++xo)
-                sc[xo].vec += iscr[xo].vec * w->w;
+                SCVEC_ADDVxF(sc[xo], iscr[xo], w->w);
         }
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
