@@ -30,7 +30,9 @@ typedef struct kcolor {
 typedef union kacolor {
     kcolor k;
     int16_t a[4];
-    uint64_t q;
+#if HAVE_INT64_T
+    int64_t q; /* to get better alignment */
+#endif
 } kacolor;
 
 
@@ -235,15 +237,16 @@ Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
 Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 
-#if __clang__
+#if HAVE_SIMD && HAVE_VECTOR_SIZE_VECTOR_TYPES
+typedef float float4 __attribute__((vector_size (sizeof(float) * 4)));
+#elif HAVE_SIMD && HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES
 typedef float float4 __attribute__((ext_vector_type (4)));
 #else
-typedef float float4 __attribute__((vector_size (16)));
+typedef float float4[4];
 #endif
 
 typedef union scale_color {
-    float a[4];
-    float4 vec;
+    float4 a;
 } scale_color;
 
 static inline void sc_clear(scale_color* x) {
@@ -259,11 +262,11 @@ static inline scale_color sc_makekc(const kcolor* k) {
     return sc;
 }
 
-#if 1
-#define SCVEC_ADDV(sc, sc2) (sc).vec += (sc2).vec
-#define SCVEC_MULF(sc, f) (sc).vec *= (f)
-#define SCVEC_DIVF(sc, f) (sc).vec /= (f)
-#define SCVEC_ADDVxF(sc, sc2, f) (sc).vec += (sc2).vec * (f)
+#if HAVE_SIMD
+#define SCVEC_ADDV(sc, sc2) (sc).a += (sc2).a
+#define SCVEC_MULF(sc, f) (sc).a *= (f)
+#define SCVEC_DIVF(sc, f) (sc).a /= (f)
+#define SCVEC_ADDVxF(sc, sc2, f) (sc).a += (sc2).a * (f)
 #else
 #define SCVEC_FOREACH(t) do { int k__; for (k__ = 0; k__ != 4; ++k__) { t; } } while (0)
 #define SCVEC_ADDV(sc, sc2) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__])
