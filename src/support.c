@@ -573,7 +573,7 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   /* Then, if the next character is a dash, read y. Be careful to prevent
      #- from being interpreted as a frame range. */
-  if (c[0] == '-' && (frame_spec_2 > 0 || c[1] != 0)) {
+  if (c[0] == '-' && (frame_spec_2 >= 0 || c[1] != 0)) {
     c++;
     if (isdigit(c[0]))
       frame_spec_2 = strtol(c, &c, 10);
