@@ -65,7 +65,6 @@ You may need to install the pthread library or build gifsicle
 with the '--disable-threads' option]);
       have_threads=no]
     )
-    AC_MSG_WARN([Value is $have_threads])
     if test x$have_threads != xno; then
       AC_DEFINE(ENABLE_THREADS, 1, [Define if threading is enabled for gifsicle])
     fi

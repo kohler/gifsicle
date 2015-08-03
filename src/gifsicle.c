@@ -35,7 +35,7 @@ Gif_Stream *input = 0;
 const char *input_name = 0;
 static int unoptimizing = 0;
 
-const int GIFSICLE_DEFAULT_THREAD_COUNT = 32;
+const int GIFSICLE_DEFAULT_THREAD_COUNT = 8;
 static int resize_threads = 0;
 
 static int gif_read_flags = 0;
