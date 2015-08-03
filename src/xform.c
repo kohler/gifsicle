@@ -1170,13 +1170,28 @@ static void scale_image(scale_context* sctx, int method) {
 }
 
 typedef struct {
-    scale_context sctx;
+    pthread_t threadid;
+    Gif_Stream* gfs;
+    int imageno;
+    int* next_imageno;
+    int nw;
+    int nh;
+    int scale_colors;
     int method;
 } scale_thread_context;
 
 void* scale_image_threaded(void* args) {
     scale_thread_context* ctx = (scale_thread_context*) args;
-    scale_image(&(ctx->sctx), ctx->method);
+    scale_context sctx;
+    sctx_init(&sctx, ctx->gfs, ctx->nw, ctx->nh);
+    sctx.scale_colors = ctx->scale_colors;
+    do {
+        sctx.imageno = ctx->imageno;
+        sctx.gfi = ctx->gfs->images[ctx->imageno];
+        scale_image(&sctx, ctx->method);
+        ctx->imageno = __sync_add_and_fetch(ctx->next_imageno, 1);
+    } while (ctx->imageno < ctx->gfs->nimages);
+    sctx_cleanup(&sctx);
     return 0;
 }
 
@@ -1247,33 +1262,23 @@ resize_stream(Gif_Stream* gfs,
     int i;
     if (resize_threads > 1) {
 #ifdef ENABLE_THREADS
-        scale_thread_context* contexts = malloc(gfs->nimages * sizeof(scale_thread_context));
-        pthread_t * pthreads = malloc(gfs->nimages * sizeof(pthread_t));
-
-        for (i = 0; i < gfs->nimages;) {
-            int start = i;
-            int end = min(i + resize_threads, gfs->nimages);
-            for (; i < end; ++i) {
-                sctx_init(&(contexts[i].sctx), gfs, nw, nh);
-                contexts[i].sctx.imageno = i;
-                contexts[i].sctx.scale_colors = scale_colors;
-                contexts[i].sctx.gfi = gfs->images[i];
-                contexts[i].method = method;
-
-                /* Create worker thread */
-                pthread_create(&pthreads[i], NULL, scale_image_threaded, &contexts[i]);
-            }
-            int j = start;
-            for (; j < end; ++j) {
-                pthread_join(pthreads[j], NULL);
-            }
+        int nthreads = min(resize_threads, gfs->nimages);
+        scale_thread_context* contexts = Gif_NewArray(scale_thread_context, gfs->nimages);
+        int next_image_no = nthreads - 1;
+        for (i = 0; i < nthreads; ++i) {
+            contexts[i].gfs = gfs;
+            contexts[i].imageno = i;
+            contexts[i].next_imageno = &next_image_no;
+            contexts[i].nw = nw;
+            contexts[i].nh = nh;
+            contexts[i].scale_colors = scale_colors;
+            contexts[i].method = method;
+            pthread_create(&contexts[i].threadid, NULL, scale_image_threaded, &contexts[i]);
         }
-
-        for (i = 0; i < gfs->nimages; ++i) {
-            sctx_cleanup(&contexts[i].sctx);
+        for (i = 0; i < nthreads; ++i) {
+            pthread_join(contexts[i].threadid, NULL);
         }
-        free(contexts);
-        free(pthreads);
+        Gif_DeleteArray(contexts);
 #else
         printf("Threaded resize requested, but gifsicle built without threading enabled. Exiting.\n");
         exit(1);
