@@ -1756,9 +1756,9 @@ main(int argc, char *argv[])
       break;
 
      case THREADED_RESIZE_OPT:
-#ifndef ENABLE_THREADED
-      printf("Threaded resize requested, but gifsicle built without threading enabled. Exiting.\n");
-      exit(1);
+#ifndef ENABLE_THREADS
+      lwarning("", "Threaded resize requested, but gifsicle built without threading enabled. Exiting.\n");
+      break;
 #endif
       UNCHECKED_MARK_CH(input, CH_UNOPTIMIZE);
       unoptimizing = clp->negated ? 0 : 1;

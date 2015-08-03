@@ -23,7 +23,7 @@ typedef struct Gt_Frameset Gt_Frameset;
 typedef struct Gt_Crop Gt_Crop;
 typedef struct Gt_ColorTransform Gt_ColorTransform;
 
-#ifdef ENABLE_THREADED
+#ifdef ENABLE_THREADS
 #include <pthread.h>
 pthread_mutex_t kd3_sort_lock;
 #endif

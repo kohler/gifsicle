@@ -20,10 +20,10 @@ AC_ARG_ENABLE([gifdiff],
     [AS_HELP_STRING([--disable-gifdiff], [do not build gifdiff comparison utility])],
     [if test "x$enableval" != xyes; then build_gifdiff=no; fi])
 
-build_threaded=yes
-AC_ARG_ENABLE([threaded],
-    [AS_HELP_STRING([--disable-threaded], [do not build gifsicle with resize threading ability])],
-    [if test "x$enableval" != xyes ; then build_threaded=no; fi])
+have_threads=maybe
+AC_ARG_ENABLE([threads],
+    [AS_HELP_STRING([--disable-threads], [do not build gifsicle with threading ability])],
+    [], [enable_threads=maybe])
 
 AC_ARG_ENABLE([warnings],
     [AS_HELP_STRING([--enable-warnings], [compile with -W -Wall])],
@@ -53,18 +53,22 @@ dnl
 OTHERPROGRAMS=""
 OTHERMANS=""
 
-if test "x$build_threaded" = xyes; then
+if test "x$enable_threads" = xyes -o "x$enable_threads" = xmaybe; then
     AC_CHECK_LIB(
       [pthread],
       [pthread_mutex_init],
       [],
-      [AC_MSG_ERROR([
+      [AC_MSG_WARN([
 ******************************************************************************
-Cannot find pthread but threaded support was requested.
+Cannot find the pthread library but thread support was requested.
 You may need to install the pthread library or build gifsicle
-with the '--disable-threaded' option])]
+with the '--disable-threads' option]);
+      have_threads=no]
     )
-    AC_DEFINE(ENABLE_THREADED, 1, [Define if threading is enabled for gifsicle resizing])
+    AC_MSG_WARN([Value is $have_threads])
+    if test x$have_threads != xno; then
+      AC_DEFINE(ENABLE_THREADS, 1, [Define if threading is enabled for gifsicle])
+    fi
 fi
 
 if test "x$build_gifview" = xyes -o "x$build_gifview" = xmaybe; then

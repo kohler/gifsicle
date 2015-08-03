@@ -1240,13 +1240,13 @@ resize_stream(Gif_Stream* gfs,
         && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
 
-#ifdef ENABLE_THREADED
+#ifdef ENABLE_THREADS
     pthread_mutex_init(&kd3_sort_lock, 0);
 #endif
 
     int i;
-    if (resize_threads > 0) {
-#ifdef ENABLE_THREADED
+    if (resize_threads > 1) {
+#ifdef ENABLE_THREADS
         scale_thread_context* contexts = malloc(gfs->nimages * sizeof(scale_thread_context));
         pthread_t * pthreads = malloc(gfs->nimages * sizeof(pthread_t));
 
