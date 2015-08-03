@@ -11,60 +11,40 @@ AC_C_CONST
 AC_C_INLINE
 
 build_gifview=maybe
-AC_ARG_ENABLE(gifview,
-[  --disable-gifview       do not build gifview, a GIF viewer for X11],
-if test "x$enableval" != xyes ; then
-  build_gifview=no
-fi)
+AC_ARG_ENABLE([gifview],
+    [AS_HELP_STRING([--disable-gifview], [do not build gifview X11 viewer])],
+    [if test "x$enableval" != xyes; then build_gifview=no; fi])
 
 build_gifdiff=yes
-AC_ARG_ENABLE(gifdiff,
-[  --disable-gifdiff       do not build gifdiff, a utility for comparing GIFs],
-if test "x$enableval" != xyes ; then
-  build_gifdiff=no
-fi)
+AC_ARG_ENABLE([gifdiff],
+    [AS_HELP_STRING([--disable-gifdiff], [do not build gifdiff comparison utility])],
+    [if test "x$enableval" != xyes; then build_gifdiff=no; fi])
 
 build_threaded=yes
-AC_ARG_ENABLE(threaded,
-[  --disable-threaded      do not build gifsicle with resize threading ability],
-if test "x$enableval" != xyes ; then
-  build_threaded=no
-fi)
+AC_ARG_ENABLE([threaded],
+    [AS_HELP_STRING([--disable-threaded], [do not build gifsicle with resize threading ability])],
+    [if test "x$enableval" != xyes ; then build_threaded=no; fi])
 
-use_dmalloc=
-AC_ARG_ENABLE(dmalloc,
-[  --enable-dmalloc        build with debugging malloc library],
-if test "x$enableval" = xyes ; then
-  use_dmalloc=yes
-fi)
+AC_ARG_ENABLE([warnings],
+    [AS_HELP_STRING([--enable-warnings], [compile with -W -Wall])],
+    [if test "x$enableval" = xyes; then CC="$CC -W -Wall"; fi])
 
-AC_ARG_ENABLE(warnings,
-[  --enable-warnings       compile with -W -Wall],
-if test "x$enableval" = xyes ; then
-  CC="$CC -W -Wall"
-fi)
-
+WERROR=
 AC_ARG_ENABLE([werror],
-[  --enable-werror         compile with -Werror],
-if test "x$enableval" = xyes ; then
-  WERROR="-Werror"
-fi)
+    [AS_HELP_STRING([--enable-werror], [compile with -Werror])],
+    [if test "x$enableval" = xyes; then WERROR="-Werror"; fi])
 AC_SUBST([WERROR])
 
-AC_ARG_ENABLE(all,
-[  --enable-all            --enable-gifview --enable-gifdiff --enable-warnings],
-if test "x$enableval" = xyes ; then
-  build_gifview=yes
-  build_gifdiff=yes
-  CC="$CC -W -Wall"
-fi)
+use_dmalloc=
+AC_ARG_ENABLE([dmalloc],
+    [AS_HELP_STRING([--enable-dmalloc], [build with debugging malloc library])],
+    [if test "x$enableval" = xyes; then use_dmalloc=yes; fi])
 
 ungif=
-AC_ARG_ENABLE(ungif,
-[  --enable-ungif          build without compression],
-if test "x$enableval" = xyes ; then
-  ungif=yes
-fi)
+AC_ARG_ENABLE([ungif],
+    [AS_HELP_STRING([--enable-ungif], [build without LZW compression])],
+    [if test "x$enableval" = xyes; then ungif=yes; fi])
+
 
 dnl
 dnl Choose programs to build. Always build gifsicle
@@ -90,50 +70,52 @@ fi
 if test "x$build_gifview" = xyes -o "x$build_gifview" = xmaybe; then
     AC_PATH_XTRA
     if test "x$no_x" = xyes; then
-	if test "x$build_gifview" = xyes; then
-	    AC_MSG_ERROR([
+        if test "x$build_gifview" = xyes; then
+            AC_MSG_ERROR([
 ******************************************************************************
 Cannot find X, but you explicitly requested that gifview be built.
 You may need to install an X11 development package to get the X headers,
 supply a '--with-x' option, or simply '--disable-gifview'.])
-	else
-	    AC_MSG_WARN([Not compiling gifview since X is not available.])
-	    build_gifview=no
-	fi
+	      else
+	          AC_MSG_WARN([Not compiling gifview since X is not available.])
+	          build_gifview=no
+	      fi
     else
-	build_gifview=yes
+	      build_gifview=yes
     fi
 fi
 
 if test "x$build_gifview" = xyes ; then
-  OTHERPROGRAMS="$OTHERPROGRAMS gifview"'$(EXEEXT)'
-  OTHERMANS="$OTHERMANS gifview.1"
-  AC_CACHE_CHECK(for gettimeofday prototype, ac_cv_gettimeofday,
-[AC_TRY_COMPILE([#include <time.h>
-#include <sys/time.h>],
-[gettimeofday((void *)0, (void *)0);],
-[AC_TRY_COMPILE([#include <time.h>
-#include <sys/time.h>],
-[gettimeofday((void *)0);],
-ac_cv_gettimeofday=0,
-ac_cv_gettimeofday=2)],
-ac_cv_gettimeofday=1)])
-  AC_DEFINE_UNQUOTED(GETTIMEOFDAY_PROTO, $ac_cv_gettimeofday, [Define to the number of arguments to gettimeofday (gifview only).])
+    OTHERPROGRAMS="$OTHERPROGRAMS gifview"'$(EXEEXT)'
+    OTHERMANS="$OTHERMANS gifview.1"
+    AC_CHECK_HEADERS([time.h sys/time.h])
+    AC_CACHE_CHECK([for gettimeofday prototype], [ac_cv_gettimeofday],
+        [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+            [[#include <time.h>
+#include <sys/time.h>]],
+            [[gettimeofday((void*) 0, (void*) 0)]])],
+            [ac_cv_gettimeofday=2],
+            [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+                [[#include <time.h>
+    #include <sys/time.h>]],
+                [[gettimeofday((void*) 0)]])],
+                [ac_cv_gettimeofday=1], [ac_cv_gettimeofday=0])])])
+    AC_DEFINE_UNQUOTED([GETTIMEOFDAY_PROTO], [$ac_cv_gettimeofday], [Define to the number of arguments to gettimeofday.])
 else
-  AC_DEFINE_UNQUOTED(X_DISPLAY_MISSING, 1, [Define if X is not available.])
+    AC_DEFINE_UNQUOTED(X_DISPLAY_MISSING, 1, [Define if X is not available.])
 fi
 
 if test "x$build_gifdiff" = xyes ; then
-  OTHERPROGRAMS="$OTHERPROGRAMS gifdiff"'$(EXEEXT)'
-  OTHERMANS="$OTHERMANS gifdiff.1"
+    OTHERPROGRAMS="$OTHERPROGRAMS gifdiff"'$(EXEEXT)'
+    OTHERMANS="$OTHERMANS gifdiff.1"
 fi
 
-AC_SUBST(OTHERPROGRAMS)dnl
-AC_SUBST(OTHERMANS)dnl
+AC_SUBST(OTHERPROGRAMS)
+AC_SUBST(OTHERMANS)
 
 
 dnl
-dnl Set up `ungif' support
+dnl Set up ungif support
 dnl
 
 if test "x$ungif" = xyes -o "x$GIFSICLE_UNGIF" = xyes ; then
@@ -187,7 +169,7 @@ elif test "$ac_cv_u_int_t" = yes; then
     AC_DEFINE([HAVE_U_INT_TYPES], [1], [Define if you have u_intXX_t types but not uintXX_t types.])
 fi
 
-AC_CHECK_TYPES([uintptr_t, int64_t], [], [],
+AC_CHECK_TYPES([uintptr_t, int64_t, uint64_t], [], [],
 [#if HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
@@ -196,9 +178,60 @@ AC_CHECK_TYPES([uintptr_t, int64_t], [], [],
 #endif
 ])
 
+AC_CHECK_SIZEOF([float])
 AC_CHECK_SIZEOF([unsigned int])
 AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_SIZEOF([void *])
+
+
+dnl
+dnl vector types
+dnl
+
+AC_MSG_CHECKING([for usable vector_size vector types])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [AC_INCLUDES_DEFAULT
+    [typedef float float4 __attribute__((vector_size (4 * sizeof(float))));]],
+    [[float4 a;
+    a[0] = a[1] = a[2] = a[3] = (float) rand();
+    a *= (float) 3;
+    printf("%f\n", a[0]);]])],
+    [AC_DEFINE([HAVE_VECTOR_SIZE_VECTOR_TYPES], 1, [Define to 1 if `vector_size' vector types are usable.])
+    ac_cv_vector_size_vector_types=yes], [ac_cv_vector_size_vector_types=no])
+AC_MSG_RESULT([$ac_cv_vector_size_vector_types])
+
+AC_MSG_CHECKING([for usable ext_vector_type vector types])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [AC_INCLUDES_DEFAULT
+    [typedef float float4 __attribute__((ext_vector_type (4)));]],
+    [[float4 a;
+    a[0] = a[1] = a[2] = a[3] = (float) rand();
+    a *= (float) 3;
+    printf("%f\n", a[0]);]])],
+    [AC_DEFINE([HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES], 1, [Define to 1 if `ext_vector_type' vector types are usable.])
+    ac_cv_ext_vector_type_vector_types=yes], [ac_cv_ext_vector_type_vector_types=no])
+AC_MSG_RESULT([$ac_cv_ext_vector_type_vector_types])
+
+have_simd=maybe
+AC_ARG_ENABLE([simd],
+    [AS_HELP_STRING([--disable-simd], [do not use SIMD instructions])],
+    [], [enable_simd=maybe])
+
+if test $ac_cv_vector_size_vector_types = no -a $ac_cv_ext_vector_type_vector_types = no; then
+    if test x$have_simd = xmaybe; then
+        AC_MSG_WARN([
+Not using SIMD since your compiler's support for SIMD types is inadequate.
+])
+    elif test x$have_simd != xno; then
+        AC_MSG_ERROR([
+******************************************************************************
+`--enable-simd' was supplied, but this compiler does not support SIMD types.])
+    fi
+    enable_simd=no
+fi
+if test x"$enable_simd" != xno; then
+    AC_DEFINE([HAVE_SIMD], [1], [Define to 1 if SIMD types should be used.])
+fi
 
 
 dnl

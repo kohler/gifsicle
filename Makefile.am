@@ -22,11 +22,11 @@ EXTRA_DIST = COPYING README.md gifsicle.spec \
 	test/010-warnings.testie \
 	test/011-resizemix.testie
 
-gifsicle:
+gifsicle: config.h
 	@cd src && $(MAKE) gifsicle
-gifdiff:
+gifdiff: config.h
 	@cd src && $(MAKE) gifdiff
-gifview:
+gifview: config.h
 	@cd src && $(MAKE) gifview
 
 srclinks:

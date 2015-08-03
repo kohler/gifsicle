@@ -1,5 +1,5 @@
 /* kcolor.h - Color-oriented function declarations for gifsicle.
-   Copyright (C) 2013-2014 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 2013-2015 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -35,6 +35,9 @@ typedef struct kcolor {
 typedef union kacolor {
     kcolor k;
     int16_t a[4];
+#if HAVE_INT64_T
+    int64_t q; /* to get better alignment */
+#endif
 } kacolor;
 
 
@@ -239,12 +242,42 @@ Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
 Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 
-typedef struct scale_color {
-    double a[4];
+#if HAVE_SIMD && HAVE_VECTOR_SIZE_VECTOR_TYPES
+typedef float float4 __attribute__((vector_size (sizeof(float) * 4)));
+#elif HAVE_SIMD && HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES
+typedef float float4 __attribute__((ext_vector_type (4)));
+#else
+typedef float float4[4];
+#endif
+
+typedef union scale_color {
+    float4 a;
 } scale_color;
 
 static inline void sc_clear(scale_color* x) {
     x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
 }
+
+static inline scale_color sc_makekc(const kcolor* k) {
+    scale_color sc;
+    sc.a[0] = k->a[0];
+    sc.a[1] = k->a[1];
+    sc.a[2] = k->a[2];
+    sc.a[3] = KC_MAX;
+    return sc;
+}
+
+#if HAVE_SIMD
+#define SCVEC_ADDV(sc, sc2) (sc).a += (sc2).a
+#define SCVEC_MULF(sc, f) (sc).a *= (f)
+#define SCVEC_DIVF(sc, f) (sc).a /= (f)
+#define SCVEC_ADDVxF(sc, sc2, f) (sc).a += (sc2).a * (f)
+#else
+#define SCVEC_FOREACH(t) do { int k__; for (k__ = 0; k__ != 4; ++k__) { t; } } while (0)
+#define SCVEC_ADDV(sc, sc2) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__])
+#define SCVEC_MULF(sc, f) SCVEC_FOREACH((sc).a[k__] *= (f))
+#define SCVEC_DIVF(sc, f) SCVEC_FOREACH((sc).a[k__] /= (f))
+#define SCVEC_ADDVxF(sc, sc2, f) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__] * (f))
+#endif
 
 #endif

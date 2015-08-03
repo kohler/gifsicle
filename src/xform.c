@@ -1,5 +1,5 @@
 /* xform.c - Image transformation functions for gifsicle.
-   Copyright (C) 1997-2014 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2015 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -368,7 +368,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
  * scale
  **/
 
-/* kcscreen: A frame buffer containing `kcolor`s (one per pixel).
+/* kcscreen: A frame buffer containing `kacolor`s (one per pixel).
    Kcolors with components < 0 represent transparency. */
 typedef struct {
     kacolor* data;      /* data buffer: (x,y) in data[y*width + x] */
@@ -454,8 +454,92 @@ static void kcscreen_dispose(kcscreen* kcs, const Gif_Image* gfi) {
 }
 
 
+/* ksscreen: A frame buffer containing `scale_color`s (one per pixel).
+   Kcolors with components < 0 represent transparency. */
 typedef struct {
-    double w;
+    scale_color* data;      /* data buffer: (x,y) in data[y*width + x] */
+    scale_color* scratch;   /* scratch buffer, used for previous disposal */
+    unsigned width;         /* screen width */
+    unsigned height;        /* screen height */
+    scale_color bg;         /* background color */
+} ksscreen;
+
+/* initialize `kss` to an empty state */
+static void ksscreen_clear(ksscreen* kss) {
+    kss->data = kss->scratch = NULL;
+}
+
+/* initialize `kss` for stream `gfs`. Screen size is `sw`x`sh`; if either
+   component is <= 0, the value of `gfs->screen_*` is taken. */
+static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
+    unsigned i, sz;
+    assert(!kss->data && !kss->scratch);
+    kss->width = sw <= 0 ? gfs->screen_width : sw;
+    kss->height = sh <= 0 ? gfs->screen_height : sh;
+    sz = (unsigned) kss->width * kss->height;
+    kss->data = Gif_NewArray(scale_color, sz);
+    if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
+        && gfs->global && gfs->background < gfs->global->ncol) {
+        kcolor k = kc_makegfcg(&gfs->global->col[gfs->background]);
+        kss->bg = sc_makekc(&k);
+    } else
+        sc_clear(&kss->bg);
+    for (i = 0; i != sz; ++i)
+        kss->data[i] = kss->bg;
+}
+
+/* free memory associated with `kss` */
+static void ksscreen_cleanup(ksscreen* kss) {
+    Gif_DeleteArray(kss->data);
+    Gif_DeleteArray(kss->scratch);
+}
+
+/* apply image `gfi` to screen `kss`, using the color array `ks` */
+static void ksscreen_apply(ksscreen* kss, const Gif_Image* gfi,
+                           const kcolor* ks) {
+    int x, y;
+    assert((unsigned) gfi->left + gfi->width <= kss->width);
+    assert((unsigned) gfi->top + gfi->height <= kss->height);
+
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+        if (!kss->scratch)
+            kss->scratch = Gif_NewArray(scale_color, kss->width * kss->height);
+        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
+            memcpy(&kss->scratch[y * kss->width + gfi->left],
+                   &kss->data[y * kss->width + gfi->left],
+                   sizeof(scale_color) * gfi->width);
+    }
+
+    for (y = gfi->top; y != gfi->top + gfi->height; ++y) {
+        const uint8_t* linein = gfi->img[y - gfi->top];
+        scale_color* lineout = &kss->data[y * kss->width + gfi->left];
+        for (x = 0; x != gfi->width; ++x)
+            if (linein[x] != gfi->transparent)
+                lineout[x] = sc_makekc(&ks[linein[x]]);
+    }
+}
+
+/* dispose of image `gfi`, which was previously applied by ksscreen_apply */
+static void ksscreen_dispose(ksscreen* kss, const Gif_Image* gfi) {
+    int x, y;
+    assert((unsigned) gfi->left + gfi->width <= kss->width);
+    assert((unsigned) gfi->top + gfi->height <= kss->height);
+
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
+            memcpy(&kss->data[y * kss->width + gfi->left],
+                   &kss->scratch[y * kss->width + gfi->left],
+                   sizeof(scale_color) * gfi->width);
+    } else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
+        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
+            for (x = gfi->left; x != gfi->left + gfi->width; ++x)
+                kss->data[y * kss->width + x] = kss->bg;
+    }
+}
+
+
+typedef struct {
+    float w;
     int ipos;
     int opos;
 } scale_weight;
@@ -470,7 +554,7 @@ typedef struct {
     Gif_Image* gfi;
     int imageno;
     kd3_tree* kd3;
-    kcscreen iscr;
+    ksscreen iscr;
     kcscreen oscr;
     kcscreen xscr;
     double oxf;                 /* (input width) / (output width) */
@@ -490,7 +574,7 @@ static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
     sctx->gfi = NULL;
     sctx->global_kd3.ks = NULL;
     sctx->local_kd3.ks = NULL;
-    kcscreen_clear(&sctx->iscr);
+    ksscreen_clear(&sctx->iscr);
     kcscreen_clear(&sctx->oscr);
     kcscreen_clear(&sctx->xscr);
     sctx->iscr.width = gfs->screen_width;
@@ -514,7 +598,7 @@ static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
 static void sctx_cleanup(scale_context* sctx) {
     if (sctx->global_kd3.ks)
         kd3_cleanup(&sctx->global_kd3);
-    kcscreen_cleanup(&sctx->iscr);
+    ksscreen_cleanup(&sctx->iscr);
     kcscreen_cleanup(&sctx->oscr);
     kcscreen_cleanup(&sctx->xscr);
     Gif_DeleteArray(sctx->xweights.ws);
@@ -556,13 +640,13 @@ static void scale_image_prepare(scale_context* sctx) {
     /* apply image to sctx->iscr */
     if (!sctx->iscr.data) {
         /* first image, set up screens */
-        kcscreen_init(&sctx->iscr, sctx->gfs, 0, 0);
+        ksscreen_init(&sctx->iscr, sctx->gfs, 0, 0);
         kcscreen_init(&sctx->oscr, sctx->gfs,
                       sctx->oscr.width, sctx->oscr.height);
         kcscreen_init(&sctx->xscr, sctx->gfs,
                       sctx->xscr.width, sctx->xscr.height);
     }
-    kcscreen_apply(&sctx->iscr, sctx->gfi, sctx->kd3->ks);
+    ksscreen_apply(&sctx->iscr, sctx->gfi, sctx->kd3->ks);
 }
 
 static void scale_image_output_row(scale_context* sctx, scale_color* sc,
@@ -577,8 +661,7 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
         else {
             /* don't effectively mix partially transparent pixels with black */
             if (sc[xo].a[3] <= (int) (KC_MAX * 31 / 32))
-                for (k = 0; k != 3; ++k)
-                    sc[xo].a[k] *= KC_MAX / sc[xo].a[3];
+                SCVEC_MULF(sc[xo], KC_MAX / sc[xo].a[3]);
             /* find closest color */
             for (k = 0; k != 3; ++k) {
                 int v = (int) (sc[xo].a[k] + 0.5);
@@ -667,7 +750,7 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
 
     /* apply disposal to sctx->iscr and sctx->oscr */
     if (sctx->imageno != sctx->gfs->nimages - 1) {
-        kcscreen_dispose(&sctx->iscr, sctx->gfi);
+        ksscreen_dispose(&sctx->iscr, sctx->gfi);
 
         if (sctx->gfi->disposal == GIF_DISPOSAL_BACKGROUND)
             kcscreen_dispose(&sctx->oscr, gfo);
@@ -685,13 +768,13 @@ typedef struct pixel_range {
 } pixel_range;
 
 typedef struct pixel_range2 {
-    double bounds[2];
+    float bounds[2];
     int lo;
     int hi;
 } pixel_range2;
 
 static inline pixel_range make_pixel_range(int xi, int maxi,
-                                           int maxo, double f) {
+                                           int maxo, float f) {
     pixel_range pr;
     pr.lo = (int) (xi * f);
     pr.hi = (int) ((xi + 1) * f);
@@ -701,7 +784,7 @@ static inline pixel_range make_pixel_range(int xi, int maxi,
 }
 
 static inline pixel_range2 make_pixel_range2(int xi, int maxi,
-                                             int maxo, double f) {
+                                             int maxo, float f) {
     pixel_range2 pr;
     pr.bounds[0] = xi * f;
     pr.bounds[1] = (xi + 1) * f;
@@ -719,7 +802,7 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
     uint16_t* xoff = Gif_NewArray(uint16_t, sctx->iscr.width);
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
     int* nsc = Gif_NewArray(int, gfo->width);
-    int xi0, xi1, xo, yo, i, j, k;
+    int xi0, xi1, xo, yo, i, j;
     scale_image_prepare(sctx);
 
     /* develop scale mapping of input -> output pixels */
@@ -737,25 +820,23 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
     for (yo = 0; yo != gfo->height; ++yo) {
         pixel_range ypr = make_pixel_range(yo + gfo->top, sctx->oscr.height,
                                            sctx->iscr.height, sctx->oyf);
-        for (xo = 0; xo != gfo->width; ++xo) {
+        for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&sc[xo]);
+        for (xo = 0; xo != gfo->width; ++xo)
             nsc[xo] = 0;
-        }
 
         /* collect input mixes */
         for (j = ypr.lo; j != ypr.hi; ++j) {
-            const kacolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
+            const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
             for (i = xi0; i != xi1; ++i) {
                 ++nsc[xoff[i]];
-                for (k = 0; k != 4; ++k)
-                    sc[xoff[i]].a[k] += indata[i].a[k];
+                SCVEC_ADDV(sc[xoff[i]], indata[i]);
             }
         }
 
         /* scale channels */
         for (xo = 0; xo != gfo->width; ++xo)
-            for (k = 0; k != 4; ++k)
-                sc[xo].a[k] /= nsc[xo];
+            SCVEC_DIVF(sc[xo], (float) nsc[xo]);
 
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
@@ -768,7 +849,7 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
     Gif_DeleteArray(nsc);
 }
 
-static inline double mix_factor(int val, const double bounds[2]) {
+static inline float mix_factor(int val, const float bounds[2]) {
     if (val < bounds[0] && bounds[1] < val + 1)
         return bounds[1] - bounds[0];
     else if (val < bounds[0])
@@ -779,11 +860,33 @@ static inline double mix_factor(int val, const double bounds[2]) {
         return 1.0;
 }
 
+typedef struct scale_mixinfo {
+    uint16_t xi;
+    uint16_t xo;
+    float f;
+} scale_mixinfo;
+
 static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
-    int xo, yo, i, j, k;
+    int xo, yo, i, j, nmix = 0, mixcap = sctx->iscr.width * 2;
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
+    scale_mixinfo* mix = Gif_NewArray(scale_mixinfo, mixcap);
 
     scale_image_prepare(sctx);
+
+    /* construct mixinfo */
+    for (xo = 0; xo != gfo->width; ++xo) {
+        pixel_range2 xpr = make_pixel_range2(xo + gfo->left, sctx->oscr.width,
+                                             sctx->iscr.width, sctx->oxf);
+        while (nmix + xpr.hi - xpr.lo > mixcap) {
+            mixcap *= 2;
+            Gif_ReArray(mix, scale_mixinfo, mixcap);
+        }
+        for (i = xpr.lo; i < xpr.hi; ++i, ++nmix) {
+            mix[nmix].xi = i;
+            mix[nmix].xo = xo;
+            mix[nmix].f = mix_factor(i, xpr.bounds);
+        }
+    }
 
     for (yo = 0; yo != gfo->height; ++yo) {
         pixel_range2 ypr = make_pixel_range2(yo + gfo->top, sctx->oscr.height,
@@ -794,19 +897,12 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
 
         /* collect input mixes */
         for (j = ypr.lo; j < ypr.hi; ++j) {
-            double jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
-            const kacolor* indata = &sctx->iscr.data[sctx->iscr.width*j];
+            float jf = mix_factor(j, ypr.bounds) * sctx->ixf * sctx->iyf;
+            const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
 
-            for (xo = 0; xo != gfo->width; ++xo) {
-                pixel_range2 xpr = make_pixel_range2(xo + gfo->left, sctx->oscr.width,
-                                                     sctx->iscr.width, sctx->oxf);
-
-                for (i = xpr.lo; i < xpr.hi; ++i) {
-                    double f = mix_factor(i, xpr.bounds) * jf;
-                    for (k = 0; k != 4; ++k)
-                        sc[xo].a[k] += indata[i].a[k] * f;
-                }
-            }
+            for (i = 0; i != nmix; ++i)
+                SCVEC_ADDVxF(sc[mix[i].xo], indata[mix[i].xi],
+                             (float) (mix[i].f * jf));
         }
 
         /* generate output */
@@ -816,6 +912,7 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
     scale_image_complete(sctx, gfo);
 
     Gif_DeleteArray(sc);
+    Gif_DeleteArray(mix);
 }
 
 
@@ -914,9 +1011,9 @@ static void scale_weightset_create(scale_weightset* wset, int nin, int nout,
 static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
                                       double (*weightf)(double),
                                       double radius) {
-    int yi, yi0, yi1, xo, yo, k;
+    int yi, yi0, yi1, xo, yo;
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
-    kacolor* kcx = Gif_NewArray(kacolor, gfo->width * sctx->iscr.height);
+    scale_color* kcx = Gif_NewArray(scale_color, gfo->width * sctx->iscr.height);
     const scale_weight* w, *ww;
 
     if (!sctx->xweights.ws) {
@@ -940,19 +1037,12 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
     for (ww = sctx->xweights.ws; ww->opos < gfo->left; ++ww)
         /* skip */;
     for (yi = yi0; yi != yi1; ++yi) {
-        const kacolor* iscr = &sctx->iscr.data[sctx->iscr.width * yi];
-        kacolor* oscr = &kcx[gfo->width * yi];
+        const scale_color* iscr = &sctx->iscr.data[sctx->iscr.width * yi];
+        scale_color* oscr = &kcx[gfo->width * yi];
         for (xo = 0; xo != gfo->width; ++xo)
-            sc_clear(&sc[xo]);
+            sc_clear(&oscr[xo]);
         for (w = ww; w->opos < gfo->left + gfo->width; ++w)
-            for (k = 0; k != 4; ++k)
-                sc[w->opos - gfo->left].a[k] += iscr[w->ipos].a[k] * w->w;
-        for (xo = 0; xo != gfo->width; ++xo)
-            for (k = 0; k != 4; ++k)
-                /* The sc[] value might be a bit too big, or even a bit
-                   negative. The KC_QUARTER offset handles that cleanly;
-                   subtract KC_QUARTER on storage, add it back on use. */
-                oscr[xo].a[k] = (int) (sc[xo].a[k] + 0.5) - KC_QUARTER;
+            SCVEC_ADDVxF(oscr[w->opos - gfo->left], iscr[w->ipos], w->w);
     }
 
     /* scale the resulting rows by the y factor */
@@ -962,11 +1052,10 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&sc[xo]);
         for (; w->opos < gfo->top + yo + 1; ++w) {
-            const kacolor* iscr = &kcx[gfo->width * w->ipos];
+            const scale_color* iscr = &kcx[gfo->width * w->ipos];
             assert(w->ipos >= yi0 && w->ipos < yi1);
             for (xo = 0; xo != gfo->width; ++xo)
-                for (k = 0; k != 4; ++k)
-                    sc[xo].a[k] += (iscr[xo].a[k] + KC_QUARTER) * w->w;
+                SCVEC_ADDVxF(sc[xo], iscr[xo], w->w);
         }
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
