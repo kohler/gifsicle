@@ -232,7 +232,7 @@ AC_ARG_ENABLE([threads],
     [AS_HELP_STRING([--disable-threads], [do not include multithreading])],
     [], [enable_threads=maybe])
 
-if test "x$have_threads" = xyes -a "x$enable_threads" = xyes; then
+if test "x$have_threads" = xno -a "x$enable_threads" = xyes; then
     AC_MSG_ERROR([
 ******************************************************************************
 Threading support is not available on this platform.])
