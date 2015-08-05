@@ -20,11 +20,6 @@ AC_ARG_ENABLE([gifdiff],
     [AS_HELP_STRING([--disable-gifdiff], [do not build gifdiff comparison utility])],
     [if test "x$enableval" != xyes; then build_gifdiff=no; fi])
 
-have_threads=maybe
-AC_ARG_ENABLE([threads],
-    [AS_HELP_STRING([--disable-threads], [do not build gifsicle with threading ability])],
-    [], [enable_threads=maybe])
-
 AC_ARG_ENABLE([warnings],
     [AS_HELP_STRING([--enable-warnings], [compile with -W -Wall])],
     [if test "x$enableval" = xyes; then CC="$CC -W -Wall"; fi])
@@ -52,23 +47,6 @@ dnl
 
 OTHERPROGRAMS=""
 OTHERMANS=""
-
-if test "x$enable_threads" = xyes -o "x$enable_threads" = xmaybe; then
-    AC_CHECK_LIB(
-      [pthread],
-      [pthread_mutex_init],
-      [],
-      [AC_MSG_WARN([
-******************************************************************************
-Cannot find the pthread library but thread support was requested.
-You may need to install the pthread library or build gifsicle
-with the '--disable-threads' option]);
-      have_threads=no]
-    )
-    if test x$have_threads != xno; then
-      AC_DEFINE(ENABLE_THREADS, 1, [Define if threading is enabled for gifsicle])
-    fi
-fi
 
 if test "x$build_gifview" = xyes -o "x$build_gifview" = xmaybe; then
     AC_PATH_XTRA
@@ -215,17 +193,16 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     ac_cv_ext_vector_type_vector_types=yes], [ac_cv_ext_vector_type_vector_types=no])
 AC_MSG_RESULT([$ac_cv_ext_vector_type_vector_types])
 
-have_simd=maybe
 AC_ARG_ENABLE([simd],
     [AS_HELP_STRING([--disable-simd], [do not use SIMD instructions])],
     [], [enable_simd=maybe])
 
 if test $ac_cv_vector_size_vector_types = no -a $ac_cv_ext_vector_type_vector_types = no; then
-    if test x$have_simd = xmaybe; then
+    if test x$enable_simd = xmaybe; then
         AC_MSG_WARN([
 Not using SIMD since your compiler's support for SIMD types is inadequate.
 ])
-    elif test x$have_simd != xno; then
+    elif test x$enable_simd != xno; then
         AC_MSG_ERROR([
 ******************************************************************************
 `--enable-simd' was supplied, but this compiler does not support SIMD types.])
@@ -234,6 +211,33 @@ Not using SIMD since your compiler's support for SIMD types is inadequate.
 fi
 if test x"$enable_simd" != xno; then
     AC_DEFINE([HAVE_SIMD], [1], [Define to 1 if SIMD types should be used.])
+fi
+
+
+dnl
+dnl threads
+dnl
+
+AC_CHECK_LIB([pthread], [pthread_mutex_init], [have_threads=yes], [have_threads=no])
+AC_MSG_CHECKING([for __sync_add_and_fetch])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [AC_INCLUDES_DEFAULT
+    extern volatile int x;],
+    [[printf("%d", __sync_add_and_fetch(&x, 1));]])],
+    [AC_DEFINE([HAVE___SYNC_ADD_AND_FETCH], 1, [Define to 1 if you have the `__sync_add_and_fetch' function.])
+    result=yes], [result=no])
+AC_MSG_RESULT([$result])
+
+AC_ARG_ENABLE([threads],
+    [AS_HELP_STRING([--disable-threads], [do not include multithreading])],
+    [], [enable_threads=maybe])
+
+if test "x$have_threads" = xyes -a "x$enable_threads" = xyes; then
+    AC_MSG_ERROR([
+******************************************************************************
+Threading support is not available on this platform.])
+elif test "x$have_threads" = xyes -a "x$enable_threads" != xno; then
+    AC_DEFINE([ENABLE_THREADS], [1], [Define to 1 if multithreading support is available.])
 fi
 
 
