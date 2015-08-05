@@ -1213,7 +1213,8 @@ resize_stream(Gif_Stream* gfs,
               double new_width, double new_height,
               int fit, int method, int scale_colors)
 {
-    int nw, nh, nthreads = thread_count;
+    int nw, nh, nthreads = thread_count, i;
+    (void) i;
 
     Gif_CalculateScreenSize(gfs, 0);
     assert(gfs->nimages > 0);
@@ -1270,10 +1271,17 @@ resize_stream(Gif_Stream* gfs,
     if (nthreads > gfs->nimages)
         nthreads = gfs->nimages;
 #if ENABLE_THREADS
-    if (nthreads > 1 && !unoptimizing) {
-        warning(1, "multithreaded resize requires the %<--unoptimize%> option\n  (Falling back to one thread.)");
-        nthreads = 1;
-    }
+    // Threaded resize only works if the input image is unoptimized.
+    for (i = 0; nthreads > 1 && i < gfs->nimages - 1; ++i)
+        if (gfs->images[i]->left != 0
+            || gfs->images[i]->top != 0
+            || gfs->images[i]->width != gfs->screen_width
+            || gfs->images[i]->height != gfs->screen_height
+            || (gfs->images[i]->disposal != GIF_DISPOSAL_BACKGROUND
+                && gfs->images[i+1]->transparent >= 0)) {
+            warning(1, "image too complex for multithreaded resize, using 1 thread\n  (Try running the GIF through %<gifsicle -U%>.)");
+            nthreads = 1;
+        }
     if (nthreads > 1) {
         int next_imageno = nthreads - 1, i;
         scale_thread_context* ctx = Gif_NewArray(scale_thread_context, nthreads);
