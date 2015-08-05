@@ -218,7 +218,7 @@ dnl
 dnl threads
 dnl
 
-AC_CHECK_LIB([pthread], [pthread_mutex_init], [have_threads=yes], [have_threads=no])
+AC_SEARCH_LIBS([pthread_create], [pthread], [have_threads=yes], [have_threads=no])
 AC_MSG_CHECKING([for __sync_add_and_fetch])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     [AC_INCLUDES_DEFAULT
