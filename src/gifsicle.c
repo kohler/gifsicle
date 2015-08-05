@@ -1403,6 +1403,10 @@ main(int argc, char *argv[])
   Gif_InitCompressInfo(&gif_write_info);
   Gif_SetErrorHandler(gifread_error);
 
+#if ENABLE_THREADS
+  pthread_mutex_init(&kd3_sort_lock, 0);
+#endif
+
   /* Yep, I'm an idiot.
      GIF dimensions are unsigned 16-bit integers. I assume that these
      numbers will fit in an 'int'. This assertion tests that assumption.

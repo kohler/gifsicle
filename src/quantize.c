@@ -94,6 +94,10 @@ uint16_t* gamma_tables[2] = {
     (uint16_t*) srgb_revgamma_table_256
 };
 
+#if ENABLE_THREADS
+pthread_mutex_t kd3_sort_lock;
+#endif
+
 
 const char* kc_debug_str(kcolor x) {
     static int whichbuf = 0;

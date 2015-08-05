@@ -1255,10 +1255,6 @@ resize_stream(Gif_Stream* gfs,
         && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
 
-#ifdef ENABLE_THREADS
-    pthread_mutex_init(&kd3_sort_lock, 0);
-#endif
-
     int i;
     if (resize_threads > 1) {
 #ifdef ENABLE_THREADS
