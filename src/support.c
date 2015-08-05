@@ -202,11 +202,12 @@ Animation options: Also --no-OPTION and --same-OPTION.\n\
   -D, --disposal METHOD         Set frame disposal to METHOD.\n\
   -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
   -O, --optimize[=LEVEL]        Optimize output GIFs.\n\
-  -U, --unoptimize              Unoptimize input GIFs.\n\
-  -T, --threaded-resize[=THREADS]\n\
-                                Use threads to resize frames in parallel.\n\
-\n");
+  -U, --unoptimize              Unoptimize input GIFs.\n");
+#if ENABLE_THREADS
   printf("\
+  -j, --threads[=THREADS]       Use multiple threads to improve speed.\n");
+#endif
+  printf("\n\
 Whole-GIF options: Also --no-OPTION.\n\
       --careful                 Write larger GIFs that avoid bugs in other\n\
                                 programs.\n\

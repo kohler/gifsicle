@@ -176,6 +176,7 @@ extern const char *program_name;
 extern int verbosing;
 extern int error_count;
 extern int no_warnings;
+extern int thread_count;
 extern Gif_CompressInfo gif_write_info;
 
 void fatal_error(const char* format, ...) NORETURN;
@@ -251,8 +252,7 @@ int     crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop);
 void    flip_image(Gif_Image* gfi, Gt_Frame* fr, int is_vert);
 void    rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation);
 void    resize_stream(Gif_Stream* gfs, double new_width, double new_height,
-                      int fit, int method, int scale_colors,
-                      int resize_threads);
+                      int fit, int method, int scale_colors);
 
 /*****
  * quantization

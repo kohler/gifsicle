@@ -924,13 +924,12 @@ void kd3_build(kd3_tree* kd3) {
     perm = Gif_NewArray(int, kd3->nitems);
     for (i = 0; i != kd3->nitems; ++i)
         perm[i] = i;
-
+#if ENABLE_THREADS
     /*
      * Because kd3_sorter is a static global used in some
      * sorting comparators, put a mutex around this
      * code block to avoid an utter catastrophe.
      */
-#ifdef ENABLE_THREADS
     pthread_mutex_lock(&kd3_sort_lock);
 #endif
 
@@ -946,10 +945,9 @@ void kd3_build(kd3_tree* kd3) {
     kd3_build_range(perm, kd3->nitems - (delta - 1), 0, 0);
     assert(kd3->maxdepth < 32);
 
-#ifdef ENABLE_THREADS
+#if ENABLE_THREADS
     pthread_mutex_unlock(&kd3_sort_lock);
 #endif
-
     Gif_DeleteArray(perm);
 }
 
