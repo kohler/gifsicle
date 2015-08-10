@@ -1,5 +1,18 @@
 Gifsicle NEWS
 
+Version 1.89
+
+* Add SIMD support for resizing. When enabled this improves resize
+  performance enormously for complex resize methods.
+
+* Add thread support for resizing. `-j[NTHREADS]` tells gifsicle to use
+  up to NTHREADS threads to resize an input image. There are several
+  caveats---multiple threads can be only used on unoptimized images.
+  Thanks to Github user `wilkesybear`.
+
+* Minor bug fixes.
+
+
 Version 1.88   1.Jul.2015
 
 * Fix bug where long comments were read incorrectly. Reported by
