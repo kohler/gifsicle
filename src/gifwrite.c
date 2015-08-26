@@ -439,7 +439,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
       unsigned ncap = bufcap * 2 + (24 << 3);
       uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
       if (!nbuf)
-        return 0;
+        goto error;
       memcpy(nbuf, buf, bufcap >> 3);
       if (buf != stack_buffer)
         Gif_DeleteArray(buf);
@@ -647,8 +647,12 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
   if (buf != stack_buffer)
     Gif_DeleteArray(buf);
-
   return 1;
+
+ error:
+  if (buf != stack_buffer)
+    Gif_DeleteArray(buf);
+  return 0;
 }
 
 
@@ -896,7 +900,10 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
   }
 
   gifputbyte(packed, grr);
-  gifputbyte(gfs->background, grr);
+  if (gfs->background < grr->global_size)
+    gifputbyte(gfs->background, grr);
+  else
+    gifputbyte(255, grr);
   gifputbyte(0, grr);		/* no aspect ratio information */
 
   if (grr->global_size > 0)

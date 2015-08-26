@@ -1,0 +1,22 @@
+language: c
+env:
+  global:
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "NEQUeZwTTJ+1Pdy2CpNte1nJLYRY2H8+dpvnGS2HP6U/Ok6ZQm4Zxic+ufhabuymbCV7Jvwwy6Gaj8+ObIDahhzAsiMRXSymnvFHELAnq7DiikJ2HqBvFhPzPI2/vDmEP37msGW1dloipLhdKMeuYYP++BpApnC6KVRVJDXg5JI="
+  matrix:
+    - CC="gcc"
+    - CC="gcc -std=c89"
+    - CC="clang"
+script: ./configure && make check
+before_script: ./bootstrap.sh
+
+addons:
+  coverity_scan:
+    project:
+      name: "kohler/gifsicle"
+      description: "Build submitted via Travis CI"
+    notification_email: ekohler@gmail.com
+    build_command_prepend: "./configure; make clean"
+    build_command: "make -j 4"
+    branch_pattern: coverity_scan

@@ -161,7 +161,8 @@ static void
 gif_read_error(Gif_Context *gfc, int is_error, const char *text)
 {
     Gif_ReadErrorHandler handler = gfc->handler ? gfc->handler : default_error_handler;
-    gfc->errors[is_error > 0] += 1;
+    if (is_error >= 0)
+        gfc->errors[is_error > 0] += 1;
     if (handler)
         handler(gfc->stream, gfc->gfi, is_error, text);
 }
@@ -379,7 +380,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       long delta = (long) (gfc->maximage - gfc->image) - (long) gfc->decodepos;
       char buf[BUFSIZ];
       if (delta > 0) {
-          sprintf(buf, "missing %ld pixels of image data", delta);
+          sprintf(buf, "missing %ld %s of image data", delta,
+                  delta == 1 ? "pixel" : "pixels");
           gif_read_error(gfc, 1, buf);
       } else if (delta < -1) {
           /* One pixel of superfluous data is OK; that could be the
@@ -427,11 +429,12 @@ read_logical_screen_descriptor(Gif_Stream *gfs, Gif_Reader *grr)
   gifgetbyte(grr);
 
   if (packed & 0x80) { /* have a global color table */
-    int ncol = 1 << ((packed & 0x07) + 1);
-    gfs->global = read_color_table(ncol, grr);
-    if (!gfs->global) return 0;
-    gfs->global->refcount = 1;
-  }
+      int ncol = 1 << ((packed & 0x07) + 1);
+      gfs->global = read_color_table(ncol, grr);
+      if (!gfs->global) return 0;
+      gfs->global->refcount = 1;
+  } else
+      gfs->background = 256;
 
   return 1;
 }
@@ -545,7 +548,7 @@ Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
   gfc.handler = h;
   gfc.errors[0] = gfc.errors[1] = 0;
 
-  if (gfi && gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
+  if (gfc.prefix && gfc.suffix && gfc.length && gfi->compressed) {
     make_data_reader(&grr, gfi->compressed, gfi->compressed_len);
     ok = uncompress_image(&gfc, gfi, &grr);
   }
@@ -674,7 +677,7 @@ suck_data(char *data, int *store_len, Gif_Reader *grr)
   while (len > 0) {
     Gif_ReArray(data, char, total_len + len + 1);
     if (!data) return 0;
-    gifgetblock((uint8_t *)data, len, grr);
+    gifgetblock((uint8_t *)data + total_len, len, grr);
 
     total_len += len;
     data[total_len] = 0;
@@ -799,7 +802,6 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   gfs = Gif_NewStream();
   gfi = Gif_NewImage();
-  gfs->landmark = landmark;
 
   gfc.stream = gfs;
   gfc.prefix = Gif_NewArray(Gif_Code, GIF_MAX_CODE);
@@ -811,6 +813,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
+  gfs->landmark = landmark;
 
   GIF_DEBUG(("\nGIF"));
   if (!read_logical_screen_descriptor(gfs, grr))

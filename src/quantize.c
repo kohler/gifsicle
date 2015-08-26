@@ -149,6 +149,16 @@ void kc_set_gamma(int type, double gamma) {
 #endif
 }
 
+void kc_revgamma_transform(kcolor* x) {
+    int d;
+    for (d = 0; d != 3; ++d) {
+        int c = gamma_tables[1][x->a[d] >> 7];
+        while (c < 0x7F80 && x->a[d] >= gamma_tables[0][(c + 0x80) >> 7])
+            c += 0x80;
+        x->a[d] = c;
+    }
+}
+
 #if 0
 static void kc_test_gamma() {
     int x, y, z;
@@ -193,9 +203,10 @@ void kchist_cleanup(kchist* kch) {
     kch->h = NULL;
 }
 
-void kchist_add(kchist* kch, kcolor k, kchist_count_t count) {
+kchistitem* kchist_add(kchist* kch, kcolor k, kchist_count_t count) {
     unsigned hash1, hash2 = 0;
     kacolor ka;
+    kchistitem *khi;
     ka.k = k;
     ka.a[3] = 0;
 
@@ -206,8 +217,11 @@ void kchist_add(kchist* kch, kcolor k, kchist_count_t count) {
              | ((ka.a[1] & 0x7FE0) << 5)
              | ((ka.a[2] & 0x7FE0) >> 5)) % kch->capacity;
 
-    while (kch->h[hash1].count
-           && memcmp(&kch->h[hash1].ka, &ka, sizeof(ka)) != 0) {
+    while (1) {
+        khi = &kch->h[hash1];
+        if (!khi->count
+            || memcmp(&khi->ka, &ka, sizeof(ka)) == 0)
+            break;
         if (!hash2) {
             hash2 = (((ka.a[0] & 0x03FF) << 20)
                      | ((ka.a[1] & 0x03FF) << 10)
@@ -219,13 +233,14 @@ void kchist_add(kchist* kch, kcolor k, kchist_count_t count) {
             hash1 -= kch->capacity;
     }
 
-    if (!kch->h[hash1].count) {
-        kch->h[hash1].ka = ka;
+    if (!khi->count) {
+        khi->ka = ka;
         ++kch->n;
     }
-    kch->h[hash1].count += count;
-    if (kch->h[hash1].count < count)
-        kch->h[hash1].count = (kchist_count_t) -1;
+    khi->count += count;
+    if (khi->count < count)
+        khi->count = (kchist_count_t) -1;
+    return khi;
 }
 
 static void kchist_grow(kchist* kch) {
@@ -313,8 +328,8 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
             Gif_ReleaseUncompressedImage(gfi);
     }
 
-    if (gfs->images[0]->transparent < 0 && gfs->global
-        && gfs->background < gfs->global->ncol)
+    if (gfs->images[0]->transparent < 0
+        && gfs->global && gfs->background < gfs->global->ncol)
         gcount[gfs->background] += nbackground;
     else
         ntransparent += nbackground;
@@ -332,8 +347,8 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp_store) {
 
 #undef min
 #undef max
-#define min(a, b)	((a) < (b) ? (a) : (b))
-#define max(a, b)	((a) > (b) ? (a) : (b))
+#define min(a, b)       ((a) < (b) ? (a) : (b))
+#define max(a, b)       ((a) > (b) ? (a) : (b))
 
 static int red_kchistitem_compare(const void* va, const void* vb) {
     const kchistitem* a = (const kchistitem*) va;
@@ -418,12 +433,12 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
     {
       uint32_t split_pixel = 0;
       for (i = 0; i < nadapt; i++)
-	if (slots[i].size >= 2 && slots[i].pixel > split_pixel) {
-	  split = &slots[i];
-	  split_pixel = slots[i].pixel;
-	}
+        if (slots[i].size >= 2 && slots[i].pixel > split_pixel) {
+          split = &slots[i];
+          split_pixel = slots[i].pixel;
+        }
       if (!split)
-	break;
+        break;
     }
     slice = &kch->h[split->first];
 
@@ -445,11 +460,11 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
       double green_diff = 0.587 * (maxc.a[1] - minc.a[1]);
       double blue_diff = 0.114 * (maxc.a[2] - minc.a[2]);
       if (red_diff >= green_diff && red_diff >= blue_diff)
-	qsort(slice, split->size, sizeof(kchistitem), red_kchistitem_compare);
+        qsort(slice, split->size, sizeof(kchistitem), red_kchistitem_compare);
       else if (green_diff >= blue_diff)
-	qsort(slice, split->size, sizeof(kchistitem), green_kchistitem_compare);
+        qsort(slice, split->size, sizeof(kchistitem), green_kchistitem_compare);
       else
-	qsort(slice, split->size, sizeof(kchistitem), blue_kchistitem_compare);
+        qsort(slice, split->size, sizeof(kchistitem), blue_kchistitem_compare);
     }
 
     /* 2.4. decide where to split the slot and split it there. */
@@ -458,7 +473,7 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
       uint32_t pixel_accum = slice[0].count;
       uint32_t diff1, diff2;
       for (i = 1; i < split->size - 1 && pixel_accum < half_pixels; i++)
-	pixel_accum += slice[i].count;
+        pixel_accum += slice[i].count;
 
       /* We know the area before the split has more pixels than the area
          after, possibly by a large margin (bad news). If it would shrink the
@@ -466,8 +481,8 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
       diff1 = 2*pixel_accum - split->pixel;
       diff2 = split->pixel - 2*(pixel_accum - slice[i-1].count);
       if (diff2 < diff1 && i > 1) {
-	i--;
-	pixel_accum -= slice[i].count;
+        i--;
+        pixel_accum -= slice[i].count;
       }
 
       slots[nadapt].first = split->first + i;
@@ -577,7 +592,7 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
         for (i = 0; i != div->nchosen; ++i) {
             kcolor x = hist[chosen].ka.k, *y = &hist[div->chosen[i]].ka.k;
             /* penalize combinations with large luminance difference */
-            double dL = fabs(kc_luminance(&x) - kc_luminance(y));
+            double dL = abs(kc_luminance(&x) - kc_luminance(y));
             dL = (dL > 8192 ? dL * 4 / 32767. : 1);
             /* create combination */
             for (k = 0; k != 3; ++k)
@@ -1003,8 +1018,8 @@ int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2) {
 
 void
 colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
-			 Gif_Colormap *old_cm, kd3_tree* kd3,
-			 uint32_t *histogram)
+                         Gif_Colormap *old_cm, kd3_tree* kd3,
+                         uint32_t *histogram)
 {
   int ncol = old_cm->ncol;
   Gif_Color *col = old_cm->col;
@@ -1023,22 +1038,22 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
     uint8_t *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++, new_data++)
       if (*data != transparent) {
-	*new_data = map[*data];
-	histogram[*new_data]++;
+        *new_data = map[*data];
+        histogram[*new_data]++;
       }
   }
 }
 
 
-#define DITHER_SCALE	1024
+#define DITHER_SCALE    1024
 #define DITHER_SHIFT    10
-#define DITHER_SCALE_M1	(DITHER_SCALE-1)
+#define DITHER_SCALE_M1 (DITHER_SCALE-1)
 #define DITHER_ITEM2ERR (1<<(DITHER_SHIFT-7))
-#define N_RANDOM_VALUES	512
+#define N_RANDOM_VALUES 512
 
 void
 colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
-			       Gif_Colormap *old_cm, kd3_tree* kd3,
+                               Gif_Colormap *old_cm, kd3_tree* kd3,
                                uint32_t *histogram)
 {
   static int32_t *random_values = 0;
@@ -1081,7 +1096,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
   /* Do the image! */
   for (j = 0; j < gfi->height; j++) {
-    int d0, d1, d2, d3;		/* used for error diffusion */
+    int d0, d1, d2, d3;         /* used for error diffusion */
     uint8_t *data, *new_data;
     int x;
 
@@ -1105,7 +1120,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
       /* the transparent color never gets adjusted */
       if (*data == transparent)
-	goto next;
+        goto next;
 
       /* find desired new color */
       kc_set8g(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
@@ -1127,9 +1142,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
-	 Assume that, with a large scale (1024), we don't need to worry about
-	 image artifacts caused by error accumulation (the fact that the
-	 error terms might not sum to the error). */
+         Assume that, with a large scale (1024), we don't need to worry about
+         image artifacts caused by error accumulation (the fact that the
+         error terms might not sum to the error). */
       for (k = 0; k < 3; ++k) {
           e = (use.a[k] - kd3->ks[*new_data].a[k]) * DITHER_ITEM2ERR;
           if (e) {
@@ -1142,9 +1157,9 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
 
      next:
       if (dither_direction)
-	x--, data--, new_data--;
+        x--, data--, new_data--;
       else
-	x++, data++, new_data++;
+        x++, data++, new_data++;
     }
     /* Did a single row */
 
@@ -1471,8 +1486,8 @@ static void dither(Gif_Image* gfi, uint8_t* new_data, Gif_Colormap* old_cm,
 /* return value 1 means run the dither again */
 static int
 try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
-			Gif_Colormap *new_cm, int *new_ncol,
-			kd3_tree* kd3, uint32_t *histogram)
+                        Gif_Colormap *new_cm, int *new_ncol,
+                        kd3_tree* kd3, uint32_t *histogram)
 {
   uint32_t min_used;
   int i, j;
@@ -1485,6 +1500,8 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
 
   if (old_cm)
     transp_value = old_cm->col[transparent];
+  else
+    GIF_SETCOLOR(&transp_value, 0, 0, 0);
 
   /* look for an unused pixel in the existing colormap; prefer the same color
      we had */
@@ -1525,7 +1542,7 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
     uint8_t *data = gfi->img[j];
     for (i = 0; i < gfi->width; i++, data++, new_data++)
       if (*data == transparent)
-	*new_data = new_transparent;
+        *new_data = new_transparent;
   }
 
   gfi->transparent = new_transparent;
@@ -1536,7 +1553,6 @@ void
 colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 {
   kd3_tree kd3;
-  int background_transparent = gfs->images[0]->transparent >= 0;
   Gif_Color *new_col = new_cm->col;
   int new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
@@ -1581,11 +1597,11 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 
       kd3_enable_all(&kd3);
       do {
-	for (j = 0; j < 256; j++)
+        for (j = 0; j < 256; j++)
             histogram[j] = 0;
-	dither(gfi, new_data, gfcm, &kd3, histogram, od);
+        dither(gfi, new_data, gfcm, &kd3, histogram, od);
       } while (try_assign_transparency(gfi, gfcm, new_data, new_cm, &new_ncol,
-				       &kd3, histogram));
+                                       &kd3, histogram));
 
       Gif_ReleaseUncompressedImage(gfi);
       /* version 1.28 bug fix: release any compressed version or it'll cause
@@ -1594,21 +1610,21 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 
       if (only_compressed) {
-	Gif_FullCompressImage(gfs, gfi, &gif_write_info);
-	Gif_ReleaseUncompressedImage(gfi);
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
       }
 
       /* update count of used colors */
       for (j = 0; j < 256; j++)
-	new_col[j].pixel += histogram[j];
+        new_col[j].pixel += histogram[j];
       if (gfi->transparent >= 0)
-	/* we don't have data on the number of used colors for transparency
-	   so fudge it. */
+        /* we don't have data on the number of used colors for transparency
+           so fudge it. */
         new_col[gfi->transparent].pixel += (unsigned) gfi->width * (unsigned) gfi->height / 8;
 
     } else {
       /* Can't compress new_cm afterwards if we didn't actively change colors
-	 over */
+         over */
       compress_new_cm = 0;
     }
 
@@ -1624,13 +1640,15 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
   new_cm->ncol = new_ncol;
 
   /* change the background. I hate the background by now */
-  if (background_transparent)
-    gfs->background = gfs->images[0]->transparent;
-  else if (gfs->global && gfs->background < gfs->global->ncol) {
-    Gif_Color *c = &gfs->global->col[gfs->background];
-    gfs->background = kd3_closest8g(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
-    new_col[gfs->background].pixel++;
-  }
+  if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
+      && gfs->global && gfs->background < gfs->global->ncol) {
+      Gif_Color *c = &gfs->global->col[gfs->background];
+      gfs->background = kd3_closest8g(&kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      new_col[gfs->background].pixel++;
+  } else if (gfs->nimages > 0 && gfs->images[0]->transparent >= 0)
+      gfs->background = gfs->images[0]->transparent;
+  else
+      gfs->background = 0;
 
   Gif_DeleteColormap(gfs->global);
   kd3_cleanup(&kd3);
@@ -1646,8 +1664,8 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
     compress_new_cm = 0;
     for (j = 0; j < new_cm->ncol - 1; j++)
       if (new_col[j].pixel == 0 || new_col[j].pixel < new_col[j+1].pixel) {
-	compress_new_cm = 1;
-	break;
+        compress_new_cm = 1;
+        break;
       }
   }
 
@@ -1667,12 +1685,13 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       map[ new_col[j].haspixel ] = j;
     for (j = 0; j < new_cm->ncol; j++)
       if (!new_col[j].pixel) {
-	gfs->global->ncol = j;
-	break;
+        gfs->global->ncol = j;
+        break;
       }
 
     /* map the image data, transparencies, and background */
-    gfs->background = map[gfs->background];
+    if (gfs->background < gfs->global->ncol)
+        gfs->background = map[gfs->background];
     for (imagei = 0; imagei < gfs->nimages; imagei++) {
       Gif_Image *gfi = gfs->images[imagei];
       int only_compressed = (gfi->img == 0);
@@ -1683,13 +1702,13 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 
       data = gfi->image_data;
       for (size = (unsigned) gfi->width * (unsigned) gfi->height; size > 0; size--, data++)
-	*data = map[*data];
+        *data = map[*data];
       if (gfi->transparent >= 0)
-	gfi->transparent = map[gfi->transparent];
+        gfi->transparent = map[gfi->transparent];
 
       if (only_compressed) {
-	Gif_FullCompressImage(gfs, gfi, &gif_write_info);
-	Gif_ReleaseUncompressedImage(gfi);
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
       }
     }
   }

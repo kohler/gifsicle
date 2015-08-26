@@ -9,6 +9,7 @@
 
 #include <config.h>
 #include "gifsicle.h"
+#include "kcolor.h"
 #include <assert.h>
 #include <string.h>
 
@@ -43,6 +44,8 @@ static int screen_height;
 
 /* Colormap containing all colors in the image. May have >256 colors */
 static Gif_Colormap *all_colormap;
+/* Histogram so we can find colors quickly */
+static kchist all_colormap_hist;
 
 /* The old global colormap, or a fake one we created if necessary */
 static Gif_Colormap *in_global_map;
@@ -54,8 +57,6 @@ static Gif_Colormap *out_global_map;
 #define NOT_IN_OUT_GLOBAL (256)
 static unsigned background;
 static int image_index;
-
-static int gif_color_count;
 
 static penalty_type *permuting_sort_values;
 
@@ -86,36 +87,32 @@ delete_opt_data(Gif_OptData *od)
 }
 
 
-/* colormap_combine: Ensure that each color in 'src' is represented in 'dst'.
-   For each color 'i' in 'src', src->col[i].pixel == some j so that
-   GIF_COLOREQ(&src->col[i], &dst->col[j]). dst->col[0] is reserved for
-   transparency; no source color will be mapped to it. */
+/* all_colormap_add: Ensure that each color in 'src' is represented in
+   'all_colormap'. For each color 'i' in 'src', src->col[i].pixel == some j
+   so that GIF_COLOREQ(&src->col[i], &all_colormap->col[j]).
+   all_colormap->col[0] is reserved for transparency; no source color will
+   be mapped to it. */
 
-void
-colormap_combine(Gif_Colormap *dst, Gif_Colormap *src)
-{
-  Gif_Color *src_col, *dst_col;
-  int i, j;
+static void all_colormap_add(const Gif_Colormap* src) {
+    int i;
 
-  /* expand dst->col if necessary. This might change dst->col */
-  if (dst->ncol + src->ncol >= dst->capacity) {
-    dst->capacity *= 2;
-    Gif_ReArray(dst->col, Gif_Color, dst->capacity);
-  }
-
-  src_col = src->col;
-  dst_col = dst->col;
-  for (i = 0; i < src->ncol; i++, src_col++) {
-    for (j = 1; j < dst->ncol; j++) {
-      if (GIF_COLOREQ(src_col, &dst_col[j]))
-	goto found;
+    /* expand dst->col if necessary. This might change dst->col */
+    if (all_colormap->ncol + src->ncol >= all_colormap->capacity) {
+        all_colormap->capacity *= 2;
+        Gif_ReArray(all_colormap->col, Gif_Color, all_colormap->capacity);
     }
-    dst_col[j] = *src_col;
-    dst_col[j].pixel = 0;
-    dst->ncol++;
-   found:
-    src_col->pixel = j;
-  }
+
+    for (i = 0; i < src->ncol; ++i) {
+        kchistitem* khi = kchist_add(&all_colormap_hist,
+                                     kc_makegfc(&src->col[i]), 0);
+        if (!khi->count) {
+            all_colormap->col[all_colormap->ncol] = src->col[i];
+            all_colormap->col[all_colormap->ncol].pixel = 0;
+            khi->count = all_colormap->ncol;
+            ++all_colormap->ncol;
+        }
+        src->col[i].pixel = khi->count;
+    }
 }
 
 
@@ -161,21 +158,6 @@ fix_difference_bounds(Gif_OptData *bounds)
 /*****
  * CALCULATE OUTPUT GLOBAL COLORMAP
  **/
-
-/* create_out_global_map: The interface function to this pass. It creates
-   out_global_map and sets pixel values on all_colormap appropriately.
-   Specifically:
-
-   all_colormap->col[P].pixel >= 256 ==> P is not in the global colormap.
-
-   Otherwise, all_colormap->col[P].pixel == the J so that
-   GIF_COLOREQ(&all_colormap->col[P], &out_global_map->col[J]).
-
-   On return, the 'colormap_penalty' component of an image's Gif_OptData
-   structure is <0 iff that image will need a local colormap.
-
-   20.Aug.1999 - updated to new version that arranges the entire colormap, not
-   just the stuff above 256 colors. */
 
 static void
 increment_penalties(Gif_OptData *opt, penalty_type *penalty, int32_t delta)
@@ -367,17 +349,20 @@ initialize_optimizer(Gif_Stream *gfs)
   {
     int any_globals = 0;
     int first_transparent = -1;
+
+    kchist_init(&all_colormap_hist);
     for (i = 0; i < gfs->nimages; i++) {
       Gif_Image *gfi = gfs->images[i];
       if (gfi->local)
-	colormap_combine(all_colormap, gfi->local);
+	all_colormap_add(gfi->local);
       else
 	any_globals = 1;
       if (gfi->transparent >= 0 && first_transparent < 0)
 	first_transparent = i;
     }
     if (any_globals)
-      colormap_combine(all_colormap, in_global_map);
+      all_colormap_add(in_global_map);
+    kchist_cleanup(&all_colormap_hist);
 
     /* try and maintain transparency's pixel value */
     if (first_transparent >= 0) {
@@ -394,14 +379,9 @@ initialize_optimizer(Gif_Stream *gfs)
   for (i = 0; i < gfs->nimages; i++)
     Gif_ClipImage(gfs->images[i], 0, 0, screen_width, screen_height);
 
-  /* set up colormaps */
-  gif_color_count = 2;
-  while (gif_color_count < gfs->global->ncol && gif_color_count < 256)
-    gif_color_count *= 2;
-
   /* choose background */
   if (gfs->images[0]->transparent < 0
-      && gfs->background < in_global_map->ncol)
+      && gfs->global && gfs->background < in_global_map->ncol)
     background = in_global_map->col[gfs->background].pixel;
   else
     background = TRANSP;

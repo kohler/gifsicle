@@ -36,7 +36,7 @@ put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
     uint8_t *line = gfi->img[y];
     for (x = 0; x < w; x++, move++, line++)
       if (*line != transparent)
-	*move = *line;
+        *move = *line;
   }
 }
 
@@ -51,12 +51,11 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
   if (gfi->left + w > gfs->screen_width) w = gfs->screen_width - gfi->left;
   if (gfi->top + h > gfs->screen_height) h = gfs->screen_height - gfi->top;
 
-  if (gfi->transparent >= 0)
-    solid = TRANSPARENT;
-  else if (gfs->images[0]->transparent >= 0)
-    solid = TRANSPARENT;
+  if (gfi->transparent < 0 && gfs->images[0]->transparent < 0
+      && gfs->global && gfs->background < gfs->global->ncol)
+      solid = gfs->background;
   else
-    solid = gfs->background;
+      solid = TRANSPARENT;
 
   for (y = 0; y < h; y++) {
     uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
@@ -68,7 +67,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 
 static int
 create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
-		  uint8_t *new_data, int *used_transparent)
+                  uint8_t *new_data, int *used_transparent)
 {
   int have[257];
   int transparent = -1;
@@ -87,7 +86,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
   if (have[TRANSPARENT]) {
     for (i = 0; i < 256 && transparent < 0; i++)
       if (!have[i])
-	transparent = i;
+        transparent = i;
     if (transparent < 0)
       goto error;
     if (transparent >= gfs->global->ncol) {
@@ -165,7 +164,7 @@ no_more_transparency(Gif_Image *gfi1, Gif_Image *gfi2)
     uint8_t *d1 = gfi1->img[y], *d2 = gfi2->img[y], *ed1 = d1 + gfi1->width;
     while (d1 < ed1) {
       if (*d1 == t1 && *d2 != t2)
-	return 0;
+        return 0;
       ++d1, ++d2;
     }
   }
@@ -195,7 +194,11 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
 
   screen = Gif_NewArray(uint16_t, size);
   gfi = gfs->images[0];
-  background = gfi->transparent >= 0 ? TRANSPARENT : gfs->background;
+  if (gfi->transparent < 0
+      && gfs->global && gfs->background < gfs->global->ncol)
+      background = gfs->background;
+  else
+      background = TRANSPARENT;
   for (pos = 0; pos != size; ++pos)
     screen[pos] = background;
 
@@ -206,18 +209,18 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
   if (ok) {
     if (flags & GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL) {
       /* set disposal based on use of transparency.
-	 If (every transparent pixel in frame i is also transparent in frame
-	 i - 1), then frame i - 1 gets disposal ASIS; otherwise, disposal
-	 BACKGROUND. */
+         If (every transparent pixel in frame i is also transparent in frame
+         i - 1), then frame i - 1 gets disposal ASIS; otherwise, disposal
+         BACKGROUND. */
       for (i = 0; i < gfs->nimages; ++i)
-	if (i == gfs->nimages - 1
-	    || no_more_transparency(gfs->images[i+1], gfs->images[i]))
-	  gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
-	else
-	  gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
+        if (i == gfs->nimages - 1
+            || no_more_transparency(gfs->images[i+1], gfs->images[i]))
+          gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
+        else
+          gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
     } else
       for (i = 0; i < gfs->nimages; ++i)
-	gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
+        gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
   }
 
   Gif_DeleteArray(screen);

@@ -25,7 +25,7 @@ Gif_NewStream(void)
   if (!gfs)
     return 0;
   gfs->global = 0;
-  gfs->background = 0;
+  gfs->background = 256;
   gfs->screen_width = gfs->screen_height = 0;
   gfs->loopcount = -1;
   gfs->comment = 0;
@@ -53,6 +53,7 @@ Gif_NewImage(void)
   gfi->disposal = GIF_DISPOSAL_NONE;
   gfi->delay = 0;
   gfi->left = gfi->top = gfi->width = gfi->height = 0;
+  gfi->user_flags = 0;
   gfi->interlace = 0;
   gfi->img = 0;
   gfi->image_data = 0;
@@ -86,8 +87,10 @@ Gif_Colormap *
 Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm || capacity <= 0 || count < 0)
+  if (!gfcm || capacity <= 0 || count < 0) {
+    Gif_Delete(gfcm);
     return 0;
+  }
   if (count > capacity)
     capacity = count;
   gfcm->ncol = count;
