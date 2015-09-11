@@ -1225,6 +1225,14 @@ loop(void)
 	      /* Left mouse button: go to next frame */
 	      view_frame(v, v->im_pos + 1);
 
+      else if (e.type == ButtonPress && e.xbutton.button == 4)
+        /* mousewheel forward */
+        view_frame(v, v->im_pos + 1);
+
+      else if (e.type == ButtonPress && e.xbutton.button == 5)
+        /* mousewheel backward */
+        view_frame(v, v->im_pos - 1);
+
 	    else if (e.type == ButtonPress && e.xbutton.button == 3)
 	      /* Right mouse button: delete window */
 	      pre_delete_viewer(v);
