@@ -334,6 +334,7 @@ write_compressed_data(Gif_Image *gfi,
       cur_code_bits = min_code_bits + 1;
       next_code = EOI_CODE + 1;
       run_ewma = 1 << RUN_EWMA_SCALE;
+      run = 0;
       gfc_clear(gfc, CLEAR_CODE);
       clear_pos = clear_bufpos = 0;
 
@@ -342,9 +343,21 @@ write_compressed_data(Gif_Image *gfi,
     } else if (output_code == EOI_CODE)
       break;
 
-    else if (next_code > CUR_BUMP_CODE && cur_code_bits < GIF_MAX_CODE_BITS)
-      /* bump up compression size */
-      ++cur_code_bits;
+    else {
+      if (next_code > CUR_BUMP_CODE && cur_code_bits < GIF_MAX_CODE_BITS)
+        /* bump up compression size */
+        ++cur_code_bits;
+
+      /* Adjust current run length average. */
+      run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
+      if (run < run_ewma)
+        run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
+      else
+        run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
+
+      /* Reset run length. */
+      run = !!work_node;
+    }
 
 
     /*****
@@ -404,23 +417,14 @@ write_compressed_data(Gif_Image *gfi,
             bufpos = clear_bufpos;
             buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
             work_node = 0;
-            run = 0;
             grr->cleared = 1;
             goto found_output_code;
           }
         }
 
-        /* Adjust current run length average. */
-        run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
-        if (run < run_ewma)
-          run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
-        else
-          run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
-
 	/* Output the current code. */
 	output_code = work_node->code;
 	work_node = &gfc->nodes[suffix];
-	run = 1;
 	goto found_output_code;
       }
 
@@ -431,7 +435,6 @@ write_compressed_data(Gif_Image *gfi,
     /* Ran out of data if we get here. */
     output_code = (work_node ? work_node->code : EOI_CODE);
     work_node = 0;
-    run = 0;
 
    found_output_code: ;
   }
