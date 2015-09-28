@@ -403,7 +403,8 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
   if (adapt_size < 2 || adapt_size > 256)
     fatal_error("adaptive palette size must be between 2 and 256");
   if (adapt_size >= kch->n && !od->colormap_fixed)
-    warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
+    warning(1, "trivial adaptive palette (only %d %s in source)",
+            kch->n, kch->n == 1 ? "color" : "colors");
   if (adapt_size >= kch->n)
     adapt_size = kch->n;
 
