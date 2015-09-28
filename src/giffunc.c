@@ -812,7 +812,6 @@ Gif_Debug(char *x, ...)
     va_list val;
     va_start(val, x);
     vfprintf(stderr, x, val);
-    fputc(' ', stderr);
     va_end(val);
 }
 

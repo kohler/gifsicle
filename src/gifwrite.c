@@ -283,7 +283,7 @@ write_compressed_data(Gif_Image *gfi,
 
   cur_code_bits = min_code_bits + 1;
   /* next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)", CLEAR_CODE, EOI_CODE, cur_code_bits));
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", CLEAR_CODE, EOI_CODE, cur_code_bits));
 
   work_node = 0;
   run = 0;
@@ -337,7 +337,7 @@ write_compressed_data(Gif_Image *gfi,
       gfc_clear(gfc, CLEAR_CODE);
       clear_pos = clear_bufpos = 0;
 
-      GIF_DEBUG(("clear"));
+      GIF_DEBUG(("clear "));
 
     } else if (output_code == EOI_CODE)
       break;
@@ -396,7 +396,7 @@ write_compressed_data(Gif_Image *gfi,
             clear_pos = clear_bufpos = 0;
 
           if (do_clear) {
-            GIF_DEBUG(("rewind %u pixels/%d bits", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
+            GIF_DEBUG(("rewind %u pixels/%d bits ", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
             output_code = CLEAR_CODE;
             pos = clear_pos;
             imageline = gif_imageline(gfi, pos);

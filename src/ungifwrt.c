@@ -135,7 +135,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
 
   cur_code_bits = min_code_bits + 1;
   /* next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d)",clear_code,eoi_code,cur_code_bits));
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", clear_code, eoi_code, cur_code_bits));
 
   output_code = clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
@@ -226,7 +226,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
     *buf++ = leftover;
 
   if (buf != buffer) {
-    GIF_DEBUG(("imageblock(%d)", buf - buffer));
+    GIF_DEBUG(("imageblock(%d) ", buf - buffer));
     gifputbyte(buf - buffer, grr);
     gifputblock(buffer, buf - buffer, grr);
   }
@@ -264,7 +264,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
 
   cur_code_bits = min_code_bits + 1;
   /* bump_code, next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d)", clear_code, eoi_code));
+  GIF_DEBUG(("clear(%d) eoi(%d) ", clear_code, eoi_code));
 
   output_code = clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, bump_code,
@@ -289,7 +289,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
       leftover = (leftover >> 8) & 0x00FFFFFF;
       bits_left_over -= 8;
       if (buf == buffer + WRITE_BUFFER_SIZE) {
-	GIF_DEBUG(("chunk"));
+	GIF_DEBUG(("chunk "));
 	gifputbyte(WRITE_BUFFER_SIZE, grr);
 	gifputblock(buffer, WRITE_BUFFER_SIZE, grr);
 	buf = buffer;
@@ -340,7 +340,7 @@ write_compressed_data(uint8_t **img, uint16_t width, uint16_t height,
     *buf++ = leftover;
 
   if (buf != buffer) {
-    GIF_DEBUG(("imageblock(%d)", buf - buffer));
+    GIF_DEBUG(("imageblock(%d) ", buf - buffer));
     gifputbyte(buf - buffer, grr);
     gifputblock(buffer, buf - buffer, grr);
   }

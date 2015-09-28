@@ -212,7 +212,7 @@ read_image_block(Gif_Reader *grr, uint8_t *buffer, int *bit_pos_store,
       bit_length -= i * 8;
     }
     block_len = gifgetbyte(grr);
-    GIF_DEBUG(("\nimage_block(%d)", block_len));
+    GIF_DEBUG(("\nimage_block(%d) ", block_len));
     if (block_len == 0) return 0;
     gifgetblock(buffer + bit_length / 8, block_len, grr);
     bit_length += block_len * 8;
@@ -250,7 +250,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   gfc->decodepos = 0;
 
   min_code_size = gifgetbyte(grr);
-  GIF_DEBUG(("\n\nmin_code_size(%d)", min_code_size));
+  GIF_DEBUG(("\n\nmin_code_size(%d) ", min_code_size));
   if (min_code_size >= GIF_MAX_CODE_BITS) {
     gif_read_error(gfc, 1, "image corrupted, min_code_size too big");
     min_code_size = GIF_MAX_CODE_BITS - 1;
@@ -301,12 +301,12 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     code = (Gif_Code)((accum >> (bit_position % 8)) & CUR_CODE_MASK);
     bit_position += bits_needed;
 
-    GIF_DEBUG(("%d", code));
+    GIF_DEBUG(("%d ", code));
 
     /* CHECK FOR SPECIAL OR BAD CODES: clear_code, eoi_code, or a code that is
      * too large. */
     if (code == clear_code) {
-      GIF_DEBUG(("clear"));
+      GIF_DEBUG(("clear "));
       bits_needed = min_code_size + 1;
       next_code = eoi_code;
       continue;
@@ -400,7 +400,7 @@ read_color_table(int size, Gif_Reader *grr)
   Gif_Color *c;
   if (!gfcm) return 0;
 
-  GIF_DEBUG(("colormap(%d)", size));
+  GIF_DEBUG(("colormap(%d) ", size));
   for (c = gfcm->col; size; size--, c++) {
     c->gfc_red = gifgetbyte(grr);
     c->gfc_green = gifgetbyte(grr);
@@ -591,7 +591,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
-  GIF_DEBUG(("<%ux%u>", gfi->width, gfi->height));
+  GIF_DEBUG(("<%ux%u> ", gfi->width, gfi->height));
 
   packed = gifgetbyte(grr);
   if (packed & 0x80) { /* have a local color table */
@@ -815,10 +815,10 @@ read_gif(Gif_Reader *grr, int read_flags,
     goto done;
   gfs->landmark = landmark;
 
-  GIF_DEBUG(("\nGIF"));
+  GIF_DEBUG(("\nGIF "));
   if (!read_logical_screen_descriptor(gfs, grr))
     goto done;
-  GIF_DEBUG(("logscrdesc"));
+  GIF_DEBUG(("logscrdesc "));
 
   while (!gifeof(grr)) {
 
@@ -827,7 +827,7 @@ read_gif(Gif_Reader *grr, int read_flags,
     switch (block) {
 
      case ',': /* image block */
-      GIF_DEBUG(("imageread %d", gfs->nimages));
+      GIF_DEBUG(("imageread %d ", gfs->nimages));
 
       gfi->identifier = last_name;
       last_name = 0;
@@ -850,7 +850,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
      case '!': /* extension */
       block = gifgetbyte(grr);
-      GIF_DEBUG(("ext(0x%02X)", block));
+      GIF_DEBUG(("ext(0x%02X) ", block));
       switch (block) {
 
        case 0xF9:
