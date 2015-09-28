@@ -1271,7 +1271,7 @@ resize_stream(Gif_Stream* gfs,
     if (nthreads > gfs->nimages)
         nthreads = gfs->nimages;
 #if ENABLE_THREADS
-    // Threaded resize only works if the input image is unoptimized.
+    /* Threaded resize only works if the input image is unoptimized. */
     for (i = 0; nthreads > 1 && i < gfs->nimages - 1; ++i)
         if (gfs->images[i]->left != 0
             || gfs->images[i]->top != 0
