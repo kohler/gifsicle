@@ -1,5 +1,5 @@
 /* gifread.c - Functions to read GIFs.
-   Copyright (C) 1997-2014 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2015 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -45,18 +45,15 @@ typedef struct {
 
 
 typedef struct Gif_Reader {
-
   FILE *f;
   const uint8_t *v;
-  uint32_t w;
+  uint32_t pos;
   uint32_t length;
   int is_record;
   int is_eoi;
   uint8_t (*byte_getter)(struct Gif_Reader *);
   uint32_t (*block_getter)(uint8_t*, uint32_t, struct Gif_Reader*);
-  uint32_t (*offseter)(struct Gif_Reader *);
   int (*eofer)(struct Gif_Reader *);
-
 } Gif_Reader;
 
 static Gif_ReadErrorHandler default_error_handler = 0;
@@ -65,7 +62,6 @@ static Gif_ReadErrorHandler default_error_handler = 0;
 #define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
 #define gifgetbyte(grr) ((*grr->byte_getter)(grr))
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
-#define gifgetoffset(grr) ((*grr->offseter)(grr))
 #define gifeof(grr)	((*grr->eofer)(grr))
 
 static inline uint16_t
@@ -81,7 +77,11 @@ static uint8_t
 file_byte_getter(Gif_Reader *grr)
 {
     int i = getc(grr->f);
-    return i == EOF ? 0 : (uint8_t)i;
+    if (i != EOF) {
+        ++grr->pos;
+        return i;
+    } else
+        return 0;
 }
 
 static uint32_t
@@ -90,13 +90,8 @@ file_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
     size_t nread = fread(p, 1, s, grr->f);
     if (nread < s)
         memset(p + nread, 0, s - nread);
+    grr->pos += nread;
     return nread;
-}
-
-static uint32_t
-file_offseter(Gif_Reader *grr)
-{
-    return ftell(grr->f);
 }
 
 static int
@@ -115,31 +110,27 @@ file_eofer(Gif_Reader *grr)
 static uint8_t
 record_byte_getter(Gif_Reader *grr)
 {
-  return grr->w ? (grr->w--, *grr->v++) : 0;
+    if (grr->pos < grr->length)
+        return grr->v[grr->pos++];
+    else
+        return 0;
 }
 
 static uint32_t
 record_block_getter(uint8_t *p, uint32_t s, Gif_Reader *grr)
 {
-    uint32_t ncopy = (s <= grr->w ? s : grr->w);
-    memcpy(p, grr->v, ncopy);
-    grr->w -= ncopy;
-    grr->v += ncopy;
+    uint32_t ncopy = (grr->pos + s <= grr->length ? s : grr->length - grr->pos);
+    memcpy(p, &grr->v[grr->pos], ncopy);
+    grr->pos += ncopy;
     if (ncopy < s)
         memset(p + ncopy, 0, s - ncopy);
     return ncopy;
 }
 
-static uint32_t
-record_offseter(Gif_Reader *grr)
-{
-  return grr->length - grr->w;
-}
-
 static int
 record_eofer(Gif_Reader *grr)
 {
-  return grr->w == 0;
+    return grr->pos == grr->length;
 }
 
 
@@ -147,12 +138,11 @@ static void
 make_data_reader(Gif_Reader *grr, const uint8_t *data, uint32_t length)
 {
   grr->v = data;
+  grr->pos = 0;
   grr->length = length;
-  grr->w = length;
   grr->is_record = 1;
   grr->byte_getter = record_byte_getter;
   grr->block_getter = record_block_getter;
-  grr->offseter = record_offseter;
   grr->eofer = record_eofer;
 }
 
@@ -444,32 +434,29 @@ static int
 read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
 {
   if (grr->is_record) {
-    const uint8_t *first = grr->v;
-    uint32_t pos;
+    const uint32_t image_pos = grr->pos;
 
     /* scan over image */
-    pos = 1;			/* skip min code size */
-    while (pos < grr->w) {
-      int amt = grr->v[pos];
-      pos += amt + 1;
-      if (amt == 0) break;
+    ++grr->pos; /* skip min code size */
+    while (grr->pos < grr->length) {
+        int amt = grr->v[grr->pos];
+        grr->pos += amt + 1;
+        if (amt == 0)
+            break;
     }
-    if (pos > grr->w) pos = grr->w;
+    if (grr->pos > grr->length)
+        grr->pos = grr->length;
 
-    gfi->compressed_len = pos;
+    gfi->compressed_len = grr->pos - image_pos;
     if (read_flags & GIF_READ_CONST_RECORD) {
-      gfi->compressed = (uint8_t *)first;
+      gfi->compressed = (uint8_t*) &grr->v[image_pos];
       gfi->free_compressed = 0;
     } else {
       gfi->compressed = Gif_NewArray(uint8_t, gfi->compressed_len);
       gfi->free_compressed = Gif_Free;
       if (!gfi->compressed) return 0;
-      memcpy(gfi->compressed, first, gfi->compressed_len);
+      memcpy(gfi->compressed, &grr->v[image_pos], gfi->compressed_len);
     }
-
-    /* move reader over that image */
-    grr->v += pos;
-    grr->w -= pos;
 
   } else {
     /* non-record; have to read it block by block. */
@@ -877,7 +864,7 @@ read_gif(Gif_Reader *grr, int read_flags,
      default:
        if (!unknown_block_type) {
 	 char buf[256];
-	 sprintf(buf, "unknown block type %d at file offset %d", block, gifgetoffset(grr) - 1);
+	 sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
 	 gif_read_error(&gfc, 1, buf);
 	 unknown_block_type = 1;
        }
@@ -928,10 +915,10 @@ Gif_FullReadFile(FILE *f, int read_flags,
   Gif_Reader grr;
   if (!f) return 0;
   grr.f = f;
+  grr.pos = 0;
   grr.is_record = 0;
   grr.byte_getter = file_byte_getter;
   grr.block_getter = file_block_getter;
-  grr.offseter = file_offseter;
   grr.eofer = file_eofer;
   return read_gif(&grr, read_flags, landmark, h);
 }
