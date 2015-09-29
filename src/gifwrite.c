@@ -288,24 +288,24 @@ write_compressed_data(Gif_Image *gfi,
   unsigned line_endpos;
   const uint8_t *imageline;
 
-  Gif_Node *work_node;
   unsigned run;
 #define RUN_EWMA_SHIFT 4
 #define RUN_EWMA_SCALE 19
 #define RUN_INV_THRESH ((unsigned) (1 << RUN_EWMA_SCALE) / 3000)
   unsigned run_ewma;
+  Gif_Node *work_node;
   Gif_Node *next_node;
   Gif_Code next_code = 0;
   Gif_Code output_code;
-#define CUR_BUMP_CODE (1 << cur_code_bits)
   uint8_t suffix;
 
   int cur_code_bits;
 
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
-#define CLEAR_CODE	((Gif_Code) (1 << min_code_bits))
-#define EOI_CODE	((Gif_Code) (CLEAR_CODE + 1))
+#define CLEAR_CODE      ((Gif_Code) (1 << min_code_bits))
+#define EOI_CODE        ((Gif_Code) (CLEAR_CODE + 1))
+#define CUR_BUMP_CODE   (1 << cur_code_bits)
   grr->cleared = 0;
 
   cur_code_bits = min_code_bits + 1;
@@ -313,8 +313,6 @@ write_compressed_data(Gif_Image *gfi,
   GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", CLEAR_CODE, EOI_CODE, cur_code_bits));
 
   work_node = 0;
-  run = 0;
-  run_ewma = 1 << RUN_EWMA_SCALE;
   output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
@@ -403,60 +401,60 @@ write_compressed_data(Gif_Image *gfi,
         line_endpos += gfi->width;
       }
 
-      if (!next_node) {
-	/* Output the current code. */
-	if (next_code < GIF_MAX_CODE) {
-          gfc_define(gfc, work_node, suffix, next_code);
-          next_code++;
-	} else
-	  next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
+      if (next_node) {
+        work_node = next_node;
+        ++run;
+        continue;
+      }
 
-        /* Check whether to clear table. */
-        if (next_code > 4094) {
-          int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
+      /* Output the current code. */
+      if (next_code < GIF_MAX_CODE) {
+        gfc_define(gfc, work_node, suffix, next_code);
+        next_code++;
+      } else
+        next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
 
-          if (!do_clear) {
-            unsigned pixels_left = gfi->width * gfi->height - pos;
-            if (pixels_left) {
-              /* Always clear if run_ewma gets small relative to
-                 min_code_bits. Otherwise, clear if #images/run is smaller
-                 than an empirical threshold, meaning it will take more than
-                 3000 or so average runs to complete the image. */
-              if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
-                  || pixels_left > UINT_MAX / RUN_INV_THRESH
-                  || run_ewma < pixels_left * RUN_INV_THRESH)
-                do_clear = 1;
-            }
-          }
+      /* Check whether to clear table. */
+      if (next_code > 4094) {
+        int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
 
-          if ((do_clear || run < 7) && !clear_pos) {
-            clear_pos = pos - (run + 1);
-            clear_bufpos = bufpos;
-          } else if (!do_clear && run > 50)
-            clear_pos = clear_bufpos = 0;
-
-          if (do_clear) {
-            GIF_DEBUG(("rewind %u pixels/%d bits ", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
-            output_code = CLEAR_CODE;
-            pos = clear_pos;
-            imageline = gif_imageline(gfi, pos);
-            line_endpos = gif_line_endpos(gfi, pos);
-            bufpos = clear_bufpos;
-            buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
-            work_node = 0;
-            grr->cleared = 1;
-            goto found_output_code;
+        if (!do_clear) {
+          unsigned pixels_left = gfi->width * gfi->height - pos;
+          if (pixels_left) {
+            /* Always clear if run_ewma gets small relative to
+               min_code_bits. Otherwise, clear if #images/run is smaller
+               than an empirical threshold, meaning it will take more than
+               3000 or so average runs to complete the image. */
+            if (run_ewma < ((36U << RUN_EWMA_SCALE) / min_code_bits)
+                || pixels_left > UINT_MAX / RUN_INV_THRESH
+                || run_ewma < pixels_left * RUN_INV_THRESH)
+              do_clear = 1;
           }
         }
 
-	/* Output the current code. */
-	output_code = work_node->code;
-	work_node = &gfc->nodes[suffix];
-	goto found_output_code;
+        if ((do_clear || run < 7) && !clear_pos) {
+          clear_pos = pos - (run + 1);
+          clear_bufpos = bufpos;
+        } else if (!do_clear && run > 50)
+          clear_pos = clear_bufpos = 0;
+
+        if (do_clear) {
+          GIF_DEBUG(("rewind %u pixels/%d bits ", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
+          output_code = CLEAR_CODE;
+          pos = clear_pos;
+          imageline = gif_imageline(gfi, pos);
+          line_endpos = gif_line_endpos(gfi, pos);
+          bufpos = clear_bufpos;
+          buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
+          work_node = 0;
+          grr->cleared = 1;
+          goto found_output_code;
+        }
       }
 
-      work_node = next_node;
-      ++run;
+      output_code = work_node->code;
+      work_node = &gfc->nodes[suffix];
+      goto found_output_code;
     }
 
     /* Ran out of data if we get here. */
