@@ -274,6 +274,11 @@ int             Gif_FullWriteFile(Gif_Stream *gfs,
 #define Gif_CompressImage(s, i) Gif_FullCompressImage((s),(i),0)
 #define Gif_WriteFile(s, f)     Gif_FullWriteFile((s),0,(f))
 
+typedef struct Gif_Writer Gif_Writer;
+Gif_Writer*     Gif_IncrementalWriteFileInit(Gif_Stream* gfs, const Gif_CompressInfo* gcinfo, FILE *f);
+int             Gif_IncrementalWriteImage(Gif_Writer* grr, Gif_Stream* gfs, Gif_Image* gfi);
+int             Gif_IncrementalWriteComplete(Gif_Writer* grr, Gif_Stream* gfs);
+
 
 /** HOOKS AND MISCELLANEOUS **/
 

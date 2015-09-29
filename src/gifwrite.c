@@ -70,7 +70,7 @@ typedef struct Gif_CodeTable {
 } Gif_CodeTable;
 
 
-typedef struct Gif_Writer {
+struct Gif_Writer {
   FILE *f;
   uint8_t *v;
   uint32_t pos;
@@ -83,7 +83,7 @@ typedef struct Gif_Writer {
   Gif_CodeTable code_table;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(const uint8_t *, uint16_t, struct Gif_Writer *);
-} Gif_Writer;
+};
 
 
 #define gifputbyte(b, grr)	((*grr->byte_putter)(b, grr))
@@ -829,21 +829,19 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
   gifputbyte(0, grr);
 }
 
-
 static int
 write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 {
+  Gif_Extension* gfex;
   int ok = 0;
   int i;
-  Gif_Image *gfi;
-  Gif_Extension *gfex;
 
   {
     uint8_t isgif89a = 0;
     if (gfs->end_comment || gfs->end_extension_list || gfs->loopcount > -1)
       isgif89a = 1;
     for (i = 0; i < gfs->nimages && !isgif89a; i++) {
-      gfi = gfs->images[i];
+      Gif_Image* gfi = gfs->images[i];
       if (gfi->identifier || gfi->transparent != -1 || gfi->disposal
           || gfi->delay || gfi->comment || gfi->extension_list)
         isgif89a = 1;
@@ -859,19 +857,9 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   if (gfs->loopcount > -1)
     write_netscape_loop_extension(gfs->loopcount, grr);
 
-  for (i = 0; i < gfs->nimages; i++) {
-    Gif_Image *gfi = gfs->images[i];
-    for (gfex = gfi->extension_list; gfex; gfex = gfex->next)
-      write_generic_extension(gfex, grr);
-    if (gfi->comment)
-      write_comment_extensions(gfi->comment, grr);
-    if (gfi->identifier)
-      write_name_extension(gfi->identifier, grr);
-    if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
-      write_graphic_control_extension(gfi, grr);
-    if (!write_image(gfs, gfi, grr))
+  for (i = 0; i < gfs->nimages; i++)
+    if (!Gif_IncrementalWriteImage(grr, gfs, gfs->images[i]))
       goto done;
-  }
 
   for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next)
     write_generic_extension(gfex, grr);
@@ -895,6 +883,52 @@ Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
            && write_gif(gfs, &grr);
   gif_writer_cleanup(&grr);
   return ok;
+}
+
+
+Gif_Writer*
+Gif_IncrementalWriteFileInit(Gif_Stream* gfs, const Gif_CompressInfo* gcinfo,
+                             FILE *f)
+{
+    Gif_Writer* grr = Gif_New(Gif_Writer);
+    if (!grr || !gif_writer_init(grr, f, gcinfo)) {
+        Gif_Delete(grr);
+        return NULL;
+    }
+    gifputblock((const uint8_t *)"GIF89a", 6, grr);
+    write_logical_screen_descriptor(gfs, grr);
+    if (gfs->loopcount > -1)
+        write_netscape_loop_extension(gfs->loopcount, grr);
+    return grr;
+}
+
+int
+Gif_IncrementalWriteImage(Gif_Writer* grr, Gif_Stream* gfs, Gif_Image* gfi)
+{
+    Gif_Extension *gfex;
+    for (gfex = gfi->extension_list; gfex; gfex = gfex->next)
+        write_generic_extension(gfex, grr);
+    if (gfi->comment)
+        write_comment_extensions(gfi->comment, grr);
+    if (gfi->identifier)
+        write_name_extension(gfi->identifier, grr);
+    if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
+        write_graphic_control_extension(gfi, grr);
+    return write_image(gfs, gfi, grr);
+}
+
+int
+Gif_IncrementalWriteComplete(Gif_Writer* grr, Gif_Stream* gfs)
+{
+    Gif_Extension* gfex;
+    for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next)
+        write_generic_extension(gfex, grr);
+    if (gfs->end_comment)
+        write_comment_extensions(gfs->end_comment, grr);
+    gifputbyte(';', grr);
+    gif_writer_cleanup(grr);
+    Gif_Delete(grr);
+    return 1;
 }
 
 
