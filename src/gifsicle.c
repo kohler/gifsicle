@@ -563,7 +563,7 @@ open_giffile(const char *name)
   if (name == 0 || strcmp(name, "-") == 0) {
 #ifndef OUTPUT_GIF_TO_TERMINAL
     if (isatty(fileno(stdin))) {
-      lerror("<stdin>", "is a terminal");
+      lerror("<stdin>", "Is a terminal");
       return NULL;
     }
 #endif
@@ -2040,7 +2040,7 @@ particular purpose.\n");
 
   frame_change_done();
   input_done();
-  if (mode == MERGING || mode == INFOING)
+  if ((mode == MERGING && !error_count) || mode == INFOING)
     output_frames();
 
   verbose_endline();
