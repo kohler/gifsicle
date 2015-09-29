@@ -691,8 +691,8 @@ suck_data(char *data, int *store_len, Gif_Reader *grr)
 
 
 static int
-read_unknown_extension(Gif_Stream *gfs, int kind, char* appname, int applength,
-                       int position, Gif_Reader *grr)
+read_unknown_extension(Gif_Context* gfc, Gif_Reader* grr,
+                       int kind, char* appname, int applength)
 {
     uint8_t block_len = gifgetbyte(grr);
     uint8_t* data = 0;
@@ -717,7 +717,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char* appname, int applength,
         gfex->length = data_len;
         gfex->packetized = 1;
         data[data_len] = 0;
-        Gif_AddExtension(gfs, gfex, position);
+        Gif_AddExtension(gfc->stream, gfc->gfi, gfex);
     }
 
  done:
@@ -733,7 +733,7 @@ read_unknown_extension(Gif_Stream *gfs, int kind, char* appname, int applength,
 
 
 static int
-read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
+read_application_extension(Gif_Context *gfc, Gif_Reader *grr)
 {
   Gif_Stream *gfs = gfc->stream;
   uint8_t buffer[GIF_MAX_BLOCK + 1];
@@ -762,7 +762,7 @@ read_application_extension(Gif_Context *gfc, int position, Gif_Reader *grr)
     return 1;
 
   } else
-    return read_unknown_extension(gfs, 0xFF, (char*)buffer, len, position, grr);
+    return read_unknown_extension(gfc, grr, 0xFF, (char*)buffer, len);
 }
 
 
@@ -789,7 +789,6 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_Stream *gfs;
   Gif_Image *gfi;
   Gif_Context gfc;
-  int extension_position = 0;
   int unknown_block_type = 0;
 
   if (gifgetc(grr) != 'G' ||
@@ -841,7 +840,6 @@ read_gif(Gif_Reader *grr, int read_flags,
       gfc.gfi = gfi = Gif_NewImage();
       if (!gfi)
           goto done;
-      extension_position++;
       break;
 
      case ';': /* terminator */
@@ -866,11 +864,11 @@ read_gif(Gif_Reader *grr, int read_flags,
 	break;
 
        case 0xFF:
-	read_application_extension(&gfc, extension_position, grr);
+	read_application_extension(&gfc, grr);
 	break;
 
        default:
-        read_unknown_extension(gfs, block, 0, 0, extension_position, grr);
+        read_unknown_extension(&gfc, grr, block, 0, 0);
 	break;
 
       }
@@ -891,10 +889,15 @@ read_gif(Gif_Reader *grr, int read_flags,
 
  done:
 
-  /* Move comments after last image into stream. */
+  /* Move comments and extensions after last image into stream. */
   if (gfs && gfi) {
-    gfs->comment = gfi->comment;
-    gfi->comment = 0;
+      Gif_Extension* gfex;
+      gfs->end_comment = gfi->comment;
+      gfi->comment = 0;
+      gfs->end_extension_list = gfi->extension_list;
+      gfi->extension_list = 0;
+      for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next)
+          gfex->image = NULL;
   }
 
   Gif_DeleteImage(gfi);

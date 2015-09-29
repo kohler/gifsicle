@@ -219,10 +219,10 @@ merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments)
   if (dest->loopcount < 0)
     dest->loopcount = src->loopcount;
 
-  if (src->comment && !no_comments) {
-    if (!dest->comment)
-      dest->comment = Gif_NewComment();
-    merge_comments(dest->comment, src->comment);
+  if (src->end_comment && !no_comments) {
+    if (!dest->end_comment)
+      dest->end_comment = Gif_NewComment();
+    merge_comments(dest->end_comment, src->end_comment);
   }
 }
 
@@ -359,11 +359,6 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   desti->height = srci->height;
   desti->local = localcm;
 
-  if (srci->comment) {
-    desti->comment = Gif_NewComment();
-    merge_comments(desti->comment, srci->comment);
-  }
-
   if (trivial_map && same_compressed_ok && srci->compressed) {
     desti->compressed_len = srci->compressed_len;
     desti->compressed = Gif_NewArray(uint8_t, srci->compressed_len);
@@ -384,6 +379,23 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
         for (i = 0; i < desti->width; i++, srcdata++, destdata++)
           *destdata = map[*srcdata];
       }
+  }
+
+  /* comments and extensions */
+  if (srci->comment) {
+    desti->comment = Gif_NewComment();
+    merge_comments(desti->comment, srci->comment);
+  }
+  if (srci->extension_list && !srcfr->no_extensions) {
+      Gif_Extension* gfex;
+      for (gfex = srci->extension_list; gfex; gfex = gfex->next)
+          if (gfex->kind != 255 || !srcfr->no_app_extensions)
+              Gif_AddExtension(dest, desti, Gif_CopyExtension(gfex));
+  }
+  while (srcfr->extensions) {
+      Gif_Extension* next = srcfr->extensions->next;
+      Gif_AddExtension(dest, desti, srcfr->extensions);
+      srcfr->extensions = next;
   }
 
   Gif_AddImage(dest, desti);

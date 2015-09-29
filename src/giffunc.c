@@ -24,14 +24,14 @@ Gif_NewStream(void)
   Gif_Stream *gfs = Gif_New(Gif_Stream);
   if (!gfs)
     return 0;
+  gfs->images = 0;
+  gfs->nimages = gfs->imagescap = 0;
   gfs->global = 0;
   gfs->background = 256;
   gfs->screen_width = gfs->screen_height = 0;
   gfs->loopcount = -1;
-  gfs->comment = 0;
-  gfs->images = 0;
-  gfs->nimages = gfs->imagescap = 0;
-  gfs->extensions = 0;
+  gfs->end_comment = 0;
+  gfs->end_extension_list = 0;
   gfs->errors = 0;
   gfs->userflags = 0;
   gfs->refcount = 0;
@@ -46,17 +46,19 @@ Gif_NewImage(void)
   Gif_Image *gfi = Gif_New(Gif_Image);
   if (!gfi)
     return 0;
-  gfi->identifier = 0;
-  gfi->comment = 0;
-  gfi->local = 0;
-  gfi->transparent = -1;
-  gfi->disposal = GIF_DISPOSAL_NONE;
-  gfi->delay = 0;
-  gfi->left = gfi->top = gfi->width = gfi->height = 0;
-  gfi->user_flags = 0;
-  gfi->interlace = 0;
+  gfi->width = gfi->height = 0;
   gfi->img = 0;
   gfi->image_data = 0;
+  gfi->left = gfi->top = 0;
+  gfi->delay = 0;
+  gfi->disposal = GIF_DISPOSAL_NONE;
+  gfi->interlace = 0;
+  gfi->local = 0;
+  gfi->transparent = -1;
+  gfi->user_flags = 0;
+  gfi->identifier = 0;
+  gfi->comment = 0;
+  gfi->extension_list = 0;
   gfi->free_image_data = Gif_Free;
   gfi->compressed_len = 0;
   gfi->compressed = 0;
@@ -126,8 +128,12 @@ Gif_NewExtension(int kind, const char* appname, int applength)
     if (!gfex)
         return 0;
     gfex->kind = kind;
-    if (appname
-        && (gfex->appname = (char*) Gif_NewArray(char, applength + 1))) {
+    if (appname) {
+        gfex->appname = (char*) Gif_NewArray(char, applength + 1);
+        if (!gfex->appname) {
+            Gif_Delete(gfex);
+            return 0;
+        }
         memcpy(gfex->appname, appname, applength);
         gfex->appname[applength] = 0;
         gfex->applength = applength;
@@ -136,16 +142,35 @@ Gif_NewExtension(int kind, const char* appname, int applength)
         gfex->applength = 0;
     }
     gfex->data = 0;
-    gfex->position = 0;
     gfex->stream = 0;
+    gfex->image = 0;
     gfex->next = 0;
     gfex->free_data = 0;
     gfex->packetized = 0;
-    if (!gfex->appname && appname) {
-        Gif_DeleteExtension(gfex);
-        return 0;
-    }
     return gfex;
+}
+
+Gif_Extension*
+Gif_CopyExtension(Gif_Extension* src)
+{
+    Gif_Extension* dst = Gif_NewExtension(src->kind, src->appname, src->applength);
+    if (!dst)
+        return NULL;
+    if (!src->data || !src->free_data) {
+        dst->data = src->data;
+        dst->length = src->length;
+    } else {
+        dst->data = Gif_NewArray(uint8_t, src->length);
+        if (!dst->data) {
+            Gif_DeleteExtension(dst);
+            return NULL;
+        }
+        memcpy(dst->data, src->data, src->length);
+        dst->length = src->length;
+        dst->free_data = Gif_Free;
+    }
+    dst->packetized = src->packetized;
+    return dst;
 }
 
 
@@ -248,21 +273,19 @@ Gif_AddComment(Gif_Comment *gfcom, const char *x, int xlen)
 
 
 int
-Gif_AddExtension(Gif_Stream *gfs, Gif_Extension *gfex, int pos)
+Gif_AddExtension(Gif_Stream* gfs, Gif_Image* gfi, Gif_Extension* gfex)
 {
-  Gif_Extension *prev, *trav;
-  if (gfex->stream)
-    return 0;
-  for (prev = 0, trav = gfs->extensions;
-       trav && trav->position <= pos;
-       prev = trav, trav = trav->next)
-    ;
-  if (prev)
-    prev->next = gfex;
-  else
-    gfs->extensions = gfex;
-  gfex->next = trav;
-  return 1;
+    Gif_Extension **pprev;
+    if (gfex->stream || gfex->image)
+        return 0;
+    pprev = gfi ? &gfi->extension_list : &gfs->end_extension_list;
+    while (*pprev)
+        pprev = &(*pprev)->next;
+    *pprev = gfex;
+    gfex->stream = gfs;
+    gfex->image = gfi;
+    gfex->next = 0;
+    return 1;
 }
 
 
@@ -376,15 +399,25 @@ Gif_CopyImage(Gif_Image *src)
     return 0;
 
   dest->identifier = Gif_CopyString(src->identifier);
-  if (!dest->identifier && src->identifier) goto failure;
-  if (src->comment) {
-    dest->comment = Gif_NewComment();
-    if (!dest->comment)
+  if (!dest->identifier && src->identifier)
       goto failure;
-    for (i = 0; i < src->comment->count; i++)
-      if (!Gif_AddComment(dest->comment, src->comment->str[i],
-			  src->comment->len[i]))
-	goto failure;
+  if (src->comment) {
+      dest->comment = Gif_NewComment();
+      if (!dest->comment)
+        goto failure;
+      for (i = 0; i < src->comment->count; i++)
+        if (!Gif_AddComment(dest->comment, src->comment->str[i],
+                            src->comment->len[i]))
+          goto failure;
+  }
+  if (src->extension_list) {
+      Gif_Extension* gfex = src->extension_list;
+      while (gfex) {
+          Gif_Extension* dstex = Gif_CopyExtension(gfex);
+          if (!dstex)
+              goto failure;
+          Gif_AddExtension(NULL, dest, dstex);
+      }
   }
 
   dest->local = Gif_CopyColormap(src->local);
@@ -457,26 +490,20 @@ static Gif_DeletionHook *all_hooks;
 void
 Gif_DeleteStream(Gif_Stream *gfs)
 {
-  Gif_Extension *gfex;
   Gif_DeletionHook *hook;
   int i;
   if (!gfs || --gfs->refcount > 0)
     return;
 
-  Gif_DeleteColormap(gfs->global);
-  Gif_DeleteComment(gfs->comment);
-
   for (i = 0; i < gfs->nimages; i++)
     Gif_DeleteImage(gfs->images[i]);
   Gif_DeleteArray(gfs->images);
 
-  gfex = gfs->extensions;
-  while (gfex) {
-    Gif_Extension *next = gfex->next;
-    gfex->stream = 0;
-    Gif_DeleteExtension(gfex);
-    gfex = next;
-  }
+  Gif_DeleteColormap(gfs->global);
+
+  Gif_DeleteComment(gfs->end_comment);
+  while (gfs->end_extension_list)
+      Gif_DeleteExtension(gfs->end_extension_list);
 
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_STREAM)
@@ -498,6 +525,8 @@ Gif_DeleteImage(Gif_Image *gfi)
 
   Gif_DeleteArray(gfi->identifier);
   Gif_DeleteComment(gfi->comment);
+  while (gfi->extension_list)
+      Gif_DeleteExtension(gfi->extension_list);
   Gif_DeleteColormap(gfi->local);
   if (gfi->image_data && gfi->free_image_data)
     (*gfi->free_image_data)((void *)gfi->image_data);
@@ -548,17 +577,16 @@ Gif_DeleteExtension(Gif_Extension *gfex)
   if (gfex->data && gfex->free_data)
     (*gfex->free_data)(gfex->data);
   Gif_DeleteArray(gfex->appname);
-  if (gfex->stream) {
-    Gif_Stream *gfs = gfex->stream;
-    Gif_Extension *prev, *trav;
-    for (prev = 0, trav = gfs->extensions;
-	 trav && trav != gfex;
-	 prev = trav, trav = trav->next)
-      ;
-    if (trav) {
-      if (prev) prev->next = trav->next;
-      else gfs->extensions = trav->next;
-    }
+  if (gfex->stream || gfex->image) {
+      Gif_Extension** pprev;
+      if (gfex->image)
+          pprev = &gfex->image->extension_list;
+      else
+          pprev = &gfex->stream->end_extension_list;
+      while (*pprev && *pprev != gfex)
+          pprev = &(*pprev)->next;
+      if (*pprev)
+          *pprev = gfex->next;
   }
   Gif_Delete(gfex);
 }
@@ -587,11 +615,11 @@ Gif_RemoveDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
   Gif_DeletionHook *hook = all_hooks, *prev = 0;
   while (hook) {
     if (hook->kind == kind && hook->func == func
-	&& hook->callback_data == cb) {
+        && hook->callback_data == cb) {
       if (prev)
-	prev->next = hook->next;
+        prev->next = hook->next;
       else
-	all_hooks = hook->next;
+        all_hooks = hook->next;
       Gif_Delete(hook);
       return;
     }
@@ -626,7 +654,7 @@ Gif_AddColor(Gif_Colormap *gfcm, Gif_Color *c, int look_from)
   if (look_from >= 0)
     for (i = look_from; i < gfcm->ncol; i++)
       if (GIF_COLOREQ(&gfcm->col[i], c))
-	return i;
+        return i;
   if (gfcm->ncol >= gfcm->capacity) {
     gfcm->capacity *= 2;
     Gif_ReArray(gfcm->col, Gif_Color, gfcm->capacity);
@@ -660,23 +688,9 @@ Gif_GetNamedImage(Gif_Stream *gfs, const char *name)
 
   for (i = 0; i < gfs->nimages; i++)
     if (gfs->images[i]->identifier &&
-	strcmp(gfs->images[i]->identifier, name) == 0)
+        strcmp(gfs->images[i]->identifier, name) == 0)
       return gfs->images[i];
 
-  return 0;
-}
-
-
-Gif_Extension *
-Gif_GetExtension(Gif_Stream *gfs, int id, Gif_Extension *search_from)
-{
-  if (!search_from)
-    search_from = gfs->extensions;
-  while (search_from) {
-    if (search_from->kind == id)
-      return search_from;
-    search_from = search_from->next;
-  }
   return 0;
 }
 
@@ -761,7 +775,7 @@ Gif_InterlaceLine(int line, int height)
 
 int
 Gif_SetUncompressedImage(Gif_Image *gfi, uint8_t *image_data,
-			 void (*free_data)(void *), int data_interlaced)
+                         void (*free_data)(void *), int data_interlaced)
 {
   /* NB does not affect compressed image (and must not) */
   unsigned i;
