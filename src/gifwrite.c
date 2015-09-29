@@ -82,7 +82,7 @@ struct Gif_Writer {
   int cleared;
   Gif_CodeTable code_table;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
-  void (*block_putter)(const uint8_t *, uint16_t, struct Gif_Writer *);
+  void (*block_putter)(const uint8_t *, size_t, struct Gif_Writer *);
 };
 
 
@@ -104,9 +104,9 @@ file_byte_putter(uint8_t b, Gif_Writer *grr)
 }
 
 static void
-file_block_putter(const uint8_t *block, uint16_t size, Gif_Writer *grr)
+file_block_putter(const uint8_t *block, size_t size, Gif_Writer *grr)
 {
-  if (fwrite(block, 1, size, grr->f) != (size_t) size)
+  if (fwrite(block, 1, size, grr->f) != size)
     grr->errors = 1;
 }
 
@@ -125,7 +125,7 @@ memory_byte_putter(uint8_t b, Gif_Writer *grr)
 }
 
 static void
-memory_block_putter(const uint8_t *data, uint16_t len, Gif_Writer *grr)
+memory_block_putter(const uint8_t *data, size_t len, Gif_Writer *grr)
 {
   while (grr->pos + len >= grr->cap) {
     grr->cap = (grr->cap ? grr->cap * 2 : 1024);
@@ -278,7 +278,7 @@ write_compressed_data(Gif_Image *gfi,
 		      int min_code_bits, Gif_Writer *grr)
 {
   Gif_CodeTable* gfc = &grr->code_table;
-  uint8_t stack_buffer[232];
+  uint8_t stack_buffer[512 - 24];
   uint8_t *buf = stack_buffer;
   unsigned bufpos = 0;
   unsigned bufcap = sizeof(stack_buffer) * 8;
@@ -325,7 +325,7 @@ write_compressed_data(Gif_Image *gfi,
 
     /*****
      * Output 'output_code' to the memory buffer. */
-    if (bufpos + cur_code_bits >= bufcap) {
+    if (bufpos + 32 >= bufcap) {
       unsigned ncap = bufcap * 2 + (24 << 3);
       uint8_t *nbuf = Gif_NewArray(uint8_t, ncap >> 3);
       if (!nbuf)
@@ -338,16 +338,20 @@ write_compressed_data(Gif_Image *gfi,
     }
 
     {
-      unsigned startpos = bufpos;
+      unsigned endpos = bufpos + cur_code_bits;
       do {
         if (bufpos & 7)
           buf[bufpos >> 3] |= output_code << (bufpos & 7);
-        else
-          buf[bufpos >> 3] = output_code >> (bufpos - startpos);
+        else if (bufpos & 0x7FF)
+          buf[bufpos >> 3] = output_code >> (bufpos - endpos + cur_code_bits);
+        else {
+          buf[bufpos >> 3] = 255;
+          endpos += 8;
+        }
 
         bufpos += 8 - (bufpos & 7);
-      } while (bufpos < startpos + cur_code_bits);
-      bufpos = startpos + cur_code_bits;
+      } while (bufpos < endpos);
+      bufpos = endpos;
     }
 
 
@@ -465,17 +469,10 @@ write_compressed_data(Gif_Image *gfi,
   }
 
   /* Output memory buffer to stream. */
-  {
-    unsigned outpos = 0;
-    bufpos = (bufpos + 7) >> 3;
-    while (outpos < bufpos) {
-      unsigned w = (bufpos - outpos > 255 ? 255 : bufpos - outpos);
-      gifputbyte(w, grr);
-      gifputblock(buf + outpos, w, grr);
-      outpos += w;
-    }
-    gifputbyte(0, grr);
-  }
+  bufpos = (bufpos + 7) >> 3;
+  buf[(bufpos - 1) & 0xFFFFFF00] = (bufpos - 1) & 0xFF;
+  buf[bufpos] = 0;
+  gifputblock(buf, bufpos + 1, grr);
 
   if (buf != stack_buffer)
     Gif_DeleteArray(buf);
