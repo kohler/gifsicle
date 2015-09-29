@@ -80,6 +80,7 @@ typedef struct Gif_Writer {
   int local_size;
   int errors;
   int cleared;
+  Gif_CodeTable code_table;
   void (*byte_putter)(uint8_t, struct Gif_Writer *);
   void (*block_putter)(const uint8_t *, uint16_t, struct Gif_Writer *);
 } Gif_Writer;
@@ -138,12 +139,37 @@ memory_block_putter(const uint8_t *data, uint16_t len, Gif_Writer *grr)
 
 
 static int
-gfc_init(Gif_CodeTable *gfc)
+gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
 {
-  gfc->nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
-  gfc->links = Gif_NewArray(Gif_Node *, LINKS_SIZE);
-  return gfc->nodes && gfc->links;
+  grr->f = f;
+  grr->v = NULL;
+  grr->pos = grr->cap = 0;
+  if (gcinfo)
+    grr->gcinfo = *gcinfo;
+  else
+    Gif_InitCompressInfo(&grr->gcinfo);
+  grr->errors = 0;
+  grr->cleared = 0;
+  grr->code_table.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
+  grr->code_table.links = Gif_NewArray(Gif_Node*, LINKS_SIZE);
+  if (f) {
+    grr->byte_putter = file_byte_putter;
+    grr->block_putter = file_block_putter;
+  } else {
+    grr->byte_putter = memory_byte_putter;
+    grr->block_putter = memory_block_putter;
+  }
+  return grr->code_table.nodes && grr->code_table.links;
 }
+
+static void
+gif_writer_cleanup(Gif_Writer* grr)
+{
+  Gif_DeleteArray(grr->v);
+  Gif_DeleteArray(grr->code_table.nodes);
+  Gif_DeleteArray(grr->code_table.links);
+}
+
 
 static inline void
 gfc_clear(Gif_CodeTable *gfc, Gif_Code clear_code)
@@ -249,8 +275,9 @@ gif_line_endpos(Gif_Image *gfi, unsigned pos)
 
 static int
 write_compressed_data(Gif_Image *gfi,
-		      int min_code_bits, Gif_CodeTable *gfc, Gif_Writer *grr)
+		      int min_code_bits, Gif_Writer *grr)
 {
+  Gif_CodeTable* gfc = &grr->code_table;
   uint8_t stack_buffer[232];
   uint8_t *buf = stack_buffer;
   unsigned bufpos = 0;
@@ -536,45 +563,31 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
   int ok = 0;
   uint8_t min_code_bits;
   Gif_Writer grr;
-  Gif_CodeTable gfc;
 
-  gfc_init(&gfc);
-
-  grr.v = NULL;
-  grr.pos = grr.cap = 0;
-  grr.byte_putter = memory_byte_putter;
-  grr.block_putter = memory_block_putter;
-  if (gcinfo)
-    grr.gcinfo = *gcinfo;
-  else
-    Gif_InitCompressInfo(&grr.gcinfo);
-  grr.global_size = get_color_table_size(gfs, 0, &grr);
-  grr.local_size = get_color_table_size(gfs, gfi, &grr);
-  grr.errors = 0;
-
-  if (!gfc.nodes || !gfc.links) {
+  if (!gif_writer_init(&grr, NULL, gcinfo)) {
     if (!(grr.gcinfo.flags & GIF_WRITE_SHRINK))
       Gif_ReleaseCompressedImage(gfi);
     goto done;
   }
 
+  grr.global_size = get_color_table_size(gfs, 0, &grr);
+  grr.local_size = get_color_table_size(gfs, gfi, &grr);
+
   min_code_bits = calculate_min_code_bits(gfi, &grr);
-  ok = write_compressed_data(gfi, min_code_bits, &gfc, &grr);
+  ok = write_compressed_data(gfi, min_code_bits, &grr);
   save_compression_result(gfi, &grr, ok);
 
   if ((grr.gcinfo.flags & (GIF_WRITE_OPTIMIZE | GIF_WRITE_EAGER_CLEAR))
       == GIF_WRITE_OPTIMIZE
       && grr.cleared && ok) {
     grr.gcinfo.flags |= GIF_WRITE_EAGER_CLEAR | GIF_WRITE_SHRINK;
-    if (write_compressed_data(gfi, min_code_bits, &gfc, &grr))
+    if (write_compressed_data(gfi, min_code_bits, &grr))
       save_compression_result(gfi, &grr, 1);
   }
 
  done:
-  Gif_DeleteArray(grr.v);
-  Gif_DeleteArray(gfc.nodes);
-  Gif_DeleteArray(gfc.links);
-  return grr.v != 0;
+  gif_writer_cleanup(&grr);
+  return ok;
 }
 
 
@@ -633,8 +646,7 @@ write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
 
 
 static int
-write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
-            Gif_Writer *grr)
+write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 {
   uint8_t min_code_bits, packed = 0;
   grr->local_size = get_color_table_size(gfs, gfi, grr);
@@ -679,11 +691,11 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_CodeTable *gfc,
 
   } else if (!gfi->img) {
     Gif_UncompressImage(gfs, gfi);
-    write_compressed_data(gfi, min_code_bits, gfc, grr);
+    write_compressed_data(gfi, min_code_bits, grr);
     Gif_ReleaseUncompressedImage(gfi);
 
   } else
-    write_compressed_data(gfi, min_code_bits, gfc, grr);
+    write_compressed_data(gfi, min_code_bits, grr);
 
   return 1;
 }
@@ -825,11 +837,6 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   int i;
   Gif_Image *gfi;
   Gif_Extension *gfex = gfs->extensions;
-  Gif_CodeTable gfc;
-
-  gfc_init(&gfc);
-  if (!gfc.nodes || !gfc.links)
-    goto done;
 
   {
     uint8_t isgif89a = 0;
@@ -864,7 +871,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
       write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
       write_graphic_control_extension(gfi, grr);
-    if (!write_image(gfs, gfi, &gfc, grr))
+    if (!write_image(gfs, gfi, grr))
       goto done;
   }
 
@@ -879,8 +886,6 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
   ok = 1;
 
  done:
-  Gif_DeleteArray(gfc.nodes);
-  Gif_DeleteArray(gfc.links);
   return ok;
 }
 
@@ -890,15 +895,10 @@ Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
 		  FILE *f)
 {
   Gif_Writer grr;
-  grr.f = f;
-  grr.byte_putter = file_byte_putter;
-  grr.block_putter = file_block_putter;
-  if (gcinfo)
-    grr.gcinfo = *gcinfo;
-  else
-    Gif_InitCompressInfo(&grr.gcinfo);
-  grr.errors = 0;
-  return write_gif(gfs, &grr);
+  int ok = gif_writer_init(&grr, f, gcinfo)
+           && write_gif(gfs, &grr);
+  gif_writer_cleanup(&grr);
+  return ok;
 }
 
 
