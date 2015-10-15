@@ -10,6 +10,7 @@ env:
     - CC="clang"
 script: ./configure && make check
 before_script: ./bootstrap.sh
+sudo: false
 
 addons:
   coverity_scan:
