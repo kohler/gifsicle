@@ -46,32 +46,37 @@ typedef union kacolor {
 extern uint16_t* gamma_tables[2];
 
 
-/* set `*x` to the gamma transformation of `a0/a1/a2` [RGB] */
-static inline void kc_set8g(kcolor* x, int a0, int a1, int a2) {
-    x->a[0] = gamma_tables[0][a0];
-    x->a[1] = gamma_tables[0][a1];
-    x->a[2] = gamma_tables[0][a2];
+/* set `*kc` to the gamma transformation of `a0/a1/a2` [RGB] */
+static inline void kc_set8g(kcolor* kc, int a0, int a1, int a2) {
+    kc->a[0] = gamma_tables[0][a0];
+    kc->a[1] = gamma_tables[0][a1];
+    kc->a[2] = gamma_tables[0][a2];
 }
 
 /* return the gamma transformation of `a0/a1/a2` [RGB] */
 static inline kcolor kc_make8g(int a0, int a1, int a2) {
-    kcolor x;
-    kc_set8g(&x, a0, a1, a2);
-    return x;
-}
-
-/* return the kcolor representation of `*gfc` (no gamma transformation) */
-static inline kcolor kc_makegfc(const Gif_Color* gfc) {
     kcolor kc;
-    kc.a[0] = (gfc->gfc_red << 8) + gfc->gfc_red;
-    kc.a[1] = (gfc->gfc_green << 8) + gfc->gfc_green;
-    kc.a[2] = (gfc->gfc_blue << 8) + gfc->gfc_blue;
+    kc_set8g(&kc, a0, a1, a2);
     return kc;
 }
 
 /* return the gamma transformation of `*gfc` */
 static inline kcolor kc_makegfcg(const Gif_Color* gfc) {
     return kc_make8g(gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+}
+
+/* return the uncorrected representation of `a0/a1/a2` [RGB] */
+static inline kcolor kc_make8ng(int a0, int a1, int a2) {
+    kcolor kc;
+    kc.a[0] = (a0 << 7) + (a0 >> 1);
+    kc.a[1] = (a1 << 7) + (a1 >> 1);
+    kc.a[2] = (a2 << 7) + (a2 >> 1);
+    return kc;
+}
+
+/* return the kcolor representation of `*gfc` (no gamma transformation) */
+static inline kcolor kc_makegfcng(const Gif_Color* gfc) {
+    return kc_make8ng(gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
 }
 
 /* return transparency */

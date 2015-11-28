@@ -104,7 +104,7 @@ static void all_colormap_add(const Gif_Colormap* src) {
 
     for (i = 0; i < src->ncol; ++i) {
         kchistitem* khi = kchist_add(&all_colormap_hist,
-                                     kc_makegfc(&src->col[i]), 0);
+                                     kc_makegfcng(&src->col[i]), 0);
         if (!khi->count) {
             all_colormap->col[all_colormap->ncol] = src->col[i];
             all_colormap->col[all_colormap->ncol].pixel = 0;
