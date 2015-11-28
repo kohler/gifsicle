@@ -109,7 +109,7 @@ static inline uint32_t kc_distance(const kcolor* x, const kcolor* y) {
 
 /* return the luminance value for `*x`; result is between 0 and KC_MAX */
 static inline int kc_luminance(const kcolor* x) {
-    return (306 * x->a[0] + 601 * x->a[1] + 117 * x->a[2]) >> 10;
+    return (77 * x->a[0] + 151 * x->a[1] + 29 * x->a[2]) >> 8;
 }
 
 /* set `*x` to the grayscale version of `*x`, transformed by luminance */
@@ -117,9 +117,9 @@ static inline void kc_luminance_transform(kcolor* x) {
     /* For grayscale colormaps, use distance in luminance space instead of
        distance in RGB space. The weights for the R,G,B components in
        luminance space are 0.299,0.587,0.114. Using the proportional factors
-       306, 601, and 117 we get a scaled gray value between 0 and 255 *
-       1024. Thanks to Christian Kumpf, <kumpf@igd.fhg.de>, for providing a
-       patch. */
+       77, 151, and 29 we get a scaled gray value between 0 and 255 * 257;
+       dividing by 256 gives us what we want. Thanks to Christian Kumpf,
+       <kumpf@igd.fhg.de>, for providing a patch.*/
     x->a[0] = x->a[1] = x->a[2] = kc_luminance(x);
 }
 

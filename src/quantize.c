@@ -132,8 +132,8 @@ void kc_set_gamma(int type, double gamma) {
             gamma_tables[1] = Gif_NewArray(uint16_t, 256);
         }
         for (j = 0; j != 256; ++j) {
-            gamma_tables[0][j] = (int) (pow(j/255.0, gamma) * 32767);
-            gamma_tables[1][j] = (int) (pow(j/256.0, 1/gamma) * 32767);
+            gamma_tables[0][j] = (int) (pow(j/255.0, gamma) * 32767 + 0.5);
+            gamma_tables[1][j] = (int) (pow(j/256.0, 1/gamma) * 32767 + 0.5);
             /* The ++gamma_tables[][] ensures that round-trip gamma correction
                always preserve the input colors. Without it, one might have,
                for example, input values 0, 1, and 2 all mapping to
