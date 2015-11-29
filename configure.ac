@@ -193,6 +193,16 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     ac_cv_ext_vector_type_vector_types=yes], [ac_cv_ext_vector_type_vector_types=no])
 AC_MSG_RESULT([$ac_cv_ext_vector_type_vector_types])
 
+AC_MSG_CHECKING([for __builtin_shufflevector])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [AC_INCLUDES_DEFAULT
+    [typedef float float4 __attribute__((ext_vector_type (4)));]],
+    [[float4 a;
+    a[0] = a[1] = a[2] = a[3] = (float) rand();
+    a = __builtin_shufflevector(a, a, 3, 2, 1, 0);
+    printf("%f\n", a[0]);]])],
+    [AC_DEFINE([HAVE___BUILTIN_SHUFFLEVECTOR], 1, [Define to 1 if you have the `__builtin_shufflevector' function.])])
+
 AC_ARG_ENABLE([simd],
     [AS_HELP_STRING([--disable-simd], [do not use SIMD instructions])],
     [], [enable_simd=maybe])

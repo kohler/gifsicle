@@ -252,6 +252,7 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 #if HAVE_SIMD && HAVE_VECTOR_SIZE_VECTOR_TYPES
 typedef float float4 __attribute__((vector_size (sizeof(float) * 4)));
+typedef int int4 __attribute__((vector_size (sizeof(int) * 4)));
 #elif HAVE_SIMD && HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES
 typedef float float4 __attribute__((ext_vector_type (4)));
 #else
@@ -275,17 +276,34 @@ static inline scale_color sc_makekc(const kcolor* k) {
     return sc;
 }
 
+static inline scale_color sc_make(float a0, float a1, float a2, float a3) {
+    scale_color sc;
+    sc.a[0] = a0;
+    sc.a[1] = a1;
+    sc.a[2] = a2;
+    sc.a[3] = a3;
+    return sc;
+}
+
 #if HAVE_SIMD
-#define SCVEC_ADDV(sc, sc2) (sc).a += (sc2).a
-#define SCVEC_MULF(sc, f) (sc).a *= (f)
-#define SCVEC_DIVF(sc, f) (sc).a /= (f)
-#define SCVEC_ADDVxF(sc, sc2, f) (sc).a += (sc2).a * (f)
+# define SCVEC_ADDV(sc, sc2) (sc).a += (sc2).a
+# define SCVEC_MULV(sc, sc2) (sc).a *= (sc2).a
+# define SCVEC_MULF(sc, f) (sc).a *= (f)
+# define SCVEC_DIVF(sc, f) (sc).a /= (f)
+# define SCVEC_ADDVxF(sc, sc2, f) (sc).a += (sc2).a * (f)
+# if HAVE___BUILTIN_SHUFFLEVECTOR
+#  define SCVEC_ROT3(out, sc) do { (out).a = __builtin_shufflevector((sc).a, (sc).a, 1, 2, 0, 3); } while (0)
+# else
+#  define SCVEC_ROT3(out, sc) do { int4 shufmask__ = {1, 2, 0, 3}; (out).a = __builtin_shuffle((sc).a, shufmask__); } while (0)
+# endif
 #else
-#define SCVEC_FOREACH(t) do { int k__; for (k__ = 0; k__ != 4; ++k__) { t; } } while (0)
-#define SCVEC_ADDV(sc, sc2) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__])
-#define SCVEC_MULF(sc, f) SCVEC_FOREACH((sc).a[k__] *= (f))
-#define SCVEC_DIVF(sc, f) SCVEC_FOREACH((sc).a[k__] /= (f))
-#define SCVEC_ADDVxF(sc, sc2, f) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__] * (f))
+# define SCVEC_FOREACH(t) do { int k__; for (k__ = 0; k__ != 4; ++k__) { t; } } while (0)
+# define SCVEC_ADDV(sc, sc2) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__])
+# define SCVEC_MULV(sc, sc2) SCVEC_FOREACH((sc).a[k__] *= (sc2).a[k__])
+# define SCVEC_MULF(sc, f) SCVEC_FOREACH((sc).a[k__] *= (f))
+# define SCVEC_DIVF(sc, f) SCVEC_FOREACH((sc).a[k__] /= (f))
+# define SCVEC_ADDVxF(sc, sc2, f) SCVEC_FOREACH((sc).a[k__] += (sc2).a[k__] * (f))
+# define SCVEC_ROT3(out, sc) do { float __a0 = (sc).a[0]; (out).a[0] = (sc).a[1]; (out).a[1] = (sc).a[2]; (out).a[2] = __a0; (out).a[3] = (sc).a[3]; } while (0)
 #endif
 
 #endif
