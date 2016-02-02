@@ -79,7 +79,7 @@ verror(const char* landmark, int need_file,
 void fatal_error(const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror((const char*) 0, 0, 3, format, val);
+    verror(NULL, 0, 3, format, val);
     va_end(val);
     exit(EXIT_USER_ERR);
 }
@@ -94,7 +94,7 @@ void lerror(const char* landmark, const char* format, ...) {
 void error(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror((const char*) 0, need_file, 2, format, val);
+    verror(NULL, need_file, 2, format, val);
     va_end(val);
 }
 
@@ -108,7 +108,7 @@ void lwarning(const char* landmark, const char* format, ...) {
 void warning(int need_file, const char* format, ...) {
     va_list val;
     va_start(val, format);
-    verror((const char*) 0, need_file, 1, format, val);
+    verror(NULL, need_file, 1, format, val);
     va_end(val);
 }
 
@@ -1336,7 +1336,7 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
   crop->top_offset = crop->y;
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
       || crop->x + crop->w > r || crop->y + crop->h > b) {
-      lerror(cropped_gfs ? cropped_gfs->landmark : (const char*) 0,
+      lerror(cropped_gfs ? cropped_gfs->landmark : NULL,
              "cropping dimensions don%,t fit image");
       crop->ready = 2;
   } else
