@@ -505,9 +505,9 @@ delete_viewer(Gt_Viewer *viewer)
 
   Gif_DeleteXFrames(viewer->gfx, viewer->gfs, viewer->unoptimized_frames);
   Gif_DeleteStream(viewer->gfs);
-  Gif_DeleteArray(viewer->im);
+  Gif_Free(viewer->im);
   Gif_DeleteXContext(viewer->gfx);
-  Gif_Delete(viewer);
+  Gif_Free(viewer);
 }
 
 
@@ -853,7 +853,7 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
   XSetWMIconName(viewer->display, viewer->window, &name_prop);
 
   XFree(name_prop.value);
-  Gif_DeleteArray(strs[0]);
+  Gif_Free(strs[0]);
 }
 
 static unsigned screen_memory_kb(const Gt_Viewer* viewer) {

@@ -62,7 +62,7 @@ delete_color_transforms(Gt_ColorTransform *list, color_transform_func func)
     if (trav->func == func) {
       if (prev) prev->next = next;
       else list = next;
-      Gif_Delete(trav);
+      Gif_Free(trav);
     } else
       prev = trav;
     trav = next;
@@ -172,7 +172,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   f = popen(new_command, "w");
   if (!f)
     fatal_error("can%,t run color transformation command: %s", strerror(errno));
-  Gif_DeleteArray(new_command);
+  Gif_Free(new_command);
 
   for (i = 0; i < gfcm->ncol; i++)
     fprintf(f, "%d %d %d\n", col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
@@ -259,13 +259,13 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
         for (j = 0; j < c.h; j++)
             gfi->img[j] = old_img[c.y + j] + c.x;
         gfi->img[c.h] = 0;
-        Gif_DeleteArray(old_img);
+        Gif_Free(old_img);
         gfi->width = c.w;
         gfi->height = c.h;
     } else if (preserve_total_crop)
         Gif_MakeImageEmpty(gfi);
     else {
-        Gif_DeleteArray(gfi->img);
+        Gif_Free(gfi->img);
         gfi->img = 0;
         gfi->width = gfi->height = 0;
     }
@@ -301,7 +301,7 @@ flip_image(Gif_Image* gfi, Gt_Frame *fr, int is_vert)
     gfi->left = fr->stream->screen_width - (gfi->left + width);
     if (fr->crop)
         fr->left_offset = fr->stream->screen_width - (fr->left_offset + fr->crop->w);
-    Gif_DeleteArray(buffer);
+    Gif_Free(buffer);
   }
 
   /* vertical flips */
@@ -313,7 +313,7 @@ flip_image(Gif_Image* gfi, Gt_Frame *fr, int is_vert)
     gfi->top = fr->stream->screen_height - (gfi->top + height);
     if (fr->crop)
         fr->top_offset = fr->stream->screen_height - (fr->top_offset + fr->crop->h);
-    Gif_DeleteArray(buffer);
+    Gif_Free(buffer);
   }
 }
 
@@ -404,8 +404,8 @@ static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
 
 /* free memory associated with `kcs` */
 static void kcscreen_cleanup(kcscreen* kcs) {
-    Gif_DeleteArray(kcs->data);
-    Gif_DeleteArray(kcs->scratch);
+    Gif_Free(kcs->data);
+    Gif_Free(kcs->scratch);
 }
 
 /* apply image `gfi` to screen `kcs`, using the color array `ks` */
@@ -490,8 +490,8 @@ static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
 
 /* free memory associated with `kss` */
 static void ksscreen_cleanup(ksscreen* kss) {
-    Gif_DeleteArray(kss->data);
-    Gif_DeleteArray(kss->scratch);
+    Gif_Free(kss->data);
+    Gif_Free(kss->scratch);
 }
 
 /* apply image `gfi` to screen `kss`, using the color array `ks` */
@@ -601,8 +601,8 @@ static void sctx_cleanup(scale_context* sctx) {
     ksscreen_cleanup(&sctx->iscr);
     kcscreen_cleanup(&sctx->oscr);
     kcscreen_cleanup(&sctx->xscr);
-    Gif_DeleteArray(sctx->xweights.ws);
-    Gif_DeleteArray(sctx->yweights.ws);
+    Gif_Free(sctx->xweights.ws);
+    Gif_Free(sctx->yweights.ws);
 }
 
 static void scale_image_data_point(scale_context* sctx, Gif_Image* gfo) {
@@ -620,7 +620,7 @@ static void scale_image_data_point(scale_context* sctx, Gif_Image* gfo) {
             *data = in_line[xoff[xo]];
     }
 
-    Gif_DeleteArray(xoff);
+    Gif_Free(xoff);
 }
 
 static void scale_image_prepare(scale_context* sctx) {
@@ -844,9 +844,9 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
 
     scale_image_complete(sctx, gfo);
 
-    Gif_DeleteArray(xoff);
-    Gif_DeleteArray(sc);
-    Gif_DeleteArray(nsc);
+    Gif_Free(xoff);
+    Gif_Free(sc);
+    Gif_Free(nsc);
 }
 
 static inline float mix_factor(int val, const float bounds[2]) {
@@ -911,8 +911,8 @@ static void scale_image_data_mix(scale_context* sctx, Gif_Image* gfo) {
 
     scale_image_complete(sctx, gfo);
 
-    Gif_DeleteArray(sc);
-    Gif_DeleteArray(mix);
+    Gif_Free(sc);
+    Gif_Free(mix);
 }
 
 
@@ -1063,8 +1063,8 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
 
     scale_image_complete(sctx, gfo);
 
-    Gif_DeleteArray(sc);
-    Gif_DeleteArray(kcx);
+    Gif_Free(sc);
+    Gif_Free(kcx);
 }
 
 static void scale_image_data_catrom(scale_context* sctx, Gif_Image* gfo) {
@@ -1297,7 +1297,7 @@ resize_stream(Gif_Stream* gfs,
         }
         for (i = 0; i < nthreads; ++i)
             pthread_join(ctx[i].threadid, NULL);
-        Gif_DeleteArray(ctx);
+        Gif_Free(ctx);
     }
 #else
     nthreads = 1;

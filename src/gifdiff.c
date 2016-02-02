@@ -386,12 +386,12 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 
   /* That's it! */
   Gif_DeleteColormap(newcm);
-  Gif_DeleteArray(gdata[0]);
-  Gif_DeleteArray(gdata[1]);
-  Gif_DeleteArray(glast[0]);
-  Gif_DeleteArray(glast[1]);
-  Gif_DeleteArray(scratch);
-  Gif_DeleteArray(line);
+  Gif_Free(gdata[0]);
+  Gif_Free(gdata[1]);
+  Gif_Free(glast[0]);
+  Gif_Free(glast[1]);
+  Gif_Free(scratch);
+  Gif_Free(line);
 
   return was_different ? DIFFERENT : SAME;
 }

@@ -82,8 +82,8 @@ void
 delete_opt_data(Gif_OptData *od)
 {
   if (!od) return;
-  Gif_DeleteArray(od->needed_colors);
-  Gif_Delete(od);
+  Gif_Free(od->needed_colors);
+  Gif_Free(od);
 }
 
 
@@ -290,7 +290,7 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
 
  error:
   /* If we get here, it failed! Return 0 and don't change global state. */
-  Gif_DeleteArray(map);
+  Gif_Free(map);
   return 0;
 }
 

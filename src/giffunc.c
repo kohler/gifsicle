@@ -90,7 +90,7 @@ Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
   if (!gfcm || capacity <= 0 || count < 0) {
-    Gif_Delete(gfcm);
+    Gif_Free(gfcm);
     return 0;
   }
   if (count > capacity)
@@ -101,7 +101,7 @@ Gif_NewFullColormap(int count, int capacity)
   gfcm->refcount = 0;
   gfcm->userflags = 0;
   if (!gfcm->col) {
-    Gif_Delete(gfcm);
+    Gif_Free(gfcm);
     return 0;
   } else
     return gfcm;
@@ -131,7 +131,7 @@ Gif_NewExtension(int kind, const char* appname, int applength)
     if (appname) {
         gfex->appname = (char*) Gif_NewArray(char, applength + 1);
         if (!gfex->appname) {
-            Gif_Delete(gfex);
+            Gif_Free(gfex);
             return 0;
         }
         memcpy(gfex->appname, appname, applength);
@@ -265,7 +265,7 @@ Gif_AddComment(Gif_Comment *gfcom, const char *x, int xlen)
     return 0;
   memcpy(new_x, x, xlen);
   if (Gif_AddCommentTake(gfcom, new_x, xlen) == 0) {
-    Gif_DeleteArray(new_x);
+    Gif_Free(new_x);
     return 0;
   } else
     return 1;
@@ -497,7 +497,7 @@ Gif_DeleteStream(Gif_Stream *gfs)
 
   for (i = 0; i < gfs->nimages; i++)
     Gif_DeleteImage(gfs->images[i]);
-  Gif_DeleteArray(gfs->images);
+  Gif_Free(gfs->images);
 
   Gif_DeleteColormap(gfs->global);
 
@@ -508,7 +508,7 @@ Gif_DeleteStream(Gif_Stream *gfs)
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_STREAM)
       (*hook->func)(GIF_T_STREAM, gfs, hook->callback_data);
-  Gif_Delete(gfs);
+  Gif_Free(gfs);
 }
 
 
@@ -523,19 +523,19 @@ Gif_DeleteImage(Gif_Image *gfi)
     if (hook->kind == GIF_T_IMAGE)
       (*hook->func)(GIF_T_IMAGE, gfi, hook->callback_data);
 
-  Gif_DeleteArray(gfi->identifier);
+  Gif_Free(gfi->identifier);
   Gif_DeleteComment(gfi->comment);
   while (gfi->extension_list)
       Gif_DeleteExtension(gfi->extension_list);
   Gif_DeleteColormap(gfi->local);
   if (gfi->image_data && gfi->free_image_data)
     (*gfi->free_image_data)((void *)gfi->image_data);
-  Gif_DeleteArray(gfi->img);
+  Gif_Free(gfi->img);
   if (gfi->compressed && gfi->free_compressed)
     (*gfi->free_compressed)((void *)gfi->compressed);
   if (gfi->user_data && gfi->free_user_data)
     (*gfi->free_user_data)(gfi->user_data);
-  Gif_Delete(gfi);
+  Gif_Free(gfi);
 }
 
 
@@ -550,8 +550,8 @@ Gif_DeleteColormap(Gif_Colormap *gfcm)
     if (hook->kind == GIF_T_COLORMAP)
       (*hook->func)(GIF_T_COLORMAP, gfcm, hook->callback_data);
 
-  Gif_DeleteArray(gfcm->col);
-  Gif_Delete(gfcm);
+  Gif_Free(gfcm->col);
+  Gif_Free(gfcm);
 }
 
 
@@ -562,10 +562,10 @@ Gif_DeleteComment(Gif_Comment *gfcom)
   if (!gfcom)
     return;
   for (i = 0; i < gfcom->count; i++)
-    Gif_DeleteArray(gfcom->str[i]);
-  Gif_DeleteArray(gfcom->str);
-  Gif_DeleteArray(gfcom->len);
-  Gif_Delete(gfcom);
+    Gif_Free(gfcom->str[i]);
+  Gif_Free(gfcom->str);
+  Gif_Free(gfcom->len);
+  Gif_Free(gfcom);
 }
 
 
@@ -576,7 +576,7 @@ Gif_DeleteExtension(Gif_Extension *gfex)
     return;
   if (gfex->data && gfex->free_data)
     (*gfex->free_data)(gfex->data);
-  Gif_DeleteArray(gfex->appname);
+  Gif_Free(gfex->appname);
   if (gfex->stream || gfex->image) {
       Gif_Extension** pprev;
       if (gfex->image)
@@ -588,7 +588,7 @@ Gif_DeleteExtension(Gif_Extension *gfex)
       if (*pprev)
           *pprev = gfex->next;
   }
-  Gif_Delete(gfex);
+  Gif_Free(gfex);
 }
 
 
@@ -620,7 +620,7 @@ Gif_RemoveDeletionHook(int kind, void (*func)(int, void *, void *), void *cb)
         prev->next = hook->next;
       else
         all_hooks = hook->next;
-      Gif_Delete(hook);
+      Gif_Free(hook);
       return;
     }
     prev = hook;
@@ -708,7 +708,7 @@ Gif_ReleaseCompressedImage(Gif_Image *gfi)
 void
 Gif_ReleaseUncompressedImage(Gif_Image *gfi)
 {
-  Gif_DeleteArray(gfi->img);
+  Gif_Free(gfi->img);
   if (gfi->image_data && gfi->free_image_data)
     (*gfi->free_image_data)(gfi->image_data);
   gfi->img = 0;
