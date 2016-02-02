@@ -892,15 +892,14 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.prefix);
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
+  gfc.gfi = 0;
 
   if (gfs)
     gfs->errors = gfc.errors[1];
   if (gfs && gfc.errors[1] == 0
       && !(read_flags & GIF_READ_TRAILING_GARBAGE_OK)
-      && !grr->eofer(grr)) {
-      gfc.gfi = 0;
+      && !grr->eofer(grr))
       gif_read_error(&gfc, 0, "trailing garbage after GIF ignored");
-  }
   /* finally, export last message */
   gif_read_error(&gfc, -1, 0);
 
