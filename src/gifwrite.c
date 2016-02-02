@@ -165,9 +165,9 @@ gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
 static void
 gif_writer_cleanup(Gif_Writer* grr)
 {
-  Gif_DeleteArray(grr->v);
-  Gif_DeleteArray(grr->code_table.nodes);
-  Gif_DeleteArray(grr->code_table.links);
+  Gif_Free(grr->v);
+  Gif_Free(grr->code_table.nodes);
+  Gif_Free(grr->code_table.links);
 }
 
 
@@ -332,7 +332,7 @@ write_compressed_data(Gif_Image *gfi,
         goto error;
       memcpy(nbuf, buf, bufcap >> 3);
       if (buf != stack_buffer)
-        Gif_DeleteArray(buf);
+        Gif_Free(buf);
       buf = nbuf;
       bufcap = ncap;
     }
@@ -475,12 +475,12 @@ write_compressed_data(Gif_Image *gfi,
   gifputblock(buf, bufpos + 1, grr);
 
   if (buf != stack_buffer)
-    Gif_DeleteArray(buf);
+    Gif_Free(buf);
   return 1;
 
  error:
   if (buf != stack_buffer)
-    Gif_DeleteArray(buf);
+    Gif_Free(buf);
   return 0;
 }
 
@@ -887,7 +887,7 @@ Gif_IncrementalWriteFileInit(Gif_Stream* gfs, const Gif_CompressInfo* gcinfo,
 {
     Gif_Writer* grr = Gif_New(Gif_Writer);
     if (!grr || !gif_writer_init(grr, f, gcinfo)) {
-        Gif_Delete(grr);
+        Gif_Free(grr);
         return NULL;
     }
     gifputblock((const uint8_t *)"GIF89a", 6, grr);
@@ -922,7 +922,7 @@ Gif_IncrementalWriteComplete(Gif_Writer* grr, Gif_Stream* gfs)
         write_comment_extensions(gfs->end_comment, grr);
     gifputbyte(';', grr);
     gif_writer_cleanup(grr);
-    Gif_Delete(grr);
+    Gif_Free(grr);
     return 1;
 }
 

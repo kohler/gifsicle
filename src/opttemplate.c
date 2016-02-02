@@ -578,9 +578,9 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
     }
   }
 
-  Gif_DeleteArray(X(next_data));
+  Gif_Free(X(next_data));
   if (previous_data)
-      Gif_DeleteArray(previous_data);
+      Gif_Free(previous_data);
 }
 
 
@@ -699,9 +699,9 @@ X(create_out_global_map)(Gif_Stream *gfs)
     gfs->background = ordering[background];
 
   /* cleanup */
-  Gif_DeleteArray(penalty);
-  Gif_DeleteArray(permute);
-  Gif_DeleteArray(ordering);
+  Gif_Free(penalty);
+  Gif_Free(permute);
+  Gif_Free(ordering);
 }
 
 
@@ -921,7 +921,7 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
 	  Gif_ReleaseCompressedImage(cur_gfi);
       }
 
-      Gif_DeleteArray(map);
+      Gif_Free(map);
     }
 
     delete_opt_data(opt);
@@ -944,7 +944,7 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
   }
 
   if (previous_data)
-      Gif_DeleteArray(previous_data);
+      Gif_Free(previous_data);
 }
 
 
@@ -954,6 +954,6 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
 
 static void
 X(finalize_optimizer_data)(void) {
-    Gif_DeleteArray(X(last_data));
-    Gif_DeleteArray(X(this_data));
+    Gif_Free(X(last_data));
+    Gif_Free(X(this_data));
 }

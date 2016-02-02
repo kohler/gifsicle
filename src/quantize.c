@@ -121,8 +121,8 @@ void kc_set_gamma(int type, double gamma) {
         return;
     if (type == KC_GAMMA_SRGB) {
         if (gamma_tables[0] != srgb_gamma_table_256) {
-            Gif_DeleteArray(gamma_tables[0]);
-            Gif_DeleteArray(gamma_tables[1]);
+            Gif_Free(gamma_tables[0]);
+            Gif_Free(gamma_tables[1]);
         }
         gamma_tables[0] = (uint16_t*) srgb_gamma_table_256;
         gamma_tables[1] = (uint16_t*) srgb_revgamma_table_256;
@@ -203,7 +203,7 @@ void kchist_init(kchist* kch) {
 }
 
 void kchist_cleanup(kchist* kch) {
-    Gif_DeleteArray(kch->h);
+    Gif_Free(kch->h);
     kch->h = NULL;
 }
 
@@ -260,7 +260,7 @@ static void kchist_grow(kchist* kch) {
     for (i = 0; i != oldcapacity; ++i)
         if (oldh[i].count)
             kchist_add(kch, oldh[i].ka.k, oldh[i].count);
-    Gif_DeleteArray(oldh);
+    Gif_Free(oldh);
 }
 
 void kchist_compress(kchist* kch) {
@@ -507,7 +507,7 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
         adapt[i] = kc_togfcg(&kc);
     }
 
-    Gif_DeleteArray(slots);
+    Gif_Free(slots);
     gfcm->ncol = nadapt;
     return gfcm;
 }
@@ -532,10 +532,10 @@ void kcdiversity_init(kcdiversity* div, kchist* kch, int dodither) {
 }
 
 void kcdiversity_cleanup(kcdiversity* div) {
-    Gif_DeleteArray(div->closest);
-    Gif_DeleteArray(div->min_dist);
-    Gif_DeleteArray(div->min_dither_dist);
-    Gif_DeleteArray(div->chosen);
+    Gif_Free(div->closest);
+    Gif_Free(div->min_dist);
+    Gif_Free(div->min_dither_dist);
+    Gif_Free(div->chosen);
 }
 
 int kcdiversity_find_popular(kcdiversity* div) {
@@ -635,8 +635,8 @@ static void colormap_diversity_do_blend(kcdiversity* div) {
             for (k = 0; k != 3; ++k)
                 hist[match].ka.a[k] = (int) (di[i].a[k] / di[i].a[3]);
     }
-    Gif_DeleteArray(chosenmap);
-    Gif_DeleteArray(di);
+    Gif_Free(chosenmap);
+    Gif_Free(di);
 }
 
 
@@ -748,9 +748,9 @@ void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*)) {
 }
 
 void kd3_cleanup(kd3_tree* kd3) {
-    Gif_DeleteArray(kd3->tree);
-    Gif_DeleteArray(kd3->ks);
-    Gif_DeleteArray(kd3->xradius);
+    Gif_Free(kd3->tree);
+    Gif_Free(kd3->ks);
+    Gif_Free(kd3->xradius);
 }
 
 void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
@@ -761,8 +761,8 @@ void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
     kd3->ks[kd3->nitems] = *k;
     ++kd3->nitems;
     if (kd3->tree) {
-        Gif_DeleteArray(kd3->tree);
-        Gif_DeleteArray(kd3->xradius);
+        Gif_Free(kd3->tree);
+        Gif_Free(kd3->xradius);
         kd3->tree = NULL;
         kd3->xradius = NULL;
     }
@@ -949,7 +949,7 @@ void kd3_build(kd3_tree* kd3) {
 #if ENABLE_THREADS
     pthread_mutex_unlock(&kd3_sort_lock);
 #endif
-    Gif_DeleteArray(perm);
+    Gif_Free(perm);
 }
 
 void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
@@ -1184,8 +1184,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   }
 
   /* delete temporary storage */
-  Gif_DeleteArray(err);
-  Gif_DeleteArray(err1);
+  Gif_Free(err);
+  Gif_Free(err1);
 }
 
 
@@ -1476,8 +1476,8 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
         }
 
     /* delete temporary storage */
-    Gif_DeleteArray(ordered_dither_lum);
-    Gif_DeleteArray(plan);
+    Gif_Free(ordered_dither_lum);
+    Gif_Free(plan);
 }
 
 
@@ -1573,7 +1573,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
   if (new_cm->capacity < 256) {
     Gif_Color *x = Gif_NewArray(Gif_Color, 256);
     memcpy(x, new_col, sizeof(Gif_Color) * new_ncol);
-    Gif_DeleteArray(new_col);
+    Gif_Free(new_col);
     new_cm->col = new_col = x;
     new_cm->capacity = 256;
   }
@@ -1902,7 +1902,7 @@ static uint8_t* halftone_pixel_matrix(halftone_pixelinfo* hp,
         for (i = 0; i != w * h; ++i)
             m[4 + hp[i].x + hp[i].y*w] = i;
     }
-    Gif_DeleteArray(hp);
+    Gif_Free(hp);
     return m;
 }
 
@@ -1947,7 +1947,7 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
 
     /* parse dither name */
     if (od->dither_type == dither_ordered_new)
-        Gif_DeleteArray(od->dither_data);
+        Gif_Free((char *)od->dither_data);
     od->dither_type = dither_none;
 
     if (strcmp(name, "none") == 0 || strcmp(name, "posterize") == 0)

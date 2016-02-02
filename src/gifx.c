@@ -70,7 +70,7 @@ load_closest(Gif_XContext *gfx)
   }
   gfx->nclosest = ncolor;
 
-  Gif_DeleteArray(color);
+  Gif_Free(color);
 }
 
 
@@ -169,8 +169,8 @@ create_x_colormap_extension(Gif_XContext *gfx, Gif_Colormap *gfcm)
     gfx->xcolormap = gfxc;
     return gfxc;
   } else {
-    Gif_Delete(gfxc);
-    Gif_DeleteArray(pixels);
+    Gif_Free(gfxc);
+    Gif_Free(pixels);
     return 0;
   }
 }
@@ -388,7 +388,7 @@ put_sub_image_colormap(Gif_XContext *gfx,
   XPutImage(gfx->display, pixmap, gfx->image_gc, ximage, 0, 0,
 	    pixmap_x, pixmap_y, width, height);
 
-  Gif_DeleteArray(xdata);
+  Gif_Free(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */
   XDestroyImage(ximage);
 
@@ -528,7 +528,7 @@ Gif_XSubMask(Gif_XContext* gfx, Gif_Stream* gfs, Gif_Image* gfi,
     XPutImage(gfx->display, pixmap, gfx->mask_gc, ximage, 0, 0, 0, 0,
 	      width, height);
 
-  Gif_DeleteArray(xdata);
+  Gif_Free(xdata);
   ximage->data = 0; /* avoid freeing it again in XDestroyImage */
   XDestroyImage(ximage);
 
@@ -665,7 +665,7 @@ Gif_DeleteXFrames(Gif_XContext *gfx, Gif_Stream *gfs, Gif_XFrame *fs)
   for (i = 0; i < gfs->nimages; ++i)
     if (fs[i].pixmap)
       XFreePixmap(gfx->display, fs[i].pixmap);
-  Gif_DeleteArray(fs);
+  Gif_Free(fs);
 }
 
 Pixmap
@@ -767,8 +767,8 @@ delete_xcolormap(Gif_XColormap *gfxc)
     prev->next = gfxc->next;
   else
     gfx->xcolormap = gfxc->next;
-  Gif_DeleteArray(gfxc->pixels);
-  Gif_Delete(gfxc);
+  Gif_Free(gfxc->pixels);
+  Gif_Free(gfxc);
 }
 
 static void
@@ -841,9 +841,9 @@ Gif_DeleteXContext(Gif_XContext *gfx)
     XFreeGC(gfx->display, gfx->image_gc);
   if (gfx->mask_gc)
     XFreeGC(gfx->display, gfx->mask_gc);
-  Gif_DeleteArray(gfx->closest);
+  Gif_Free(gfx->closest);
   Gif_RemoveDeletionHook(GIF_T_COLORMAP, delete_colormap_hook, gfx);
-  Gif_Delete(gfx);
+  Gif_Free(gfx);
 }
 
 

@@ -310,8 +310,6 @@ void            Gif_Free(void* p);
 # define Gif_New(t)             ((t*) Gif_Realloc(0, sizeof(t), 1, __FILE__, __LINE__))
 # define Gif_NewArray(t, n)     ((t*) Gif_Realloc(0, sizeof(t), (n), __FILE__, __LINE__))
 # define Gif_ReArray(p, t, n)   ((p)=(t*) Gif_Realloc((void*) (p), sizeof(t), (n), __FILE__, __LINE__))
-# define Gif_Delete(p)          Gif_Free((void*) (p))
-# define Gif_DeleteArray(p)     Gif_Free((void*) (p))
 #endif
 
 #ifdef __cplusplus

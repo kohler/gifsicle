@@ -540,9 +540,9 @@ Gif_FullUncompressImage(Gif_Stream* gfs, Gif_Image* gfi,
     ok = uncompress_image(&gfc, gfi, &grr);
   }
 
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.length);
+  Gif_Free(gfc.prefix);
+  Gif_Free(gfc.suffix);
+  Gif_Free(gfc.length);
   if (gfc.errors[0] || gfc.errors[1])
       gif_read_error(&gfc, -1, 0);
   return ok && !gfc.errors[1];
@@ -709,7 +709,7 @@ read_unknown_extension(Gif_Context* gfc, Gif_Reader* grr,
 
  done:
     if (!gfex)
-        Gif_DeleteArray(data);
+        Gif_Free(data);
     while (block_len > 0) {
         uint8_t buffer[GIF_MAX_BLOCK];
         gifgetblock(buffer, block_len, grr);
@@ -888,10 +888,10 @@ read_gif(Gif_Reader *grr, int read_flags,
   }
 
   Gif_DeleteImage(gfi);
-  Gif_DeleteArray(last_name);
-  Gif_DeleteArray(gfc.prefix);
-  Gif_DeleteArray(gfc.suffix);
-  Gif_DeleteArray(gfc.length);
+  Gif_Free(last_name);
+  Gif_Free(gfc.prefix);
+  Gif_Free(gfc.suffix);
+  Gif_Free(gfc.length);
 
   if (gfs)
     gfs->errors = gfc.errors[1];

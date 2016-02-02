@@ -134,12 +134,12 @@ unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 
   put_image_in_screen(gfs, gfi, new_screen);
   if (!create_image_data(gfs, gfi, new_screen, new_data, &used_transparent)) {
-    Gif_DeleteArray(new_data);
+    Gif_Free(new_data);
     return 0;
   }
 
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-    Gif_DeleteArray(new_screen);
+    Gif_Free(new_screen);
   else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
     put_background_in_screen(gfs, gfi, screen);
 
@@ -223,7 +223,7 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
         gfs->images[i]->disposal = GIF_DISPOSAL_BACKGROUND;
   }
 
-  Gif_DeleteArray(screen);
+  Gif_Free(screen);
   return ok;
 }
 

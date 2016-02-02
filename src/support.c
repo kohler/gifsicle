@@ -515,7 +515,7 @@ explode_filename(const char *filename, int number, const char *name, int max_nim
   int l = strlen(filename);
   l += name ? strlen(name) : 10;
 
-  Gif_Delete(s);
+  Gif_Free(s);
   s = Gif_NewArray(char, l + 3);
   if (name)
     sprintf(s, "%s.%s", filename, name);
@@ -1611,7 +1611,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     /* Names and comments */
     if (fr->name || fr->no_name) {
-      Gif_DeleteArray(desti->identifier);
+      Gif_Free(desti->identifier);
       desti->identifier = Gif_CopyString(fr->name);
     }
     if (fr->no_comments && desti->comment) {
@@ -1744,8 +1744,8 @@ blank_frameset(Gt_Frameset *fset, int f1, int f2, int delete_object)
       blank_frameset(FRAME(fset, i).nest, 0, 0, 1);
   }
   if (delete_object) {
-    Gif_DeleteArray(fset->f);
-    Gif_Delete(fset);
+    Gif_Free(fset->f);
+    Gif_Free(fset);
   }
 }
 
