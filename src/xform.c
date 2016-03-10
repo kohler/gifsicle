@@ -1277,7 +1277,7 @@ resize_stream(Gif_Stream* gfs,
             || gfs->images[i]->top != 0
             || gfs->images[i]->width != gfs->screen_width
             || gfs->images[i]->height != gfs->screen_height
-            || (i != gfs->nimages
+            || (i != gfs->nimages - 1
                 && gfs->images[i]->disposal != GIF_DISPOSAL_BACKGROUND
                 && gfs->images[i+1]->transparent >= 0)) {
             warning(1, "image too complex for multithreaded resize, using 1 thread\n  (Try running the GIF through %<gifsicle -U%>.)");
