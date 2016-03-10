@@ -1272,12 +1272,13 @@ resize_stream(Gif_Stream* gfs,
         nthreads = gfs->nimages;
 #if ENABLE_THREADS
     /* Threaded resize only works if the input image is unoptimized. */
-    for (i = 0; nthreads > 1 && i < gfs->nimages - 1; ++i)
+    for (i = 0; nthreads > 1 && i < gfs->nimages; ++i)
         if (gfs->images[i]->left != 0
             || gfs->images[i]->top != 0
             || gfs->images[i]->width != gfs->screen_width
             || gfs->images[i]->height != gfs->screen_height
-            || (gfs->images[i]->disposal != GIF_DISPOSAL_BACKGROUND
+            || (i != gfs->nimages
+                && gfs->images[i]->disposal != GIF_DISPOSAL_BACKGROUND
                 && gfs->images[i+1]->transparent >= 0)) {
             warning(1, "image too complex for multithreaded resize, using 1 thread\n  (Try running the GIF through %<gifsicle -U%>.)");
             nthreads = 1;
