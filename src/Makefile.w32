@@ -18,32 +18,24 @@
 GIFWRITE_OBJ = gifwrite.obj
 #GIFWRITE_OBJ = ungifwrt.obj
 
-# *** SUPPORTING WILDCARD EXPANSION ***
-# Define `SETARGV_OBJ' to the filename for the `setargv.obj' object file.
-# The definition included here works for Microsoft compilers; you will
-# probably need to change it if you're using a different compiler. You can
-# define it to the empty string, in which case Gifsicle will compile fine,
-# but you won't be able to use wildcards in file name arguments.
-SETARGV_OBJ = $(MSDevDir)\lib\setargv.obj
-
 CC = cl
-CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W3 /O2
+CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W2 /O2
+LDLIBS = setargv.obj
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
 	$(GIFWRITE_OBJ) merge.obj optimize.obj quantize.obj support.obj \
-	xform.obj gifsicle.obj $(SETARGV_OBJ)
+	xform.obj gifsicle.obj
 
-GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj \
-	$(SETARGV_OBJ)
+GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj
 
 .c.obj:
 	$(CC) $(CFLAGS) /c $<
 
 gifsicle.exe: $(GIFSICLE_OBJS)
-	$(CC) $(CFLAGS) /Fegifsicle.exe $(GIFSICLE_OBJS)
+	$(CC) $(CFLAGS) /Fegifsicle.exe $(GIFSICLE_OBJS) /link $(LDLIBS)
 
 gifdiff.exe: $(GIFDIFF_OBJS)
-	$(CC) $(CFLAGS) /Fegifdiff.exe $(GIFDIFF_OBJS)
+	$(CC) $(CFLAGS) /Fegifdiff.exe $(GIFDIFF_OBJS) /link $(LDLIBS)
 
 clp.obj: ..\config.h ..\include\lcdf\clp.h clp.c
 
