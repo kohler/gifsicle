@@ -569,6 +569,15 @@ typedef struct {
     int scale_colors;
 } scale_context;
 
+#if ENABLE_THREADS
+static pthread_mutex_t global_colormap_lock = PTHREAD_MUTEX_INITIALIZER;
+#define GLOBAL_COLORMAP_LOCK() pthread_mutex_lock(&global_colormap_lock)
+#define GLOBAL_COLORMAP_UNLOCK() pthread_mutex_unlock(&global_colormap_lock)
+#else
+#define GLOBAL_COLORMAP_LOCK() /* nada */
+#define GLOBAL_COLORMAP_UNLOCK() /* nada */
+#endif
+
 static void sctx_init(scale_context* sctx, Gif_Stream* gfs, int nw, int nh) {
     sctx->gfs = gfs;
     sctx->gfi = NULL;
@@ -623,6 +632,15 @@ static void scale_image_data_point(scale_context* sctx, Gif_Image* gfo) {
     Gif_DeleteArray(xoff);
 }
 
+static void scale_image_update_global_kd3(scale_context* sctx) {
+    Gif_Colormap* gfcm = sctx->gfs->global;
+    assert(sctx->kd3 == &sctx->global_kd3);
+    while (sctx->kd3->nitems < gfcm->ncol) {
+        Gif_Color* gfc = &gfcm->col[sctx->kd3->nitems];
+        kd3_add8g(sctx->kd3, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+    }
+}
+
 static void scale_image_prepare(scale_context* sctx) {
     if (sctx->gfi->local) {
         sctx->kd3 = &sctx->local_kd3;
@@ -630,7 +648,12 @@ static void scale_image_prepare(scale_context* sctx) {
     } else {
         sctx->kd3 = &sctx->global_kd3;
         if (!sctx->kd3->ks)
-            kd3_init_build(sctx->kd3, NULL, sctx->gfs->global);
+            kd3_init(sctx->kd3, NULL);
+        GLOBAL_COLORMAP_LOCK();
+        scale_image_update_global_kd3(sctx);
+        GLOBAL_COLORMAP_UNLOCK();
+        if (!sctx->kd3->tree)
+            kd3_build(sctx->kd3);
         kd3_enable_all(sctx->kd3);
     }
     if (sctx->gfi->transparent >= 0
@@ -741,12 +764,31 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
                 data[xo] = transparent;
     }
 
+    /* if the global colormap has changed, we must retry
+       (this can only happen if ENABLE_THREADS) */
+    if (!sctx->gfi->local) {
+        Gif_Colormap* gfcm = sctx->gfs->global;
+        GLOBAL_COLORMAP_LOCK();
+        if (gfcm->ncol > sctx->kd3->nitems) {
+            scale_image_update_global_kd3(sctx);
+            GLOBAL_COLORMAP_UNLOCK();
+            goto retry;
+        }
+    }
+
+    /* maybe add some colors */
     if (max_dist > sctx->max_desired_dist) {
         Gif_Colormap* gfcm = sctx->gfi->local ? sctx->gfi->local : sctx->gfs->global;
         if (gfcm->ncol < sctx->scale_colors
-            && scale_image_add_colors(sctx, gfo))
+            && scale_image_add_colors(sctx, gfo)) {
+            if (!sctx->gfi->local)
+                GLOBAL_COLORMAP_UNLOCK();
             goto retry;
+        }
     }
+
+    if (!sctx->gfi->local)
+        GLOBAL_COLORMAP_UNLOCK();
 
     /* apply disposal to sctx->iscr and sctx->oscr */
     if (sctx->imageno != sctx->gfs->nimages - 1) {
