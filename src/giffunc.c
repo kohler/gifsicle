@@ -417,6 +417,7 @@ Gif_CopyImage(Gif_Image *src)
           if (!dstex)
               goto failure;
           Gif_AddExtension(NULL, dest, dstex);
+          gfex = gfex->next;
       }
   }
 
