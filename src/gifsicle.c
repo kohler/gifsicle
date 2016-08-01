@@ -909,7 +909,7 @@ write_stream(const char *output_name, Gif_Stream *gfs)
   else {
 #ifndef OUTPUT_GIF_TO_TERMINAL
     if (isatty(fileno(stdout))) {
-      lerror("<stdout>", "is a terminal");
+      lerror("<stdout>", "Is a terminal: try `-o OUTPUTFILE`");
       return;
     }
 #endif
