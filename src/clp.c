@@ -32,6 +32,9 @@
 #if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
+#if HAVE_INTTYPES_H || !defined(HAVE_CONFIG_H)
+# include <inttypes.h>
+#endif
 
 /* By default, assume we have inttypes.h, strtoul, and uintptr_t. */
 #if !defined(HAVE_STRTOUL) && !defined(HAVE_CONFIG_H)

@@ -3,6 +3,7 @@ AC_INIT([gifsicle], [1.88])
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE
+ac_user_cc=${CC+y}
 
 AC_PROG_MAKE_SET
 AC_PROG_CC
@@ -21,8 +22,11 @@ AC_ARG_ENABLE([gifdiff],
     [if test "x$enableval" != xyes; then build_gifdiff=no; fi])
 
 AC_ARG_ENABLE([warnings],
-    [AS_HELP_STRING([--enable-warnings], [compile with -W -Wall])],
-    [if test "x$enableval" = xyes; then CC="$CC -W -Wall"; fi])
+    [AS_HELP_STRING([--disable-warnings], [compile without -W -Wall])],
+    [:], [enable_warnings=yes])
+if test x$enable_warnings = xyes; then
+    CC="$CC -W -Wall"
+fi
 
 WERROR=
 AC_ARG_ENABLE([werror],

@@ -288,11 +288,11 @@ write_compressed_data(Gif_Image *gfi,
   unsigned line_endpos;
   const uint8_t *imageline;
 
-  unsigned run;
+  unsigned run = 0;
 #define RUN_EWMA_SHIFT 4
 #define RUN_EWMA_SCALE 19
 #define RUN_INV_THRESH ((unsigned) (1 << RUN_EWMA_SCALE) / 3000)
-  unsigned run_ewma;
+  unsigned run_ewma = 0;
   Gif_Node *work_node;
   Gif_Node *next_node;
   Gif_Code next_code = 0;
