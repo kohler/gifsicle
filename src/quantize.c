@@ -415,12 +415,12 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
       && od->colormap_needs_transparency)
     adapt_size--;
 
-    /* 1. set up the first slot, containing all pixels. */
-    slots[0].first = 0;
-    slots[0].size = kch->n;
-    slots[0].pixel = 0;
-    for (i = 0; i < kch->n; i++)
-        slots[0].pixel += kch->h[i].count;
+  /* 1. set up the first slot, containing all pixels. */
+  slots[0].first = 0;
+  slots[0].size = kch->n;
+  slots[0].pixel = 0;
+  for (i = 0; i < kch->n; i++)
+    slots[0].pixel += kch->h[i].count;
 
   /* 2. split slots until we have enough. */
   for (nadapt = 1; nadapt < adapt_size; nadapt++) {
