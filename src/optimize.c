@@ -60,8 +60,8 @@ static int image_index;
 
 static penalty_type *permuting_sort_values;
 
-#define REQUIRED	2
-#define REPLACE_TRANSP	1
+#define REQUIRED        2
+#define REPLACE_TRANSP  1
 
 
 /*****
@@ -150,8 +150,8 @@ fix_difference_bounds(Gif_OptData *bounds)
   }
   /* assert that image lies completely within screen */
   assert(bounds->top < screen_height && bounds->left < screen_width
-	 && bounds->top + bounds->height <= screen_height
-	 && bounds->left + bounds->width <= screen_width);
+         && bounds->top + bounds->height <= screen_height
+         && bounds->left + bounds->width <= screen_width);
 }
 
 
@@ -226,11 +226,11 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
     if (is_global) {
       val = all_col[i].pixel;
       if (val >= ncol)
-	goto error;
+        goto error;
     } else {
       /* always place colors in a local colormap */
       if (ncol == 256)
-	goto error;
+        goto error;
       val = ncol;
       col[val] = all_col[i];
       col[val].pixel = i;
@@ -257,8 +257,8 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
        min_code_bits later, thus saving space */
     for (i = 0; i < ncol; i++)
       if (!into_used[i]) {
-	transparent = i;
-	break;
+        transparent = i;
+        break;
       }
 
     /* otherwise, [1.Aug.1999] use a fake slot for the purely transparent
@@ -267,18 +267,18 @@ prepare_colormap_map(Gif_Image *gfi, Gif_Colormap *into, uint8_t *need)
        it, give up */
     if (transparent < 0) {
       if (ncol < 256) {
-	transparent = ncol;
-	/* 1.Aug.1999 - don't increase ncol */
-	col[ncol] = all_col[TRANSP];
+        transparent = ncol;
+        /* 1.Aug.1999 - don't increase ncol */
+        col[ncol] = all_col[TRANSP];
       } else
-	goto error;
+        goto error;
     }
 
     /* change mapping */
     map[TRANSP] = transparent;
     for (i = 1; i < all_ncol; i++)
       if (need[i] == REPLACE_TRANSP)
-	map[i] = transparent;
+        map[i] = transparent;
 
     gfi->transparent = transparent;
   }
@@ -354,11 +354,11 @@ initialize_optimizer(Gif_Stream *gfs)
     for (i = 0; i < gfs->nimages; i++) {
       Gif_Image *gfi = gfs->images[i];
       if (gfi->local)
-	all_colormap_add(gfi->local);
+        all_colormap_add(gfi->local);
       else
-	any_globals = 1;
+        any_globals = 1;
       if (gfi->transparent >= 0 && first_transparent < 0)
-	first_transparent = i;
+        first_transparent = i;
     }
     if (any_globals)
       all_colormap_add(in_global_map);
@@ -401,20 +401,20 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
   for (i = 1; i < gfs->nimages && !(optimize_flags & GT_OPT_KEEPEMPTY); ++i) {
     Gif_Image *gfi = gfs->images[i];
     if (gfi->width == 1 && gfi->height == 1 && gfi->transparent >= 0
-	&& !gfi->identifier && !gfi->comment
-	&& (gfi->disposal == GIF_DISPOSAL_ASIS
-	    || gfi->disposal == GIF_DISPOSAL_NONE
-	    || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-	&& gfi->delay && gfs->images[i-1]->delay) {
+        && !gfi->identifier && !gfi->comment
+        && (gfi->disposal == GIF_DISPOSAL_ASIS
+            || gfi->disposal == GIF_DISPOSAL_NONE
+            || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
+        && gfi->delay && gfs->images[i-1]->delay) {
       Gif_UncompressImage(gfs, gfi);
       if (gfi->img[0][0] == gfi->transparent
-	  && (gfs->images[i-1]->disposal == GIF_DISPOSAL_ASIS
-	      || gfs->images[i-1]->disposal == GIF_DISPOSAL_NONE)) {
-	gfs->images[i-1]->delay += gfi->delay;
-	Gif_DeleteImage(gfi);
-	memmove(&gfs->images[i], &gfs->images[i+1], sizeof(Gif_Image *) * (gfs->nimages - i - 1));
-	--gfs->nimages;
-	--i;
+          && (gfs->images[i-1]->disposal == GIF_DISPOSAL_ASIS
+              || gfs->images[i-1]->disposal == GIF_DISPOSAL_NONE)) {
+        gfs->images[i-1]->delay += gfi->delay;
+        Gif_DeleteImage(gfi);
+        memmove(&gfs->images[i], &gfs->images[i+1], sizeof(Gif_Image *) * (gfs->nimages - i - 1));
+        --gfs->nimages;
+        --i;
       }
     }
   }
@@ -425,8 +425,8 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
      the graphic control extension can be left off in many cases. */
   for (i = 0; i < gfs->nimages; i++)
     if (gfs->images[i]->disposal == GIF_DISPOSAL_ASIS
-	&& gfs->images[i]->delay == 0
-	&& gfs->images[i]->transparent < 0)
+        && gfs->images[i]->delay == 0
+        && gfs->images[i]->transparent < 0)
       gfs->images[i]->disposal = GIF_DISPOSAL_NONE;
 
   Gif_DeleteColormap(in_global_map);

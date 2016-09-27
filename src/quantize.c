@@ -390,30 +390,30 @@ typedef struct {
 
 Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
 {
-  int adapt_size = od->colormap_size;
-  adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
-  Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
-  Gif_Color *adapt = gfcm->col;
-  int nadapt;
-  int i, j, k;
+    int adapt_size = od->colormap_size;
+    adaptive_slot *slots = Gif_NewArray(adaptive_slot, adapt_size);
+    Gif_Colormap *gfcm = Gif_NewFullColormap(adapt_size, 256);
+    Gif_Color *adapt = gfcm->col;
+    int nadapt;
+    int i, j, k;
 
-  /* This code was written with reference to ppmquant by Jef Poskanzer, part
-     of the pbmplus package. */
+    /* This code was written with reference to ppmquant by Jef Poskanzer,
+       part of the pbmplus package. */
 
-  if (adapt_size < 2 || adapt_size > 256)
-    fatal_error("adaptive palette size must be between 2 and 256");
-  if (adapt_size >= kch->n && !od->colormap_fixed)
-    warning(1, "trivial adaptive palette (only %d %s in source)",
-            kch->n, kch->n == 1 ? "color" : "colors");
-  if (adapt_size >= kch->n)
-    adapt_size = kch->n;
+    if (adapt_size < 2 || adapt_size > 256)
+        fatal_error("adaptive palette size must be between 2 and 256");
+    if (adapt_size >= kch->n && !od->colormap_fixed)
+        warning(1, "trivial adaptive palette (only %d %s in source)",
+                kch->n, kch->n == 1 ? "color" : "colors");
+    if (adapt_size >= kch->n)
+        adapt_size = kch->n;
 
-  /* 0. remove any transparent color from consideration; reduce adaptive
-     palette size to accommodate transparency if it looks like that'll be
-     necessary */
-  if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
-      && od->colormap_needs_transparency)
-    adapt_size--;
+    /* 0. remove any transparent color from consideration; reduce adaptive
+       palette size to accommodate transparency if it looks like that'll be
+       necessary */
+    if (adapt_size > 2 && adapt_size < kch->n && kch->n <= 265
+        && od->colormap_needs_transparency)
+        adapt_size--;
 
     /* 1. set up the first slot, containing all pixels. */
     slots[0].first = 0;
@@ -422,75 +422,75 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
     for (i = 0; i < kch->n; i++)
         slots[0].pixel += kch->h[i].count;
 
-  /* 2. split slots until we have enough. */
-  for (nadapt = 1; nadapt < adapt_size; nadapt++) {
-    adaptive_slot *split = 0;
-    kcolor minc, maxc;
-    kchistitem *slice;
+    /* 2. split slots until we have enough. */
+    for (nadapt = 1; nadapt < adapt_size; nadapt++) {
+        adaptive_slot *split = 0;
+        kcolor minc, maxc;
+        kchistitem *slice;
 
-    /* 2.1. pick the slot to split. */
-    {
-      uint32_t split_pixel = 0;
-      for (i = 0; i < nadapt; i++)
-        if (slots[i].size >= 2 && slots[i].pixel > split_pixel) {
-          split = &slots[i];
-          split_pixel = slots[i].pixel;
+        /* 2.1. pick the slot to split. */
+        {
+            uint32_t split_pixel = 0;
+            for (i = 0; i < nadapt; i++)
+                if (slots[i].size >= 2 && slots[i].pixel > split_pixel) {
+                    split = &slots[i];
+                    split_pixel = slots[i].pixel;
+                }
+            if (!split)
+                break;
         }
-      if (!split)
-        break;
+        slice = &kch->h[split->first];
+
+        /* 2.2. find its extent. */
+        {
+            kchistitem *trav = slice;
+            minc = maxc = trav->ka.k;
+            for (i = 1, trav++; i < split->size; i++, trav++)
+                for (k = 0; k != 3; ++k) {
+                    minc.a[k] = min(minc.a[k], trav->ka.a[k]);
+                    maxc.a[k] = max(maxc.a[k], trav->ka.a[k]);
+                }
+        }
+
+        /* 2.3. decide how to split it. use the luminance method. also sort
+           the colors. */
+        {
+            double red_diff = 0.299 * (maxc.a[0] - minc.a[0]);
+            double green_diff = 0.587 * (maxc.a[1] - minc.a[1]);
+            double blue_diff = 0.114 * (maxc.a[2] - minc.a[2]);
+            if (red_diff >= green_diff && red_diff >= blue_diff)
+                qsort(slice, split->size, sizeof(kchistitem), red_kchistitem_compare);
+            else if (green_diff >= blue_diff)
+                qsort(slice, split->size, sizeof(kchistitem), green_kchistitem_compare);
+            else
+                qsort(slice, split->size, sizeof(kchistitem), blue_kchistitem_compare);
+        }
+
+        /* 2.4. decide where to split the slot and split it there. */
+        {
+            uint32_t half_pixels = split->pixel / 2;
+            uint32_t pixel_accum = slice[0].count;
+            uint32_t diff1, diff2;
+            for (i = 1; i < split->size - 1 && pixel_accum < half_pixels; i++)
+                pixel_accum += slice[i].count;
+
+            /* We know the area before the split has more pixels than the
+               area after, possibly by a large margin (bad news). If it
+               would shrink the margin, change the split. */
+            diff1 = 2*pixel_accum - split->pixel;
+            diff2 = split->pixel - 2*(pixel_accum - slice[i-1].count);
+            if (diff2 < diff1 && i > 1) {
+                i--;
+                pixel_accum -= slice[i].count;
+            }
+
+            slots[nadapt].first = split->first + i;
+            slots[nadapt].size = split->size - i;
+            slots[nadapt].pixel = split->pixel - pixel_accum;
+            split->size = i;
+            split->pixel = pixel_accum;
+        }
     }
-    slice = &kch->h[split->first];
-
-    /* 2.2. find its extent. */
-    {
-      kchistitem *trav = slice;
-      minc = maxc = trav->ka.k;
-      for (i = 1, trav++; i < split->size; i++, trav++)
-          for (k = 0; k != 3; ++k) {
-              minc.a[k] = min(minc.a[k], trav->ka.a[k]);
-              maxc.a[k] = max(maxc.a[k], trav->ka.a[k]);
-          }
-    }
-
-    /* 2.3. decide how to split it. use the luminance method. also sort the
-       colors. */
-    {
-      double red_diff = 0.299 * (maxc.a[0] - minc.a[0]);
-      double green_diff = 0.587 * (maxc.a[1] - minc.a[1]);
-      double blue_diff = 0.114 * (maxc.a[2] - minc.a[2]);
-      if (red_diff >= green_diff && red_diff >= blue_diff)
-        qsort(slice, split->size, sizeof(kchistitem), red_kchistitem_compare);
-      else if (green_diff >= blue_diff)
-        qsort(slice, split->size, sizeof(kchistitem), green_kchistitem_compare);
-      else
-        qsort(slice, split->size, sizeof(kchistitem), blue_kchistitem_compare);
-    }
-
-    /* 2.4. decide where to split the slot and split it there. */
-    {
-      uint32_t half_pixels = split->pixel / 2;
-      uint32_t pixel_accum = slice[0].count;
-      uint32_t diff1, diff2;
-      for (i = 1; i < split->size - 1 && pixel_accum < half_pixels; i++)
-        pixel_accum += slice[i].count;
-
-      /* We know the area before the split has more pixels than the area
-         after, possibly by a large margin (bad news). If it would shrink the
-         margin, change the split. */
-      diff1 = 2*pixel_accum - split->pixel;
-      diff2 = split->pixel - 2*(pixel_accum - slice[i-1].count);
-      if (diff2 < diff1 && i > 1) {
-        i--;
-        pixel_accum -= slice[i].count;
-      }
-
-      slots[nadapt].first = split->first + i;
-      slots[nadapt].size = split->size - i;
-      slots[nadapt].pixel = split->pixel - pixel_accum;
-      split->size = i;
-      split->pixel = pixel_accum;
-    }
-  }
 
     /* 3. make the new palette by choosing one color from each slot. */
     for (i = 0; i < nadapt; i++) {
