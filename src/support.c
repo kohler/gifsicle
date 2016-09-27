@@ -314,7 +314,7 @@ safe_puts(const char *s, uint32_t len, FILE *f)
        case '\v': fputs("\\v", f); break;
        case '\\': fputs("\\\\", f); break;
        case 0:    if (len > 1) fputs("\\000", f); break;
-       default:   fprintf(f, "\\%03o", *s); break;
+       default:   fprintf(f, "\\%03o", (unsigned char) *s); break;
       }
     }
   if (last_safe != s) {
