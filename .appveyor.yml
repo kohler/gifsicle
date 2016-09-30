@@ -1,0 +1,10 @@
+os: Visual Studio 2015
+
+build_script:
+  - CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\vcvars32.bat"
+  - cd "%APPVEYOR_BUILD_FOLDER%\src"
+  - nmake -f Makefile.w32 gifsicle.exe gifdiff.exe
+  - gifsicle.exe --version
+  - gifdiff.exe --version
+
+test: off
