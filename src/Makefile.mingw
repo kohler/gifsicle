@@ -1,0 +1,66 @@
+# Win32 Makefile originally by Emil Mikulic <darkmoon@connexus.net.au>
+# Updates by Eddie Kohler <ekohler@gmail.com> and
+# Steven Marthouse <comments@vrml3d.com>
+
+# ----------------------------------------------------------
+# Makefile adapted for MinGW GCC Compiler
+# José Manuel Muñoz <jmlosvillares@correo.ugr.es>
+# ----------------------------------------------------------
+
+
+# *** MAKING UNGIFSICLE ***
+# If `GIFWRITE_OBJ' is defined to `gifwrite.o', Gifsicle will use
+# Unisys-patented LZW compression. If it is defined to `ungifwrt.o', it
+# will use unpatented run-length compression, which creates larger GIFs but
+# is completely free software. If you downloaded the ungifsicle package,
+# which doesn't have `gifwrite.c', you MUST define `GIFWRITE_OBJ' to
+# `ungifwrt.o' by commenting the first line below and uncommenting the
+# second.
+GIFWRITE_OBJ = gifwrite.o
+#GIFWRITE_OBJ = ungifwrt.o
+
+# *** SUPPORTING WILDCARD EXPANSION ***
+# MinGW seems to include support for this by itself.
+
+CC = gcc
+MINGWFLAGS = -DHAVE_UINTPTR_T -DHAVE_INTTYPES_H
+CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H=1 -D_CONSOLE -O2 $(MINGWFLAGS)
+
+GIFSICLE_OBJS = clp.o fmalloc.o giffunc.o gifread.o gifunopt.o \
+	$(GIFWRITE_OBJ) merge.o optimize.o quantize.o support.o \
+	xform.o gifsicle.o
+
+GIFDIFF_OBJS = clp.o fmalloc.o giffunc.o gifread.o gifdiff.o
+
+
+all: gifsicle.exe gifdiff.exe
+
+gifsicle.exe: $(GIFSICLE_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(GIFSICLE_OBJS)
+
+gifdiff.exe: $(GIFDIFF_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(GIFDIFF_OBJS)
+
+clp.o: ..\config.h ..\include\lcdf\clp.h clp.c
+
+fmalloc.o: ..\config.h fmalloc.c
+
+giffunc.o: ..\config.h giffunc.c ..\include\lcdfgif\gif.h
+gifread.o: ..\config.h gifread.c ..\include\lcdfgif\gif.h
+gifwrite.o: ..\config.h gifwrite.c ..\include\lcdfgif\gif.h
+ungifwrt.o: ..\config.h ungifwrt.c ..\include\lcdfgif\gif.h
+gifunopt.o: ..\config.h gifunopt.c ..\include\lcdfgif\gif.h
+
+merge.o: ..\config.h gifsicle.h merge.c
+optimize.o: ..\config.h gifsicle.h optimize.c
+quantize.o: ..\config.h gifsicle.h quantize.c
+support.o: ..\config.h gifsicle.h support.c
+xform.o: ..\config.h gifsicle.h xform.c
+gifsicle.o: ..\config.h gifsicle.h gifsicle.c
+
+..\config.h: win32cfg.h
+	copy win32cfg.h ..\config.h
+
+clean:
+	del *.o
+	del *.exe
