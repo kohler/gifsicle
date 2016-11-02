@@ -1,3 +1,5 @@
+![gifsicle-logo](https://raw.githubusercontent.com/kohler/gifsicle/master/logo.gif)
+
 Gifsicle
 ========
 [![TravisCI status](https://travis-ci.org/kohler/gifsicle.svg?branch=master)](https://travis-ci.org/kohler/gifsicle)
