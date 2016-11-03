@@ -1,4 +1,4 @@
-![gifsicle-logo](https://raw.githubusercontent.com/kohler/gifsicle/master/logo.gif)
+![gifsicle-logo](/../master/logo.gif)
 
 Gifsicle
 ========
