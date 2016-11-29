@@ -242,7 +242,7 @@ static inline gfc_rgbdiff diffused_difference(Gif_Color a, Gif_Color b, int a_tr
   };
 }
 
-static inline const uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
+static inline uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
 
 static void
 gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
@@ -390,7 +390,7 @@ gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Imag
   }
 }
 
-static inline const uint8_t
+static inline uint8_t
 gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
 {
   unsigned y = pos / gfi->width, x = pos - y * gfi->width;
