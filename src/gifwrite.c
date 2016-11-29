@@ -444,7 +444,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   /* next_code set by first runthrough of output clear_code */
   GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", CLEAR_CODE, EOI_CODE, cur_code_bits));
 
-  work_node = 0;
+  work_node = NULL;
   output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
@@ -648,7 +648,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
             line_endpos = gif_line_endpos(gfi, pos);
             bufpos = clear_bufpos;
             buf[bufpos >> 3] &= (1 << (bufpos & 7)) - 1;
-            work_node = 0;
+            work_node = NULL;
             grr->cleared = 1;
             goto found_output_code;
           }
@@ -661,7 +661,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
       /* Ran out of data if we get here. */
       output_code = (work_node ? work_node->code : EOI_CODE);
-      work_node = 0;
+      work_node = NULL;
 
       found_output_code: ;
     }
