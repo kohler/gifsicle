@@ -818,6 +818,7 @@ void
 Gif_InitCompressInfo(Gif_CompressInfo *gcinfo)
 {
     gcinfo->flags = 0;
+    gcinfo->loss = 0;
 }
 
 

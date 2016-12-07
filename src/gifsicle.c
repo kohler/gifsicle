@@ -197,6 +197,7 @@ static const char *output_option_types[] = {
 #define SAME_APP_EXTENSIONS_OPT 373
 #define IGNORE_ERRORS_OPT       374
 #define THREADS_OPT             375
+#define LOSSY_OPT               376
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -264,6 +265,7 @@ const Clp_Option options[] = {
 
   { "logical-screen", 'S', LOGICAL_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
+  { "lossy", 0, LOSSY_OPT, Clp_ValInt, Clp_Optional },
 
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
@@ -1942,6 +1944,13 @@ main(int argc, char *argv[])
         error(0, "%s can be at most 256", Clp_CurOptionName(clp));
         def_output_data.scale_colors = 256;
       }
+      break;
+
+    case LOSSY_OPT:
+      if (clp->have_val)
+        gif_write_info.loss = clp->val.i;
+      else
+        gif_write_info.loss = 20;
       break;
 
       /* RANDOM OPTIONS */
