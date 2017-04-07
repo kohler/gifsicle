@@ -59,7 +59,7 @@ xform.o: ..\config.h gifsicle.h xform.c
 gifsicle.o: ..\config.h gifsicle.h gifsicle.c
 
 ..\config.h: win32cfg.h
-	copy win32cfg.h ..\config.h
+	cp win32cfg.h ..\config.h
 
 clean:
 	del *.o
