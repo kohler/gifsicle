@@ -1109,14 +1109,14 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
       return color->pixel;
     else {
       if (color_context)
-          lerror(gfs->landmark, "%s color out of range", color_context);
+          lwarning(gfs->landmark, "%s color out of range", color_context);
       return -1;
     }
   }
 
   index = Gif_FindColor(gfcm, color);
   if (index < 0 && color_context)
-    lerror(gfs->landmark, "%s color not in colormap", color_context);
+    lwarning(gfs->landmark, "%s color not in colormap", color_context);
   return index;
 }
 
