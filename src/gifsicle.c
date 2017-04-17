@@ -521,8 +521,6 @@ show_frame(int imagenumber, int usename)
  * input a stream
  **/
 
-static int gifread_error_count;
-
 static void
 gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
               int is_error, const char* message)
@@ -732,15 +730,20 @@ input_stream(const char *name)
     verbose_open('<', name);
 
   /* read file */
-  gifread_error_count = 0;
-  gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
-                         name, gifread_error);
+  {
+    int old_error_count = error_count;
+    gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
+                           name, gifread_error);
+    if ((!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0))
+        && componentno != 1)
+      lerror(name, "trailing garbage ignored");
+    if (!no_ignore_errors)
+      error_count = old_error_count;
+  }
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
       lerror(name, "file not in GIF format");
-    else
-      lerror(name, "trailing garbage ignored");
     Gif_DeleteStream(gfs);
     if (verbosing)
       verbose_close('>');
