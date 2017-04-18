@@ -838,7 +838,7 @@ void* Gif_Realloc(void* p, size_t s, size_t n, const char* file, int line) {
         Gif_Free(p);
     else if (s == 1 || n == 1 || s <= ((size_t) -1) / n)
         return realloc(p, s * n);
-    return (void*) 0;
+    return NULL;
 }
 
 #undef Gif_Free

@@ -14,7 +14,7 @@ void* Gif_Realloc(void* p, size_t s, size_t n, const char* file, int line) {
     (void) file, (void) line;
     if (s == 0 || n == 0) {
         Gif_Free(p);
-        return (void*) 0;
+        return NULL;
     } else if (s == 1 || n == 1 || s <= ((size_t) -1) / n) {
         p = realloc(p, s * n);
         if (!p) {
@@ -25,7 +25,7 @@ void* Gif_Realloc(void* p, size_t s, size_t n, const char* file, int line) {
     } else {
         fprintf(stderr, "%s: Out of memory, giving up (huge allocation)\n", program_name);
         exit(1);
-        return (void*) 0;
+        return NULL;
     }
 }
 
