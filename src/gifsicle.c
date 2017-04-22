@@ -197,7 +197,11 @@ static const char *output_option_types[] = {
 #define SAME_APP_EXTENSIONS_OPT 373
 #define IGNORE_ERRORS_OPT       374
 #define THREADS_OPT             375
-#define LOSSY_OPT               376
+#define RESIZE_GEOMETRY_OPT     376
+#define RESIZE_TOUCH_OPT        377
+#define RESIZE_TOUCH_WIDTH_OPT  378
+#define RESIZE_TOUCH_HEIGHT_OPT 379
+#define LOSSY_OPT               380
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -292,6 +296,14 @@ const Clp_Option options[] = {
   { "resize-fit-height", 0, RESIZE_FIT_HEIGHT_OPT, Clp_ValUnsigned, Clp_Negate },
   { "resize-fi", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "resize-f", 0, RESIZE_FIT_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-touch", 0, RESIZE_TOUCH_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-touch-width", 0, RESIZE_TOUCH_WIDTH_OPT, Clp_ValUnsigned, Clp_Negate },
+  { "resize-touch-height", 0, RESIZE_TOUCH_HEIGHT_OPT, Clp_ValUnsigned, Clp_Negate },
+  { "resize-touc", 0, RESIZE_TOUCH_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-tou", 0, RESIZE_TOUCH_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-to", 0, RESIZE_TOUCH_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-t", 0, RESIZE_TOUCH_OPT, DIMENSIONS_TYPE, Clp_Negate },
+  { "resize-geometry", 0, RESIZE_GEOMETRY_OPT, Clp_ValString, Clp_Negate },
   { "resize-method", 0, RESIZE_METHOD_OPT, RESIZE_METHOD_TYPE, 0 },
   { "resize-colors", 0, RESIZE_COLORS_OPT, Clp_ValInt, Clp_Negate },
   { "rotate-90", 0, ROTATE_90_OPT, 0, 0 },
@@ -347,6 +359,46 @@ Clp_Parser* clp;
 static void combine_output_options(void);
 static void initialize_def_frame(void);
 static void redundant_option_warning(const char *);
+
+#if 0
+void resize_check(void)
+{
+    int nw, nh;
+    nw = nh = 256;
+    resize_dimensions(&nw, &nh, 640, 480, 0);
+    assert(nw == 640 && nh == 480);
+
+    nw = nh = 256;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT);
+    assert(nw == 480 && nh == 480);
+
+    nw = nh = 512;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT);
+    assert(nw == 480 && nh == 480);
+
+    nw = nh = 256;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT | GT_RESIZE_FIT_DOWN);
+    assert(nw == 256 && nh == 256);
+
+    nw = nh = 512;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT | GT_RESIZE_FIT_DOWN);
+    assert(nw == 480 && nh == 480);
+
+    nw = nh = 256;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT | GT_RESIZE_FIT_UP);
+    assert(nw == 480 && nh == 480);
+
+    nw = nh = 512;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT | GT_RESIZE_FIT_UP);
+    assert(nw == 512 && nh == 512);
+
+    nw = nh = 256;
+    resize_dimensions(&nw, &nh, 640, 480, GT_RESIZE_FIT | GT_RESIZE_FIT_UP | GT_RESIZE_MIN_DIMEN);
+    assert(nw == 640 && nh == 640);
+
+    fprintf(stderr, "got\n");
+}
+#endif
 
 
 static void
@@ -470,8 +522,6 @@ show_frame(int imagenumber, int usename)
 /*****
  * input a stream
  **/
-
-static int gifread_error_count;
 
 static void
 gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
@@ -682,15 +732,20 @@ input_stream(const char *name)
     verbose_open('<', name);
 
   /* read file */
-  gifread_error_count = 0;
-  gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
-                         name, gifread_error);
+  {
+    int old_error_count = error_count;
+    gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
+                           name, gifread_error);
+    if ((!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0))
+        && componentno != 1)
+      lerror(name, "trailing garbage ignored");
+    if (!no_ignore_errors)
+      error_count = old_error_count;
+  }
 
   if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
     if (componentno == 1)
       lerror(name, "file not in GIF format");
-    else
-      lerror(name, "trailing garbage ignored");
     Gif_DeleteStream(gfs);
     if (verbosing)
       verbose_close('>');
@@ -970,8 +1025,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       h = active_output_data.resize_height;
     }
     if (active_output_data.scaling != GT_SCALING_NONE)
-      resize_stream(out, w, h,
-                    active_output_data.scaling == GT_SCALING_RESIZE_FIT,
+      resize_stream(out, w, h, active_output_data.resize_flags,
                     active_output_data.scale_method,
                     active_output_data.scale_colors);
     if (colormap_change)
@@ -1265,6 +1319,7 @@ combine_output_options(void)
     active_output_data.scaling = def_output_data.scaling;
     active_output_data.resize_width = def_output_data.resize_width;
     active_output_data.resize_height = def_output_data.resize_height;
+    active_output_data.resize_flags = def_output_data.resize_flags;
     active_output_data.scale_x = def_output_data.scale_x;
     active_output_data.scale_y = def_output_data.scale_y;
   }
@@ -1330,6 +1385,61 @@ copy_crop(Gt_Crop *oc)
   nc->ready = 0;
   return nc;
 }
+
+static void
+parse_resize_geometry_opt(Gt_OutputData* odata, const char* str, Clp_Parser* clp)
+{
+    double x, y;
+    int flags = GT_RESIZE_FIT, scale = 0;
+
+    if (*str == '_' || *str == 'x') {
+        x = 0;
+        str += (*str == '_');
+    } else if (isdigit((unsigned char) *str))
+        x = strtol(str, (char**) &str, 10);
+    else
+        goto error;
+
+    if (*str == 'x') {
+        ++str;
+        if (*str == '_' || !isdigit((unsigned char) *str)) {
+            y = 0;
+            str += (*str == '_');
+        } else
+            y = strtol(str, (char**) &str, 10);
+    } else
+        y = x;
+
+    for (; *str != 0; ++str)
+        if (*str == '%')
+            scale = 1;
+        else if (*str == '!')
+            flags = 0;
+        else if (*str == '^')
+            flags |= GT_RESIZE_FIT | GT_RESIZE_MIN_DIMEN;
+        else if (*str == '<')
+            flags |= GT_RESIZE_FIT | GT_RESIZE_FIT_UP;
+        else if (*str == '>')
+            flags |= GT_RESIZE_FIT | GT_RESIZE_FIT_DOWN;
+        else
+            goto error;
+
+    if (scale) {
+        odata->scaling = GT_SCALING_SCALE;
+        odata->scale_x = x / 100.0;
+        odata->scale_y = y / 100.0;
+    } else {
+        odata->scaling = GT_SCALING_RESIZE;
+        odata->resize_width = x;
+        odata->resize_height = y;
+    }
+    odata->resize_flags = flags;
+    return;
+
+error:
+    Clp_OptionError(clp, "argument to %O must be a valid geometry specification");
+}
+
 
 
 /*****
@@ -1883,6 +1993,7 @@ main(int argc, char *argv[])
 
     case RESIZE_OPT:
     case RESIZE_FIT_OPT:
+    case RESIZE_TOUCH_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
@@ -1890,9 +2001,14 @@ main(int argc, char *argv[])
         error(0, "one of W and H must be positive in %<%s WxH%>", Clp_CurOptionName(clp));
         def_output_data.scaling = GT_SCALING_NONE;
       } else {
-        def_output_data.scaling = (opt == RESIZE_FIT_OPT ? GT_SCALING_RESIZE_FIT : GT_SCALING_RESIZE);
+        def_output_data.scaling = GT_SCALING_RESIZE;
         def_output_data.resize_width = dimensions_x;
         def_output_data.resize_height = dimensions_y;
+        def_output_data.resize_flags = 0;
+        if (opt != RESIZE_OPT)
+            def_output_data.resize_flags |= GT_RESIZE_FIT;
+        if (opt == RESIZE_FIT_OPT)
+            def_output_data.resize_flags |= GT_RESIZE_FIT_DOWN;
       }
       break;
 
@@ -1900,6 +2016,8 @@ main(int argc, char *argv[])
     case RESIZE_HEIGHT_OPT:
     case RESIZE_FIT_WIDTH_OPT:
     case RESIZE_FIT_HEIGHT_OPT:
+    case RESIZE_TOUCH_WIDTH_OPT:
+    case RESIZE_TOUCH_HEIGHT_OPT:
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
@@ -1909,12 +2027,14 @@ main(int argc, char *argv[])
       } else {
         unsigned dimen[2] = {0, 0};
         dimen[(opt == RESIZE_HEIGHT_OPT || opt == RESIZE_FIT_HEIGHT_OPT)] = clp->val.u;
-        if (opt == RESIZE_FIT_WIDTH_OPT || opt == RESIZE_FIT_HEIGHT_OPT)
-          def_output_data.scaling = GT_SCALING_RESIZE_FIT;
-        else
-          def_output_data.scaling = GT_SCALING_RESIZE;
+        def_output_data.scaling = GT_SCALING_RESIZE;
         def_output_data.resize_width = dimen[0];
         def_output_data.resize_height = dimen[1];
+        def_output_data.resize_flags = 0;
+        if (opt != RESIZE_WIDTH_OPT && opt != RESIZE_HEIGHT_OPT)
+            def_output_data.resize_flags |= GT_RESIZE_FIT;
+        if (opt == RESIZE_FIT_WIDTH_OPT || opt == RESIZE_FIT_HEIGHT_OPT)
+            def_output_data.resize_flags |= GT_RESIZE_FIT_DOWN;
       }
       break;
 
@@ -1929,7 +2049,16 @@ main(int argc, char *argv[])
         def_output_data.scaling = GT_SCALING_SCALE;
         def_output_data.scale_x = parsed_scale_factor_x;
         def_output_data.scale_y = parsed_scale_factor_y;
+        def_output_data.resize_flags = 0;
       }
+      break;
+
+    case RESIZE_GEOMETRY_OPT:
+      MARK_CH(output, CH_RESIZE);
+      if (clp->negated)
+        def_output_data.scaling = GT_SCALING_NONE;
+      else
+        parse_resize_geometry_opt(&def_output_data, clp->val.s, clp);
       break;
 
     case RESIZE_METHOD_OPT:

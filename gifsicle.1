@@ -861,19 +861,14 @@ written. They can be turned off with
 .TP 5
 .Oa \-\-resize width x height
 '
-Resize the output GIF to
-.IR width x height .
-Either
+Resize the output GIF to the given
+.IR width " and " height .
+If
 .I width
 or
 .I height
-may be an underscore \(oq_\(cq. If the argument is
-.IR width x_,
-then the output GIF is scaled to
-.I width
-pixels wide without changing its aspect ratio. An analogous operation is
-performed for
-.RI _x height .
+is an underscore \(oq_\(cq, that dimension is chosen so that the
+aspect ratio remains unchanged.
 Resizing happens after all input frames have been combined and before
 optimization. Resizing uses logical screen dimensions; if
 the input stream has an unusual logical screen (many GIF displayers ignore
@@ -892,40 +887,43 @@ uses image dimensions instead. See also
 .TP
 .Oa \-\-resize\-height height
 '
-Like
+Resize to a given width or height, preserving aspect ratio. Equivalent to
 .Oa \-\-resize width x_
-and
-.Oa \-\-resize "" _x height
-respectively.
+or
+.Oa \-\-resize "" _x height .
 '
 .Sp
 .TP
 .Oa \-\-resize\-fit width x height
+.TP
+.Oa \-\-resize\-touch width x height
 '
-Like
-.Op \-\-resize ,
-but resizes the output GIF to fit
-.I within
-a rectangle with dimensions
+Resize the output GIF to fit within a rectangle with dimensions
 .IR width x height .
-The GIF's aspect ratio remains unchanged. No resize is performed if the GIF already
-fits within the given rectangle. Either
+The aspect ratio remains unchanged. The
+.Op \-\-resize\-fit
+option only shrinks the image\(emno resize is performed if the GIF already
+fits within the rectangle. Either
 .I width
 or
 .I height
-may be an underscore \(oq_\(cq, which is treated as infinity.
+may be an underscore \(oq_\(cq, which leaves that dimension unconstrained.
 '
 .Sp
 .TP
 .Oa \-\-resize\-fit\-width width
 .TP
 .Oa \-\-resize\-fit\-height height
+.TP
+.Oa \-\-resize\-touch\-width width
+.TP
+.Oa \-\-resize\-touch\-height height
 '
 Like
-.Oa \-\-resize\-fit width x_
+.Oa \-\-resize\-fit
 and
-.Oa \-\-resize\-fit "" _x height
-respectively.
+.Op \-\-resize\-touch ,
+but constrains only one dimension.
 '
 .Sp
 .TP
@@ -953,8 +951,8 @@ currently \(oqmix\(cq.
 .Sp
 .PP
 Details: The resize methods differ most when shrinking images. The
-\(oqsample\(cq method is a point sampler. Each pixel position in the
-output image maps to exactly one pixel position in the input, so when
+\(oqsample\(cq method is a point sampler: each pixel position in the
+output image maps to exactly one pixel position in the input. When
 shrinking, full rows and columns from the input are dropped. The other
 methods use all input pixels, which generally produces better-looking
 images. The \(oqbox\(cq method, a box sampler, is faster than the more
@@ -963,10 +961,10 @@ be anomalies when shrinking images by a small amount in one dimension.
 (Some output pixels will correspond to exactly 1 input row or column,
 while others will correspond to exactly 2 input rows or columns.) The
 \(oqmix\(cq method is a full bilinear interpolator. This is slower and
-produces somewhat blurrier results, but avoids such anomalies.
+produces somewhat blurrier results, but avoids anomalies.
 .Sp
 .PP
-Gifsicle also supports several complex resamplers, including
+Gifsicle also supports more complex resamplers, including
 Catmull-Rom cubic resampling (\(oqcatrom\(cq), the Mitchell-Netravali
 filter (\(oqmitchell\(cq), a 2-lobed Lanczos filter
 (\(oqlanczos2\(cq), and a 3-lobed Lanczos filter (\(oqlanczos3\(cq).

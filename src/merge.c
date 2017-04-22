@@ -257,6 +257,7 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
             Gt_Frame* srcfr, int same_compressed_ok)
 {
   Gif_Colormap *imagecm;
+  int imagecm_ncol;
   int i;
   Gif_Colormap *localcm = 0;
   Gif_Colormap *destcm = dest->global;
@@ -268,12 +269,14 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   uint8_t used[256];            /* used[output pixval K] == 1 iff K was used
                                    in the image */
 
+
   Gif_Image *desti;
 
   /* mark colors that were actually used in this image */
   imagecm = srci->local ? srci->local : src->global;
+  imagecm_ncol = imagecm ? imagecm->ncol : 0;
   merge_image_input_colors(inused, srci);
-  for (i = imagecm ? imagecm->ncol : 0; i != 256; ++i)
+  for (i = imagecm_ncol; i != 256; ++i)
       if (inused[i]) {
           lwarning(srcfr->input_filename, "some colors undefined by colormap");
           break;
@@ -286,18 +289,14 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   /* Merge the colormap */
   if (merge_colormap_if_possible(dest->global, imagecm)) {
       /* Create 'map' and 'used' for global colormap. */
-      for (i = 0; i != 256; ++i)
-          if (inused[i]) {
-              if (imagecm && i < imagecm->ncol)
-                  map[i] = imagecm->col[i].pixel;
-              else
-                  map[i] = 0;
-          }
+      for (i = 0; i != imagecm_ncol; ++i)
+          if (inused[i])
+              map[i] = imagecm->col[i].pixel;
 
   } else {
       /* Need a local colormap. */
       destcm = localcm = Gif_NewFullColormap(0, 256);
-      for (i = 0; i != 256; ++i)
+      for (i = 0; i != imagecm_ncol; ++i)
           if (inused[i]) {
               map[i] = localcm->ncol;
               localcm->col[localcm->ncol] = imagecm->col[i];
