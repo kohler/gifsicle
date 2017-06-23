@@ -199,6 +199,7 @@ Extension options:\n\
   printf("\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
   -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
+  --last-delay TIME             Set final frame's delay to TIME (in 1/100sec).\n\
   -D, --disposal METHOD         Set frame disposal to METHOD.\n\
   -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
   -O, --optimize[=LEVEL]        Optimize output GIFs.\n\
