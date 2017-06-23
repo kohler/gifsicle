@@ -206,7 +206,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     a = __builtin_shufflevector(a, a, 3, 2, 1, 0);
     printf("%f\n", a[0]);]])],
     [AC_DEFINE([HAVE___BUILTIN_SHUFFLEVECTOR], 1, [Define to 1 if you have the `__builtin_shufflevector' function.])
-    ac_cv___builtin_shufflevector=yes], [ac_cv___bultin_shufflevector=no])
+    ac_cv___builtin_shufflevector=yes], [ac_cv___builtin_shufflevector=no])
 AC_MSG_RESULT([$ac_cv___builtin_shufflevector])
 
 AC_ARG_ENABLE([simd],
