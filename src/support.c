@@ -1506,14 +1506,14 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
   /* merge stream-specific info and clear colormaps */
   for (i = 0; i < nmerger; i++)
-    merger[i]->stream->userflags = 1;
+    merger[i]->stream->user_flags = 1;
   for (i = 0; i < nmerger; i++) {
-    if (merger[i]->stream->userflags) {
+    if (merger[i]->stream->user_flags) {
       Gif_Stream *src = merger[i]->stream;
       Gif_CalculateScreenSize(src, 0);
       /* merge_stream() unmarks the global colormap */
       merge_stream(dest, src, merger[i]->no_comments);
-      src->userflags = 0;
+      src->user_flags = 0;
     }
     if (merger[i]->image->local)
       unmark_colors_2(merger[i]->image->local);

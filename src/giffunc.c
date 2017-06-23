@@ -33,7 +33,7 @@ Gif_NewStream(void)
   gfs->end_comment = 0;
   gfs->end_extension_list = 0;
   gfs->errors = 0;
-  gfs->userflags = 0;
+  gfs->user_flags = 0;
   gfs->refcount = 0;
   gfs->landmark = 0;
   return gfs;
@@ -80,7 +80,7 @@ Gif_NewColormap(void)
   gfcm->capacity = 0;
   gfcm->col = 0;
   gfcm->refcount = 0;
-  gfcm->userflags = 0;
+  gfcm->user_flags = 0;
   return gfcm;
 }
 
@@ -99,7 +99,7 @@ Gif_NewFullColormap(int count, int capacity)
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
   gfcm->refcount = 0;
-  gfcm->userflags = 0;
+  gfcm->user_flags = 0;
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;

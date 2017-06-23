@@ -54,8 +54,8 @@ struct Gif_Stream {
     Gif_Extension* end_extension_list;
 
     unsigned errors;
+    uint32_t user_flags;
 
-    int userflags;
     const char* landmark;
     int refcount;
 };
@@ -82,24 +82,21 @@ int             Gif_FullUnoptimize(Gif_Stream *, int flags);
 /** GIF_IMAGE **/
 
 struct Gif_Image {
-    uint16_t width;
-    uint16_t height;
-
     uint8_t **img;              /* img[y][x] == image byte (x,y) */
     uint8_t *image_data;
 
+    uint16_t width;
+    uint16_t height;
     uint16_t left;
     uint16_t top;
     uint16_t delay;
     uint8_t disposal;
     uint8_t interlace;
 
-    Gif_Colormap *local;
     short transparent;          /* -1 means no transparent index */
+    Gif_Colormap *local;
 
-    uint16_t user_flags;
-
-    char *identifier;
+    char* identifier;
     Gif_Comment* comment;
     Gif_Extension* extension_list;
 
@@ -109,7 +106,8 @@ struct Gif_Image {
     uint8_t *compressed;
     void (*free_compressed)(void *);
 
-    void *user_data;
+    uint32_t user_flags;
+    void* user_data;
     void (*free_user_data)(void *);
     int refcount;
 
@@ -180,7 +178,7 @@ typedef struct {
 struct Gif_Colormap {
     int ncol;
     int capacity;
-    uint32_t userflags;
+    uint32_t user_flags;
     int refcount;
     Gif_Color *col;
 };

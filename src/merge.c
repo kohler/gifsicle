@@ -115,7 +115,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
     Gif_Color *srccol;
     Gif_Color *destcol = dest->col;
     int ndestcol = dest->ncol;
-    int dest_userflags = dest->userflags;
+    int dest_user_flags = dest->user_flags;
     int i, x;
     int trivial_map = 1;
 
@@ -174,7 +174,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 
     /* success! save new number of colors */
     dest->ncol = ndestcol;
-    dest->userflags = dest_userflags;
+    dest->user_flags = dest_user_flags;
     return 1;
 
   /* failure: a local colormap is required */

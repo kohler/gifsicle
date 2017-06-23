@@ -1062,13 +1062,13 @@ output_information(const char *outfile)
   }
 
   for (i = 0; i < frames->count; i++)
-    FRAME(frames, i).stream->userflags = 97;
+    FRAME(frames, i).stream->user_flags = 97;
 
   for (i = 0; i < frames->count; i++)
-    if (FRAME(frames, i).stream->userflags == 97) {
+    if (FRAME(frames, i).stream->user_flags == 97) {
       fr = &FRAME(frames, i);
       gfs = fr->stream;
-      gfs->userflags = 0;
+      gfs->user_flags = 0;
       stream_info(f, gfs, fr->input_filename, fr->info_flags);
       for (j = i; j < frames->count; j++)
         if (FRAME(frames, j).stream == gfs) {
