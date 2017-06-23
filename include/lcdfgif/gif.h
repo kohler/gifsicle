@@ -103,7 +103,8 @@ struct Gif_Image {
     void (*free_image_data)(void *);
 
     uint32_t compressed_len;
-    uint8_t *compressed;
+    uint32_t compressed_errors;
+    uint8_t* compressed;
     void (*free_compressed)(void *);
 
     uint32_t user_flags;

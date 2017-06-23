@@ -438,8 +438,9 @@ save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
     if (gfi->compressed)
       (*gfi->free_compressed)((void *) gfi->compressed);
     if (ok) {
-      gfi->compressed = grr->v;
       gfi->compressed_len = grr->pos;
+      gfi->compressed_errors = 0;
+      gfi->compressed = grr->v;
       gfi->free_compressed = Gif_Free;
       grr->v = 0;
       grr->cap = 0;

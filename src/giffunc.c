@@ -61,6 +61,7 @@ Gif_NewImage(void)
   gfi->extension_list = 0;
   gfi->free_image_data = Gif_Free;
   gfi->compressed_len = 0;
+  gfi->compressed_errors = 0;
   gfi->compressed = 0;
   gfi->free_compressed = 0;
   gfi->user_data = 0;
@@ -457,6 +458,7 @@ Gif_CopyImage(Gif_Image *src)
       memcpy(dest->compressed, src->compressed, src->compressed_len);
     }
     dest->compressed_len = src->compressed_len;
+    dest->compressed_errors = src->compressed_errors;
   }
 
   return dest;
@@ -703,6 +705,7 @@ Gif_ReleaseCompressedImage(Gif_Image *gfi)
     (*gfi->free_compressed)(gfi->compressed);
   gfi->compressed = 0;
   gfi->compressed_len = 0;
+  gfi->compressed_errors = 0;
   gfi->free_compressed = 0;
 }
 

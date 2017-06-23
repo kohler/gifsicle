@@ -358,7 +358,8 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
   desti->height = srci->height;
   desti->local = localcm;
 
-  if (trivial_map && same_compressed_ok && srci->compressed) {
+  if (trivial_map && same_compressed_ok && srci->compressed
+      && !srci->compressed_errors) {
     desti->compressed_len = srci->compressed_len;
     desti->compressed = Gif_NewArray(uint8_t, srci->compressed_len);
     desti->free_compressed = Gif_Free;
