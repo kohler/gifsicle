@@ -373,6 +373,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
           sprintf(buf, "missing %ld %s of image data", delta,
                   delta == 1 ? "pixel" : "pixels");
           gif_read_error(gfc, 1, buf);
+          memset(&gfc->image[gfc->decodepos], 0, delta);
       } else if (delta < -1) {
           /* One pixel of superfluous data is OK; that could be the
              code == next_code case. */
