@@ -319,7 +319,7 @@ Gifsicle NEWS
 
 ## Version 1.51 - 12.May.2008
 
-* gifsicle: '--crop' preserves the logical screen when it can.  Reported by
+* gifsicle: `--crop` preserves the logical screen when it can.  Reported by
   Petio Tonev.
 
 
@@ -336,18 +336,18 @@ Gifsicle NEWS
 
 ## Version 1.48 - 16.Mar.2007
 
-* gifsicle: Avoid crash in '--crop-transparency' when an image's first
+* gifsicle: Avoid crash in `--crop-transparency` when an image's first
   frame is totally transparent.  Reported by Gerald Johanson.
 
 
 ## Version 1.47 - 10.Mar.2007
 
-* gifsicle: Improve '--nextfile' behavior.
+* gifsicle: Improve `--nextfile` behavior.
 
 
 ## Version 1.46 - 9.Jan.2007
 
-* gifsicle: Add '--nextfile' option, useful for scripts.  Problem reported
+* gifsicle: Add `--nextfile` option, useful for scripts.  Problem reported
   by Jason Young.
 
 
@@ -355,7 +355,7 @@ Gifsicle NEWS
 
 * Do not compile gifview by default when X is not available.
 
-* gifview: Add '--title' option, based on patch supplied by Andres Tello
+* gifview: Add `--title` option, based on patch supplied by Andres Tello
   Abrego.
 
 
@@ -383,8 +383,8 @@ Gifsicle NEWS
 
 ## Version 1.40 - 28.Aug.2003
 
-* Fix longstanding bug where '--disposal=previous' was mistakenly
-  equivalent to '--disposal=asis'.
+* Fix longstanding bug where `--disposal=previous` was mistakenly
+  equivalent to `--disposal=asis`.
 
 * Include Makefile.bcc, from Stephen Schnipsel.
 
