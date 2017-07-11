@@ -1,11 +1,11 @@
 ## Process this file with automake to produce Makefile.in
-AUTOMAKE_OPTIONS = foreign check-news
+AUTOMAKE_OPTIONS = foreign
 
 SUBDIRS = src
 
 man_MANS = gifsicle.1 @OTHERMANS@
 
-EXTRA_DIST = COPYING README.md gifsicle.spec \
+EXTRA_DIST = COPYING README.md NEWS.md gifsicle.spec \
 	include/lcdf/clp.h include/lcdf/inttypes.h \
 	include/lcdfgif/gif.h include/lcdfgif/gifx.h \
 	gifsicle.1 gifview.1 gifdiff.1 logo.gif logo1.gif \
