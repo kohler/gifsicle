@@ -4,6 +4,7 @@ use IO::Handle;
 use Errno;
 use POSIX ":sys_wait_h";
 use MIME::Base64;
+use Time::HiRes qw(gettimeofday);
 no locale;
 use bytes;
 require 5.006;
@@ -202,6 +203,7 @@ package Testie;
 
 my %_special_filerefs = ('stdin' => 1, 'stdout' => 2, 'stderr' => 2);
 %_variables = ();
+$timeout = 45;
 
 sub _get ($;$) {
     my($tt, $acrossfiles) = @_;
@@ -702,14 +704,18 @@ EOD;
     }
 
     my($scriptarr, $linenoarr) = ($tt->{$script_type}, $tt->{$script_type . "_lineno"});
+    my($last_unfinished) = 0;
     foreach my $i (0..$#{$tt->{$script_type}}) {
 	my($ln, $text) = ($linenoarr->[$i], $scriptarr->[$i]);
-	$t .= "echo >&2; echo testie_lineno:$ln >&2\n" if !$::expand_mode;
+        if (!$::expand_mode && !$last_unfinished) {
+            $t .= "echo >&2; echo testie_lineno:$ln >&2\n";
+        }
 	my(@c, @d);
 	_shell_split(@c, "", @d, $text, 0);
 	die if @c != 1;
 	chomp $c[0];
 	next if $c[0] =~ /^\s*$/s;
+        $last_unfinished = ($c[0] =~ /(?:\&\&|\|\||\|)\s*\z/);
 	$c[0] =~ s,^(\s*)\./,$1../, if !$::expand_mode;
 	$t .= $c[0] . "\n";
     }
@@ -747,8 +753,10 @@ sub output_error ($$$$) {
     my($failure_text);
     if (!defined($failure)) {
 	$failure_text = "undefined error";
+    } elsif ($failure eq "timeout") {
+        $failure_text = "timed out after $Testie::timeout sec";
     } elsif ($failure == 1) {
-	$failure_text = "failure";
+        $failure_text = "failure";
     } else {
 	$failure_text = "error $failure";
     }
@@ -1048,8 +1056,27 @@ sub _shell ($$$$$) {
 	exec $SHELL, "-e", $scriptfn;
     } else {
 	$running_pid = $child_pid;
-	waitpid($child_pid, 0);	# assume it succeeds
-	my($result) = $?;
+        my($result) = undef;
+        if ($Testie::timeout > 0) {
+            my($before) = Time::HiRes::time();
+            my($delta) = 10;
+            do {
+                Time::HiRes::usleep($delta);
+                $result = $? if waitpid($child_pid, WNOHANG) > 0;
+                $delta = ($delta < 150000 ? $delta * 2 : 300000);
+            } while (!defined($result) && Time::HiRes::time() < $before + $Testie::timeout);
+            if (!defined($result)) {
+                if (open(X, ">>", out_script_fn_to_fn($stderr))) {
+                    print X "testie_failure:timeout\n";
+                    close X;
+                }
+                $result = 124;
+            }
+            $result = 124 if !defined($result);
+        } else {
+            waitpid($child_pid, 0);
+        }
+        $result = $? if !defined($result);
 	# sleep for 1 millisecond to give remaining background jobs a chance
 	# to die
 	select(undef, undef, undef, 0.001);
@@ -1419,6 +1446,7 @@ Options:
   --preserve-temporaries     Preserve temporary files.
   -e, --expand               Expand test files into current directory.
   -p, --path DIR             Prepend DIR to PATH.
+  -t, --timeout T            Set timeout to T [45 sec].
   -v, --version              Print version information and exit.
   --help                     Print this message and exit.
 
@@ -1438,6 +1466,7 @@ EOD;
 sub print_version () {
     print <<'EOD;';
 Testie 1.3
+Copyright (c) 2002-2016 Eddie Kohler
 Copyright (c) 2002-2003 International Computer Science Institute
 Copyright (c) 2004-2007 Regents of the University of California
 Copyright (c) 2008-2010 Meraki, Inc.
@@ -1543,6 +1572,13 @@ while (@ARGV) {
 	push @show, ["*", 1];
     } elsif (argcmp($_, '--show-all-raw', 9)) {
 	push @show, ["*", 0];
+    } elsif (/^-t$/ || argcmp($_, '--timeout', 1)) {
+        usage if @ARGV == 0;
+        $Testie::timeout = shift @ARGV;
+    } elsif (/^-t(.+)$/) {
+        $Testie::timeout = $1;
+    } elsif (argcmp($_, '--timeout', 1, $arg)) {
+        $Testie::timeout = $arg;
     } elsif (/^-j$/ || argcmp($_, "--jobs", 1)) {
 	usage if @ARGV == 0 || $ARGV[0] !~ /\A\d+\z/;
 	$jobs = shift @ARGV;
