@@ -26,8 +26,8 @@ The Gifsicle package comes with NO WARRANTY, express or implied,
 including, but not limited to, the implied warranties of
 merchantability and fitness for a particular purpose.
 
-See `NEWS` in this directory for changes in recent versions. The Gifsicle home
-page is:
+See `NEWS.md` in this directory for changes in recent versions. The Gifsicle
+home page is:
 
 http://www.lcdf.org/gifsicle/
 
