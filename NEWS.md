@@ -9,7 +9,10 @@ Gifsicle NEWS
 * Add thread support for resizing. `-j[NTHREADS]` tells gifsicle to use
   up to NTHREADS threads to resize an input image. There are several
   caveats---multiple threads can be only used on unoptimized images.
-  Thanks to Github user `wilkesybear`.
+  Thanks to Github user @wilkesybear.
+
+* Quashed several crashes and undefined behaviors. Thanks to Github users
+  including @pornel, @strazzere, and @b0b0505.
 
 * Minor bug fixes.
 

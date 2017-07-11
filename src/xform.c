@@ -1,5 +1,5 @@
 /* xform.c - Image transformation functions for gifsicle.
-   Copyright (C) 1997-2015 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2017 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
