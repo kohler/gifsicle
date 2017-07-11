@@ -1,7 +1,7 @@
 Gifsicle NEWS
 =============
 
-## Version 1.89
+## Version 1.89 - 11.Jul.2017
 
 * Add SIMD support for resizing. When enabled this improves resize
   performance enormously for complex resize methods.
