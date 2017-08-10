@@ -827,6 +827,7 @@ read_gif(Gif_Reader *grr, int read_flags,
           goto done;
       else if (!read_image(grr, &gfc, gfi, read_flags)) {
           Gif_RemoveImage(gfs, gfs->nimages - 1);
+          gfi = 0;
           goto done;
       }
 
