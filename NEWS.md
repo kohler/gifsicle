@@ -1,6 +1,11 @@
 Gifsicle NEWS
 =============
 
+## Version 1.90 – 14.Aug.2017
+
+* Kill a use-after-free error reported by @junxzm1990.
+
+
 ## Version 1.89 - 11.Jul.2017
 
 * Add SIMD support for resizing. When enabled this improves resize

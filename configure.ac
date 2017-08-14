@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([gifsicle], [1.89])
+AC_INIT([gifsicle], [1.90])
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE
