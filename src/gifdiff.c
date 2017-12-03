@@ -248,12 +248,6 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
   Gif_CalculateScreenSize(s1, 0);
   Gif_CalculateScreenSize(s2, 0);
 
-  if (s1->nimages != s2->nimages
-      && (s1->nimages == 0 || s2->nimages == 0)) {
-    different("frame counts differ: <#%d >#%d", s1->nimages, s2->nimages);
-    return DIFFERENT;
-  }
-
   if (s1->screen_width != s2->screen_width
       || s1->screen_height != s2->screen_height) {
     different("screen sizes differ: <%dx%d >%dx%d", s1->screen_width,
@@ -266,6 +260,14 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     /* paranoia -- don't think this can happen */
     different("zero screen sizes");
     return DIFFERENT;
+  }
+
+  if (s1->nimages == 0 || s2->nimages == 0) {
+    if (s1->nimages != s2->nimages) {
+      different("frame counts differ: <#%d >#%d", s1->nimages, s2->nimages);
+      return DIFFERENT;
+    } else
+      return SAME;
   }
 
   /* Create arrays for the image data */
