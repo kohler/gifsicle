@@ -900,6 +900,7 @@ read_gif(Gif_Reader *grr, int read_flags,
   Gif_DeleteArray(gfc.suffix);
   Gif_DeleteArray(gfc.length);
   gfc.gfi = 0;
+  last_name = 0;
 
   if (gfs)
     gfs->errors = gfc.errors[1];
