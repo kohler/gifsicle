@@ -107,8 +107,11 @@ static inline Gif_Color kc_togfcg(const kcolor* x) {
 
 /* return the squared Euclidean distance between `*x` and `*y` */
 static inline uint32_t kc_distance(const kcolor* x, const kcolor* y) {
-    int32_t d0 = x->a[0] - y->a[0], d1 = x->a[1] - y->a[1],
-        d2 = x->a[2] - y->a[2];
+    /* It’s OK to use unsigned multiplication for this: the low 32 bits
+    are the same either way. Unsigned avoids undefined behavior. */
+    uint32_t d0 = x->a[0] - y->a[0];
+    uint32_t d1 = x->a[1] - y->a[1];
+    uint32_t d2 = x->a[2] - y->a[2];
     return d0 * d0 + d1 * d1 + d2 * d2;
 }
 
@@ -120,7 +123,6 @@ static inline int kc_luminance(const kcolor* x) {
 /* set `*x` to the grayscale version of `*x`, transformed by luminance */
 static inline void kc_luminance_transform(kcolor* x) {
     /* For grayscale colormaps, use distance in luminance space instead of
-
        distance in RGB space. The weights for the R,G,B components in
        luminance space are 0.2126,0.7152,0.0722. (That's ITU primaries, which
        are compatible with sRGB; NTSC recommended our previous values,
