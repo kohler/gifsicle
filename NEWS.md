@@ -1,6 +1,11 @@
 Gifsicle NEWS
 =============
 
+## Version 1.91 – 5.Jan.2018
+
+* Several security bug fixes with malicious GIFs.
+
+
 ## Version 1.90 – 14.Aug.2017
 
 * Kill a use-after-free error reported by @junxzm1990.
