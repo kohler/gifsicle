@@ -253,7 +253,7 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
     fr->left_offset = fr->crop->left_offset;
     fr->top_offset = fr->crop->top_offset;
 
-    if (c.w > 0 && c.h > 0) {
+    if (c.w > 0 && c.h > 0 && gfi->img) {
         uint8_t** old_img = gfi->img;
         gfi->img = Gif_NewArray(uint8_t *, c.h + 1);
         for (j = 0; j < c.h; j++)
