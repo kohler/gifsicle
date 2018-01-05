@@ -1001,7 +1001,7 @@ int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
         } else {
             int delta = k->a[stackpos % 3] - p->pivot;
             if (state[stackpos] == 1
-                && (unsigned) (delta * delta) < mindist) {
+                && (unsigned) delta * (unsigned) delta < mindist) {
                 if (delta < 0)
                     stack[stackpos + 1] = p + p->offset;
                 else
