@@ -226,7 +226,7 @@ Gif_RemoveImage(Gif_Stream *gfs, int inum)
 int
 Gif_ImageColorBound(const Gif_Image* gfi)
 {
-    if (gfi->compressed)
+    if (gfi->compressed && gfi->compressed[0] > 0 && gfi->compressed[0] < 8)
         return 1 << gfi->compressed[0];
     else
         return 256;
