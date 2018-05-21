@@ -58,8 +58,8 @@ directory and run
     nmake -f Makefile.w32
 
 Gifview will not be built. The makefile is from Emil Mikulic
-<darkmoon@connexus.net.au> with updates by Eddie Kohler and Steven
-Marthouse <comments@vrml3d.com>.
+<darkmoon@connexus.net.au> with updates by Steven Marthouse
+<comments@vrml3d.com>.
 
 To build Gifsicle on Windows using Borland C++, change into the `src`
 directory and run
@@ -75,11 +75,12 @@ more information.
 Contact
 -------
 
-Please write me if you have trouble building or running Gifsicle, or
-if you have suggestions or patches.
+If you have trouble building or running Gifsicle, try GitHub issues:
+https://github.com/kohler/gifsicle
 
-Eddie Kohler, ekohler@gmail.com
-http://www.read.seas.harvard.edu/~kohler/
+Eddie Kohler, ekohler@gmail.com  
+http://www.read.seas.harvard.edu/~kohler/  
+Please note that I do not provide support for Windows.
 
 
 Copyright/License
