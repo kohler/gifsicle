@@ -4,11 +4,20 @@
 #ifndef GIFSICLE_CONFIG_H
 #define GIFSICLE_CONFIG_H
 
+/* Define to 1 if multithreading support is available. */
+/* #undef ENABLE_THREADS */
+
 /* Define to the number of arguments to gettimeofday (gifview only). */
 /* #undef GETTIMEOFDAY_PROTO */
 
 /* Define if GIF LZW compression is off. */
 /* #undef GIF_UNGIF */
+
+/* Define to 1 if `ext_vector_type' vector types are usable. */
+/* #undef HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES */
+
+/* Define to 1 if the system has the type `int64_t'. */
+/* #undef HAVE_INT64_T */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #if defined(_MSC_VER) && _MSC_VER >= 1900
@@ -23,6 +32,9 @@
 
 /* Define to 1 if you have the `pow' function. */
 #define HAVE_POW 1
+
+/* Define to 1 if SIMD types should be used. */
+/* #undef HAVE_SIMD */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #if defined(_MSC_VER) && _MSC_VER >= 1900
@@ -50,8 +62,17 @@
 /* Define to 1 if you have the <sys/stat.h> header file. */
 /* #undef HAVE_SYS_STAT_H */
 
+/* Define to 1 if you have the <sys/time.h> header file. */
+/* #undef HAVE_SYS_TIME_H */
+
 /* Define to 1 if you have the <sys/types.h> header file. */
 /* #undef HAVE_SYS_TYPES_H */
+
+/* Define to 1 if you have the <time.h> header file. */
+/* #undef HAVE_TIME_H */
+
+/* Define to 1 if the system has the type `uint64_t'. */
+/* #undef HAVE_UINT64_T */
 
 /* Define to 1 if the system has the type `uintptr_t'. */
 #if defined(_MSC_VER) && _MSC_VER >= 1900
@@ -63,6 +84,15 @@
 
 /* Define if you have u_intXX_t types but not uintXX_t types. */
 /* #undef HAVE_U_INT_TYPES */
+
+/* Define to 1 if `vector_size' vector types are usable. */
+/* #undef HAVE_VECTOR_SIZE_VECTOR_TYPES */
+
+/* Define to 1 if you have the `__builtin_shufflevector' function. */
+/* #undef HAVE___BUILTIN_SHUFFLEVECTOR */
+
+/* Define to 1 if you have the `__sync_add_and_fetch' function. */
+/* #undef HAVE___SYNC_ADD_AND_FETCH */
 
 /* Define to write GIFs to stdout even when stdout is a terminal. */
 /* #undef OUTPUT_GIF_TO_TERMINAL */
@@ -93,6 +123,9 @@
 
 /* Define to a function that returns a random number. */
 #define RANDOM rand
+
+/* The size of `float', as computed by sizeof. */
+#define SIZEOF_FLOAT 4
 
 /* The size of `unsigned int', as computed by sizeof. */
 #define SIZEOF_UNSIGNED_INT 4
