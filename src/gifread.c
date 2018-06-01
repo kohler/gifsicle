@@ -59,10 +59,10 @@ typedef struct Gif_Reader {
 static Gif_ReadErrorHandler default_error_handler = 0;
 
 
-#define gifgetc(grr)	((char)(*grr->byte_getter)(grr))
+#define gifgetc(grr)    ((char)(*grr->byte_getter)(grr))
 #define gifgetbyte(grr) ((*grr->byte_getter)(grr))
 #define gifgetblock(ptr, size, grr) ((*grr->block_getter)(ptr, size, grr))
-#define gifeof(grr)	((*grr->eofer)(grr))
+#define gifeof(grr)     ((*grr->eofer)(grr))
 
 static inline uint16_t
 gifgetunsigned(Gif_Reader *grr)
@@ -185,7 +185,7 @@ one_code(Gif_Context *gfc, Gif_Code code)
 
 static int
 read_image_block(Gif_Reader *grr, uint8_t *buffer, int *bit_pos_store,
-		 int *bit_len_store, int bits_needed)
+                 int *bit_len_store, int bits_needed)
 {
   int bit_position = *bit_pos_store;
   int bit_length = *bit_len_store;
@@ -281,8 +281,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (bit_position + bits_needed > bit_length)
       /* Read in the next data block. */
       if (!read_image_block(grr, buffer, &bit_position, &bit_length,
-			    bits_needed))
-	goto zero_length_block;
+                            bits_needed))
+        goto zero_length_block;
 
     i = bit_position / 8;
     accum = buffer[i] + (buffer[i+1] << 8);
@@ -307,14 +307,14 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     else if (code > next_code && next_code && next_code != clear_code) {
       /* code > next_code: a (hopefully recoverable) error.
 
-	 Bug fix, 5/27: Do this even if old_code == clear_code, and set code
-	 to 0 to prevent errors later. (If we didn't zero code, we'd later set
-	 old_code = code; then we had old_code >= next_code; so the prefixes
-	 array got all screwed up!)
+         Bug fix, 5/27: Do this even if old_code == clear_code, and set code
+         to 0 to prevent errors later. (If we didn't zero code, we'd later set
+         old_code = code; then we had old_code >= next_code; so the prefixes
+         array got all screwed up!)
 
-	 Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
-	 This happens at the end of a large GIF: see the next comment ("If no
-	 meaningful next code should be defined...."). */
+         Bug fix, 4/12/2010: It is not an error if next_code == clear_code.
+         This happens at the end of a large GIF: see the next comment ("If no
+         meaningful next code should be defined...."). */
       if (gfc->errors[1] < 20)
           gif_read_error(gfc, 1, "image corrupted, code out of range");
       else if (gfc->errors[1] == 20)
@@ -347,10 +347,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (next_code != clear_code) {
       next_code++;
       if (next_code == CUR_BUMP_CODE) {
-	if (bits_needed < GIF_MAX_CODE_BITS)
-	  bits_needed++;
-	else
-	  next_code = clear_code;
+        if (bits_needed < GIF_MAX_CODE_BITS)
+          bits_needed++;
+        else
+          next_code = clear_code;
       }
     }
 
@@ -476,11 +476,11 @@ read_compressed_image(Gif_Image *gfi, Gif_Reader *grr, int read_flags)
     i = gifgetbyte(grr);
     while (i > 0) {
       /* add 2 before check so we don't have to check after loop when appending
-	 0 block */
+         0 block */
       if (comp_len + i + 2 > comp_cap) {
-	comp_cap *= 2;
-	Gif_ReArray(comp, uint8_t, comp_cap);
-	if (!comp) return 0;
+        comp_cap *= 2;
+        Gif_ReArray(comp, uint8_t, comp_cap);
+        if (!comp) return 0;
       }
       comp[comp_len] = i;
       gifgetblock(comp + comp_len + 1, i, grr);
@@ -604,7 +604,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       Gif_Reader new_grr;
       make_data_reader(&new_grr, gfi->compressed, gfi->compressed_len);
       if (!uncompress_image(gfc, gfi, &new_grr))
-	return 0;
+        return 0;
     }
 
   } else if (read_flags & GIF_READ_UNCOMPRESSED) {
@@ -627,7 +627,7 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
 
 static void
 read_graphic_control_extension(Gif_Context *gfc, Gif_Image *gfi,
-			       Gif_Reader *grr)
+                               Gif_Reader *grr)
 {
   uint8_t len;
   uint8_t crap[GIF_MAX_BLOCK];
@@ -744,7 +744,7 @@ read_application_extension(Gif_Context *gfc, Gif_Reader *grr)
       gfs->loopcount = gifgetunsigned(grr);
       len = gifgetbyte(grr);
       if (len)
-	gif_read_error(gfc, 1, "bad loop extension");
+        gif_read_error(gfc, 1, "bad loop extension");
     } else
       gif_read_error(gfc, 1, "bad loop extension");
 
@@ -777,7 +777,7 @@ read_comment_extension(Gif_Image *gfi, Gif_Reader *grr)
 
 static Gif_Stream *
 read_gif(Gif_Reader *grr, int read_flags,
-	 const char* landmark, Gif_ReadErrorHandler handler)
+         const char* landmark, Gif_ReadErrorHandler handler)
 {
   Gif_Stream *gfs;
   Gif_Image *gfi;
@@ -846,34 +846,34 @@ read_gif(Gif_Reader *grr, int read_flags,
       switch (block) {
 
        case 0xF9:
-	read_graphic_control_extension(&gfc, gfi, grr);
-	break;
+        read_graphic_control_extension(&gfc, gfi, grr);
+        break;
 
        case 0xCE:
-	last_name = suck_data(last_name, 0, grr);
-	break;
+        last_name = suck_data(last_name, 0, grr);
+        break;
 
        case 0xFE:
-	if (!read_comment_extension(gfi, grr)) goto done;
-	break;
+        if (!read_comment_extension(gfi, grr)) goto done;
+        break;
 
        case 0xFF:
-	read_application_extension(&gfc, grr);
-	break;
+        read_application_extension(&gfc, grr);
+        break;
 
        default:
         read_unknown_extension(&gfc, grr, block, 0, 0);
-	break;
+        break;
 
       }
       break;
 
      default:
        if (!unknown_block_type) {
-	 char buf[256];
-	 sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
-	 gif_read_error(&gfc, 1, buf);
-	 unknown_block_type = 1;
+         char buf[256];
+         sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
+         gif_read_error(&gfc, 1, buf);
+         unknown_block_type = 1;
        }
        break;
 
@@ -917,7 +917,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
 Gif_Stream *
 Gif_FullReadFile(FILE *f, int read_flags,
-		 const char* landmark, Gif_ReadErrorHandler h)
+                 const char* landmark, Gif_ReadErrorHandler h)
 {
   Gif_Reader grr;
   if (!f) return 0;
@@ -932,7 +932,7 @@ Gif_FullReadFile(FILE *f, int read_flags,
 
 Gif_Stream *
 Gif_FullReadRecord(const Gif_Record *gifrec, int read_flags,
-		   const char* landmark, Gif_ReadErrorHandler h)
+                   const char* landmark, Gif_ReadErrorHandler h)
 {
   Gif_Reader grr;
   if (!gifrec) return 0;
