@@ -873,8 +873,9 @@ read_gif(Gif_Reader *grr, int read_flags,
          char buf[256];
          sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
          gif_read_error(&gfc, 1, buf);
-         unknown_block_type = 1;
        }
+       if (++unknown_block_type > 20)
+         goto done;
        break;
 
     }
