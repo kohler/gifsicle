@@ -23,9 +23,9 @@
 extern "C" {
 #endif
 
-#define WRITE_BUFFER_SIZE	255
-#define NODES_SIZE		GIF_MAX_CODE
-#define LINKS_SIZE		GIF_MAX_CODE
+#define WRITE_BUFFER_SIZE       255
+#define NODES_SIZE              GIF_MAX_CODE
+#define LINKS_SIZE              GIF_MAX_CODE
 
 /* 1.Aug.1999 - Removed code hashing in favor of an adaptive tree strategy
    based on Whirlgif-3.04, written by Hans Dinsen-Hansen <dino@danbbs.dk>. Mr.
@@ -46,9 +46,9 @@ extern "C" {
    very small numbers of colors (2, 4, 8) won't get the speed benefits of
    TABLE nodes. */
 
-#define TABLE_TYPE		0
-#define LINKS_TYPE		1
-#define MAX_LINKS_TYPE		5
+#define TABLE_TYPE              0
+#define LINKS_TYPE              1
+#define MAX_LINKS_TYPE          5
 typedef struct Gif_Node {
   Gif_Code code;
   uint8_t type;
@@ -86,8 +86,8 @@ struct Gif_Writer {
 };
 
 
-#define gifputbyte(b, grr)	((*grr->byte_putter)(b, grr))
-#define gifputblock(b, l, grr)	((*grr->block_putter)(b, l, grr))
+#define gifputbyte(b, grr)      ((*grr->byte_putter)(b, grr))
+#define gifputblock(b, l, grr)  ((*grr->block_putter)(b, l, grr))
 
 static inline void
 gifputunsigned(uint16_t uns, Gif_Writer *grr)
@@ -405,7 +405,7 @@ gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
 
 static int
 write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
-		      int min_code_bits, Gif_Writer *grr)
+                      int min_code_bits, Gif_Writer *grr)
 {
   Gif_CodeTable* gfc = &grr->code_table;
   uint8_t stack_buffer[512 - 24];
@@ -703,8 +703,8 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
     for (y = 0; y < height && colors_used < 128; y++) {
       uint8_t *data = gfi->img[y];
       for (x = width; x > 0; x--, data++)
-	if (*data > colors_used)
-	  colors_used = *data;
+        if (*data > colors_used)
+          colors_used = *data;
     }
     colors_used++;
 
@@ -717,7 +717,7 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
     colors_used = 256;
   }
 
-  min_code_bits = 2;		/* min_code_bits of 1 isn't allowed */
+  min_code_bits = 2;            /* min_code_bits of 1 isn't allowed */
   i = 4;
   while (i < colors_used) {
     min_code_bits++;
@@ -729,7 +729,7 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
 
 
 static int get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi,
-				Gif_Writer *grr);
+                                Gif_Writer *grr);
 
 static void
 save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
@@ -753,7 +753,7 @@ save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
 
 int
 Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
-		      const Gif_CompressInfo *gcinfo)
+                      const Gif_CompressInfo *gcinfo)
 {
   int ok = 0;
   uint8_t min_code_bits;
@@ -805,8 +805,8 @@ get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
       ncol = gfi->transparent + 1;
     else if (!gfi)
       for (i = 0; i < gfs->nimages; i++)
-	if (gfs->images[i]->transparent >= ncol)
-	  ncol = gfs->images[i]->transparent + 1;
+        if (gfs->images[i]->transparent >= ncol)
+          ncol = gfs->images[i]->transparent + 1;
   }
 
   /* Make sure the colormap is a power of two entries! */
@@ -899,7 +899,7 @@ write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 static void
 write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
 {
-  uint8_t packed = 0x70;		/* high resolution colors */
+  uint8_t packed = 0x70;                /* high resolution colors */
   grr->global_size = get_color_table_size(gfs, 0, grr);
 
   Gif_CalculateScreenSize(gfs, 0);
@@ -918,7 +918,7 @@ write_logical_screen_descriptor(Gif_Stream *gfs, Gif_Writer *grr)
     gifputbyte(gfs->background, grr);
   else
     gifputbyte(255, grr);
-  gifputbyte(0, grr);		/* no aspect ratio information */
+  gifputbyte(0, grr);           /* no aspect ratio information */
 
   if (grr->global_size > 0)
     write_color_table(gfs->global, grr->global_size, grr);
@@ -997,11 +997,11 @@ static void
 write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 {
   uint32_t pos = 0;
-  if (gfex->kind < 0) return;	/* ignore our private extensions */
+  if (gfex->kind < 0) return;   /* ignore our private extensions */
 
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);
-  if (gfex->kind == 255) {	/* an application extension */
+  if (gfex->kind == 255) {      /* an application extension */
     if (gfex->applength) {
       gifputbyte(gfex->applength, grr);
       gifputblock((const uint8_t*) gfex->appname, gfex->applength, grr);
@@ -1071,7 +1071,7 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
 int
 Gif_FullWriteFile(Gif_Stream *gfs, const Gif_CompressInfo *gcinfo,
-		  FILE *f)
+                  FILE *f)
 {
   Gif_Writer grr;
   int ok = gif_writer_init(&grr, f, gcinfo)

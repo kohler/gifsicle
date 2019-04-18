@@ -1588,8 +1588,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_UncompressImage(fr->stream, srci);
     }
 
-    /* It was pretty stupid to remove this code, which I did between 1.2b6 and
-       1.2 */
     old_transp = apply_frame_transparent(srci, fr);
 
     /* Is it ok to use the old image's compressed version? */
