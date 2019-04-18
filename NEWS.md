@@ -1,6 +1,14 @@
 Gifsicle NEWS
 =============
 
+## Version 1.92 – 18.Apr.2019
+
+* Add `--lossy` option from Kornel Lipiński.
+
+* Remove an assertion failure possible with `--conserve-memory` + `--colors` +
+  `--careful`.
+
+
 ## Version 1.91 – 5.Jan.2018
 
 * Several security bug fixes with malicious GIFs.
