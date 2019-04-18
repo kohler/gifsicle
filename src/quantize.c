@@ -1620,11 +1620,6 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
       Gif_ReleaseCompressedImage(gfi);
       Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 
-      if (only_compressed) {
-        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
-        Gif_ReleaseUncompressedImage(gfi);
-      }
-
       /* update count of used colors */
       for (j = 0; j < 256; j++)
         new_col[j].pixel += histogram[j];
@@ -1642,6 +1637,12 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
     if (gfi->local) {
       Gif_DeleteColormap(gfi->local);
       gfi->local = 0;
+    }
+
+    /* 1.92: recompress *after* deleting the local colormap */
+    if (gfcm && only_compressed) {
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
     }
   }
 
