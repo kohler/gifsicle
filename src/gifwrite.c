@@ -208,14 +208,14 @@ gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
 typedef struct gfc_rgbdiff {signed short r, g, b;} gfc_rgbdiff;
 
 /* Difference (MSE) between given color indexes + dithering error */
-static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transaprent, int b_transparent, gfc_rgbdiff dither)
+static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transparent, int b_transparent, gfc_rgbdiff dither)
 {
   /* if one is transparent and the other is not, then return maximum difference */
   /* TODO: figure out what color is in the canvas under the transparent pixel and match against that */
-  if (a_transaprent != b_transparent) return 1<<25;
+  if (a_transparent != b_transparent) return 1<<25;
 
   /* Two transparent colors are identical */
-  if (a_transaprent) return 0;
+  if (a_transparent) return 0;
 
   /* squared error with or without dithering. */
   unsigned int dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
@@ -231,18 +231,20 @@ static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transapren
 }
 
 /* difference between expected color a+dither and color b (used to calculate dithering required) */
-static inline gfc_rgbdiff diffused_difference(Gif_Color a, Gif_Color b, int a_transaprent, int b_transaprent, gfc_rgbdiff dither)
+static inline gfc_rgbdiff diffused_difference(Gif_Color a, Gif_Color b, int a_transparent, int b_transparent, gfc_rgbdiff dither)
 {
-  if (a_transaprent || b_transaprent) return (gfc_rgbdiff){0,0,0};
-
-  return (gfc_rgbdiff) {
-    a.gfc_red - b.gfc_red + dither.r * 3/4,
-    a.gfc_green - b.gfc_green + dither.g * 3/4,
-    a.gfc_blue - b.gfc_blue + dither.b * 3/4,
-  };
+  gfc_rgbdiff d;
+  if (a_transparent || b_transparent) {
+    d.r = d.g = d.b = 0;
+  } else {
+    d.r = a.gfc_red - b.gfc_red + dither.r * 3 / 4;
+    d.g = a.gfc_green - b.gfc_green + dither.g * 3 / 4;
+    d.b = a.gfc_blue - b.gfc_blue + dither.b * 3 / 4;
+  }
+  return d;
 }
 
-static inline const uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
+static inline uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
 
 static void
 gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
@@ -340,8 +342,9 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
   assert(suffix < gfc->clear_code);
   if (!node) {
+    gfc_rgbdiff zero_diff = {0, 0, 0};
     /* prefix of the new node must be same as suffix of previously added node */
-    return gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, &gfc->nodes[suffix], base_diff, (gfc_rgbdiff){0,0,0}, max_diff);
+    return gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, &gfc->nodes[suffix], base_diff, zero_diff, max_diff);
   }
 
   /* search all nodes that are less than max_diff different from the desired pixel */
@@ -390,7 +393,7 @@ gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Imag
   }
 }
 
-static inline const uint8_t
+static inline uint8_t
 gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
 {
   unsigned y = pos / gfi->width, x = pos - y * gfi->width;
@@ -426,6 +429,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   Gif_Code next_code = 0;
   Gif_Code output_code;
   uint8_t suffix;
+  Gif_Colormap *gfcm;
 
   int cur_code_bits;
 
@@ -444,8 +448,6 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   output_code = CLEAR_CODE;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
-
-  Gif_Colormap *gfcm;
 
   pos = clear_pos = clear_bufpos = 0;
   if (grr->gcinfo.loss) {
@@ -527,7 +529,8 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
     /*****
      * Find the next code to output. */
     if (grr->gcinfo.loss) {
-      struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos, NULL, 0, (gfc_rgbdiff){0,0,0}, grr->gcinfo.loss * 10);
+      gfc_rgbdiff zero_diff = {0, 0, 0};
+      struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos, NULL, 0, zero_diff, grr->gcinfo.loss * 10);
 
       work_node = t.node;
       run = t.pos - pos;
@@ -596,7 +599,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
         imageline++;
         pos++;
         if (pos == line_endpos) {
-  	imageline = gif_imageline(gfi, pos);
+          imageline = gif_imageline(gfi, pos);
           line_endpos += gfi->width;
         }
 

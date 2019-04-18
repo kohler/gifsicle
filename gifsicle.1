@@ -1,4 +1,5 @@
 .\" -*- mode: nroff -*-
+.AM
 .ds V 1.91
 .ds E " \-\- 
 .if t .ds E \(em
@@ -103,7 +104,7 @@ options are on the right.
 .Ix "\ \ \ disposal" "\fB\-\-disposal\fP"
 .Ix "\ \ \ looping" "\fB\-\-loopcount\fP"
 .Ix "\ \ \ portions of" "frame selections"
-.Ix "\ \ \ smaller" "\fB\-\-optimize\fP, \fB\-\-colors\fP"
+.Ix "\ \ \ smaller" "\fB\-\-optimize\fP, \fB\-\-colors\fP, \fB\-\-lossy\fP"
 .Ix "\ \ \ speed" "\fB\-\-delay\fP"
 .Ix "Bad output" "\fB\-\-careful\fP"
 .Ix "Background color" "\fB\-\-background\fP"
@@ -111,7 +112,7 @@ options are on the right.
 .Ix "\ \ \ reducing number" "\fB\-\-colors\fP, \fB\-\-dither\fP, \fB\-\-gamma\fP"
 .Ix "Comments" "\fB\-\-comment\fP"
 .Ix "Extensions" "\fB\-\-extension\fP, \fB\-\-app\-extension\fP, \fB\-\-extension\-info\fP"
-.Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP"
+.Ix "File size" "\fB\-\-optimize\fP, \fB\-\-unoptimize\fP, \fB\-\-colors\fP, \fB\-\-lossy\fP"
 .TP 30
 Image transformations
 .Ix "\ \ \ cropping" "\fB\-\-crop\fP, \fB\-\-crop\-transparency\fP"
@@ -824,7 +825,8 @@ Preserve empty transparent frames (they are dropped by default).
 .Sp
 .PP
 You may also be interested in other options for shrinking GIFs, such as
-.Op \-k
+.Op \-k ,
+.Op \-\-lossy ,
 and
 .Op \-\-no\-extensions .
 .RE
@@ -1092,6 +1094,18 @@ color palette (\fB\-\-colors\fP) and when dithering
 (\fB\-\-dither\fP).
 '
 .Sp
+.TP
+.Op \-\-lossy "[=\fIlossiness\fR]"
+'
+Alter image colors to shrink output file size at the cost of artifacts
+and noise.
+.I Lossiness
+determines how many artifacts are allowed; higher values can result
+in smaller file sizes, but cause more artifacts. The default
+.I lossiness
+is 20.
+'
+.Sp
 .PD 0
 .TP
 .Oa \-\-change\-color color1 " " color2
@@ -1309,6 +1323,11 @@ Hans Dinsen-Hansen <dino@danbbs.dk>
 http://www.danbbs.dk/~dino/
 .br
 Adaptive tree method for GIF writing.
+.PP
+Kornel Lesin\*[']ski
+.br
+.Op \-\-lossy
+option.
 .PP
 http://www.lcdf.org/gifsicle/
 .br
