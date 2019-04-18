@@ -86,7 +86,7 @@ Please note that I do not provide support for Windows.
 Copyright/License
 -----------------
 
-All source code is Copyright (C) 1997-2018 Eddie Kohler.
+All source code is Copyright (C) 1997-2019 Eddie Kohler.
 
 IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however
@@ -115,20 +115,23 @@ obtain permission before doing so.
 Authors
 -------
 
-Eddie Kohler <ekohler@gmail.com>
-http://www.read.seas.harvard.edu/~kohler/
+Eddie Kohler <ekohler@gmail.com> \
+http://www.read.seas.harvard.edu/~kohler/ \
 He wrote it.
 
-Anne Dudfield <anne@mazunetworks.com>
-http://www.frii.com/~annied/
+Anne Dudfield <anne@mazunetworks.com> \
+http://www.frii.com/~annied/ \
 She named it.
 
-David Hedbor <david@hedbor.org>
+David Hedbor <david@hedbor.org> \
 Many bug reports and constructive whining about the optimizer.
 
-Emil Mikulic <darkmoon@connexus.net.au>
+Emil Mikulic <darkmoon@connexus.net.au> \
 Win32 port help.
 
-Hans Dinsen-Hansen <dino@danbbs.dk>
-http://www.danbbs.dk/~dino/
+Hans Dinsen-Hansen <dino@danbbs.dk> \
+http://www.danbbs.dk/~dino/ \
 Adaptive tree method for GIF writing.
+
+Kornel Lesiński \
+`--lossy` option.

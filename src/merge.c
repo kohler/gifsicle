@@ -1,5 +1,5 @@
 /* merge.c - Functions which actually combine and manipulate GIF image data.
-   Copyright (C) 1997-2018 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
