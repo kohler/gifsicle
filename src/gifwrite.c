@@ -210,6 +210,8 @@ typedef struct gfc_rgbdiff {signed short r, g, b;} gfc_rgbdiff;
 /* Difference (MSE) between given color indexes + dithering error */
 static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transparent, int b_transparent, gfc_rgbdiff dither)
 {
+  unsigned int dith, undith;
+
   /* if one is transparent and the other is not, then return maximum difference */
   /* TODO: figure out what color is in the canvas under the transparent pixel and match against that */
   if (a_transparent != b_transparent) return 1<<25;
@@ -218,11 +220,11 @@ static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transparen
   if (a_transparent) return 0;
 
   /* squared error with or without dithering. */
-  unsigned int dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
+  dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
   + (a.gfc_green-b.gfc_green+dither.g)*(a.gfc_green-b.gfc_green+dither.g)
   + (a.gfc_blue-b.gfc_blue+dither.b)*(a.gfc_blue-b.gfc_blue+dither.b);
 
-  unsigned int undith = (a.gfc_red-b.gfc_red+dither.r/2)*(a.gfc_red-b.gfc_red+dither.r/2)
+  undith = (a.gfc_red-b.gfc_red+dither.r/2)*(a.gfc_red-b.gfc_red+dither.r/2)
   + (a.gfc_green-b.gfc_green+dither.g/2)*(a.gfc_green-b.gfc_green+dither.g/2)
   + (a.gfc_blue-b.gfc_blue+dither.b/2)*(a.gfc_blue-b.gfc_blue+dither.b/2);
 
@@ -336,9 +338,10 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   unsigned image_endpos = gfi->width * gfi->height;
 
   struct selected_node best_t = {node, pos, base_diff};
+  uint8_t suffix;
   if (pos >= image_endpos) return best_t;
 
-  uint8_t suffix = gif_pixel_at_pos(gfi, pos);
+  suffix = gif_pixel_at_pos(gfi, pos);
   assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
   assert(suffix < gfc->clear_code);
   if (!node) {
