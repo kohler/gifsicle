@@ -335,7 +335,7 @@ static struct selected_node
 gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   unsigned pos, Gif_Node *node, unsigned long base_diff, gfc_rgbdiff dither, const unsigned int max_diff)
 {
-  unsigned image_endpos = gfi->width * gfi->height;
+  const unsigned image_endpos = gfi->width * gfi->height;
 
   struct selected_node best_t = {node, pos, base_diff};
   uint8_t suffix;
@@ -419,7 +419,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   unsigned pos;
   unsigned clear_bufpos, clear_pos;
   unsigned line_endpos;
-  unsigned image_endpos = gfi->height * gfi->width;
+  const unsigned image_endpos = gfi->height * gfi->width;
   const uint8_t *imageline;
 
   unsigned run = 0;
@@ -619,7 +619,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           int do_clear = grr->gcinfo.flags & GIF_WRITE_EAGER_CLEAR;
 
           if (!do_clear) {
-            unsigned pixels_left = gfi->width * gfi->height - pos;
+            unsigned pixels_left = image_endpos - pos;
             if (pixels_left) {
               /* Always clear if run_ewma gets small relative to
                  min_code_bits. Otherwise, clear if #images/run is smaller
