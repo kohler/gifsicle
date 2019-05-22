@@ -419,7 +419,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   unsigned pos;
   unsigned clear_bufpos, clear_pos;
   unsigned line_endpos;
-  unsigned image_endpos;
+  unsigned image_endpos = gfi->height * gfi->width;
   const uint8_t *imageline;
 
   unsigned run = 0;
@@ -432,7 +432,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   Gif_Code next_code = 0;
   Gif_Code output_code;
   uint8_t suffix;
-  Gif_Colormap *gfcm;
+  Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
 
   int cur_code_bits;
 
@@ -453,13 +453,8 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
      below. */
 
   pos = clear_pos = clear_bufpos = 0;
-  if (grr->gcinfo.loss) {
-    image_endpos = gfi->height * gfi->width;
-    gfcm = (gfi->local ? gfi->local : gfs->global);
-  } else {
-    line_endpos = gfi->width;
-    imageline = gif_imageline(gfi, pos);
-  }
+  line_endpos = gfi->width;
+  imageline = gif_imageline(gfi, pos);
 
   while (1) {
 
