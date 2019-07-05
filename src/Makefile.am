@@ -8,26 +8,24 @@ libgifsicle_la_SOURCES = clp.c fmalloc.c \
 bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
 EXTRA_PROGRAMS = gifview gifdiff
 
-LDADD = @LIBOBJS@
+LDADD = @LIBOBJS@ libgifsicle.la
 gifsicle_LDADD = $(LDADD) @GIFWRITE_O@
 gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
 
-gifsicle_DEPENDENCIES = @GIFWRITE_O@ @LIBOBJS@
-gifview_DEPENDENCIES = @LIBOBJS@
-gifdiff_DEPENDENCIES = @LIBOBJS@
+gifsicle_DEPENDENCIES = @GIFWRITE_O@ @LIBOBJS@ libgifsicle.la
+gifview_DEPENDENCIES = @LIBOBJS@ libgifsicle.la
+gifdiff_DEPENDENCIES = @LIBOBJS@ libgifsicle.la
 
 WERROR = @WERROR@
 
 gifsicle_SOURCES = gifunopt.c gifsicle.h kcolor.h \
 		merge.c optimize.c quantize.c support.c xform.c \
 		gifsicle.c
-gifsicle_LDADD = libgifsicle.la
 
 gifview_SOURCES = gifx.c gifview.c
-gifview_LDADD = libgifsicle.la
 
 gifdiff_SOURCES = gifdiff.c
-gifdiff_LDADD = libgifsicle.la
+gifdiff_LDADD = libgifsicle.a
 
 AM_CPPFLAGS = $(X_CFLAGS) $(WERROR) -I$(top_srcdir)/include
 
