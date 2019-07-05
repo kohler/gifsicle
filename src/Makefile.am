@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign check-news
 
 lib_LTLIBRARIES = libgifsicle.la
 libgifsicle_la_SOURCES = clp.c fmalloc.c \
-		giffunc.c gifread.c
+		giffunc.c gifread.c support.c
 
 bin_PROGRAMS = gifsicle @OTHERPROGRAMS@
 EXTRA_PROGRAMS = gifview gifdiff
@@ -20,8 +20,7 @@ gifdiff_DEPENDENCIES = @LIBOBJS@ libgifsicle.la
 WERROR = @WERROR@
 
 gifsicle_SOURCES = gifunopt.c gifsicle.h kcolor.h \
-		merge.c optimize.c quantize.c support.c xform.c \
-		gifsicle.c
+		merge.c optimize.c quantize.c xform.c gifsicle.c
 
 gifview_SOURCES = gifx.c gifview.c
 
