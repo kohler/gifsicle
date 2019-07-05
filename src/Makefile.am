@@ -11,6 +11,7 @@ EXTRA_PROGRAMS = gifview gifdiff
 LDADD = @LIBOBJS@ libgifsicle.la
 gifsicle_LDADD = $(LDADD) @GIFWRITE_O@
 gifview_LDADD = $(LDADD) @X_LIBS@ @X_PRE_LIBS@ -lX11 @X_EXTRA_LIBS@
+gifdiff_LDADD = $(LDADD)
 
 gifsicle_DEPENDENCIES = @GIFWRITE_O@ @LIBOBJS@ libgifsicle.la
 gifview_DEPENDENCIES = @LIBOBJS@ libgifsicle.la
@@ -25,7 +26,6 @@ gifsicle_SOURCES = gifunopt.c gifsicle.h kcolor.h \
 gifview_SOURCES = gifx.c gifview.c
 
 gifdiff_SOURCES = gifdiff.c
-gifdiff_LDADD = libgifsicle.a
 
 AM_CPPFLAGS = $(X_CFLAGS) $(WERROR) -I$(top_srcdir)/include
 
