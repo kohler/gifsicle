@@ -1104,10 +1104,11 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
 {
   Gif_Colormap *gfcm = gfs->global;
   int index;
-  if (gfi && gfi->local) gfcm = gfi->local;
+  if (gfi && gfi->local)
+    gfcm = gfi->local;
 
   if (color->haspixel == 2) {   /* have pixel value, not color */
-    if (color->pixel < (uint32_t)gfcm->ncol)
+    if (!gfcm || color->pixel < (uint32_t)gfcm->ncol)
       return color->pixel;
     else {
       if (color_context)
@@ -1116,7 +1117,7 @@ find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
     }
   }
 
-  index = Gif_FindColor(gfcm, color);
+  index = gfcm ? Gif_FindColor(gfcm, color) : -1;
   if (index < 0 && color_context)
     lwarning(gfs->landmark, "%s color not in colormap", color_context);
   return index;
@@ -1464,7 +1465,8 @@ static void mark_used_background_color(Gt_Frame* fr) {
             || gfi->top != 0
             || gfi->width != gfs->screen_width
             || gfi->height != gfs->screen_height)
-        && gfs->global && gfs->background < gfs->global->ncol)
+        && gfs->global
+        && gfs->background < gfs->global->ncol)
         gfs->global->col[gfs->background].haspixel |= 1;
 }
 
