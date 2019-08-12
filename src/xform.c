@@ -1377,3 +1377,92 @@ resize_stream(Gif_Stream* gfs,
     gfs->screen_width = nw;
     gfs->screen_height = nh;
 }
+
+void 
+pad_image(Gif_Stream* gfs, Gif_Image* gfi, 
+          int w, int h,
+          int xoff, int yoff, 
+          Gif_Color color) 
+{
+    Gif_Image gfo;
+    int true_xoff = xoff;
+    int true_yoff = yoff;
+    int was_compressed = (gfi->img == 0);
+    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+
+    int cidx = Gif_FindColor(gfcm, &color);
+    if (cidx == -1) {
+        if (gfcm->ncol < 256) {
+            cidx = Gif_AddColor(gfcm, &color, -1);
+        } else {
+            cidx = 0;
+        }
+    }
+
+    fprintf(stderr, "Cidx: %d\n", cidx);
+    fprintf(stderr, "Lf: %d,%d,%d\n", color.gfc_red, color.gfc_green, color.gfc_blue);
+
+    gfo = *gfi;
+    gfo.img = NULL;
+    gfo.image_data = NULL;
+    gfo.compressed = NULL;
+    gfo.left = 0;
+    gfo.top = 0;
+
+    /* If the frame we want to pad was offset, we need to adjust
+       for it, because we're need to fill the whole frame */
+    gfo.width = w;
+    gfo.height = h;
+    true_xoff = gfi->left + xoff;
+    true_yoff = gfi->top + yoff;
+
+    if (was_compressed)
+        Gif_UncompressImage(gfs, gfi);
+    
+    Gif_CreateUncompressedImage(&gfo, 0);
+
+    for (int y = 0; y < h; ++y) {
+        if (y < true_yoff || y >= true_yoff + gfi->height) {
+            memset(gfo.img[y], cidx, w);
+        } else if (true_xoff > 0) {
+            memset(gfo.img[y], cidx, true_xoff);
+            memcpy(gfo.img[y] + true_xoff, gfi->img[y - true_yoff], gfi->width);
+            memset(gfo.img[y] + true_xoff + gfi->width, cidx, w - true_xoff - gfi->width);
+        } else {
+            memcpy(gfo.img[y], gfi->img[y - true_yoff], gfi->width);
+        }
+    }
+
+    Gif_ReleaseUncompressedImage(gfi);
+    Gif_ReleaseCompressedImage(gfi);
+    *gfi = gfo;
+    if (was_compressed) {
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
+    }
+}
+
+void 
+offset_image(Gif_Image* gfi, int xoff, int yoff) 
+{
+    gfi->top = gfi->top + yoff;
+    gfi->left = gfi->left + xoff;
+}
+
+void
+pad_stream(Gif_Stream* gfs,
+           int w, int h,
+           Gif_Color color)
+{
+    int x_offset, y_offset;
+
+    x_offset = (w - gfs->screen_width) / 2;
+    y_offset = (h - gfs->screen_height) / 2;
+
+    for (int i = 0; i < gfs->nimages; ++i) {
+        if (i == 0)
+            pad_image(gfs, gfs->images[i], w, h, x_offset, y_offset, color);
+        else
+            offset_image(gfs->images[i], x_offset, y_offset);
+    }
+}
