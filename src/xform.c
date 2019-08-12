@@ -1399,9 +1399,6 @@ pad_image(Gif_Stream* gfs, Gif_Image* gfi,
         }
     }
 
-    fprintf(stderr, "Cidx: %d\n", cidx);
-    fprintf(stderr, "Lf: %d,%d,%d\n", color.gfc_red, color.gfc_green, color.gfc_blue);
-
     gfo = *gfi;
     gfo.img = NULL;
     gfo.image_data = NULL;
