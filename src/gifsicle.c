@@ -1035,7 +1035,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
      *  expensive work happens on the first frame.
      */
     if (active_output_data.resize_flags & GT_RESIZE_FILL
-        && (out->screen_width != w || out->screen_height != h))
+        && (out->screen_width < w || out->screen_height < h))
       pad_stream(out, w, h, def_output_data.resize_bg);
     if (colormap_change)
       do_colormap_change(out);
@@ -2086,7 +2086,6 @@ main(int argc, char *argv[])
 
     case RESIZE_BG_FILL_OPT:
       def_output_data.resize_bg = parsed_color;
-     fprintf(stderr, "Lf: %d,%d,%d\n", parsed_color.gfc_red, parsed_color.gfc_green, parsed_color.gfc_blue);
       def_output_data.resize_flags |= GT_RESIZE_FILL;
       break;
 

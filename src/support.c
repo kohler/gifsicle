@@ -1098,7 +1098,7 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
 }
 
 
-static int
+int
 find_color_or_error(Gif_Color *color, Gif_Stream *gfs, Gif_Image *gfi,
                     const char *color_context)
 {

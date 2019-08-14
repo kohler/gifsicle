@@ -1385,18 +1385,17 @@ pad_image(Gif_Stream* gfs, Gif_Image* gfi,
           Gif_Color color) 
 {
     Gif_Image gfo;
-    int true_xoff = xoff;
-    int true_yoff = yoff;
+    int true_xoff = gfi->left + xoff;
+    int true_yoff = gfi->top + yoff;
     int was_compressed = (gfi->img == 0);
     Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-
-    int cidx = Gif_FindColor(gfcm, &color);
-    if (cidx == -1) {
-        if (gfcm->ncol < 256) {
-            cidx = Gif_AddColor(gfcm, &color, -1);
-        } else {
-            cidx = 0;
-        }
+    int cidx = find_color_or_error(&color, gfs, gfi, NULL);
+    
+    if (cidx == -1 && gfcm && gfcm->ncol < 256) {
+        cidx = Gif_AddColor(gfcm, &color, -1);
+    } else {
+        /* Need something better than this */
+        cidx = 0;
     }
 
     gfo = *gfi;
@@ -1410,8 +1409,6 @@ pad_image(Gif_Stream* gfs, Gif_Image* gfi,
        for it, because we're need to fill the whole frame */
     gfo.width = w;
     gfo.height = h;
-    true_xoff = gfi->left + xoff;
-    true_yoff = gfi->top + yoff;
 
     if (was_compressed)
         Gif_UncompressImage(gfs, gfi);
@@ -1451,14 +1448,16 @@ pad_stream(Gif_Stream* gfs,
            int w, int h,
            Gif_Color color)
 {
-    int x_offset, y_offset;
+    // Make sure nobody is trying to trick us into a buffer overrun
+    int safe_w = w >= gfs->screen_width ? w : gfs->screen_width;
+    int safe_h = h >= gfs->screen_height ? h : gfs->screen_height;
 
-    x_offset = (w - gfs->screen_width) / 2;
-    y_offset = (h - gfs->screen_height) / 2;
+    int x_offset = (safe_w - gfs->screen_width) / 2;
+    int y_offset = (safe_h - gfs->screen_height) / 2;
 
     for (int i = 0; i < gfs->nimages; ++i) {
         if (i == 0)
-            pad_image(gfs, gfs->images[i], w, h, x_offset, y_offset, color);
+            pad_image(gfs, gfs->images[i], safe_w, safe_h, x_offset, y_offset, color);
         else
             offset_image(gfs->images[i], x_offset, y_offset);
     }
