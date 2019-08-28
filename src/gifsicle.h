@@ -226,8 +226,6 @@ void    mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
                          int compress_immediately);
 int     find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int     merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
-int     find_color_or_error(Gif_Color *color, Gif_Stream *gfs, 
-                            Gif_Image *gfi, const char *color_context);
 extern int warn_local_colormaps;
 void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void    merge_comments(Gif_Comment *destc, Gif_Comment *srcc);

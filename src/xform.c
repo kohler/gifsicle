@@ -1378,6 +1378,54 @@ resize_stream(Gif_Stream* gfs,
     gfs->screen_height = nh;
 }
 
+/**
+ * Low-cost LUV distance algorithm from https://www.compuphase.com/cmetric.htm
+ */
+double 
+color_distance(Gif_Color *c1, Gif_Color *c2)
+{
+    long rmean = ( (long)c1->gfc_red + (long)c2->gfc_blue ) / 2;
+    long r = (long)c1->gfc_red - (long)c2->gfc_red;
+    long g = (long)c1->gfc_green - (long)c2->gfc_green;
+    long b = (long)c1->gfc_blue - (long)c2->gfc_blue;
+    return sqrt((((512+rmean)*r*r)>>8) + 4*g*g + (((767-rmean)*b*b)>>8));
+}
+
+int
+find_or_add_color(Gif_Stream* gfs, Gif_Image* gfi, Gif_Color color) {
+    int cidx = -1;
+    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+
+    double smallest_distance = 0;
+    double distance;
+
+    if (gfcm) {
+        cidx = Gif_FindColor(gfcm, &color);
+        
+        if (cidx == -1 && gfcm->ncol < 256) {
+            /* There's room in the map for another color, yay! */
+            cidx = Gif_AddColor(gfcm, &color, -1);
+        } else {
+            /* Find the closest colour that is already in the colourmap */
+            for (int i = 0; i < gfcm->ncol; i++) {
+                distance = color_distance(&gfcm->col[i], &color);
+                if (smallest_distance == 0 || smallest_distance > distance) {
+                    cidx = i;
+                    smallest_distance = distance;
+                }
+            }
+        }
+    }
+
+    if (cidx < 0) {
+        lwarning(gfs->landmark, "Requested color not in colormaps, could not add color", "");
+        return -1;
+    } else {
+        return cidx;
+    }
+
+}
+
 void 
 pad_image(Gif_Stream* gfs, Gif_Image* gfi, 
           int w, int h,
@@ -1385,19 +1433,10 @@ pad_image(Gif_Stream* gfs, Gif_Image* gfi,
           Gif_Color color) 
 {
     Gif_Image gfo;
+    int cidx;
     int true_xoff = gfi->left + xoff;
     int true_yoff = gfi->top + yoff;
     int was_compressed = (gfi->img == 0);
-    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
-    int cidx = find_color_or_error(&color, gfs, gfi, NULL);
-    
-    if (cidx == -1 && gfcm && gfcm->ncol < 256) {
-        cidx = Gif_AddColor(gfcm, &color, -1);
-    } else {
-        /* Need something better than this */
-        cidx = 0;
-    }
-
     gfo = *gfi;
     gfo.img = NULL;
     gfo.image_data = NULL;
@@ -1405,10 +1444,17 @@ pad_image(Gif_Stream* gfs, Gif_Image* gfi,
     gfo.left = 0;
     gfo.top = 0;
 
+    /* If all else fails, border falls back to color zero */
+    cidx = find_or_add_color(gfs, &gfo, color);
+    if (cidx < 0) {
+        cidx = 0;
+    }
+
     /* If the frame we want to pad was offset, we need to adjust
        for it, because we're need to fill the whole frame */
     gfo.width = w;
     gfo.height = h;
+
 
     if (was_compressed)
         Gif_UncompressImage(gfs, gfi);
