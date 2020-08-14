@@ -235,7 +235,7 @@ Whole-GIF options: Also --no-OPTION.\n\
                                 be 'web', 'gray', 'bw', or a GIF file.\n\n");
   printf("\
 Report bugs to <ekohler@gmail.com>.\n\
-Too much information? Try '%s --help | more'.\n", program_name);
+Too much information? Try '%s --help | less'.\n", program_name);
 #ifdef GIF_UNGIF
   printf("\
 This version of Gifsicle writes uncompressed GIFs, which can be far larger\n\
