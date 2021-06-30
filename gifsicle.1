@@ -800,7 +800,7 @@ not
 .TP
 .Op \-\-optimize "[=\fIlevel\fR]"
 '
-Optimize output GIF animations for space.
+Attempt to shrink the file sizes of GIF animations.
 .I Level
 determines how much optimization is done; higher levels take longer, but
 may have better results. There are currently three levels:
@@ -808,10 +808,10 @@ may have better results. There are currently three levels:
 .RS
 .TP 5
 .Op \-O1
-Stores only the changed portion of each image. This is the default.
+Store only the changed portion of each image. This is the default.
 .TP 5
 .Op \-O2
-Also uses transparency to shrink the file further.
+Store only the changed portion of each image, and use transparency.
 .TP 5
 .Op \-O3
 Try several optimization methods (usually slower, sometimes better results).
@@ -829,6 +829,11 @@ You may also be interested in other options for shrinking GIFs, such as
 .Op \-\-lossy ,
 and
 .Op \-\-no\-extensions .
+Note that
+.Op \-O
+does not guarantee to shrink file size, and in rare cases, even
+.Op \-O3
+may actually enlarge file size.
 .RE
 '
 .Sp
