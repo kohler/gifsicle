@@ -86,7 +86,7 @@ Please note that I do not provide support for Windows.
 Copyright/License
 -----------------
 
-All source code is Copyright (C) 1997-2019 Eddie Kohler.
+All source code is Copyright (C) 1997-2021 Eddie Kohler.
 
 IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however
