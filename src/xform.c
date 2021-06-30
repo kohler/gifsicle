@@ -557,10 +557,10 @@ typedef struct {
     ksscreen iscr;
     kcscreen oscr;
     kcscreen xscr;
-    double oxf;                 /* (input width) / (output width) */
-    double oyf;                 /* (input height) / (output height) */
-    double ixf;                 /* (output width) / (input width) */
-    double iyf;                 /* (output height) / (input height) */
+    float oxf;                 /* (input width) / (output width) */
+    float oyf;                 /* (input height) / (output height) */
+    float ixf;                 /* (output width) / (input width) */
+    float iyf;                 /* (output height) / (input height) */
     scale_weightset xweights;
     scale_weightset yweights;
     kd3_tree global_kd3;
@@ -819,9 +819,12 @@ static inline pixel_range make_pixel_range(int xi, int maxi,
                                            int maxo, float f) {
     pixel_range pr;
     pr.lo = (int) (xi * f);
-    pr.hi = (int) ((xi + 1) * f);
-    pr.hi = (xi + 1 == maxi ? maxo : pr.hi);
-    pr.hi = (pr.hi == pr.lo ? pr.hi + 1 : pr.hi);
+    if (xi + 1 == maxi)
+        pr.hi = maxo;
+    else
+        pr.hi = (int) ((xi + 1) * f);
+    if (pr.hi == pr.lo)
+        ++pr.hi;
     return pr;
 }
 
@@ -854,7 +857,8 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
         for (i = xpr.lo; i != xpr.hi; ++i)
             xoff[i] = xo;
     }
-    xi0 = (int) (gfo->left * sctx->oxf);
+    xi0 = make_pixel_range(gfo->left, sctx->oscr.width,
+                           sctx->iscr.width, sctx->oxf).lo;
     xi1 = make_pixel_range(gfo->left + gfo->width - 1, sctx->oscr.width,
                            sctx->iscr.width, sctx->oxf).hi;
 

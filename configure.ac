@@ -1,7 +1,9 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([gifsicle], [1.92])
+AC_PREREQ(2.60)
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile src/Makefile])
 AM_INIT_AUTOMAKE
 ac_user_cc=${CC+y}
 
@@ -109,9 +111,9 @@ if test "x$ungif" = xyes -o "x$GIFSICLE_UNGIF" = xyes ; then
 elif test -r $srcdir/src/gifwrite.c ; then
   GIFWRITE_O=gifwrite.o
 else
-  AC_MSG_ERROR(This version of gifsicle cannot create compressed GIFs.
-*** Either reconfigure with the \`--enable-ungif' option or download the
-*** version with compression from http://www.lcdf.org/gifsicle/)
+  AC_MSG_ERROR([This version of gifsicle cannot create compressed GIFs.
+*** Either reconfigure with the '--enable-ungif' option or download the
+*** version with compression from http://www.lcdf.org/gifsicle/])
 fi
 AC_SUBST(GIFWRITE_O)
 
@@ -307,4 +309,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile src/Makefile)
+AC_OUTPUT
