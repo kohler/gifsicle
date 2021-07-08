@@ -134,6 +134,7 @@ typedef struct {
   double scale_y;
   int scale_method;
   int scale_colors;
+  Gif_Color resize_bg;
 
   int conserve_memory;
 
@@ -150,6 +151,7 @@ extern Clp_Parser* clp;
 #define GT_RESIZE_FIT_DOWN      2
 #define GT_RESIZE_FIT_UP        4
 #define GT_RESIZE_MIN_DIMEN     8
+#define GT_RESIZE_FILL         16
 
 #define SCALE_METHOD_POINT      0
 #define SCALE_METHOD_BOX        1
@@ -224,7 +226,6 @@ void    mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
                          int compress_immediately);
 int     find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int     merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
-
 extern int warn_local_colormaps;
 void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
 void    merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
@@ -260,6 +261,8 @@ void    resize_dimensions(int* w, int* h, double new_width, double new_height,
                           int flags);
 void    resize_stream(Gif_Stream* gfs, double new_width, double new_height,
                       int flags, int method, int scale_colors);
+
+void    pad_stream(Gif_Stream* gfs, int w, int h, Gif_Color color);
 
 /*****
  * quantization
