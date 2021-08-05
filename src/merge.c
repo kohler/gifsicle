@@ -376,6 +376,10 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
       for (j = 0; j < desti->height; j++) {
         uint8_t *srcdata = srci->img[j];
         uint8_t *destdata = desti->img[j];
+	if (desti->width > 255) {
+	  printf("Gif file's width is abnormal!\n");
+	  exit(0);
+	}
         for (i = 0; i < desti->width; i++, srcdata++, destdata++)
           *destdata = map[*srcdata];
       }
