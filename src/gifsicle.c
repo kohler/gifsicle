@@ -543,7 +543,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
 
   if (message) {
     const char *filename = gfs && gfs->landmark ? gfs->landmark : "<unknown>";
-    if (gfi && (which_image != 0 || gfs->nimages != 1))
+    if (gfi && (which_image != 0 || gfs->nimages > 1))
       snprintf(landmark, sizeof(landmark), "%s:#%d",
                filename, which_image < 0 ? gfs->nimages : which_image);
     else

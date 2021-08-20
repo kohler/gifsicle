@@ -573,14 +573,14 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       gfi->height = gfc->stream->screen_height;
   /* If still zero, error. */
   if (gfi->width == 0 || gfi->height == 0) {
-      gif_read_error(gfc, 1, "image has zero width and/or height");
+      gif_read_error(gfc, 1, "ignoring frame, zero width and/or height");
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
   /* If position out of range, error. */
   if ((unsigned) gfi->left + (unsigned) gfi->width > 0xFFFF
       || (unsigned) gfi->top + (unsigned) gfi->height > 0xFFFF) {
-      gif_read_error(gfc, 1, "image position and/or dimensions out of range");
+      gif_read_error(gfc, 1, "ignoring frame, violates 65535x65535 screen size limit");
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
