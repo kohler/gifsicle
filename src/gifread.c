@@ -388,14 +388,25 @@ static Gif_Colormap *
 read_color_table(int size, Gif_Reader *grr)
 {
   Gif_Colormap *gfcm = Gif_NewFullColormap(size, size);
+  unsigned char buf[256 * 3], *bptr, *eptr;
+  size_t n;
   Gif_Color *c;
   if (!gfcm) return 0;
+  assert(gfcm->capacity >= 256 && size >= 0 && size <= 256);
 
   GIF_DEBUG(("colormap(%d) ", size));
-  for (c = gfcm->col; size; size--, c++) {
-    c->gfc_red = gifgetbyte(grr);
-    c->gfc_green = gifgetbyte(grr);
-    c->gfc_blue = gifgetbyte(grr);
+  n = gifgetblock(buf, size * 3, grr);
+
+  /* always initialize 256 colors; colors not included in map are
+     initialized to black in case of bad input */
+  memset(&buf[n], 0, 256 * 3 - n);
+
+  for (bptr = buf, eptr = buf + (256 * 3), c = gfcm->col;
+       bptr != eptr;
+       bptr += 3, ++c) {
+    c->gfc_red = bptr[0];
+    c->gfc_green = bptr[1];
+    c->gfc_blue = bptr[2];
     c->haspixel = 0;
   }
 

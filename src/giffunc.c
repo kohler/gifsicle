@@ -74,15 +74,7 @@ Gif_NewImage(void)
 Gif_Colormap *
 Gif_NewColormap(void)
 {
-  Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm)
-    return 0;
-  gfcm->ncol = 0;
-  gfcm->capacity = 0;
-  gfcm->col = 0;
-  gfcm->refcount = 0;
-  gfcm->user_flags = 0;
-  return gfcm;
+  return Gif_NewFullColormap(0, 256);
 }
 
 
@@ -90,12 +82,14 @@ Gif_Colormap *
 Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm || capacity <= 0 || count < 0) {
+  if (!gfcm || count < 0) {
     Gif_Delete(gfcm);
     return 0;
   }
   if (count > capacity)
     capacity = count;
+  if (capacity < 256)
+    capacity = 256;
   gfcm->ncol = count;
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
@@ -104,8 +98,8 @@ Gif_NewFullColormap(int count, int capacity)
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;
-  } else
-    return gfcm;
+  }
+  return gfcm;
 }
 
 
