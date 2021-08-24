@@ -228,8 +228,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 
   Gif_Code code;
   Gif_Code old_code;
-  Gif_Code clear_code;
-  Gif_Code eoi_code;
+  Gif_Code clear_code; /* eoi_code == clear_code + 1 */
   Gif_Code next_code;
 #define CUR_BUMP_CODE (1 << bits_needed)
 #define CUR_CODE_MASK ((1 << bits_needed) - 1)
@@ -254,9 +253,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     gfc->suffix[code] = (uint8_t)code;
     gfc->length[code] = 1;
   }
-  eoi_code = clear_code + 1;
 
-  next_code = eoi_code;
+  next_code = clear_code + 1;
   bits_needed = min_code_size + 1;
 
   code = clear_code;
@@ -298,10 +296,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (code == clear_code) {
       GIF_DEBUG(("clear "));
       bits_needed = min_code_size + 1;
-      next_code = eoi_code;
+      next_code = clear_code + 1;
       continue;
 
-    } else if (code == eoi_code)
+    } else if (code == clear_code + 1)
       break;
 
     else if (code > next_code && next_code && next_code != clear_code) {

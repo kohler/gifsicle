@@ -172,19 +172,18 @@ gif_writer_cleanup(Gif_Writer* grr)
 
 
 static inline void
-gfc_clear(Gif_CodeTable *gfc, Gif_Code clear_code)
+gfc_clear(Gif_CodeTable *gfc)
 {
   int c;
   /* The first clear_code nodes are reserved for single-pixel codes */
-  gfc->nodes_pos = clear_code;
+  gfc->nodes_pos = gfc->clear_code;
   gfc->links_pos = 0;
-  for (c = 0; c < clear_code; c++) {
+  for (c = 0; c < gfc->clear_code; c++) {
     gfc->nodes[c].code = c;
     gfc->nodes[c].type = LINKS_TYPE;
     gfc->nodes[c].suffix = c;
     gfc->nodes[c].child.s = 0;
   }
-  gfc->clear_code = clear_code;
 }
 
 static inline Gif_Node *
@@ -342,8 +341,10 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   if (pos >= image_endpos) return best_t;
 
   suffix = gif_pixel_at_pos(gfi, pos);
+  if (suffix >= gfc->clear_code)
+    /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+    suffix = 0;
   assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
-  assert(suffix < gfc->clear_code);
   if (!node) {
     gfc_rgbdiff zero_diff = {0, 0, 0};
     /* prefix of the new node must be same as suffix of previously added node */
@@ -438,17 +439,16 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
   /* Here we go! */
   gifputbyte(min_code_bits, grr);
-#define CLEAR_CODE      ((Gif_Code) (1 << min_code_bits))
-#define EOI_CODE        ((Gif_Code) (CLEAR_CODE + 1))
 #define CUR_BUMP_CODE   (1 << cur_code_bits)
+  gfc->clear_code = (Gif_Code) (1 << min_code_bits);
   grr->cleared = 0;
 
   cur_code_bits = min_code_bits + 1;
   /* next_code set by first runthrough of output clear_code */
-  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", CLEAR_CODE, EOI_CODE, cur_code_bits));
+  GIF_DEBUG(("clear(%d) eoi(%d) bits(%d) ", gfc->clear_code, gfc->clear_code + 1, cur_code_bits));
 
   work_node = NULL;
-  output_code = CLEAR_CODE;
+  output_code = gfc->clear_code;
   /* Because output_code is clear_code, we'll initialize next_code, et al.
      below. */
 
@@ -493,18 +493,18 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
     /*****
      * Handle special codes. */
 
-    if (output_code == CLEAR_CODE) {
+    if (output_code == gfc->clear_code) {
       /* Clear data and prepare gfc */
       cur_code_bits = min_code_bits + 1;
-      next_code = EOI_CODE + 1;
+      next_code = gfc->clear_code + 2;
       run_ewma = 1 << RUN_EWMA_SCALE;
       run = 0;
-      gfc_clear(gfc, CLEAR_CODE);
+      gfc_clear(gfc);
       clear_pos = clear_bufpos = 0;
 
       GIF_DEBUG(("clear "));
 
-    } else if (output_code == EOI_CODE)
+    } else if (output_code == gfc->clear_code + 1)
       break;
 
     else {
@@ -568,7 +568,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
           if (do_clear) {
             GIF_DEBUG(("rewind %u pixels/%d bits", pos + 1 - clear_pos, bufpos + cur_code_bits - clear_bufpos));
-            output_code = CLEAR_CODE;
+            output_code = gfc->clear_code;
             pos = clear_pos;
 
             bufpos = clear_bufpos;
@@ -586,12 +586,15 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
       }
 
-      output_code = (work_node ? work_node->code : EOI_CODE);
+      output_code = (work_node ? work_node->code : gfc->clear_code + 1);
     } else {
       /* If height is 0 -- no more pixels to write -- we output work_node next
          time around. */
       while (imageline) {
         suffix = *imageline;
+        if (suffix >= gfc->clear_code)
+          /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+          suffix = 0;
         next_node = gfc_lookup(gfc, work_node, suffix);
 
         imageline++;
@@ -640,7 +643,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
           if (do_clear) {
             GIF_DEBUG(("rewind %u pixels/%d bits ", pos - clear_pos, bufpos + cur_code_bits - clear_bufpos));
-            output_code = CLEAR_CODE;
+            output_code = gfc->clear_code;
             pos = clear_pos;
             imageline = gif_imageline(gfi, pos);
             line_endpos = gif_line_endpos(gfi, pos);
@@ -658,7 +661,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
       }
 
       /* Ran out of data if we get here. */
-      output_code = (work_node ? work_node->code : EOI_CODE);
+      output_code = (work_node ? work_node->code : gfc->clear_code + 1);
       work_node = NULL;
 
       found_output_code: ;
