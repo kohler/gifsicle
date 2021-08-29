@@ -390,7 +390,7 @@ gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Imag
     /* if the candidate pixel is good enough, check all possible continuations of that dictionary string */
     struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, node, base_diff + diff, new_dither, max_diff);
 
-    /* search is biased towards finding longest candidate that is below treshold rather than a match with minimum average error */
+    /* search is biased towards finding longest candidate that is below threshold rather than a match with minimum average error */
     if (t.pos > best_t->pos || (t.pos == best_t->pos && t.diff < best_t->diff)) {
       *best_t = t;
     }
