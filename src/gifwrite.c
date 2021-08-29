@@ -354,7 +354,7 @@ gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
   /* search all nodes that are less than max_diff different from the desired pixel */
   if (node->type == TABLE_TYPE) {
     int i;
-    for(i=0; i < gfc->clear_code; i++) {
+    for (i=0; i < gfc->clear_code; i++) {
       if (!node->child.m[i]) continue;
       gfc_lookup_lossy_try_node(gfc, gfcm, gfi, pos, node->child.m[i], suffix, i, dither, base_diff, max_diff, &best_t);
     }

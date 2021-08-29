@@ -44,7 +44,7 @@ GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj \
 
 .c.obj:
 	$(CC) $(CFLAGS) -c $<
-	
+
 all: gifsicle.exe gifdiff.exe
 
 gifsicle.exe: $(GIFSICLE_OBJS)
@@ -77,4 +77,3 @@ clean:
 	del *.obj
 	del *.exe
 	del *.tds
-	
