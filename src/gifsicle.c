@@ -414,7 +414,7 @@ set_mode(int newmode)
   }
 
   if (mode != INFOING && infoing == 1)
-    fatal_error("%<--info%> suppresses normal output, can%,t use with an\n  output mode like %<--merge%> or %<--batch%>.\n  (Try %<-II%>, which doesn%,t suppress normal output.)");
+    fatal_error("%<--info%> suppresses normal output, can't use with an\n  output mode like %<--merge%> or %<--batch%>.\n  (Try %<-II%>, which doesn't suppress normal output.)");
   if (newmode != BLANK_MODE && newmode != mode)
     fatal_error("too late to change modes");
 }
@@ -428,7 +428,7 @@ set_frame_change(int kind)
 
   set_mode(BLANK_MODE);
   if (mode < DELETING && frames_done) {
-    fatal_error("frame selection and frame changes don%,t mix");
+    fatal_error("frame selection and frame changes don't mix");
     return;
   }
   assert(!nested_mode);
@@ -1366,7 +1366,7 @@ print_useless_options(const char *type_name, int value, const char *names[])
     if (CHANGED(value, i)) {
       if (!explanation_printed) {
         warning(0, "useless %s-related %s option\n"
-                "  (It didn%,t affect any %s.)", names[i], type_name, type_name);
+                "  (It didn't affect any %s.)", names[i], type_name, type_name);
         explanation_printed = 1;
       } else
         warning(0, "useless %s-related %s option", names[i], type_name);

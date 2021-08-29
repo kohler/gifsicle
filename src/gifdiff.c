@@ -410,12 +410,12 @@ void usage(void) {
 %<Gifdiff%> compares two GIF files (either images or animations) for identical\n\
 visual appearance. An animation and an optimized version of the same animation\n\
 should compare as the same. Gifdiff exits with status 0 if the images are\n\
-the same, 1 if they%,re different, and 2 if there was some error.\n\
+the same, 1 if they're different, and 2 if there was some error.\n\
 \n\
 Usage: %s [OPTION]... FILE1 FILE2\n\n", program_name);
     Clp_fprintf(clp, stdout, "\
 Options:\n\
-  -q, --brief                   Don%,t report detailed differences.\n\
+  -q, --brief                   Don't report detailed differences.\n\
   -w, --ignore-redundancy       Ignore differences in redundant frames.\n\
   -B, --ignore-background       Ignore differences in background colors.\n\
   -h, --help                    Print this message and exit.\n\
@@ -617,7 +617,7 @@ particular purpose.\n");
   if (how_many_inputs < 2)
     fatal_error("need exactly 2 file arguments\n");
   if (filename1 == 0 && filename2 == 0)
-    fatal_error("can%,t read both files from stdin\n");
+    fatal_error("can't read both files from stdin\n");
 
   gfs1 = read_stream(&filename1);
   gfs2 = read_stream(&filename2);

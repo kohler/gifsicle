@@ -1909,7 +1909,7 @@ Clp_Next(Clp_Parser *clp)
     if (clp->negated
 	|| (!cli->iopt[optno].imandatory && !cli->iopt[optno].ioptional)) {
 	if (clp->have_val) {
-	    Clp_OptionError(clp, "%<%O%> can%,t take an argument");
+	    Clp_OptionError(clp, "%<%O%> can't take an argument");
 	    clp->option = &clp_option_sentinel[-Clp_BadOption];
 	    return Clp_BadOption;
 	} else {

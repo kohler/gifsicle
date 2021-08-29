@@ -440,7 +440,7 @@ new_viewer(Display *display, Gif_Stream *gfs, const char *name)
       error("invalid background color %<%s%>\n", cur_background_color);
       cur_background_color = 0;
     } else if (!XAllocColor(viewer->display, viewer->colormap, &color))
-      warning("can%,t allocate background color\n");
+      warning("can't allocate background color\n");
     else {
       unsigned long pixel = color.pixel;
       Gif_XContext *gfx = viewer->gfx;
@@ -560,7 +560,7 @@ get_input_stream(const char *name)
   if (!cur_display) {
     cur_display = XOpenDisplay(cur_display_name);
     if (!cur_display) {
-      error("can%,t open display\n");
+      error("can't open display\n");
       return 0;
     }
   }

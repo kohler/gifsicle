@@ -971,7 +971,7 @@ read_colormap_file(const char *name, FILE *f)
       lerror(name, "file not in GIF format");
     else if (!gfs->global
              && (gfs->nimages == 0 || !gfs->images[0]->local))
-      lerror(name, "can%,t use as palette (no global color table)");
+      lerror(name, "can't use as palette (no global color table)");
     else {
       if (gfs->errors)
         lwarning(name, "there were errors reading this GIF");
@@ -1340,7 +1340,7 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
   if (crop->x < 0 || crop->y < 0 || crop->w <= 0 || crop->h <= 0
       || crop->x + crop->w > r || crop->y + crop->h > b) {
       lerror(cropped_gfs ? cropped_gfs->landmark : (const char*) 0,
-             "cropping dimensions don%,t fit image");
+             "cropping dimensions don't fit image");
       crop->ready = 2;
   } else
       crop->ready = 1;
