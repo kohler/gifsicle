@@ -324,7 +324,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
   int width = gfi->width;
   int height = gfi->height;
   uint8_t **img = gfi->img;
-  uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) width * height);
+  uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) width * (unsigned) height);
   uint8_t *trav = new_data;
 
   /* this function can only rotate by 90 or 270 degrees */
@@ -390,7 +390,7 @@ static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
     assert(!kcs->data && !kcs->scratch);
     kcs->width = sw <= 0 ? gfs->screen_width : sw;
     kcs->height = sh <= 0 ? gfs->screen_height : sh;
-    sz = (unsigned) kcs->width * kcs->height;
+    sz = kcs->width * kcs->height;
     kcs->data = Gif_NewArray(kacolor, sz);
     if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
         && gfs->global && gfs->background < gfs->global->ncol) {
@@ -476,7 +476,7 @@ static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
     assert(!kss->data && !kss->scratch);
     kss->width = sw <= 0 ? gfs->screen_width : sw;
     kss->height = sh <= 0 ? gfs->screen_height : sh;
-    sz = (unsigned) kss->width * kss->height;
+    sz = kss->width * kss->height;
     kss->data = Gif_NewArray(scale_color, sz);
     if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
         && gfs->global && gfs->background < gfs->global->ncol) {
@@ -1084,7 +1084,7 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         /* skip */;
     for (yi = yi0; yi != yi1; ++yi) {
         const scale_color* iscr = &sctx->iscr.data[sctx->iscr.width * yi];
-        scale_color* oscr = &kcx[gfo->width * yi];
+        scale_color* oscr = &kcx[(unsigned) gfo->width * yi];
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&oscr[xo]);
         for (w = ww; w->opos < gfo->left + gfo->width; ++w)
@@ -1098,7 +1098,7 @@ static void scale_image_data_weighted(scale_context* sctx, Gif_Image* gfo,
         for (xo = 0; xo != gfo->width; ++xo)
             sc_clear(&sc[xo]);
         for (; w->opos < gfo->top + yo + 1; ++w) {
-            const scale_color* iscr = &kcx[gfo->width * w->ipos];
+            const scale_color* iscr = &kcx[(unsigned) gfo->width * w->ipos];
             assert(w->ipos >= yi0 && w->ipos < yi1);
             for (xo = 0; xo != gfo->width; ++xo)
                 SCVEC_ADDVxF(sc[xo], iscr[xo], w->w);

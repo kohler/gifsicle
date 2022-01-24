@@ -329,7 +329,7 @@ write_compressed_data(Gif_Image *gfi,
 
 #ifndef GIF_NO_COMPRESSION
         if (!do_clear) {
-          unsigned pixels_left = gfi->width * gfi->height - pos;
+          unsigned pixels_left = (unsigned) gfi->width * (unsigned) gfi->height - pos;
           if (pixels_left) {
             /* Always clear if run_ewma gets small relative to
                min_code_bits. Otherwise, clear if #images/run is smaller

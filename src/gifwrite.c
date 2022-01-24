@@ -420,7 +420,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   unsigned pos;
   unsigned clear_bufpos, clear_pos;
   unsigned line_endpos;
-  const unsigned image_endpos = gfi->height * gfi->width;
+  const unsigned image_endpos = (size_t) gfi->height * (size_t) gfi->width;
   const uint8_t *imageline;
 
   unsigned run = 0;
