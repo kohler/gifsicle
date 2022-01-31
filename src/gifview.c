@@ -1103,7 +1103,7 @@ key_press(Gt_Viewer *viewer, XKeyEvent *e)
     pre_delete_viewer(viewer);
 
   else if (key == XK_Q || key == XK_q)
-    /* Q: quit applicaton */
+    /* Q: quit application */
     exit(0);
 
   else if (key == XK_S || key == XK_s || key == XK_a || key == XK_A) {

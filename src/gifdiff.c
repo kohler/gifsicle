@@ -29,7 +29,7 @@
 const Clp_Option options[] = {
   { "help", 'h', HELP_OPT, 0, 0 },
   { "brief", 'q', QUIET_OPT, 0, Clp_Negate },
-  { "redudancy", 0, REDUNDANCY_OPT, 0, Clp_Negate },
+  { "redundancy", 0, REDUNDANCY_OPT, 0, Clp_Negate },
   { "ignore-redundancy", 'w', IGNORE_REDUNDANCY_OPT, 0, Clp_Negate },
   { "bg", 0, BACKGROUND_OPT, 0, Clp_Negate },
   { "ignore-bg", 0, IGNORE_BACKGROUND_OPT, 0, Clp_Negate },

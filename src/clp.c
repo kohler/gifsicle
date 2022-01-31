@@ -55,7 +55,7 @@ extern "C" {
 /** @file clp.h
  * @brief Functions for parsing command line options.
  *
- * The CLP functions are used to parse command line arugments into options.
+ * The CLP functions are used to parse command line arguments into options.
  * It automatically handles value parsing, error messages, long options with
  * minimum prefix matching, short options, and negated options.
  *
@@ -1838,7 +1838,7 @@ find_short(Clp_Parser *clp, const char *text)
  * </dl>
  *
  * The parsed argument is shifted off the argument list, so that sequential
- * calls to Clp_Next() step through the arugment list.
+ * calls to Clp_Next() step through the argument list.
  */
 int
 Clp_Next(Clp_Parser *clp)
