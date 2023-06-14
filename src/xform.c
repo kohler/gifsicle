@@ -154,6 +154,7 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
   char *tmp_file = tmpnam(0);
 #endif
   char *new_command;
+  size_t new_command_sz;
 
 #ifdef HAVE_MKSTEMP
   {
@@ -167,8 +168,9 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
     fatal_error("can%,t create temporary file!");
 #endif
 
-  new_command = Gif_NewArray(char, strlen(command) + strlen(tmp_file) + 4);
-  sprintf(new_command, "%s  >%s", command, tmp_file);
+  new_command_sz = strlen(command) + strlen(tmp_file) + 4;
+  new_command = Gif_NewArray(char, new_command_sz);
+  snprintf(new_command, new_command_sz, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
   if (!f)
     fatal_error("can%,t run color transformation command: %s", strerror(errno));

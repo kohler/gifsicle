@@ -368,14 +368,14 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       long delta = (long) (gfc->maximage - gfc->image) - (long) gfc->decodepos;
       char buf[BUFSIZ];
       if (delta > 0) {
-          sprintf(buf, "missing %ld %s of image data", delta,
-                  delta == 1 ? "pixel" : "pixels");
+          snprintf(buf, sizeof(buf), "missing %ld %s of image data", delta,
+                   delta == 1 ? "pixel" : "pixels");
           gif_read_error(gfc, 1, buf);
           memset(&gfc->image[gfc->decodepos], 0, delta);
       } else if (delta < -1) {
           /* One pixel of superfluous data is OK; that could be the
              code == next_code case. */
-          sprintf(buf, "%ld superfluous pixels of image data", -delta);
+          snprintf(buf, sizeof(buf), "%ld superfluous pixels of image data", -delta);
           gif_read_error(gfc, 0, buf);
       }
   }
@@ -880,7 +880,8 @@ read_gif(Gif_Reader *grr, int read_flags,
      default:
        if (!unknown_block_type) {
          char buf[256];
-         sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
+         snprintf(buf, sizeof(buf), "unknown block type %d at file offset %u",
+                  block, grr->pos - 1);
          gif_read_error(&gfc, 1, buf);
        }
        if (++unknown_block_type > 20)

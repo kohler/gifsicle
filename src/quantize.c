@@ -101,14 +101,15 @@ pthread_mutex_t kd3_sort_lock;
 
 const char* kc_debug_str(kcolor x) {
     static int whichbuf = 0;
-    static char buf[4][32];
+    static char buf[4][64];
     whichbuf = (whichbuf + 1) % 4;
     if (x.a[0] >= 0 && x.a[1] >= 0 && x.a[2] >= 0) {
         kc_revgamma_transform(&x);
-        sprintf(buf[whichbuf], "#%02X%02X%02X",
-                x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
+        snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "#%02X%02X%02X",
+                 x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
     } else
-        sprintf(buf[whichbuf], "<%d,%d,%d>", x.a[0], x.a[1], x.a[2]);
+        snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "<%d,%d,%d>",
+                 x.a[0], x.a[1], x.a[2]);
     return buf[whichbuf];
 }
 
@@ -850,13 +851,13 @@ static void kd3_print_depth(kd3_tree* kd3, int depth, kd3_treepos* p,
     char x[6][10];
     for (i = 0; i != 3; ++i) {
         if (a[i] == INT_MIN)
-            sprintf(x[2*i], "*");
+            snprintf(x[2*i], sizeof(x[2*i]), "*");
         else
-            sprintf(x[2*i], "%d", a[i]);
+            snprintf(x[2*i], sizeof(x[2*i]), "%d", a[i]);
         if (b[i] == INT_MAX)
-            sprintf(x[2*i+1], "*");
+            snprintf(x[2*i+1], sizeof(x[2*i+1]), "*");
         else
-            sprintf(x[2*i+1], "%d", b[i]);
+            snprintf(x[2*i+1], sizeof(x[2*i+1]), "%d", b[i]);
     }
     printf("%*s<%s:%s,%s:%s,%s:%s>", depth*3, "",
            x[0], x[1], x[2], x[3], x[4], x[5]);

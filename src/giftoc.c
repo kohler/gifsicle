@@ -152,8 +152,9 @@ main(int argc, char *argv[])
       /* make sure directory is slash-terminated */
       if (directory[ strlen(directory) - 1 ] != PATHNAME_SEPARATOR
           && directory[0]) {
-        char *ndirectory = (char *)fmalloc(strlen(directory) + 2);
-        sprintf(ndirectory, "%s%c", directory, PATHNAME_SEPARATOR);
+        size_t len = strlen(directory) + 2;
+        char *ndirectory = (char *)fmalloc(len);
+        sprintf(ndirectory, len, "%s%c", directory, PATHNAME_SEPARATOR);
         directory = ndirectory;
       }
     } else

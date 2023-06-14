@@ -835,17 +835,17 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
 
   strs[0] = Gif_NewArray(char, len);
   if (strcmp(viewer->title, "gifview") != 0)
-    strcpy(strs[0], viewer->title);
+    snprintf(strs[0], len, "%s", viewer->title);
   else if (slow_number >= 0)
-    sprintf(strs[0], "gifview: %s [#%d]", viewer->name, im_pos);
+    snprintf(strs[0], len, "gifview: %s [#%d]", viewer->name, im_pos);
   else if (viewer->nim == 1 && identifier)
-    sprintf(strs[0], "gifview: %s #%s", viewer->name, identifier);
+    snprintf(strs[0], len, "gifview: %s #%s", viewer->name, identifier);
   else if (viewer->animating || viewer->nim == 1)
-    sprintf(strs[0], "gifview: %s", viewer->name);
+    snprintf(strs[0], len, "gifview: %s", viewer->name);
   else if (!identifier)
-    sprintf(strs[0], "gifview: %s #%d", viewer->name, im_pos);
+    snprintf(strs[0], len, "gifview: %s #%d", viewer->name, im_pos);
   else
-    sprintf(strs[0], "gifview: %s #%d #%s", viewer->name, im_pos, identifier);
+    snprintf(strs[0], len, "gifview: %s #%d #%s", viewer->name, im_pos, identifier);
   strs[1] = 0;
 
   XStringListToTextProperty(strs, 1, &name_prop);

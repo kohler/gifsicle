@@ -118,14 +118,14 @@ fi
 AC_SUBST(GIFWRITE_O)
 
 dnl
-dnl random or rand, strerror, strtoul, mkstemp, sys/select.h
+dnl random or rand, strerror, strtoul, mkstemp, snprintf, sys/select.h
 dnl
 
 AC_CHECK_FUNC([random], [random_func=random], [random_func=rand])
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a random number.])
 
 AC_REPLACE_FUNCS([strerror])
-AC_CHECK_FUNCS([strtoul mkstemp])
+AC_CHECK_FUNCS([strtoul mkstemp snprintf])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
 
 AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
@@ -300,6 +300,10 @@ char *strerror(int errno);
 # include <io.h>
 # define isatty _isatty
 # define snprintf _snprintf
+#endif
+
+#ifndef HAVE_SNPRINTF
+#define snprintf(s, n, ...) sprintf((s), __VA_ARGS__)
 #endif
 
 #endif /* GIFSICLE_CONFIG_H */])

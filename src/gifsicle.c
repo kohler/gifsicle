@@ -711,8 +711,9 @@ input_stream(const char *name)
   /* change filename for component files */
   componentno++;
   if (componentno > 1) {
-    component_namebuf = (char*) malloc(strlen(main_name) + 10);
-    sprintf(component_namebuf, "%s~%d", main_name, componentno);
+    size_t namelen = strlen(main_name) + 10;
+    component_namebuf = (char*) malloc(namelen);
+    snprintf(component_namebuf, namelen, "%s~%d", main_name, componentno);
     name = component_namebuf;
   } else
     component_namebuf = 0;
