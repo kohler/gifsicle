@@ -167,6 +167,7 @@ typedef struct {
     unsigned iprefmatch : 1;
     unsigned lmmpos_short : 1;
     unsigned lmmneg_short : 1;
+    unsigned unquoted : 1;
     unsigned char ilongoff;
     int lmmpos;
     int lmmneg;
@@ -812,7 +813,7 @@ Clp_SetOptions(Clp_Parser *clp, int nopt, const Clp_Option *opt)
         /* Ignore negative option_ids, which are internal to CLP */
         if (opt[i].option_id < 0) {
             Clp_OptionError(clp, "CLP internal error: option %d has negative option_id", i);
-            iopt[i].ilong = iopt[i].ishort = iopt[i].ipos = iopt[i].ineg = 0;
+            iopt[i].ilong = iopt[i].ishort = iopt[i].ipos = iopt[i].ineg = iopt[i].unquoted = 0;
             continue;
         }
 
@@ -825,6 +826,7 @@ Clp_SetOptions(Clp_Parser *clp, int nopt, const Clp_Option *opt)
         iopt[i].imandatory = (opt[i].flags & Clp_Mandatory) != 0;
         iopt[i].ioptional = (opt[i].flags & Clp_Optional) != 0;
         iopt[i].iprefmatch = (opt[i].flags & Clp_PreferredMatch) != 0;
+        iopt[i].unquoted = 0;
         iopt[i].ilongoff = 0;
 
         /* Enforce invariants */
@@ -976,7 +978,7 @@ find_prefix_opt(Clp_Parser *clp, const char *arg,
         else if (len < 0) {
             if (*ambiguous < MAX_AMBIGUOUS_VALUES)
                 ambiguous_values[*ambiguous] = i;
-            (*ambiguous)++;
+            ++(*ambiguous);
         }
     }
 
@@ -1225,9 +1227,9 @@ static int
 finish_string_list(Clp_Parser *clp, int val_type, int flags,
                    Clp_Option *items, int nitems, int itemscap)
 {
-    int i;
+    int i, niitems = nitems + (flags & Clp_AllowNumbers ? 1 : 0);
     Clp_StringList *clsl = (Clp_StringList *)malloc(sizeof(Clp_StringList));
-    Clp_InternOption *iopt = (Clp_InternOption *)malloc(sizeof(Clp_InternOption) * nitems);
+    Clp_InternOption *iopt = (Clp_InternOption *)malloc(sizeof(Clp_InternOption) * niitems);
     if (!clsl || !iopt)
         goto error;
 
@@ -1237,19 +1239,21 @@ finish_string_list(Clp_Parser *clp, int val_type, int flags,
     clsl->allow_int = (flags & Clp_AllowNumbers) != 0;
     clsl->val_long = (flags & Clp_StringListLong) != 0;
 
+    memset(iopt, 0, sizeof(Clp_InternOption) * niitems);
+    for (i = 0; i < niitems; i++) {
+        iopt[i].ilong = iopt[i].ipos = 1;
+        iopt[i].ishort = iopt[i].ineg = iopt[i].ilongoff = iopt[i].iprefmatch = iopt[i].unquoted = 0;
+    }
+    calculate_lmm(clp, items, iopt, nitems);
+
     if (nitems < MAX_AMBIGUOUS_VALUES && nitems < itemscap && clsl->allow_int) {
         items[nitems].long_name = "any integer";
+        iopt[nitems].unquoted = 1;
         clsl->nitems_invalid_report = nitems + 1;
     } else if (nitems > MAX_AMBIGUOUS_VALUES + 1)
         clsl->nitems_invalid_report = MAX_AMBIGUOUS_VALUES + 1;
     else
         clsl->nitems_invalid_report = nitems;
-
-    for (i = 0; i < nitems; i++) {
-        iopt[i].ilong = iopt[i].ipos = 1;
-        iopt[i].ishort = iopt[i].ineg = iopt[i].ilongoff = iopt[i].iprefmatch = 0;
-    }
-    calculate_lmm(clp, items, iopt, nitems);
 
     if (Clp_AddType(clp, val_type, 0, parse_string_list, clsl) >= 0)
         return 0;
@@ -2389,11 +2393,13 @@ ambiguity_error(Clp_Parser *clp, int ambiguous, int *ambiguous_values,
             append_build_string(&bs, (i == 1 ? " and " : ", and "), -1);
         else
             append_build_string(&bs, ", ", 2);
-        append_build_string(&bs, (cli->utf8 ? "\342\200\230" : "'"), -1);
+        if (!iopt[value].unquoted)
+            append_build_string(&bs, (cli->utf8 ? "\342\200\230" : "'"), -1);
         append_build_string(&bs, prefix, -1);
         append_build_string(&bs, no_dash, -1);
         append_build_string(&bs, opt[value].long_name + iopt[value].ilongoff, -1);
-        append_build_string(&bs, (cli->utf8 ? "\342\200\231" : "'"), -1);
+        if (!iopt[value].unquoted)
+            append_build_string(&bs, (cli->utf8 ? "\342\200\231" : "'"), -1);
     }
 
     if (ambiguous > MAX_AMBIGUOUS_VALUES)
