@@ -32,7 +32,7 @@ print_reckless(FILE *f, char *gifrecname)
   int lasthex = 0;
 
   printf("\n%sGifRecord %s = { (unsigned char *)\"",
-	 is_static ? "static " : "", gifrecname);
+         is_static ? "static " : "", gifrecname);
   size = 0;
   c = getc(f);
   while (c != EOF) {
@@ -79,18 +79,18 @@ print_reckless(FILE *f, char *gifrecname)
      case '0': case '1': case '2': case '3': case '4': case '5': case '6':
      case '7':
       if (lasthex)
-	printf("\\%o", c);
+        printf("\\%o", c);
       else
-	putchar(c);
+        putchar(c);
       break;
 
      default:
       if (isprint(c)) {
-	putchar(c);
-	lasthex = 0;
+        putchar(c);
+        lasthex = 0;
       } else {
-	printf("\\%o", c);
-	lasthex = 1;
+        printf("\\%o", c);
+        lasthex = 1;
       }
       break;
 
@@ -110,7 +110,7 @@ print_unreckless(FILE *f, char *gifrecname)
   int c;
 
   printf("\nstatic %sunsigned char %s_data[] = {",
-	 (is_const ? "const " : ""), gifrecname);
+         (is_const ? "const " : ""), gifrecname);
   size = 0;
   c = getc(f);
   while (c != EOF) {
@@ -120,9 +120,9 @@ print_unreckless(FILE *f, char *gifrecname)
     c = getc(f);
   }
   printf("};\n%s%sGif_Record %s = { %s_data, %lu };\n",
-	 (is_static ? "static " : ""),
-	 (is_const ? "const " : ""),
-	 gifrecname, gifrecname, size);
+         (is_static ? "static " : ""),
+         (is_const ? "const " : ""),
+         gifrecname, gifrecname, size);
 }
 
 int
@@ -151,10 +151,10 @@ main(int argc, char *argv[])
       directory = argv[1], argc -= 2, argv += 2;
       /* make sure directory is slash-terminated */
       if (directory[ strlen(directory) - 1 ] != PATHNAME_SEPARATOR
-	  && directory[0]) {
-	char *ndirectory = (char *)fmalloc(strlen(directory) + 2);
-	sprintf(ndirectory, "%s%c", directory, PATHNAME_SEPARATOR);
-	directory = ndirectory;
+          && directory[0]) {
+        char *ndirectory = (char *)fmalloc(strlen(directory) + 2);
+        sprintf(ndirectory, "%s%c", directory, PATHNAME_SEPARATOR);
+        directory = ndirectory;
       }
     } else
       break;
@@ -194,10 +194,10 @@ or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
       sout = rec_name = (char *)fmalloc(strlen(sin) + 2);
       if (isdigit(*sin)) *sout++ = 'N';
       for (; *sin; sin++, sout++)
-	if (isalnum(*sin))
-	  *sout = *sin;
-	else
-	  *sout = '_';
+        if (isalnum(*sin))
+          *sout = *sin;
+        else
+          *sout = '_';
       *sout = 0;
 
     } else {
@@ -213,7 +213,7 @@ or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
       free(rec_name);
     free(file_name);
     if (f)
-	fclose(f);
+        fclose(f);
   }
 
   exit(0);
