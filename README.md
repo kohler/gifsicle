@@ -115,13 +115,12 @@ obtain permission before doing so.
 Authors
 -------
 
+This program is dedicated to the memory of Anne Dudfield, who named
+it. Anne was an incredible friend and ridiculous person. ANNIED!!!!!!
+
 Eddie Kohler <ekohler@gmail.com> \
 http://www.read.seas.harvard.edu/~kohler/ \
 He wrote it.
-
-Anne Dudfield <anne@mazunetworks.com> \
-http://www.frii.com/~annied/ \
-She named it.
 
 David Hedbor <david@hedbor.org> \
 Many bug reports and constructive whining about the optimizer.
