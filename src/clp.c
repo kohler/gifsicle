@@ -2132,8 +2132,7 @@ Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
           case 'd': {
               int d = va_arg(val, int);
               if (ENSURE_BUILD_STRING(bs, 32)) {
-                  snprintf(bs->pos, 32, "%d", d);
-                  bs->pos = strchr(bs->pos, 0);
+                  bs->pos += snprintf(bs->pos, 32, "%d", d);
               }
               break;
           }
