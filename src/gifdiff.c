@@ -1,5 +1,5 @@
 /* gifdiff.c - Gifdiff compares GIF images for identical appearance.
-   Copyright (C) 1998-2021 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1998-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of gifdiff, in the gifsicle package.
 
    Gifdiff is free software. It is distributed under the GNU Public License,
@@ -560,7 +560,7 @@ main(int argc, char *argv[])
 
      case VERSION_OPT:
       printf("gifdiff (LCDF Gifsicle) %s\n", VERSION);
-      printf("Copyright (C) 1998-2021 Eddie Kohler\n\
+      printf("Copyright (C) 1998-2023 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

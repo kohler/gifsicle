@@ -154,7 +154,7 @@ main(int argc, char *argv[])
           && directory[0]) {
         size_t len = strlen(directory) + 2;
         char *ndirectory = (char *)fmalloc(len);
-        sprintf(ndirectory, len, "%s%c", directory, PATHNAME_SEPARATOR);
+        snprintf(ndirectory, len, "%s%c", directory, PATHNAME_SEPARATOR);
         directory = ndirectory;
       }
     } else
