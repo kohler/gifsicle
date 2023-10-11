@@ -1421,9 +1421,9 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
         }
       }
 
-    if (t > b)
+    if (t > b) {
       crop->w = crop->h = 0;
-    else {
+    } else {
       crop->x = l;
       crop->y = t;
       crop->w = r - l;

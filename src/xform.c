@@ -262,18 +262,18 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
             gfi->img[j] = old_img[c.y + j] + c.x;
         gfi->img[c.h] = 0;
         Gif_DeleteArray(old_img);
+        gfi->left += c.x - fr->left_offset;
+        gfi->top += c.y - fr->top_offset;
         gfi->width = c.w;
         gfi->height = c.h;
-    } else if (preserve_total_crop)
+    } else if (preserve_total_crop) {
         Gif_MakeImageEmpty(gfi);
-    else {
+    } else {
         Gif_DeleteArray(gfi->img);
         gfi->img = 0;
         gfi->width = gfi->height = 0;
     }
 
-    gfi->left += c.x - fr->left_offset;
-    gfi->top += c.y - fr->top_offset;
     return gfi->img != 0;
 }
 

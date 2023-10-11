@@ -466,8 +466,10 @@ Gif_CopyImage(Gif_Image *src)
 void Gif_MakeImageEmpty(Gif_Image* gfi) {
     Gif_ReleaseUncompressedImage(gfi);
     Gif_ReleaseCompressedImage(gfi);
-    gfi->left = gfi->top = 0;
-    gfi->width = gfi->height = 1;
+    gfi->left = gfi->left < 0xFFFE ? gfi->left : 0xFFFE;
+    gfi->top = gfi->top < 0xFFFE ? gfi->top : 0xFFFE;
+    gfi->width = 1;
+    gfi->height = 1;
     gfi->transparent = 0;
     Gif_CreateUncompressedImage(gfi, 0);
     gfi->img[0][0] = 0;
