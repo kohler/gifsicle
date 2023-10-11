@@ -1618,7 +1618,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->comment = 0;
     }
     if (fr->comment) {
-      if (!desti->comment) desti->comment = Gif_NewComment();
+      if (!desti->comment)
+        desti->comment = Gif_NewComment();
       merge_comments(desti->comment, fr->comment);
       /* delete the comment early to help with memory; set field to 0 so we
          don't re-free it later */
@@ -1628,10 +1629,22 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     if (fr->interlacing >= 0)
       desti->interlace = fr->interlacing;
-    if (fr->left >= 0)
-      desti->left = fr->left + (fr->position_is_offset ? desti->left : 0);
-    if (fr->top >= 0)
-      desti->top = fr->top + (fr->position_is_offset ? desti->top : 0);
+    if (fr->left >= 0) {
+      int left = fr->left + (fr->position_is_offset ? desti->left : 0);
+      if (left + desti->width > 65535) {
+        error(1, "left position %d out of range", left);
+        return 0;
+      }
+      desti->left = left;
+    }
+    if (fr->top >= 0) {
+      int top = fr->top + (fr->position_is_offset ? desti->top : 0);
+      if (top + desti->height > 65535) {
+        error(1, "top position %d out of range", top);
+        return 0;
+      }
+      desti->top = top;
+    }
 
     if (fr->delay >= 0)
       desti->delay = fr->delay;
