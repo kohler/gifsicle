@@ -12,6 +12,8 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_C_CONST
 AC_C_INLINE
+AC_HEADER_STDC
+AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
 
 build_gifview=maybe
 AC_ARG_ENABLE([gifview],
@@ -118,7 +120,7 @@ fi
 AC_SUBST(GIFWRITE_O)
 
 dnl
-dnl random or rand, strerror, strtoul, mkstemp, snprintf, sys/select.h
+dnl random or rand, strerror, strtoul, mkstemp, snprintf
 dnl
 
 AC_CHECK_FUNC([random], [random_func=random], [random_func=rand])
@@ -127,8 +129,6 @@ AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a 
 AC_REPLACE_FUNCS([strerror])
 AC_CHECK_FUNCS([strtoul mkstemp snprintf])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
-
-AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
 
 
 dnl
