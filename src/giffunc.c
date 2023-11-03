@@ -1,5 +1,5 @@
 /* giffunc.c - General functions for the GIF library.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2021 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -74,15 +74,7 @@ Gif_NewImage(void)
 Gif_Colormap *
 Gif_NewColormap(void)
 {
-  Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm)
-    return 0;
-  gfcm->ncol = 0;
-  gfcm->capacity = 0;
-  gfcm->col = 0;
-  gfcm->refcount = 0;
-  gfcm->user_flags = 0;
-  return gfcm;
+  return Gif_NewFullColormap(0, 256);
 }
 
 
@@ -90,12 +82,14 @@ Gif_Colormap *
 Gif_NewFullColormap(int count, int capacity)
 {
   Gif_Colormap *gfcm = Gif_New(Gif_Colormap);
-  if (!gfcm || capacity <= 0 || count < 0) {
+  if (!gfcm || count < 0) {
     Gif_Delete(gfcm);
     return 0;
   }
   if (count > capacity)
     capacity = count;
+  if (capacity < 256)
+    capacity = 256;
   gfcm->ncol = count;
   gfcm->capacity = capacity;
   gfcm->col = Gif_NewArray(Gif_Color, capacity);
@@ -104,8 +98,8 @@ Gif_NewFullColormap(int count, int capacity)
   if (!gfcm->col) {
     Gif_Delete(gfcm);
     return 0;
-  } else
-    return gfcm;
+  }
+  return gfcm;
 }
 
 
@@ -472,7 +466,10 @@ Gif_CopyImage(Gif_Image *src)
 void Gif_MakeImageEmpty(Gif_Image* gfi) {
     Gif_ReleaseUncompressedImage(gfi);
     Gif_ReleaseCompressedImage(gfi);
-    gfi->width = gfi->height = 1;
+    gfi->left = gfi->left < 0xFFFE ? gfi->left : 0xFFFE;
+    gfi->top = gfi->top < 0xFFFE ? gfi->top : 0xFFFE;
+    gfi->width = 1;
+    gfi->height = 1;
     gfi->transparent = 0;
     Gif_CreateUncompressedImage(gfi, 0);
     gfi->img[0][0] = 0;

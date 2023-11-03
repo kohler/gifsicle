@@ -1,6 +1,6 @@
 .\" -*- mode: nroff -*-
 .AM
-.ds V 1.92
+.ds V 1.94
 .ds E " \-\- 
 .if t .ds E \(em
 .de Op
@@ -53,8 +53,8 @@ gifsicle \- manipulates GIF images and animations
 '
 .SH DESCRIPTION
 .B gifsicle
-is a powerful command-line program for creating, editing, manipulating, and
-getting information about GIF images and animations.
+creates, edits, manipulates, and
+prints information about GIF images and animations.
 .PP
 .B Gifsicle
 normally processes input GIF files according to its command line
@@ -67,8 +67,8 @@ to interlace its inputs:
 \fBgifsicle \-i < pic.gif > interlaced-pic.gif\fR
 .Ee
 .PP
-.B Gifsicle
-is good at creating and manipulating GIF animations. By default, it
+By default,
+.B gifsicle
 combines two or more input files into a \(lqflipbook\(rq animation:
 .Es
 \fBgifsicle pic1.gif pic2.gif pic3.gif > animation.gif\fR
@@ -800,7 +800,7 @@ not
 .TP
 .Op \-\-optimize "[=\fIlevel\fR]"
 '
-Optimize output GIF animations for space.
+Attempt to shrink the file sizes of GIF animations.
 .I Level
 determines how much optimization is done; higher levels take longer, but
 may have better results. There are currently three levels:
@@ -808,10 +808,10 @@ may have better results. There are currently three levels:
 .RS
 .TP 5
 .Op \-O1
-Stores only the changed portion of each image. This is the default.
+Store only the changed portion of each image. This is the default.
 .TP 5
 .Op \-O2
-Also uses transparency to shrink the file further.
+Store only the changed portion of each image, and use transparency.
 .TP 5
 .Op \-O3
 Try several optimization methods (usually slower, sometimes better results).
@@ -829,6 +829,11 @@ You may also be interested in other options for shrinking GIFs, such as
 .Op \-\-lossy ,
 and
 .Op \-\-no\-extensions .
+Note that
+.Op \-O
+does not guarantee to shrink file size, and in rare cases, even
+.Op \-O3
+may actually enlarge file size.
 .RE
 '
 .Sp

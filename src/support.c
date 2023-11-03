@@ -1,5 +1,5 @@
 /* support.c - Support functions for gifsicle.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -235,7 +235,7 @@ Whole-GIF options: Also --no-OPTION.\n\
                                 be 'web', 'gray', 'bw', or a GIF file.\n\n");
   printf("\
 Report bugs to <ekohler@gmail.com>.\n\
-Too much information? Try '%s --help | more'.\n", program_name);
+Too much information? Try '%s --help | less'.\n", program_name);
 #ifdef GIF_UNGIF
   printf("\
 This version of Gifsicle writes uncompressed GIFs, which can be far larger\n\
@@ -289,8 +289,8 @@ const char* debug_color_str(const Gif_Color* gfc) {
     static int whichbuf = 0;
     static char buf[4][8];
     whichbuf = (whichbuf + 1) % 4;
-    sprintf(buf[whichbuf], "#%02X%02X%02X",
-            gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+    snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "#%02X%02X%02X",
+             gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
     return buf[whichbuf];
 }
 
@@ -520,16 +520,16 @@ explode_filename(const char *filename, int number, const char *name, int max_nim
   Gif_Delete(s);
   s = Gif_NewArray(char, l + 3);
   if (name)
-    sprintf(s, "%s.%s", filename, name);
+    snprintf(s, l + 3, "%s.%s", filename, name);
   else if (max_nimages <= 1000)
-    sprintf(s, "%s.%03d", filename, number);
+    snprintf(s, l + 3, "%s.%03d", filename, number);
   else {
     int digits;
     unsigned j;
     unsigned max = (max_nimages < 0 ? 0 : max_nimages);
     for (digits = 4, j = 10000; max > j; digits++)
       j *= 10;
-    sprintf(s, "%s.%0*d", filename, digits, number);
+    snprintf(s, l + 3, "%s.%0*d", filename, digits, number);
   }
 
   return s;
@@ -1291,16 +1291,13 @@ handle_flip_and_screen(Gif_Stream* dest, Gif_Image* desti, Gt_Frame* fr)
 static void
 analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
 {
-  int i, nframes = 0;
-  int l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
+  int i, l = 0x7FFFFFFF, r = 0, t = 0x7FFFFFFF, b = 0;
   Gif_Stream* cropped_gfs = 0;
 
-  /* count frames to which this crop applies */
+  /* find cropped stream */
   for (i = 0; i < nmerger; i++)
-      if (merger[i]->crop == crop) {
+      if (merger[i]->crop == crop)
           cropped_gfs = merger[i]->stream;
-          nframes++;
-      }
 
   /* find border of frames */
   for (i = 0; i < nmerger; i++)
@@ -1424,9 +1421,9 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
         }
       }
 
-    if (t > b)
+    if (t > b) {
       crop->w = crop->h = 0;
-    else {
+    } else {
       crop->x = l;
       crop->y = t;
       crop->w = r - l;
@@ -1621,7 +1618,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->comment = 0;
     }
     if (fr->comment) {
-      if (!desti->comment) desti->comment = Gif_NewComment();
+      if (!desti->comment)
+        desti->comment = Gif_NewComment();
       merge_comments(desti->comment, fr->comment);
       /* delete the comment early to help with memory; set field to 0 so we
          don't re-free it later */
@@ -1631,10 +1629,22 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     if (fr->interlacing >= 0)
       desti->interlace = fr->interlacing;
-    if (fr->left >= 0)
-      desti->left = fr->left + (fr->position_is_offset ? desti->left : 0);
-    if (fr->top >= 0)
-      desti->top = fr->top + (fr->position_is_offset ? desti->top : 0);
+    if (fr->left >= 0) {
+      int left = fr->left + (fr->position_is_offset ? desti->left : 0);
+      if (left + desti->width > 65535) {
+        error(1, "left position %d out of range", left);
+        return 0;
+      }
+      desti->left = left;
+    }
+    if (fr->top >= 0) {
+      int top = fr->top + (fr->position_is_offset ? desti->top : 0);
+      if (top + desti->height > 65535) {
+        error(1, "top position %d out of range", top);
+        return 0;
+      }
+      desti->top = top;
+    }
 
     if (fr->delay >= 0)
       desti->delay = fr->delay;

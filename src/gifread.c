@@ -1,5 +1,5 @@
 /* gifread.c - Functions to read GIFs.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -228,8 +228,7 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
 
   Gif_Code code;
   Gif_Code old_code;
-  Gif_Code clear_code;
-  Gif_Code eoi_code;
+  Gif_Code clear_code; /* eoi_code == clear_code + 1 */
   Gif_Code next_code;
 #define CUR_BUMP_CODE (1 << bits_needed)
 #define CUR_CODE_MASK ((1 << bits_needed) - 1)
@@ -254,9 +253,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     gfc->suffix[code] = (uint8_t)code;
     gfc->length[code] = 1;
   }
-  eoi_code = clear_code + 1;
 
-  next_code = eoi_code;
+  next_code = clear_code + 1;
   bits_needed = min_code_size + 1;
 
   code = clear_code;
@@ -298,10 +296,10 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (code == clear_code) {
       GIF_DEBUG(("clear "));
       bits_needed = min_code_size + 1;
-      next_code = eoi_code;
+      next_code = clear_code + 1;
       continue;
 
-    } else if (code == eoi_code)
+    } else if (code == clear_code + 1)
       break;
 
     else if (code > next_code && next_code && next_code != clear_code) {
@@ -370,14 +368,14 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       long delta = (long) (gfc->maximage - gfc->image) - (long) gfc->decodepos;
       char buf[BUFSIZ];
       if (delta > 0) {
-          sprintf(buf, "missing %ld %s of image data", delta,
-                  delta == 1 ? "pixel" : "pixels");
+          snprintf(buf, sizeof(buf), "missing %ld %s of image data", delta,
+                   delta == 1 ? "pixel" : "pixels");
           gif_read_error(gfc, 1, buf);
           memset(&gfc->image[gfc->decodepos], 0, delta);
       } else if (delta < -1) {
           /* One pixel of superfluous data is OK; that could be the
              code == next_code case. */
-          sprintf(buf, "%ld superfluous pixels of image data", -delta);
+          snprintf(buf, sizeof(buf), "%ld superfluous pixels of image data", -delta);
           gif_read_error(gfc, 0, buf);
       }
   }
@@ -388,14 +386,25 @@ static Gif_Colormap *
 read_color_table(int size, Gif_Reader *grr)
 {
   Gif_Colormap *gfcm = Gif_NewFullColormap(size, size);
+  unsigned char buf[256 * 3], *bptr, *eptr;
+  size_t n;
   Gif_Color *c;
   if (!gfcm) return 0;
+  assert(gfcm->capacity >= 256 && size >= 0 && size <= 256);
 
   GIF_DEBUG(("colormap(%d) ", size));
-  for (c = gfcm->col; size; size--, c++) {
-    c->gfc_red = gifgetbyte(grr);
-    c->gfc_green = gifgetbyte(grr);
-    c->gfc_blue = gifgetbyte(grr);
+  n = gifgetblock(buf, size * 3, grr);
+
+  /* always initialize 256 colors; colors not included in map are
+     initialized to black in case of bad input */
+  memset(&buf[n], 0, 256 * 3 - n);
+
+  for (bptr = buf, eptr = buf + (256 * 3), c = gfcm->col;
+       bptr != eptr;
+       bptr += 3, ++c) {
+    c->gfc_red = bptr[0];
+    c->gfc_green = bptr[1];
+    c->gfc_blue = bptr[2];
     c->haspixel = 0;
   }
 
@@ -573,14 +582,14 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       gfi->height = gfc->stream->screen_height;
   /* If still zero, error. */
   if (gfi->width == 0 || gfi->height == 0) {
-      gif_read_error(gfc, 1, "image has zero width and/or height");
+      gif_read_error(gfc, 1, "ignoring frame, zero width and/or height");
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
   /* If position out of range, error. */
   if ((unsigned) gfi->left + (unsigned) gfi->width > 0xFFFF
       || (unsigned) gfi->top + (unsigned) gfi->height > 0xFFFF) {
-      gif_read_error(gfc, 1, "image position and/or dimensions out of range");
+      gif_read_error(gfc, 1, "ignoring frame, violates 65535x65535 screen size limit");
       Gif_MakeImageEmpty(gfi);
       read_flags = 0;
   }
@@ -871,7 +880,8 @@ read_gif(Gif_Reader *grr, int read_flags,
      default:
        if (!unknown_block_type) {
          char buf[256];
-         sprintf(buf, "unknown block type %d at file offset %u", block, grr->pos - 1);
+         snprintf(buf, sizeof(buf), "unknown block type %d at file offset %u",
+                  block, grr->pos - 1);
          gif_read_error(&gfc, 1, buf);
        }
        if (++unknown_block_type > 20)

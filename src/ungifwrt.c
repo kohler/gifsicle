@@ -2,7 +2,7 @@
 /* ungifwrt.c - Functions to write unGIFs -- GIFs with run-length compression,
    not LZW compression. Idea due to Hutchinson Avenue Software Corporation
    <http://www.hasc.com>.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -329,7 +329,7 @@ write_compressed_data(Gif_Image *gfi,
 
 #ifndef GIF_NO_COMPRESSION
         if (!do_clear) {
-          unsigned pixels_left = gfi->width * gfi->height - pos;
+          unsigned pixels_left = (unsigned) gfi->width * (unsigned) gfi->height - pos;
           if (pixels_left) {
             /* Always clear if run_ewma gets small relative to
                min_code_bits. Otherwise, clear if #images/run is smaller

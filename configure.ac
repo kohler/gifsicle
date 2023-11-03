@@ -1,7 +1,9 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([gifsicle], [1.92])
+AC_INIT([gifsicle], [1.94])
+AC_PREREQ(2.60)
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile src/Makefile])
 AM_INIT_AUTOMAKE
 ac_user_cc=${CC+y}
 
@@ -10,6 +12,8 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_C_CONST
 AC_C_INLINE
+AC_HEADER_STDC
+AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
 
 build_gifview=maybe
 AC_ARG_ENABLE([gifview],
@@ -109,24 +113,22 @@ if test "x$ungif" = xyes -o "x$GIFSICLE_UNGIF" = xyes ; then
 elif test -r $srcdir/src/gifwrite.c ; then
   GIFWRITE_O=gifwrite.o
 else
-  AC_MSG_ERROR(This version of gifsicle cannot create compressed GIFs.
-*** Either reconfigure with the \`--enable-ungif' option or download the
-*** version with compression from http://www.lcdf.org/gifsicle/)
+  AC_MSG_ERROR([This version of gifsicle cannot create compressed GIFs.
+*** Either reconfigure with the '--enable-ungif' option or download the
+*** version with compression from http://www.lcdf.org/gifsicle/])
 fi
 AC_SUBST(GIFWRITE_O)
 
 dnl
-dnl random or rand, strerror, strtoul, mkstemp, sys/select.h
+dnl random or rand, strerror, strtoul, mkstemp, snprintf
 dnl
 
 AC_CHECK_FUNC([random], [random_func=random], [random_func=rand])
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a random number.])
 
 AC_REPLACE_FUNCS([strerror])
-AC_CHECK_FUNCS([strtoul mkstemp])
+AC_CHECK_FUNCS([strtoul mkstemp snprintf])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
-
-AC_CHECK_HEADERS([sys/select.h sys/stat.h inttypes.h unistd.h])
 
 
 dnl
@@ -292,12 +294,16 @@ char *strerror(int errno);
 
 /* Need _setmode under MS-DOS, to set stdin/stdout to binary mode */
 /* Need _fsetmode under OS/2 for the same reason */
-/* Windows has _isatty and _snprintf, not the normal versions */
+/* Windows has _isatty, not isatty */
+/* Modern Windows has _snprintf, but we prefer snprintf */
 #if defined(_MSDOS) || defined(_WIN32) || defined(__EMX__) || defined(__DJGPP__)
 # include <fcntl.h>
 # include <io.h>
 # define isatty _isatty
-# define snprintf _snprintf
+#endif
+
+#ifndef HAVE_SNPRINTF
+#define snprintf(s, n, ...) sprintf((s), __VA_ARGS__)
 #endif
 
 #endif /* GIFSICLE_CONFIG_H */])
@@ -307,4 +313,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile src/Makefile)
+AC_OUTPUT

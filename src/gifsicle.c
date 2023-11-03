@@ -1,6 +1,6 @@
 /* -*- c-basic-offset: 2 -*- */
 /* gifsicle.c - gifsicle's main loop.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -545,7 +545,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
 
   if (message) {
     const char *filename = gfs && gfs->landmark ? gfs->landmark : "<unknown>";
-    if (gfi && (which_image != 0 || gfs->nimages != 1))
+    if (gfi && (which_image != 0 || gfs->nimages > 1))
       snprintf(landmark, sizeof(landmark), "%s:#%d",
                filename, which_image < 0 ? gfs->nimages : which_image);
     else
@@ -713,8 +713,9 @@ input_stream(const char *name)
   /* change filename for component files */
   componentno++;
   if (componentno > 1) {
-    component_namebuf = (char*) malloc(strlen(main_name) + 10);
-    sprintf(component_namebuf, "%s~%d", main_name, componentno);
+    size_t namelen = strlen(main_name) + 10;
+    component_namebuf = (char*) malloc(namelen);
+    snprintf(component_namebuf, namelen, "%s~%d", main_name, componentno);
     name = component_namebuf;
   } else
     component_namebuf = 0;
@@ -2139,7 +2140,7 @@ main(int argc, char *argv[])
 #else
       printf("LCDF Gifsicle %s\n", VERSION);
 #endif
-      printf("Copyright (C) 1997-2019 Eddie Kohler\n\
+      printf("Copyright (C) 1997-2023 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");

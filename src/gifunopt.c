@@ -1,5 +1,5 @@
 /* gifunopt.c - Unoptimization function for the GIF library.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The LCDF GIF library is free software. It is distributed under the GNU
@@ -23,16 +23,16 @@ static void
 put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int transparent = gfi->transparent;
-  int x, y;
-  int w = gfi->width;
-  int h = gfi->height;
+  unsigned x, y;
+  unsigned w = gfi->width;
+  unsigned h = gfi->height;
   if (gfi->left + w > gfs->screen_width)
       w = gfs->screen_width - gfi->left;
   if (gfi->top + h > gfs->screen_height)
       h = gfs->screen_height - gfi->top;
 
   for (y = 0; y < h; y++) {
-    uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
+    uint16_t *move = screen + (unsigned) gfs->screen_width * (y + gfi->top) + gfi->left;
     uint8_t *line = gfi->img[y];
     for (x = 0; x < w; x++, move++, line++)
       if (*line != transparent)
@@ -45,9 +45,9 @@ static void
 put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   uint16_t solid;
-  int x, y;
-  int w = gfi->width;
-  int h = gfi->height;
+  unsigned x, y;
+  unsigned w = gfi->width;
+  unsigned h = gfi->height;
   if (gfi->left + w > gfs->screen_width) w = gfs->screen_width - gfi->left;
   if (gfi->top + h > gfs->screen_height) h = gfs->screen_height - gfi->top;
 
@@ -58,7 +58,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
       solid = TRANSPARENT;
 
   for (y = 0; y < h; y++) {
-    uint16_t *move = screen + gfs->screen_width * (y + gfi->top) + gfi->left;
+    uint16_t *move = screen + (unsigned) gfs->screen_width * (y + gfi->top) + gfi->left;
     for (x = 0; x < w; x++, move++)
       *move = solid;
   }
@@ -71,7 +71,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 {
   int have[257];
   int transparent = -1;
-  unsigned pos, size = gfs->screen_width * gfs->screen_height;
+  unsigned pos, size = (unsigned) gfs->screen_width * (unsigned) gfs->screen_height;
   uint16_t *move;
   int i;
 
@@ -116,7 +116,7 @@ create_image_data(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
 static int
 unoptimize_image(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
-  unsigned size = gfs->screen_width * gfs->screen_height;
+  unsigned size = (unsigned) gfs->screen_width * (unsigned) gfs->screen_height;
   int used_transparent;
   uint8_t *new_data = Gif_NewArray(uint8_t, size);
   uint16_t *new_screen = screen;
@@ -190,7 +190,7 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
     return 0;
 
   Gif_CalculateScreenSize(gfs, 0);
-  size = gfs->screen_width * gfs->screen_height;
+  size = (unsigned) gfs->screen_width * (unsigned) gfs->screen_height;
 
   screen = Gif_NewArray(uint16_t, size);
   gfi = gfs->images[0];
