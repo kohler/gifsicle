@@ -2,7 +2,7 @@
 
 Gifsicle
 ========
-[![TravisCI status](https://travis-ci.org/kohler/gifsicle.svg?branch=master)](https://travis-ci.org/kohler/gifsicle)
+[![TravisCI status](https://travis-ci.com/kohler/gifsicle.svg?branch=master)](https://travis-ci.com/kohler/gifsicle)
 
 Gifsicle manipulates GIF image files. Depending on command line
 options, it can merge several GIFs into a GIF animation; explode an
@@ -86,7 +86,7 @@ Please note that I do not provide support for Windows.
 Copyright/License
 -----------------
 
-All source code is Copyright (C) 1997-2019 Eddie Kohler.
+All source code is Copyright (C) 1997-2023 Eddie Kohler.
 
 IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however
@@ -115,13 +115,12 @@ obtain permission before doing so.
 Authors
 -------
 
+This program is dedicated to the memory of Anne Dudfield, who named
+it. Anne was an incredible friend and ridiculous person. ANNIED!!!!!!
+
 Eddie Kohler <ekohler@gmail.com> \
 http://www.read.seas.harvard.edu/~kohler/ \
 He wrote it.
-
-Anne Dudfield <anne@mazunetworks.com> \
-http://www.frii.com/~annied/ \
-She named it.
 
 David Hedbor <david@hedbor.org> \
 Many bug reports and constructive whining about the optimizer.

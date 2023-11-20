@@ -1,5 +1,5 @@
 /* quantize.c - Histograms and quantization for gifsicle.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -101,14 +101,15 @@ pthread_mutex_t kd3_sort_lock;
 
 const char* kc_debug_str(kcolor x) {
     static int whichbuf = 0;
-    static char buf[4][32];
+    static char buf[4][64];
     whichbuf = (whichbuf + 1) % 4;
     if (x.a[0] >= 0 && x.a[1] >= 0 && x.a[2] >= 0) {
         kc_revgamma_transform(&x);
-        sprintf(buf[whichbuf], "#%02X%02X%02X",
-                x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
+        snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "#%02X%02X%02X",
+                 x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
     } else
-        sprintf(buf[whichbuf], "<%d,%d,%d>", x.a[0], x.a[1], x.a[2]);
+        snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "<%d,%d,%d>",
+                 x.a[0], x.a[1], x.a[2]);
     return buf[whichbuf];
 }
 
@@ -649,7 +650,7 @@ colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
     int nadapt = 0;
     int chosen;
 
-    /* This code was uses XV's modified diversity algorithm, and was written
+    /* This code uses XV's modified diversity algorithm, and was written
        with reference to XV's implementation of that algorithm by John Bradley
        <bradley@cis.upenn.edu> and Tom Lane <Tom.Lane@g.gp.cs.cmu.edu>. */
 
@@ -850,13 +851,13 @@ static void kd3_print_depth(kd3_tree* kd3, int depth, kd3_treepos* p,
     char x[6][10];
     for (i = 0; i != 3; ++i) {
         if (a[i] == INT_MIN)
-            sprintf(x[2*i], "*");
+            snprintf(x[2*i], sizeof(x[2*i]), "*");
         else
-            sprintf(x[2*i], "%d", a[i]);
+            snprintf(x[2*i], sizeof(x[2*i]), "%d", a[i]);
         if (b[i] == INT_MAX)
-            sprintf(x[2*i+1], "*");
+            snprintf(x[2*i+1], sizeof(x[2*i+1]), "*");
         else
-            sprintf(x[2*i+1], "%d", b[i]);
+            snprintf(x[2*i+1], sizeof(x[2*i+1]), "%d", b[i]);
     }
     printf("%*s<%s:%s,%s:%s,%s:%s>", depth*3, "",
            x[0], x[1], x[2], x[3], x[4], x[5]);
@@ -1039,8 +1040,13 @@ colormap_image_posterize(Gif_Image *gfi, uint8_t *new_data,
   int transparent = gfi->transparent;
 
   /* find closest colors in new colormap */
-  for (i = 0; i < ncol; i++) {
+  assert(old_cm->capacity >= 256);
+  for (i = 0; i < ncol; ++i) {
       map[i] = col[i].pixel = kd3_closest8g(kd3, col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
+      col[i].haspixel = 1;
+  }
+  for (i = ncol; i < 256; ++i) {
+      map[i] = col[i].pixel = 0;
       col[i].haspixel = 1;
   }
 
@@ -1075,10 +1081,16 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int i, j, k;
   wkcolor *err, *err1;
 
-  /* Initialize distances */
+  /* Initialize distances; beware uninitialized colors */
+  assert(old_cm->capacity >= 256);
   for (i = 0; i < old_cm->ncol; ++i) {
       Gif_Color* c = &old_cm->col[i];
       c->pixel = kd3_closest8g(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      c->haspixel = 1;
+  }
+  for (i = old_cm->ncol; i < 256; ++i) {
+      Gif_Color* c = &old_cm->col[i];
+      c->pixel = 0;
       c->haspixel = 1;
   }
 
@@ -1442,7 +1454,8 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
     /* Written with reference to Joel Ylilouma's versions. */
 
     /* Initialize colors */
-    for (i = 0; i != old_cm->ncol; ++i)
+    assert(old_cm->capacity >= 256);
+    for (i = 0; i != 256; ++i)
         old_cm->col[i].haspixel = 0;
 
     /* Initialize luminances, create luminance sorter */
@@ -1568,15 +1581,6 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
   int new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
   int compress_new_cm = 1;
-
-  /* make sure colormap has enough space */
-  if (new_cm->capacity < 256) {
-    Gif_Color *x = Gif_NewArray(Gif_Color, 256);
-    memcpy(x, new_col, sizeof(Gif_Color) * new_ncol);
-    Gif_DeleteArray(new_col);
-    new_cm->col = new_col = x;
-    new_cm->capacity = 256;
-  }
   assert(new_cm->capacity >= 256);
 
   /* new_col[j].pixel == number of pixels with color j in the new image. */

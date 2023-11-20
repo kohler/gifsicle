@@ -1,5 +1,5 @@
 /* merge.c - Functions which actually combine and manipulate GIF image data.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2021 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -114,7 +114,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 {
     Gif_Color *srccol;
     Gif_Color *destcol = dest->col;
-    int ndestcol = dest->ncol;
+    int destncol = dest->ncol;
     int dest_user_flags = dest->user_flags;
     int i, x;
     int trivial_map = 1;
@@ -131,18 +131,18 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
             int mapto = (srccol[i].pixel < 256 ? (int)srccol[i].pixel : -1);
 
             if (mapto == -1)
-                mapto = find_color_index(destcol, ndestcol, &srccol[i]);
+                mapto = find_color_index(destcol, destncol, &srccol[i]);
 
-            if (mapto == -1 && ndestcol < 256) {
+            if (mapto == -1 && destncol < 256) {
                 /* add the color */
-                mapto = ndestcol;
+                mapto = destncol;
                 destcol[mapto] = srccol[i];
-                ndestcol++;
+                destncol++;
             }
 
             if (mapto == -1)
                 /* check for a pure-transparent color */
-                for (x = 0; x < ndestcol; x++)
+                for (x = 0; x < destncol; x++)
                     if (destcol[x].haspixel == 2) {
                         mapto = x;
                         destcol[mapto] = srccol[i];
@@ -153,7 +153,7 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
                 /* give up and require a local colormap */
                 goto local_colormap_required;
 
-            assert(mapto >= 0 && mapto < ndestcol);
+            assert(mapto >= 0 && mapto < destncol);
             assert(GIF_COLOREQ(&destcol[mapto], &srccol[i]));
 
             srccol[i].pixel = mapto;
@@ -165,15 +165,15 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
             /* a dedicated transparent color; if trivial_map & at end of
                colormap insert it with haspixel == 2. (strictly not
                necessary; we do it to try to keep the map trivial.) */
-            if (trivial_map && i == ndestcol) {
-                destcol[ndestcol] = srccol[i];
-                ndestcol++;
+            if (trivial_map && i == destncol) {
+                destcol[destncol] = srccol[i];
+                destncol++;
             }
         }
     }
 
     /* success! save new number of colors */
-    dest->ncol = ndestcol;
+    dest->ncol = destncol;
     dest->user_flags = dest_user_flags;
     return 1;
 

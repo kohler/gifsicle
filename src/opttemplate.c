@@ -1,5 +1,5 @@
 /* opttemplate.c - Functions to optimize animated GIFs.
-   Copyright (C) 1997-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2021 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,

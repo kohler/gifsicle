@@ -1,6 +1,18 @@
 Gifsicle NEWS
 =============
 
+## Version 1.94 – 23.Jun.2023
+
+* Fix some bugs.
+
+
+## Version 1.93 – 30.Jun.2021
+
+* Fix security bug on certain resize operations with `--resize-method=box`.
+
+* Fix problems with colormapless GIFs.
+
+
 ## Version 1.92 – 18.Apr.2019
 
 * Add `--lossy` option from Kornel Lipiński.

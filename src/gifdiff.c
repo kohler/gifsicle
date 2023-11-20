@@ -1,5 +1,5 @@
 /* gifdiff.c - Gifdiff compares GIF images for identical appearance.
-   Copyright (C) 1998-2019 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1998-2023 Eddie Kohler, ekohler@gmail.com
    This file is part of gifdiff, in the gifsicle package.
 
    Gifdiff is free software. It is distributed under the GNU Public License,
@@ -29,7 +29,7 @@
 const Clp_Option options[] = {
   { "help", 'h', HELP_OPT, 0, 0 },
   { "brief", 'q', QUIET_OPT, 0, Clp_Negate },
-  { "redudancy", 0, REDUNDANCY_OPT, 0, Clp_Negate },
+  { "redundancy", 0, REDUNDANCY_OPT, 0, Clp_Negate },
   { "ignore-redundancy", 'w', IGNORE_REDUNDANCY_OPT, 0, Clp_Negate },
   { "bg", 0, BACKGROUND_OPT, 0, Clp_Negate },
   { "ignore-bg", 0, IGNORE_BACKGROUND_OPT, 0, Clp_Negate },
@@ -203,33 +203,33 @@ different(const char *format, ...)
 
 
 static void
-name_loopcount(int loopcount, char *buf)
+name_loopcount(int loopcount, char *buf, size_t bufsz)
 {
   if (loopcount < 0)
     strcpy(buf, "none");
   else if (loopcount == 0)
     strcpy(buf, "forever");
   else
-    sprintf(buf, "%d", loopcount);
+    snprintf(buf, bufsz, "%d", loopcount);
 }
 
 static void
-name_delay(int delay, char *buf)
+name_delay(int delay, char *buf, size_t bufsz)
 {
   if (delay == 0)
     strcpy(buf, "none");
   else
-    sprintf(buf, "%d.%02ds", delay / 100, delay % 100);
+    snprintf(buf, bufsz, "%d.%02ds", delay / 100, delay % 100);
 }
 
 static void
-name_color(int color, Gif_Colormap *gfcm, char *buf)
+name_color(int color, Gif_Colormap *gfcm, char *buf, size_t bufsz)
 {
   if (color == TRANSP)
     strcpy(buf, "transparent");
   else {
     Gif_Color *c = &gfcm->col[color];
-    sprintf(buf, "#%02X%02X%02X", c->gfc_red, c->gfc_green, c->gfc_blue);
+    snprintf(buf, bufsz, "#%02X%02X%02X", c->gfc_red, c->gfc_green, c->gfc_blue);
   }
 }
 
@@ -307,8 +307,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 
   /* Loopcounts differ? */
   if (s1->loopcount != s2->loopcount) {
-    name_loopcount(s1->loopcount, buf1);
-    name_loopcount(s2->loopcount, buf2);
+    name_loopcount(s1->loopcount, buf1, sizeof(buf1));
+    name_loopcount(s2->loopcount, buf2, sizeof(buf2));
     different("loop counts differ: <%s >%s", buf1, buf2);
   }
 
@@ -322,9 +322,9 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
 
     /* get message right */
     if (imageno1 == imageno2)
-      sprintf(fbuf, "#%d", imageno1);
+      snprintf(fbuf, sizeof(fbuf), "#%d", imageno1);
     else
-      sprintf(fbuf, "<#%d >#%d", imageno1, imageno2);
+      snprintf(fbuf, sizeof(fbuf), "<#%d >#%d", imageno1, imageno2);
 
     /* compare pixels */
     if (memcmp(gdata[0], gdata[1],
@@ -333,8 +333,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
       uint16_t *d1 = gdata[0], *d2 = gdata[1];
       for (d = 0; d < c; d++, d1++, d2++)
         if (*d1 != *d2) {
-          name_color(*d1, newcm, buf1);
-          name_color(*d2, newcm, buf2);
+          name_color(*d1, newcm, buf1, sizeof(buf1));
+          name_color(*d2, newcm, buf2, sizeof(buf2));
           different("frame %s pixels differ: %d,%d <%s >%s",
                     fbuf, d % screen_width, d / screen_width, buf1, buf2);
           break;
@@ -349,8 +349,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
         uint16_t *d1 = gdata[0], *d2 = gdata[1];
         for (d = 0; d < c; ++d, ++d1, ++d2)
             if (*d1 == TRANSP || *d2 == TRANSP) {
-                name_color(background1, newcm, buf1);
-                name_color(background2, newcm, buf2);
+                name_color(background1, newcm, buf1, sizeof(buf1));
+                name_color(background2, newcm, buf2, sizeof(buf2));
                 different("frame %s background pixels differ: %d,%d <%s >%s",
                           fbuf, d % screen_width, d / screen_width, buf1, buf2);
                 background1 = background2 = TRANSP;
@@ -377,8 +377,8 @@ compare(Gif_Stream *s1, Gif_Stream *s2)
     }
 
     if (delay1 != delay2) {
-      name_delay(delay1, buf1);
-      name_delay(delay2, buf2);
+      name_delay(delay1, buf1, sizeof(buf1));
+      name_delay(delay2, buf2, sizeof(buf2));
       different("frame %s delays differ: <%s >%s", fbuf, buf1, buf2);
     }
   }
@@ -560,7 +560,7 @@ main(int argc, char *argv[])
 
      case VERSION_OPT:
       printf("gifdiff (LCDF Gifsicle) %s\n", VERSION);
-      printf("Copyright (C) 1998-2019 Eddie Kohler\n\
+      printf("Copyright (C) 1998-2023 Eddie Kohler\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
