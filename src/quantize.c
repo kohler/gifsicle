@@ -1200,6 +1200,110 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   Gif_DeleteArray(err1);
 }
 
+/* This function is a variant of the colormap_image_floyd_steinberg function
+    since the Atkinson dither is a variant of the Floyd-Steinberg dither. */
+void
+colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
+                        Gif_Colormap *old_cm, kd3_tree* kd3,
+                        uint32_t *histogram)
+{
+  static int32_t *random_values = 0;
+  int transparent = gfi->transparent;
+  int i, j, k;
+  wkcolor *err[3];
+
+  /* Initialize distances; beware uninitialized colors */
+  assert(old_cm->capacity >= 256);
+  for (i = 0; i < old_cm->ncol; ++i) {
+      Gif_Color* c = &old_cm->col[i];
+      c->pixel = kd3_closest8g(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      c->haspixel = 1;
+  }
+  for (i = old_cm->ncol; i < 256; ++i) {
+      Gif_Color* c = &old_cm->col[i];
+      c->pixel = 0;
+      c->haspixel = 1;
+  }
+
+  /* Initialize Atkinson error vectors */
+  for (i = 0; i < 3; i++)
+    err[i] = Gif_NewArray(wkcolor, gfi->width + 2);
+
+  /* Use the same random values on each call in an attempt to minimize
+     "jumping dithering" effects on animations */
+  if (!random_values) {
+    random_values = Gif_NewArray(int32_t, N_RANDOM_VALUES);
+    for (i = 0; i < N_RANDOM_VALUES; i++)
+      random_values[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
+  }
+
+  for (i = 0; i < gfi->width + 2; i++) {
+    j = (i + gfi->left) * 3;
+    for (k = 0; k < 3; ++k)
+        err[0][i].a[k] = random_values[ (j + k) % N_RANDOM_VALUES ];
+  }
+  
+  kd3_build_xradius(kd3);
+
+  /* Do the image! */
+  for (j = 0; j < gfi->height; j++) {
+    uint8_t *data = &gfi->img[j][0];
+    uint8_t *new_data = all_new_data + j * (unsigned) gfi->width;
+
+    /* Initialize error rows for this pass */
+    for (i = 0; i < gfi->width + 2; i++)
+      for (k = 0; k < 3; k++)
+        err[1][i].a[k] = err[2][i].a[k] = 0;
+
+    for (int x = 0; x < gfi->width; x++, data++, new_data++) {
+      kcolor use;
+
+      /* Transparent color never gets adjusted, skip */
+      if (*data == transparent) {
+        continue;
+      }
+
+      /* Calculate desired new color including current error */
+      kc_set8g(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
+        old_cm->col[*data].gfc_blue);
+
+      for (k = 0; k < 3; ++k)
+        use.a[k] = KC_CLAMPV(use.a[k] + err[0][x].a[k] / DITHER_SCALE);
+
+      /* Find the closest color in the colormap */
+      *new_data = kd3_closest_transformed(kd3, &use, NULL);
+
+      /* Calculate and propagate the error using the Atkinson dithering
+         algorithm */
+      for (k = 0; k < 3; ++k) {
+        int e = (use.a[k] - kd3->ks[*new_data].a[k]) * DITHER_SCALE;
+        if (x + 1 < gfi->width) err[0][x + 1].a[k] += e / 8;
+        if (x + 2 < gfi->width) err[0][x + 2].a[k] += e / 8;
+        if (j + 1 < gfi->height) {
+          err[1][x].a[k] += e / 8;
+          err[1][x + 1].a[k] += e / 8;
+          if (x + 1 < gfi->width) err[1][x + 1].a[k] += e / 8;
+        }
+        if (j + 2 < gfi->height)
+          err[2][x].a[k] += e / 8;
+      }
+    }
+
+    /* Rotate error buffers */
+    wkcolor *temp = err[0];
+    err[0] = err[1];
+    err[1] = err[2];
+    err[2] = temp;
+  }
+
+  /* Delete temporary storage */
+  for (i = 0; i < 3; i++) {
+    if (err[i]) {
+      Gif_DeleteArray(err[i]);
+      err[i] = NULL;
+    }
+  }
+}
 
 typedef struct odselect_planitem {
     uint8_t plan;
@@ -1503,6 +1607,8 @@ static void dither(Gif_Image* gfi, uint8_t* new_data, Gif_Colormap* old_cm,
              || od->dither_type == dither_ordered_new)
         colormap_image_ordered(gfi, new_data, old_cm, kd3, histogram,
                                od->dither_data);
+    else if (od->dither_type == dither_atkinson)
+        colormap_image_atkinson(gfi, new_data, old_cm, kd3, histogram);
     else
         colormap_image_posterize(gfi, new_data, old_cm, kd3, histogram);
 }
@@ -1962,6 +2068,9 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
     else if (strcmp(name, "floyd-steinberg") == 0
              || strcmp(name, "fs") == 0)
         od->dither_type = dither_floyd_steinberg;
+    else if (strcmp(name, "atkinson") == 0
+            || strcmp(name, "at") == 0)
+        od->dither_type = dither_atkinson;
     else if (strcmp(name, "o3") == 0 || strcmp(name, "o3x3") == 0
              || (strcmp(name, "o") == 0 && nparm >= 1 && parm[0] == 3)) {
         od->dither_type = dither_ordered;
