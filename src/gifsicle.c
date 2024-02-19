@@ -1969,26 +1969,46 @@ main(int argc, char *argv[])
     }
 
     case GAMMA_OPT: {
-#if HAVE_POW
-      char* ends;
-      MARK_CH(output, CH_GAMMA);
       if (clp->negated) {
+        MARK_CH(output, CH_GAMMA);
         def_output_data.colormap_gamma_type = KC_GAMMA_NUMERIC;
-        def_output_data.colormap_gamma = 1;
-      } else if (strcmp(clp->val.s, "sRGB") == 0
-                 || strcmp(clp->val.s, "srgb") == 0)
+        def_output_data.colormap_gamma = 1.0;
+        break;
+      }
+      if (strlen(clp->val.s) == 4
+          && tolower((unsigned char) clp->val.s[0]) == 's'
+          && tolower((unsigned char) clp->val.s[1]) == 'r'
+          && tolower((unsigned char) clp->val.s[2]) == 'g'
+          && tolower((unsigned char) clp->val.s[3]) == 'b') {
+        MARK_CH(output, CH_GAMMA);
         def_output_data.colormap_gamma_type = KC_GAMMA_SRGB;
-      else {
+        break;
+      }
+#if HAVE_CBRTF
+      if (strlen(clp->val.s) == 5
+          && tolower((unsigned char) clp->val.s[0]) == 'o'
+          && tolower((unsigned char) clp->val.s[1]) == 'k'
+          && tolower((unsigned char) clp->val.s[2]) == 'l'
+          && tolower((unsigned char) clp->val.s[3]) == 'a'
+          && tolower((unsigned char) clp->val.s[4]) == 'b') {
+        MARK_CH(output, CH_GAMMA);
+        def_output_data.colormap_gamma_type = KC_GAMMA_OKLAB;
+        break;
+      }
+#endif
+#if HAVE_POW
+      {
+        char* ends;
         double gamma = strtod(clp->val.s, &ends);
         if (*clp->val.s && !*ends && !isspace((unsigned char) *clp->val.s)) {
+          MARK_CH(output, CH_GAMMA);
           def_output_data.colormap_gamma_type = KC_GAMMA_NUMERIC;
           def_output_data.colormap_gamma = gamma;
-        } else
-          Clp_OptionError(clp, "%O should be a number or %<srgb%>");
+          break;
+        }
       }
-#else
-      Clp_OptionError(clp, "this version of Gifsicle does not support %O");
 #endif
+      Clp_OptionError(clp, "%O not supported");
       break;
     }
 

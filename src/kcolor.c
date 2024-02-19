@@ -89,9 +89,44 @@ static const uint16_t srgb_revgamma_table_256[256] = {
     32313, 32370, 32427, 32484, 32541, 32598, 32654, 32711
 };
 
-uint16_t* gamma_tables[2] = {
-    (uint16_t*) srgb_gamma_table_256,
-    (uint16_t*) srgb_revgamma_table_256
+static const float linear_srgb_table_256[256] = {
+    0.00000, 0.04984009, 0.08494473, 0.11070206, 0.13180381, 0.1500052, 0.1661857, 0.18085852,
+    0.19435316, 0.20689574, 0.21864912, 0.22973509, 0.2402475, 0.25026038, 0.25983337, 0.26901522,
+    0.27784654, 0.28636143, 0.29458886, 0.3025538, 0.31027776, 0.31777957, 0.32507575, 0.33218095,
+    0.33910814, 0.34586892, 0.35247374, 0.35893196, 0.3652521, 0.3714419, 0.37750843, 0.38345808,
+    0.38929683, 0.39503005, 0.40066284, 0.40619975, 0.41164514, 0.417003, 0.42227703, 0.42747074,
+    0.4325873, 0.4376298, 0.44260103, 0.4475037, 0.45234028, 0.45711315, 0.46182457, 0.4664766,
+    0.47107124, 0.4756104, 0.4800958, 0.4845292, 0.48891217, 0.49324623, 0.49753287, 0.5017734,
+    0.5059693, 0.5101216, 0.5142317, 0.5183006, 0.5223295, 0.5263194, 0.53027135, 0.53418624,
+    0.53806514, 0.54190874, 0.5457181, 0.54949385, 0.5532369, 0.556948, 0.5606278, 0.5642771,
+    0.56789654, 0.5714868, 0.57504845, 0.5785821, 0.5820884, 0.58556795, 0.58902115, 0.59244865,
+    0.59585094, 0.5992285, 0.60258186, 0.60591143, 0.60921764, 0.612501, 0.61576194, 0.6190008,
+    0.622218, 0.62541395, 0.62858903, 0.6317436, 0.63487804, 0.6379926, 0.6410878, 0.6441637,
+    0.64722085, 0.6502595, 0.6532799, 0.65628237, 0.65926725, 0.6622347, 0.6651851, 0.66811866,
+    0.67103565, 0.6739363, 0.67682093, 0.6796897, 0.6825429, 0.6853807, 0.6882034, 0.69101113,
+    0.69380414, 0.6965826, 0.69934684, 0.70209694, 0.7048331, 0.7075556, 0.7102645, 0.71296,
+    0.7156424, 0.7183118, 0.7209683, 0.7236121, 0.7262435, 0.7288625, 0.73146933, 0.73406404,
+    0.73664695, 0.73921806, 0.7417776, 0.74432564, 0.7468624, 0.749388, 0.75190246, 0.7544061,
+    0.7568989, 0.759381, 0.76185256, 0.7643137, 0.7667645, 0.7692052, 0.7716358, 0.7740564,
+    0.77646714, 0.77886814, 0.78125954, 0.78364134, 0.7860138, 0.7883768, 0.79073066, 0.7930754,
+    0.795411, 0.7977377, 0.80005556, 0.8023647, 0.8046651, 0.80695695, 0.8092403, 0.8115152,
+    0.8137818, 0.81604016, 0.8182903, 0.8205324, 0.8227665, 0.8249926, 0.8272109, 0.8294214,
+    0.8316242, 0.8338194, 0.836007, 0.8381871, 0.84035975, 0.84252506, 0.8446831, 0.84683394,
+    0.84897757, 0.85111415, 0.8532437, 0.85536623, 0.8574819, 0.8595907, 0.8616927, 0.86378807,
+    0.8658767, 0.8679587, 0.87003416, 0.87210315, 0.87416565, 0.8762218, 0.8782716, 0.8803151,
+    0.8823524, 0.8843835, 0.8864085, 0.8884274, 0.8904402, 0.8924471, 0.89444804, 0.8964431,
+    0.8984324, 0.9004158, 0.90239346, 0.9043654, 0.9063318, 0.9082925, 0.91024756, 0.9121972,
+    0.9141413, 0.91608, 0.9180133, 0.9199412, 0.92186373, 0.92378104, 0.9256931, 0.92759997,
+    0.92950165, 0.9313982, 0.93328965, 0.9351761, 0.9370575, 0.9389339, 0.9408054, 0.9426719,
+    0.9445336, 0.94639045, 0.9482424, 0.9500897, 0.9519322, 0.95377004, 0.9556032, 0.9574316,
+    0.9592555, 0.9610748, 0.96288955, 0.9646998, 0.9665055, 0.9683068, 0.9701037, 0.9718961,
+    0.9736842, 0.9754679, 0.97724736, 0.9790225, 0.9807934, 0.9825601, 0.98432255, 0.9860808,
+    0.987835, 0.989585, 0.9913309, 0.99307275, 0.9948106, 0.99654436, 0.99827415, 1.00000
+};
+
+const uint16_t* gamma_tables[2] = {
+    srgb_gamma_table_256,
+    srgb_revgamma_table_256
 };
 
 #if ENABLE_THREADS
@@ -114,44 +149,53 @@ const char* kc_debug_str(kcolor x) {
 }
 
 void kc_set_gamma(int type, double gamma) {
-#if HAVE_POW
     static int cur_type = KC_GAMMA_SRGB;
     static double cur_gamma = 2.2;
     int i, j;
-    if (type == cur_type && (type != KC_GAMMA_NUMERIC || gamma == cur_gamma))
+    uint16_t* g[2];
+#if !HAVE_POW
+    if (type == KC_GAMMA_NUMERIC && gamma != 1.0) {
+        type = KC_GAMMA_SRGB;
+    }
+#endif
+    if (type == cur_type && (type != KC_GAMMA_NUMERIC || gamma == cur_gamma)) {
         return;
-    if (type == KC_GAMMA_SRGB) {
+    }
+    if (type != KC_GAMMA_NUMERIC) {
         if (gamma_tables[0] != srgb_gamma_table_256) {
             Gif_DeleteArray(gamma_tables[0]);
-            Gif_DeleteArray(gamma_tables[1]);
         }
-        gamma_tables[0] = (uint16_t*) srgb_gamma_table_256;
-        gamma_tables[1] = (uint16_t*) srgb_revgamma_table_256;
+        gamma_tables[0] = srgb_gamma_table_256;
+        gamma_tables[1] = srgb_revgamma_table_256;
     } else {
         if (gamma_tables[0] == srgb_gamma_table_256) {
-            gamma_tables[0] = Gif_NewArray(uint16_t, 256);
-            gamma_tables[1] = Gif_NewArray(uint16_t, 256);
+            gamma_tables[0] = Gif_NewArray(uint16_t, 512);
+            gamma_tables[1] = gamma_tables[0] + 256;
         }
+        g[0] = (uint16_t*) gamma_tables[0];
+        g[1] = (uint16_t*) gamma_tables[1];
         for (j = 0; j != 256; ++j) {
-            gamma_tables[0][j] = (int) (pow(j/255.0, gamma) * 32767 + 0.5);
-            gamma_tables[1][j] = (int) (pow(j/256.0, 1/gamma) * 32767 + 0.5);
+#if HAVE_POW
+            g[0][j] = (int) (pow(j / 255.0, gamma) * 32767 + 0.5);
+            g[1][j] = (int) (pow(j / 256.0, 1/gamma) * 32767 + 0.5);
+#else
+            g[0][j] = (int) (j / 255.0 * 32767 + 0.5);
+            g[1][j] = (int) (j / 256.0 * 32767 + 0.5);
+#endif
             /* The ++gamma_tables[][] ensures that round-trip gamma correction
                always preserve the input colors. Without it, one might have,
                for example, input values 0, 1, and 2 all mapping to
                gamma-corrected value 0. Then a round-trip through gamma
                correction loses information.
             */
-            for (i = 0; i != 2; ++i)
-                while (j && gamma_tables[i][j] <= gamma_tables[i][j-1]
-                       && gamma_tables[i][j] < 32767)
-                    ++gamma_tables[i][j];
+            for (i = j ? 0 : 2; i != 2; ++i) {
+                while (g[i][j] <= g[i][j-1] && g[i][j] < 32767)
+                    ++g[i][j];
+            }
         }
     }
     cur_type = type;
     cur_gamma = gamma;
-#else
-    (void) type, (void) gamma;
-#endif
 }
 
 kcolor kc_revgamma_transform(kcolor x) {
@@ -184,6 +228,39 @@ static void kc_test_gamma() {
             }
 }
 #endif
+
+kcolor kc_oklab_transform(int a0, int a1, int a2) {
+#if HAVE_CBRTF
+    float cr = linear_srgb_table_256[a0];
+    float cg = linear_srgb_table_256[a1];
+    float cb = linear_srgb_table_256[a2];
+
+    float l = 0.4122214708f * cr + 0.5363325363f * cg + 0.0514459929f * cb;
+    float m = 0.2119034982f * cr + 0.6806995451f * cg + 0.1073969566f * cb;
+    float s = 0.0883024619f * cr + 0.2817188376f * cg + 0.6299787005f * cb;
+
+    float l_ = cbrtf(l);
+    float m_ = cbrtf(m);
+    float s_ = cbrtf(s);
+
+    float okl = 0.2104542553f*l_ + 0.7936177850f*m_ - 0.0040720468f*s_;
+    float oka = 1.9779984951f*l_ - 2.4285922050f*m_ + 0.4505937099f*s_;
+    float okb = 0.0259040371f*l_ + 0.7827717662f*m_ - 0.8086757660f*s_;
+
+    // On sRGB colors, `okl` ranges from 0 to 1,
+    // `oka` ranges from -0.23388740 to +0.27621666,
+    // `okb` ranges from -0.31152815 to +0.19856972.
+
+    kcolor kc;
+    kc.a[0] = okl * 32767;
+    kc.a[1] = (oka + 0.5) * 32767;
+    kc.a[2] = (okb + 0.5) * 32767;
+    return kc;
+#else
+    /* fall back to sRGB gamma */
+    return kc_make8g(a0, a1, a2);
+#endif
+}
 
 
 static int kchist_sizes[] = {

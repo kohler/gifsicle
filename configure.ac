@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([gifsicle],[1.95])
+AC_INIT([gifsicle],[1.96])
 AC_PREREQ([2.69])
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
@@ -129,6 +129,7 @@ AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a 
 AC_REPLACE_FUNCS([strerror])
 AC_CHECK_FUNCS([strtoul mkstemp snprintf])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
+AC_SEARCH_LIBS([cbrtf], [m], [AC_DEFINE([HAVE_CBRTF], [1], [Define to 1 if you have the `cbrtf' function.])])
 
 
 dnl

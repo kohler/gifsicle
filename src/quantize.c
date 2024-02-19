@@ -1047,11 +1047,18 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
 
   /* initialize kd3 tree */
   new_gray = 1;
-  for (j = 0; new_gray && j < new_cm->ncol; ++j)
+  for (j = 0; new_gray && j < new_cm->ncol; ++j) {
       if (new_col[j].gfc_red != new_col[j].gfc_green
           || new_col[j].gfc_red != new_col[j].gfc_blue)
           new_gray = 0;
-  kd3_init_build(&kd3, new_gray ? kc_luminance_transform : NULL, new_cm);
+  }
+  if (new_gray) {
+      kd3_init_build(&kd3, kc_luminance_transform, new_cm);
+  } else if (od->colormap_gamma_type == KC_GAMMA_OKLAB) {
+      kd3_init_build(&kd3, kc_oklab_transform, new_cm);
+  } else {
+      kd3_init_build(&kd3, NULL, new_cm);
+  }
 
   for (imagei = 0; imagei < gfs->nimages; imagei++) {
     Gif_Image *gfi = gfs->images[imagei];

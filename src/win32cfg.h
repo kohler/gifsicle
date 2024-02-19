@@ -13,6 +13,9 @@
 /* Define if GIF LZW compression is off. */
 /* #undef GIF_UNGIF */
 
+/* Define to 1 if you have the `cbrtf' function. */
+#define HAVE_CBRTF 1
+
 /* Define to 1 if `ext_vector_type' vector types are usable. */
 /* #undef HAVE_EXT_VECTOR_TYPE_VECTOR_TYPES */
 

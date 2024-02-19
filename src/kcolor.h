@@ -43,7 +43,7 @@ typedef union kacolor {
 
 /* gamma_tables[0]: array of 256 gamma-conversion values
    gamma_tables[1]: array of 256 reverse gamma-conversion values */
-extern uint16_t* gamma_tables[2];
+extern const uint16_t* gamma_tables[2];
 
 
 /* return the gamma transformation of `a0/a1/a2` [RGB] */
@@ -128,6 +128,8 @@ static inline kcolor kc_luminance_transform(int a0, int a1, int a2) {
     kc.a[0] = kc.a[1] = kc.a[2] = kc_luminance(kc);
     return kc;
 }
+
+kcolor kc_oklab_transform(int a0, int a1, int a2);
 
 
 /* wkcolor: like kcolor, but components are 32 bits instead of 16 */

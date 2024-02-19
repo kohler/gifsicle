@@ -266,6 +266,7 @@ void    resize_stream(Gif_Stream* gfs, double new_width, double new_height,
  **/
 #define KC_GAMMA_SRGB                   0
 #define KC_GAMMA_NUMERIC                1
+#define KC_GAMMA_OKLAB                  2
 void    kc_set_gamma(int type, double gamma);
 
 #define COLORMAP_DIVERSITY              0
