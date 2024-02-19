@@ -274,7 +274,7 @@ void    kc_set_gamma(int type, double gamma);
 
 enum {
     dither_none = 0, dither_default, dither_floyd_steinberg,
-    dither_ordered, dither_ordered_new
+    dither_ordered, dither_ordered_new, dither_atkinson
 };
 int     set_dither_type(Gt_OutputData* od, const char* name);
 void    colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*);

@@ -1059,6 +1059,10 @@ uses Floyd-Steinberg error
 diffusion. This usually looks best, but can cause animation artifacts,
 because dithering choices will vary from frame to frame. Gifsicle also
 supports ordered dithering algorithms that avoid animation artifacts.
+.RB \(oq atkinson \(cq,
+uses Atkinson error diffusion, which is a variant of Floyd-Steinberg.
+It offers a more localized dithering pattern, which can be useful for
+images with large areas of solid color.
 The
 .RB \(oq ro64 \(cq
 mode uses a
