@@ -230,6 +230,30 @@ void kchist_make(kchist* kch, Gif_Stream* gfs, uint32_t* ntransp);
 kchistitem* kchist_add(kchist* kch, kcolor color, kchist_count_t count);
 void kchist_compress(kchist* kch);
 
+static inline int kchistitem_compare_red(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[0] - b->ka.a[0];
+}
+
+static inline int kchistitem_compare_green(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[1] - b->ka.a[1];
+}
+
+static inline int kchistitem_compare_blue(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->ka.a[2] - b->ka.a[2];
+}
+
+static inline int kchistitem_compare_popularity(const void* va, const void* vb) {
+    const kchistitem* a = (const kchistitem*) va;
+    const kchistitem* b = (const kchistitem*) vb;
+    return a->count > b->count ? -1 : a->count != b->count;
+}
+
 
 typedef struct {
     kchist* kch;
