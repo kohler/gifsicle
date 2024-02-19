@@ -1242,7 +1242,7 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
     for (k = 0; k < 3; ++k)
         err[0][i].a[k] = random_values[ (j + k) % N_RANDOM_VALUES ];
   }
-  
+
   kd3_build_xradius(kd3);
 
   /* Do the image! */
