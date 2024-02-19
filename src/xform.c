@@ -482,8 +482,7 @@ static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
     kss->data = Gif_NewArray(scale_color, sz);
     if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
         && gfs->global && gfs->background < gfs->global->ncol) {
-        kcolor k = kc_makegfcg(&gfs->global->col[gfs->background]);
-        kss->bg = sc_makekc(&k);
+        kss->bg = sc_makekc(kc_makegfcg(&gfs->global->col[gfs->background]));
     } else
         sc_clear(&kss->bg);
     for (i = 0; i != sz; ++i)
@@ -517,7 +516,7 @@ static void ksscreen_apply(ksscreen* kss, const Gif_Image* gfi,
         scale_color* lineout = &kss->data[y * kss->width + gfi->left];
         for (x = 0; x != gfi->width; ++x)
             if (linein[x] != gfi->transparent)
-                lineout[x] = sc_makekc(&ks[linein[x]]);
+                lineout[x] = sc_makekc(ks[linein[x]]);
     }
 }
 
@@ -726,7 +725,7 @@ static int scale_image_add_colors(scale_context* sctx, Gif_Image* gfo) {
         if (chosen >= kch.n || div.min_dist[chosen] <= sctx->max_desired_dist)
             break;
         kcdiversity_choose(&div, chosen, 0);
-        gfc = kc_togfcg(&kch.h[chosen].ka.k);
+        gfc = kc_togfcg(kch.h[chosen].ka.k);
         Gif_AddColor(gfcm, &gfc, gfcm->ncol);
         kd3_add8g(sctx->kd3, gfc.gfc_red, gfc.gfc_green, gfc.gfc_blue);
         ++nadded;
@@ -752,10 +751,10 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
                                          + gfo->left];
         for (xo = 0; xo != gfo->width; ++xo)
             if (xscr[xo].a[3]) {
-                data[xo] = kd3_closest_transformed(sctx->kd3, &xscr[xo].k, &dist);
+                data[xo] = kd3_closest_transformed(sctx->kd3, xscr[xo].k, &dist);
                 /* maybe previous color is actually closer to desired */
                 if (transparent >= 0 && oscr[xo].a[3]) {
-                    dist2 = kc_distance(&oscr[xo].k, &xscr[xo].k);
+                    dist2 = kc_distance(oscr[xo].k, xscr[xo].k);
                     if (dist2 <= dist) {
                         data[xo] = transparent;
                         dist = dist2;

@@ -101,10 +101,10 @@ pthread_mutex_t kd3_sort_lock;
 
 const char* kc_debug_str(kcolor x) {
     static int whichbuf = 0;
-    static char buf[4][64];
-    whichbuf = (whichbuf + 1) % 4;
+    static char buf[8][64];
+    whichbuf = (whichbuf + 1) % 8;
     if (x.a[0] >= 0 && x.a[1] >= 0 && x.a[2] >= 0) {
-        kc_revgamma_transform(&x);
+        x = kc_revgamma_transform(x);
         snprintf(buf[whichbuf], sizeof(buf[whichbuf]), "#%02X%02X%02X",
                  x.a[0] >> 7, x.a[1] >> 7, x.a[2] >> 7);
     } else
@@ -154,14 +154,15 @@ void kc_set_gamma(int type, double gamma) {
 #endif
 }
 
-void kc_revgamma_transform(kcolor* x) {
+kcolor kc_revgamma_transform(kcolor x) {
     int d;
     for (d = 0; d != 3; ++d) {
-        int c = gamma_tables[1][x->a[d] >> 7];
-        while (c < 0x7F80 && x->a[d] >= gamma_tables[0][(c + 0x80) >> 7])
+        int c = gamma_tables[1][x.a[d] >> 7];
+        while (c < 0x7F80 && x.a[d] >= gamma_tables[0][(c + 0x80) >> 7])
             c += 0x80;
-        x->a[d] = c;
+        x.a[d] = c;
     }
+    return x;
 }
 
 #if 0
@@ -170,13 +171,11 @@ static void kc_test_gamma() {
     for (x = 0; x != 256; ++x)
         for (y = 0; y != 256; ++y)
             for (z = 0; z != 256; ++z) {
-                kcolor k;
-                kc_set8g(&k, x, y, z);
+                kcolor k = kc_make8g(x, y, z);
                 kc_revgamma_transform(&k);
                 if ((k.a[0] >> 7) != x || (k.a[1] >> 7) != y
                     || (k.a[2] >> 7) != z) {
-                    kcolor kg;
-                    kc_set8g(&kg, x, y, z);
+                    kcolor kg = kc_make8g(x, y, z);
                     fprintf(stderr, "#%02X%02X%02X ->g #%04X%04X%04X ->revg #%02X%02X%02X!\n",
                             x, y, z, kg.a[0], kg.a[1], kg.a[2],
                             k.a[0] >> 7, k.a[1] >> 7, k.a[2] >> 7);
@@ -359,12 +358,12 @@ struct kd3_treepos {
     int offset;
 };
 
-void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*)) {
+void kd3_init(kd3_tree* kd3, kcolor (*transform)(int, int, int)) {
     kd3->tree = NULL;
     kd3->ks = Gif_NewArray(kcolor, 256);
     kd3->nitems = 0;
     kd3->items_cap = 256;
-    kd3->transform = transform;
+    kd3->transform = transform ? transform : kc_make8g;
     kd3->xradius = NULL;
     kd3->disabled = -1;
 }
@@ -375,12 +374,12 @@ void kd3_cleanup(kd3_tree* kd3) {
     Gif_DeleteArray(kd3->xradius);
 }
 
-void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
+void kd3_add_transformed(kd3_tree* kd3, kcolor k) {
     if (kd3->nitems == kd3->items_cap) {
         kd3->items_cap *= 2;
         Gif_ReArray(kd3->ks, kcolor, kd3->items_cap);
     }
-    kd3->ks[kd3->nitems] = *k;
+    kd3->ks[kd3->nitems] = k;
     ++kd3->nitems;
     if (kd3->tree) {
         Gif_DeleteArray(kd3->tree);
@@ -388,14 +387,6 @@ void kd3_add_transformed(kd3_tree* kd3, const kcolor* k) {
         kd3->tree = NULL;
         kd3->xradius = NULL;
     }
-}
-
-void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2) {
-    kcolor k;
-    kc_set8g(&k, a0, a1, a2);
-    if (kd3->transform)
-        kd3->transform(&k);
-    kd3_add_transformed(kd3, &k);
 }
 
 static kd3_tree* kd3_sorter;
@@ -525,7 +516,7 @@ void kd3_build_xradius(kd3_tree* kd3) {
         kd3->xradius[i] = (unsigned) -1;
     for (i = 0; i != kd3->nitems; ++i)
         for (j = i + 1; j != kd3->nitems; ++j) {
-            unsigned dist = kc_distance(&kd3->ks[i], &kd3->ks[j]);
+            unsigned dist = kc_distance(kd3->ks[i], kd3->ks[j]);
             unsigned radius = dist / 4;
             if (radius < kd3->xradius[i])
                 kd3->xradius[i] = radius;
@@ -574,7 +565,7 @@ void kd3_build(kd3_tree* kd3) {
     Gif_DeleteArray(perm);
 }
 
-void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
+void kd3_init_build(kd3_tree* kd3, kcolor (*transform)(int, int, int),
                     const Gif_Colormap* gfcm) {
     int i;
     kd3_init(kd3, transform);
@@ -584,8 +575,7 @@ void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
     kd3_build(kd3);
 }
 
-int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
-                            unsigned* dist_store) {
+int kd3_closest_transformed(kd3_tree* kd3, kcolor k, unsigned* dist_store) {
     const kd3_treepos* stack[32];
     uint8_t state[32];
     int stackpos = 0;
@@ -605,7 +595,7 @@ int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
 
         if (p->offset < 0) {
             if (p->pivot >= 0 && kd3->disabled != p->pivot) {
-                unsigned dist = kc_distance(&kd3->ks[p->pivot], k);
+                unsigned dist = kc_distance(kd3->ks[p->pivot], k);
                 if (dist < mindist) {
                     mindist = dist;
                     result = p->pivot;
@@ -614,14 +604,14 @@ int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
             if (--stackpos >= 0)
                 ++state[stackpos];
         } else if (state[stackpos] == 0) {
-            if (k->a[stackpos % 3] < p->pivot)
+            if (k.a[stackpos % 3] < p->pivot)
                 stack[stackpos + 1] = p + 1;
             else
                 stack[stackpos + 1] = p + p->offset;
             ++stackpos;
             state[stackpos] = 0;
         } else {
-            int delta = k->a[stackpos % 3] - p->pivot;
+            int delta = k.a[stackpos % 3] - p->pivot;
             if (state[stackpos] == 1
                 && (unsigned) delta * (unsigned) delta < mindist) {
                 if (delta < 0)
@@ -638,12 +628,4 @@ int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
     if (dist_store)
         *dist_store = mindist;
     return result;
-}
-
-int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2) {
-    kcolor k;
-    kc_set8g(&k, a0, a1, a2);
-    if (kd3->transform)
-        kd3->transform(&k);
-    return kd3_closest_transformed(kd3, &k, NULL);
 }

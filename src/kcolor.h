@@ -46,17 +46,12 @@ typedef union kacolor {
 extern uint16_t* gamma_tables[2];
 
 
-/* set `*kc` to the gamma transformation of `a0/a1/a2` [RGB] */
-static inline void kc_set8g(kcolor* kc, int a0, int a1, int a2) {
-    kc->a[0] = gamma_tables[0][a0];
-    kc->a[1] = gamma_tables[0][a1];
-    kc->a[2] = gamma_tables[0][a2];
-}
-
 /* return the gamma transformation of `a0/a1/a2` [RGB] */
 static inline kcolor kc_make8g(int a0, int a1, int a2) {
     kcolor kc;
-    kc_set8g(&kc, a0, a1, a2);
+    kc.a[0] = gamma_tables[0][a0];
+    kc.a[1] = gamma_tables[0][a1];
+    kc.a[2] = gamma_tables[0][a2];
     return kc;
 }
 
@@ -90,38 +85,37 @@ static inline kacolor kac_transparent() {
 const char* kc_debug_str(kcolor x);
 
 /* set `*x` to the reverse gamma transformation of `*x` */
-void kc_revgamma_transform(kcolor* x);
+kcolor kc_revgamma_transform(kcolor x);
 
 /* return the reverse gramma transformation of `*x` as a Gif_Color */
-static inline Gif_Color kc_togfcg(const kcolor* x) {
-    kcolor xx = *x;
+static inline Gif_Color kc_togfcg(kcolor x) {
     Gif_Color gfc;
-    kc_revgamma_transform(&xx);
-    gfc.gfc_red = (uint8_t) (xx.a[0] >> 7);
-    gfc.gfc_green = (uint8_t) (xx.a[1] >> 7);
-    gfc.gfc_blue = (uint8_t) (xx.a[2] >> 7);
+    x = kc_revgamma_transform(x);
+    gfc.gfc_red = (uint8_t) (x.a[0] >> 7);
+    gfc.gfc_green = (uint8_t) (x.a[1] >> 7);
+    gfc.gfc_blue = (uint8_t) (x.a[2] >> 7);
     gfc.haspixel = 0;
     return gfc;
 }
 
 
 /* return the squared Euclidean distance between `*x` and `*y` */
-static inline uint32_t kc_distance(const kcolor* x, const kcolor* y) {
+static inline uint32_t kc_distance(kcolor x, kcolor y) {
     /* It’s OK to use unsigned multiplication for this: the low 32 bits
     are the same either way. Unsigned avoids undefined behavior. */
-    uint32_t d0 = x->a[0] - y->a[0];
-    uint32_t d1 = x->a[1] - y->a[1];
-    uint32_t d2 = x->a[2] - y->a[2];
+    uint32_t d0 = x.a[0] - y.a[0];
+    uint32_t d1 = x.a[1] - y.a[1];
+    uint32_t d2 = x.a[2] - y.a[2];
     return d0 * d0 + d1 * d1 + d2 * d2;
 }
 
 /* return the luminance value for `*x`; result is between 0 and KC_MAX */
-static inline int kc_luminance(const kcolor* x) {
-    return (55 * x->a[0] + 183 * x->a[1] + 19 * x->a[2]) >> 8;
+static inline int kc_luminance(kcolor kc) {
+    return (55 * kc.a[0] + 183 * kc.a[1] + 19 * kc.a[2]) >> 8;
 }
 
 /* set `*x` to the grayscale version of `*x`, transformed by luminance */
-static inline void kc_luminance_transform(kcolor* x) {
+static inline kcolor kc_luminance_transform(int a0, int a1, int a2) {
     /* For grayscale colormaps, use distance in luminance space instead of
        distance in RGB space. The weights for the R,G,B components in
        luminance space are 0.2126,0.7152,0.0722. (That's ITU primaries, which
@@ -129,8 +123,10 @@ static inline void kc_luminance_transform(kcolor* x) {
        0.299,0.587,0.114.) Using the proportional factors 55,183,19 we get a
        scaled gray value between 0 and 255 * 257; dividing by 256 gives us
        what we want. Thanks to Christian Kumpf, <kumpf@igd.fhg.de>, for
-       providing a patch.*/
-    x->a[0] = x->a[1] = x->a[2] = kc_luminance(x);
+       providing a patch. */
+    kcolor kc = kc_make8g(a0, a1, a2);
+    kc.a[0] = kc.a[1] = kc.a[2] = kc_luminance(kc);
+    return kc;
 }
 
 
@@ -158,22 +154,34 @@ struct kd3_tree {
     int nitems;
     int items_cap;
     int maxdepth;
-    void (*transform)(kcolor*);
+    kcolor (*transform)(int, int, int);
     unsigned* xradius;
 };
 
 /* initialize `kd3` with the given color `transform` (may be NULL) */
-void kd3_init(kd3_tree* kd3, void (*transform)(kcolor*));
+void kd3_init(kd3_tree* kd3, kcolor (*transform)(int, int, int));
 
 /* free `kd3` */
 void kd3_cleanup(kd3_tree* kd3);
 
-/* add the transformed color `k` to `*kd3` (do not apply `kd3->transform`). */
-void kd3_add_transformed(kd3_tree* kd3, const kcolor* k);
+/* return the transformed color for 8-bit color `a0/a1/a2` (RGB) */
+static inline kcolor kd3_make8g(kd3_tree* kd3, int a0, int a1, int a2) {
+    return kd3->transform(a0, a1, a2);
+}
 
-/* given 8-bit color `a0/a1/a2` (RGB), gamma-transform it, transform it
-   by `kd3->transform` if necessary, and add it to `*kd3` */
-void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2);
+/* return the transformed color for `*gfc` */
+static inline kcolor kd3_makegfcg(kd3_tree* kd3, const Gif_Color* gfc) {
+    return kd3_make8g(kd3, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
+}
+
+/* add the transformed color `k` to `*kd3` (do not apply `kd3->transform`). */
+void kd3_add_transformed(kd3_tree* kd3, kcolor k);
+
+/* given 8-bit color `a0/a1/a2` (RGB), transform it by `kd3->transform`
+   (e.g., apply gamma), and add it to `*kd3` */
+static inline void kd3_add8g(kd3_tree* kd3, int a0, int a1, int a2) {
+    kd3_add_transformed(kd3, kd3_make8g(kd3, a0, a1, a2));
+}
 
 /* set `kd3->xradius`. given color `i`, `kd3->xradius[i]` is the square of the
    color's uniquely owned neighborhood.
@@ -185,18 +193,19 @@ void kd3_build_xradius(kd3_tree* kd3);
 void kd3_build(kd3_tree* kd3);
 
 /* kd3_init + kd3_add8g for all colors in `gfcm` + kd3_build */
-void kd3_init_build(kd3_tree* kd3, void (*transform)(kcolor*),
+void kd3_init_build(kd3_tree* kd3, kcolor (*transform)(int, int, int),
                     const Gif_Colormap* gfcm);
 
 /* return the index of the color in `*kd3` closest to `k`.
    if `dist!=NULL`, store the distance from `k` to that index in `*dist`. */
-int kd3_closest_transformed(kd3_tree* kd3, const kcolor* k,
-                            unsigned* dist);
+int kd3_closest_transformed(kd3_tree* kd3, kcolor k, unsigned* dist);
 
-/* given 8-bit color `a0/a1/a2` (RGB), gamma-transform it, transform it by
-   `kd3->transform` if necessary, and return the index of the color in
-   `*kd3` closest to it. */
-int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2);
+/* given 8-bit color `a0/a1/a2` (RGB), transform it by `kd3->transform`
+   (e.g., apply gamma), and return the index of the color in `*kd3`
+   closest to the result. */
+static inline int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2) {
+    return kd3_closest_transformed(kd3, kd3_make8g(kd3, a0, a1, a2), NULL);
+}
 
 /* disable color index `i` in `*kd3`: it will never be returned by
    `kd3_closest*` */
@@ -293,11 +302,11 @@ static inline void sc_clear(scale_color* x) {
     x->a[0] = x->a[1] = x->a[2] = x->a[3] = 0;
 }
 
-static inline scale_color sc_makekc(const kcolor* k) {
+static inline scale_color sc_makekc(kcolor k) {
     scale_color sc;
-    sc.a[0] = k->a[0];
-    sc.a[1] = k->a[1];
-    sc.a[2] = k->a[2];
+    sc.a[0] = k.a[0];
+    sc.a[1] = k.a[1];
+    sc.a[2] = k.a[2];
     sc.a[3] = KC_MAX;
     return sc;
 }

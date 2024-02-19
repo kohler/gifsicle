@@ -143,7 +143,7 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
         kc.a[0] = (int) (px[0] / slots[i].pixel);
         kc.a[1] = (int) (px[1] / slots[i].pixel);
         kc.a[2] = (int) (px[2] / slots[i].pixel);
-        adapt[i] = kc_togfcg(&kc);
+        adapt[i] = kc_togfcg(kc);
     }
 
     Gif_DeleteArray(slots);
@@ -218,7 +218,7 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
     /* adjust the min_dist array */
     for (i = 0; i != n; ++i)
         if (div->min_dist[i]) {
-            uint32_t dist = kc_distance(&hist[i].ka.k, &hist[chosen].ka.k);
+            uint32_t dist = kc_distance(hist[i].ka.k, hist[chosen].ka.k);
             if (dist < div->min_dist[i]) {
                 div->min_dist[i] = dist;
                 div->closest[i] = chosen;
@@ -230,7 +230,7 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
         for (i = 0; i != div->nchosen; ++i) {
             kcolor x = hist[chosen].ka.k, *y = &hist[div->chosen[i]].ka.k;
             /* penalize combinations with large luminance difference */
-            double dL = abs(kc_luminance(&x) - kc_luminance(y));
+            double dL = abs(kc_luminance(x) - kc_luminance(*y));
             dL = (dL > 8192 ? dL * 4 / 32767. : 1);
             /* create combination */
             for (k = 0; k != 3; ++k)
@@ -238,7 +238,7 @@ int kcdiversity_choose(kcdiversity* div, int chosen, int dodither) {
             /* track closeness of combination to other colors */
             for (j = 0; j != n; ++j)
                 if (div->min_dist[j]) {
-                    double dist = kc_distance(&hist[j].ka.k, &x) * dL;
+                    double dist = kc_distance(hist[j].ka.k, x) * dL;
                     if (dist < div->min_dither_dist[j])
                         div->min_dither_dist[j] = (uint32_t) dist;
                 }
@@ -350,7 +350,7 @@ colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
         colormap_diversity_do_blend(&div);
 
     for (nadapt = 0; nadapt != div.nchosen; ++nadapt)
-        gfcm->col[nadapt] = kc_togfcg(&kch->h[div.chosen[nadapt]].ka.k);
+        gfcm->col[nadapt] = kc_togfcg(kch->h[div.chosen[nadapt]].ka.k);
     gfcm->ncol = nadapt;
 
     kcdiversity_cleanup(&div);
@@ -418,17 +418,21 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   int dither_direction = 0;
   int transparent = gfi->transparent;
   int i, j, k;
+  kcolor *old_kc;
   wkcolor *err, *err1;
 
   /* Initialize distances; beware uninitialized colors */
   assert(old_cm->capacity >= 256);
+  old_kc = Gif_NewArray(kcolor, old_cm->capacity);
   for (i = 0; i < old_cm->ncol; ++i) {
       Gif_Color* c = &old_cm->col[i];
-      c->pixel = kd3_closest8g(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      old_kc[i] = kd3_makegfcg(kd3, c);
+      c->pixel = kd3_closest_transformed(kd3, old_kc[i], NULL);
       c->haspixel = 1;
   }
   for (i = old_cm->ncol; i < 256; ++i) {
       Gif_Color* c = &old_cm->col[i];
+      old_kc[i] = kd3_makegfcg(kd3, c);
       c->pixel = 0;
       c->haspixel = 1;
   }
@@ -485,10 +489,8 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
         goto next;
 
       /* find desired new color */
-      kc_set8g(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
-               old_cm->col[*data].gfc_blue);
-      if (kd3->transform)
-          kd3->transform(&use);
+      use = old_kc[*data];
+
       /* use Floyd-Steinberg errors to adjust */
       for (k = 0; k < 3; ++k) {
           int v = use.a[k]
@@ -497,10 +499,10 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
       }
 
       e = old_cm->col[*data].pixel;
-      if (kc_distance(&kd3->ks[e], &use) < kd3->xradius[e])
+      if (kc_distance(kd3->ks[e], use) < kd3->xradius[e])
           *new_data = e;
       else
-          *new_data = kd3_closest_transformed(kd3, &use, NULL);
+          *new_data = kd3_closest_transformed(kd3, use, NULL);
       histogram[*new_data]++;
 
       /* calculate and propagate the error between desired and selected color.
@@ -537,6 +539,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   /* delete temporary storage */
   Gif_DeleteArray(err);
   Gif_DeleteArray(err1);
+  Gif_DeleteArray(old_kc);
 }
 
 /* This function is a variant of the colormap_image_floyd_steinberg function
@@ -549,17 +552,21 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
   static int32_t *random_values = 0;
   int transparent = gfi->transparent;
   int i, j, k;
+  kcolor *old_kc;
   wkcolor *err[3];
 
   /* Initialize distances; beware uninitialized colors */
   assert(old_cm->capacity >= 256);
+  old_kc = Gif_NewArray(kcolor, old_cm->capacity);
   for (i = 0; i < old_cm->ncol; ++i) {
       Gif_Color* c = &old_cm->col[i];
-      c->pixel = kd3_closest8g(kd3, c->gfc_red, c->gfc_green, c->gfc_blue);
+      old_kc[i] = kd3_makegfcg(kd3, c);
+      c->pixel = kd3_closest_transformed(kd3, old_kc[i], NULL);
       c->haspixel = 1;
   }
   for (i = old_cm->ncol; i < 256; ++i) {
       Gif_Color* c = &old_cm->col[i];
+      old_kc[i] = kd3_makegfcg(kd3, c);
       c->pixel = 0;
       c->haspixel = 1;
   }
@@ -604,18 +611,17 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
       }
 
       /* Calculate desired new color including current error */
-      kc_set8g(&use, old_cm->col[*data].gfc_red, old_cm->col[*data].gfc_green,
-        old_cm->col[*data].gfc_blue);
+      use = old_kc[*data];
 
       for (k = 0; k < 3; ++k)
         use.a[k] = KC_CLAMPV(use.a[k] + err[0][x].a[k] / DITHER_SCALE);
 
       /* Find the closest color in the colormap */
       e = old_cm->col[*data].pixel;
-      if (kc_distance(&kd3->ks[e], &use) < kd3->xradius[e])
+      if (kc_distance(kd3->ks[e], use) < kd3->xradius[e])
           *new_data = e;
       else
-          *new_data = kd3_closest_transformed(kd3, &use, NULL);
+          *new_data = kd3_closest_transformed(kd3, use, NULL);
       histogram[*new_data]++;
 
       /* Calculate and propagate the error using the Atkinson dithering
@@ -643,11 +649,9 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
 
   /* Delete temporary storage */
   for (i = 0; i < 3; i++) {
-    if (err[i]) {
-      Gif_DeleteArray(err[i]);
-      err[i] = NULL;
-    }
+    Gif_DeleteArray(err[i]);
   }
+  Gif_DeleteArray(old_kc);
 }
 
 typedef struct odselect_planitem {
@@ -678,15 +682,15 @@ static int ordered_dither_plan_compare(const void* xa, const void* xb) {
         return *a - *b;
 }
 
-static int kc_line_closest(const kcolor* p0, const kcolor* p1,
-                           const kcolor* ref, double* t, unsigned* dist) {
+static int kc_line_closest(kcolor p0, kcolor p1, kcolor ref,
+                           double* t, unsigned* dist) {
     wkcolor p01, p0ref;
     kcolor online;
     unsigned den;
     int d;
     for (d = 0; d != 3; ++d) {
-        p01.a[d] = p1->a[d] - p0->a[d];
-        p0ref.a[d] = ref->a[d] - p0->a[d];
+        p01.a[d] = p1.a[d] - p0.a[d];
+        p0ref.a[d] = ref.a[d] - p0.a[d];
     }
     den = (unsigned)
         (p01.a[0]*p01.a[0] + p01.a[1]*p01.a[1] + p01.a[2]*p01.a[2]);
@@ -701,15 +705,14 @@ static int kc_line_closest(const kcolor* p0, const kcolor* p1,
     if (*t < 0 || *t > 1)
         return 0;
     for (d = 0; d != 3; ++d) {
-        int v = (int) (p01.a[d] * *t) + p0->a[d];
+        int v = (int) (p01.a[d] * *t) + p0.a[d];
         online.a[d] = KC_CLAMPV(v);
     }
-    *dist = kc_distance(&online, ref);
+    *dist = kc_distance(online, ref);
     return 1;
 }
 
-static int kc_plane_closest(const kcolor* p0, const kcolor* p1,
-                            const kcolor* p2, const kcolor* ref,
+static int kc_plane_closest(kcolor p0, kcolor p1, kcolor p2, kcolor ref,
                             double* t, unsigned* dist) {
     wkcolor p0ref, p01, p02;
     double n[3], pvec[3], det, qvec[3], u, v;
@@ -718,9 +721,9 @@ static int kc_plane_closest(const kcolor* p0, const kcolor* p1,
     /* Calculate the non-unit normal of the plane determined by the input
        colors (p0-p2) */
     for (d = 0; d != 3; ++d) {
-        p0ref.a[d] = ref->a[d] - p0->a[d];
-        p01.a[d] = p1->a[d] - p0->a[d];
-        p02.a[d] = p2->a[d] - p0->a[d];
+        p0ref.a[d] = ref.a[d] - p0.a[d];
+        p01.a[d] = p1.a[d] - p0.a[d];
+        p02.a[d] = p2.a[d] - p0.a[d];
     }
     n[0] = p01.a[1]*p02.a[2] - p01.a[2]*p02.a[1];
     n[1] = p01.a[2]*p02.a[0] - p01.a[0]*p02.a[2];
@@ -761,7 +764,7 @@ static int kc_plane_closest(const kcolor* p0, const kcolor* p1,
 }
 
 static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
-                                      const kcolor* want, kd3_tree* kd3) {
+                                      kcolor want, kd3_tree* kd3) {
     unsigned mindist, dist;
     int ncp = 0, nbestcp = 0, i, j, k;
     double t[2];
@@ -784,7 +787,7 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
     mindist = (unsigned) -1;
     for (i = 0; i != ncp; ++i) {
         /* check for closest single color */
-        dist = kc_distance(&kd3->ks[cp[i].plan], want);
+        dist = kc_distance(kd3->ks[cp[i].plan], want);
         if (dist < mindist) {
             bestcp[0].plan = cp[i].plan;
             bestcp[0].frac = KC_WHOLE;
@@ -794,8 +797,8 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 
         for (j = i + 1; nc >= 2 && j < ncp; ++j) {
             /* check for closest blend of two colors */
-            if (kc_line_closest(&kd3->ks[cp[i].plan],
-                                &kd3->ks[cp[j].plan],
+            if (kc_line_closest(kd3->ks[cp[i].plan],
+                                kd3->ks[cp[j].plan],
                                 want, &t[0], &dist)
                 && dist < mindist) {
                 bestcp[0].plan = cp[i].plan;
@@ -808,9 +811,9 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 
             for (k = j + 1; nc >= 3 && k < ncp; ++k)
                 /* check for closest blend of three colors */
-                if (kc_plane_closest(&kd3->ks[cp[i].plan],
-                                     &kd3->ks[cp[j].plan],
-                                     &kd3->ks[cp[k].plan],
+                if (kc_plane_closest(kd3->ks[cp[i].plan],
+                                     kd3->ks[cp[j].plan],
+                                     kd3->ks[cp[k].plan],
                                      want, &t[0], &dist)
                     && dist < mindist) {
                     bestcp[0].plan = cp[i].plan;
@@ -834,9 +837,7 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
     wkcolor err;
     int i, d;
 
-    kc_set8g(&want, gfc->gfc_red, gfc->gfc_green, gfc->gfc_blue);
-    if (kd3->transform)
-        kd3->transform(&want);
+    want = kd3_makegfcg(kd3, gfc);
 
     wkc_clear(&err);
     for (i = 0; i != nplan; ++i) {
@@ -844,7 +845,7 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
             int v = want.a[d] + err.a[d];
             cur.a[d] = KC_CLAMPV(v);
         }
-        plan[i] = kd3_closest_transformed(kd3, &cur, NULL);
+        plan[i] = kd3_closest_transformed(kd3, cur, NULL);
         for (d = 0; d != 3; ++d)
             err.a[d] += want.a[d] - kd3->ks[plan[i]].a[d];
     }
@@ -856,7 +857,7 @@ static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
         for (i = 1; i != nplan; ++i)
             ncp += plan[i-1] != plan[i];
         if (ncp > nc)
-            limit_ordered_dither_plan(plan, nplan, nc, &want, kd3);
+            limit_ordered_dither_plan(plan, nplan, nc, want, kd3);
     }
 
     gfc->haspixel = 1;
@@ -910,7 +911,7 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
     /* Initialize luminances, create luminance sorter */
     ordered_dither_lum = Gif_NewArray(int, kd3->nitems);
     for (i = 0; i != kd3->nitems; ++i)
-        ordered_dither_lum[i] = kc_luminance(&kd3->ks[i]);
+        ordered_dither_lum[i] = kc_luminance(kd3->ks[i]);
 
     /* Do the image! */
     if ((mw & (mw - 1)) == 0 && (mh & (mh - 1)) == 0
