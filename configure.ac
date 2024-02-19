@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([gifsicle],[1.95])
-AC_PREREQ([2.72])
+AC_PREREQ([2.69])
 AC_CONFIG_SRCDIR([src/gifsicle.h])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile])
