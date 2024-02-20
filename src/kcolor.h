@@ -103,9 +103,9 @@ static inline Gif_Color kc_togfcg(kcolor x) {
 static inline uint32_t kc_distance(kcolor x, kcolor y) {
     /* It’s OK to use unsigned multiplication for this: the low 32 bits
     are the same either way. Unsigned avoids undefined behavior. */
-    uint32_t d0 = x.a[0] - y.a[0];
-    uint32_t d1 = x.a[1] - y.a[1];
-    uint32_t d2 = x.a[2] - y.a[2];
+    uint32_t d0 = (uint32_t) x.a[0] - (uint32_t) y.a[0];
+    uint32_t d1 = (uint32_t) x.a[1] - (uint32_t) y.a[1];
+    uint32_t d2 = (uint32_t) x.a[2] - (uint32_t) y.a[2];
     return d0 * d0 + d1 * d1 + d2 * d2;
 }
 
@@ -138,8 +138,21 @@ typedef struct wkcolor {
     int32_t a[3];
 } wkcolor;
 
-static inline void wkc_clear(wkcolor* x) {
-    x->a[0] = x->a[1] = x->a[2] = 0;
+static inline wkcolor wkc_zero(void) {
+    wkcolor wkc;
+    wkc.a[0] = wkc.a[1] = wkc.a[2] = 0;
+    return wkc;
+}
+
+static inline int wkc_iszero(wkcolor wkc) {
+    return wkc.a[0] == 0 && wkc.a[1] == 0 && wkc.a[2] == 0;
+}
+
+static inline kcolor kc_adjust(kcolor k, wkcolor delta) {
+    k.a[0] = KC_CLAMPV((int32_t) k.a[0] + delta.a[0]);
+    k.a[1] = KC_CLAMPV((int32_t) k.a[1] + delta.a[1]);
+    k.a[2] = KC_CLAMPV((int32_t) k.a[2] + delta.a[2]);
+    return k;
 }
 
 
@@ -280,11 +293,6 @@ void kcdiversity_cleanup(kcdiversity* div);
 int kcdiversity_find_popular(kcdiversity* div);
 int kcdiversity_find_diverse(kcdiversity* div, double ditherweight);
 int kcdiversity_choose(kcdiversity* div, int chosen, int dodither);
-
-
-Gif_Colormap* colormap_blend_diversity(kchist* kch, Gt_OutputData* od);
-Gif_Colormap* colormap_flat_diversity(kchist* kch, Gt_OutputData* od);
-Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od);
 
 
 #if HAVE_SIMD && HAVE_VECTOR_SIZE_VECTOR_TYPES

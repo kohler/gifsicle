@@ -19,19 +19,20 @@
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
+#include "kcolor.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define WRITE_BUFFER_SIZE       255
 #define NODES_SIZE              GIF_MAX_CODE
-#define LINKS_SIZE              GIF_MAX_CODE
+#define LINKS_SIZE              (GIF_MAX_CODE + 256)
 
 /* 1.Aug.1999 - Removed code hashing in favor of an adaptive tree strategy
    based on Whirlgif-3.04, written by Hans Dinsen-Hansen <dino@danbbs.dk>. Mr.
    Dinsen-Hansen brought the adaptive tree strategy to my attention and argued
-   at length that it was better than hashing. In fact, he was right: it runs a
-   lot faster. However, it does NOT create "better" results in any way.
+   at length that it was better than hashing. It runs a lot faster, though it
+   creates identical compression.
 
    Each code is represented by a Node. The Nodes form a tree with variable
    fan-out -- up to 'clear_code' children per Node. There are two kinds of
@@ -53,20 +54,27 @@ typedef struct Gif_Node {
   Gif_Code code;
   uint8_t type;
   uint8_t suffix;
-  struct Gif_Node *sibling;
+  struct Gif_Node* sibling;
   union {
-    struct Gif_Node *s;
-    struct Gif_Node **m;
+    struct Gif_Node* s;
+    struct Gif_Node** m;
   } child;
 } Gif_Node;
 
 
 typedef struct Gif_CodeTable {
-  Gif_Node *nodes;
+  Gif_Node* nodes;
   int nodes_pos;
-  Gif_Node **links;
+  Gif_Node** links;
   int links_pos;
   int clear_code;
+
+  kcolor* global_kcs;
+  kcolor* local_kcs;
+  kcolor* kcs;
+  unsigned max_loss;
+  double loss_scale;
+  unsigned* kcdiff;
 } Gif_CodeTable;
 
 
@@ -159,6 +167,16 @@ gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
     grr->byte_putter = memory_byte_putter;
     grr->block_putter = memory_block_putter;
   }
+  grr->code_table.global_kcs = NULL;
+  grr->code_table.local_kcs = NULL;
+  grr->code_table.kcs = NULL;
+  grr->code_table.kcdiff = NULL;
+  if (gcinfo->loss > 0) {
+    grr->code_table.max_loss = gcinfo->loss * kc_distance(kc_make8g(0, 0, 0), kc_make8g(0, 0, 8));
+    grr->code_table.loss_scale = 4.0 / grr->code_table.max_loss;
+  } else {
+    grr->code_table.max_loss = 0;
+  }
   return grr->code_table.nodes && grr->code_table.links;
 }
 
@@ -168,6 +186,9 @@ gif_writer_cleanup(Gif_Writer* grr)
   Gif_DeleteArray(grr->v);
   Gif_DeleteArray(grr->code_table.nodes);
   Gif_DeleteArray(grr->code_table.links);
+  Gif_DeleteArray(grr->code_table.global_kcs);
+  Gif_DeleteArray(grr->code_table.local_kcs);
+  Gif_DeleteArray(grr->code_table.kcdiff);
 }
 
 
@@ -177,12 +198,13 @@ gfc_clear(Gif_CodeTable *gfc)
   int c;
   /* The first clear_code nodes are reserved for single-pixel codes */
   gfc->nodes_pos = gfc->clear_code;
-  gfc->links_pos = 0;
+  gfc->links_pos = gfc->clear_code;
   for (c = 0; c < gfc->clear_code; c++) {
     gfc->nodes[c].code = c;
     gfc->nodes[c].type = LINKS_TYPE;
     gfc->nodes[c].suffix = c;
     gfc->nodes[c].child.s = 0;
+    gfc->links[c] = &gfc->nodes[c];
   }
 }
 
@@ -201,48 +223,6 @@ gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
         return node;
     return NULL;
   }
-}
-
-/* Used to hold accumulated error for the current candidate match */
-typedef struct gfc_rgbdiff {signed short r, g, b;} gfc_rgbdiff;
-
-/* Difference (MSE) between given color indexes + dithering error */
-static inline unsigned int color_diff(Gif_Color a, Gif_Color b, int a_transparent, int b_transparent, gfc_rgbdiff dither)
-{
-  unsigned int dith, undith;
-
-  /* if one is transparent and the other is not, then return maximum difference */
-  /* TODO: figure out what color is in the canvas under the transparent pixel and match against that */
-  if (a_transparent != b_transparent) return 1<<25;
-
-  /* Two transparent colors are identical */
-  if (a_transparent) return 0;
-
-  /* squared error with or without dithering. */
-  dith = (a.gfc_red-b.gfc_red+dither.r)*(a.gfc_red-b.gfc_red+dither.r)
-  + (a.gfc_green-b.gfc_green+dither.g)*(a.gfc_green-b.gfc_green+dither.g)
-  + (a.gfc_blue-b.gfc_blue+dither.b)*(a.gfc_blue-b.gfc_blue+dither.b);
-
-  undith = (a.gfc_red-b.gfc_red+dither.r/2)*(a.gfc_red-b.gfc_red+dither.r/2)
-  + (a.gfc_green-b.gfc_green+dither.g/2)*(a.gfc_green-b.gfc_green+dither.g/2)
-  + (a.gfc_blue-b.gfc_blue+dither.b/2)*(a.gfc_blue-b.gfc_blue+dither.b/2);
-
-  /* Smaller error always wins, under assumption that dithering is not required and it's only done opportunistically */
-  return dith < undith ? dith : undith;
-}
-
-/* difference between expected color a+dither and color b (used to calculate dithering required) */
-static inline gfc_rgbdiff diffused_difference(Gif_Color a, Gif_Color b, int a_transparent, int b_transparent, gfc_rgbdiff dither)
-{
-  gfc_rgbdiff d;
-  if (a_transparent || b_transparent) {
-    d.r = d.g = d.b = 0;
-  } else {
-    d.r = a.gfc_red - b.gfc_red + dither.r * 3 / 4;
-    d.g = a.gfc_green - b.gfc_green + dither.g * 3 / 4;
-    d.b = a.gfc_blue - b.gfc_blue + dither.b * 3 / 4;
-  }
-  return d;
 }
 
 static inline uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
@@ -316,87 +296,6 @@ gif_line_endpos(Gif_Image *gfi, unsigned pos)
   return (y + 1) * gfi->width;
 }
 
-struct selected_node {
-  Gif_Node *node; /* which node has been chosen by gfc_lookup_lossy */
-  unsigned long pos, /* where the node ends */
-  diff; /* what is the overall quality loss for that node */
-};
-
-static inline void
-gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
-  unsigned pos, Gif_Node *node, uint8_t suffix, uint8_t next_suffix,
-  gfc_rgbdiff dither, unsigned long base_diff, const unsigned int max_diff, struct selected_node *best_t);
-
-/* Recursive loop
- * Find node that is descendant of node (or start new search if work_node is null) that best matches pixels starting at pos
- * base_diff and dither are distortion from search made so far */
-static struct selected_node
-gfc_lookup_lossy(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
-  unsigned pos, Gif_Node *node, unsigned long base_diff, gfc_rgbdiff dither, const unsigned int max_diff)
-{
-  const unsigned image_endpos = gfi->width * gfi->height;
-
-  struct selected_node best_t = {node, pos, base_diff};
-  uint8_t suffix;
-  if (pos >= image_endpos) return best_t;
-
-  suffix = gif_pixel_at_pos(gfi, pos);
-  if (suffix >= gfc->clear_code)
-    /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
-    suffix = 0;
-  assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
-  if (!node) {
-    gfc_rgbdiff zero_diff = {0, 0, 0};
-    /* prefix of the new node must be same as suffix of previously added node */
-    return gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, &gfc->nodes[suffix], base_diff, zero_diff, max_diff);
-  }
-
-  /* search all nodes that are less than max_diff different from the desired pixel */
-  if (node->type == TABLE_TYPE) {
-    int i;
-    for(i=0; i < gfc->clear_code; i++) {
-      if (!node->child.m[i]) continue;
-      gfc_lookup_lossy_try_node(gfc, gfcm, gfi, pos, node->child.m[i], suffix, i, dither, base_diff, max_diff, &best_t);
-    }
-  }
-  else {
-    for (node = node->child.s; node; node = node->sibling) {
-      gfc_lookup_lossy_try_node(gfc, gfcm, gfi, pos, node, suffix, node->suffix, dither, base_diff, max_diff, &best_t);
-    }
-  }
-
-  return best_t;
-}
-
-/**
- * Replaces best_t with a new node if it's better
- *
- * @param node        Current node to search
- * @param suffix      Previous pixel
- * @param next_suffix Next pixel to evaluate (must correspond to the node given)
- * @param dither      Desired dithering
- * @param base_diff   Difference accumulated in the search so far
- * @param max_diff    Maximum allowed pixel difference
- * @param best_t      Current best candidate (input/output argument)
- */
-static inline void
-gfc_lookup_lossy_try_node(Gif_CodeTable *gfc, const Gif_Colormap *gfcm, Gif_Image *gfi,
-  unsigned pos, Gif_Node *node, uint8_t suffix, uint8_t next_suffix,
-  gfc_rgbdiff dither, unsigned long base_diff, const unsigned int max_diff, struct selected_node *best_t)
-{
-  unsigned int diff = suffix == next_suffix ? 0 : color_diff(gfcm->col[suffix], gfcm->col[next_suffix], suffix == gfi->transparent, next_suffix == gfi->transparent, dither);
-  if (diff <= max_diff) {
-    gfc_rgbdiff new_dither = diffused_difference(gfcm->col[suffix], gfcm->col[next_suffix], suffix == gfi->transparent, next_suffix == gfi->transparent, dither);
-    /* if the candidate pixel is good enough, check all possible continuations of that dictionary string */
-    struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos+1, node, base_diff + diff, new_dither, max_diff);
-
-    /* search is biased towards finding longest candidate that is below threshold rather than a match with minimum average error */
-    if (t.pos > best_t->pos || (t.pos == best_t->pos && t.diff < best_t->diff)) {
-      *best_t = t;
-    }
-  }
-}
-
 static inline uint8_t
 gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
 {
@@ -407,9 +306,171 @@ gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
     return gfi->img[Gif_InterlaceLine(y, gfi->height)][x];
 }
 
+
 static int
-write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
-                      int min_code_bits, Gif_Writer *grr)
+gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
+{
+  int i, j;
+  Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+  kcolor** kcs = gfi->local ? &gfc->local_kcs : &gfc->global_kcs;
+  kcolor* old_kcs = gfc->kcs;
+  if (!*kcs) {
+    *kcs = Gif_NewArray(kcolor, 256);
+    if (!*kcs) {
+      gfc->max_loss = 0;
+      return 0;
+    }
+    for (i = 0; i != gfcm->ncol; ++i) {
+      (*kcs)[i] = kc_makegfcg(&gfcm->col[i]);
+    }
+    for (; i < 256; ++i) {
+      (*kcs)[i] = kc_make8g(0, 0, 0);
+    }
+  }
+  gfc->kcs = *kcs;
+  if (gfc->kcdiff && kcs == &gfc->global_kcs && old_kcs == gfc->global_kcs) {
+    return 1;
+  }
+  if (!gfc->kcdiff
+      && !(gfc->kcdiff = Gif_NewArray(unsigned, 256 * 256))) {
+    gfc->max_loss = 0;
+    return 0;
+  }
+  for (i = 0; i != gfcm->ncol; ++i) {
+    for (j = 0; j != i; ++j) {
+      gfc->kcdiff[(i << 8) | j] = gfc->kcdiff[(j << 8) | i] =
+        kc_distance(gfc->kcs[i], gfc->kcs[j]);
+    }
+    gfc->kcdiff[(i << 8) | i] = 0;
+  }
+  return 1;
+}
+
+/* difference between expected color a+dither and color b (used to calculate dithering required) */
+static inline wkcolor diffused_difference(const Gif_CodeTable* gfc,
+                                          int expected, int actual, wkcolor error)
+{
+  int i;
+  kcolor a = gfc->kcs[expected], b = gfc->kcs[actual];
+  wkcolor wkc;
+  for (i = 0; i != 3; ++i) {
+    wkc.a[i] = (int32_t) a.a[i] - (int32_t) b.a[i] + 3 * error.a[i] / 4;
+  }
+  return wkc;
+}
+
+typedef struct lossy_result {
+  Gif_Node *node;  /* which node has been chosen by gfc_lookup_lossy */
+  unsigned start;  /* start position */
+  unsigned pos;    /* end position */
+  double score;    /* score of this node */
+} lossy_result;
+
+static void gfc_extend_lossy(Gif_CodeTable *gfc, Gif_Image *gfi, lossy_result* best,
+  unsigned pos, Gif_Node* node, unsigned long diffaccum,
+  wkcolor error);
+static void gfc_extend_lossy_try(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
+  unsigned pos, uint8_t expected, Gif_Node* node, unsigned long diffaccum,
+  wkcolor error);
+
+/* Recursive loop
+ * Find node that is descendant of node that best matches pixels starting at pos
+ * base_diff and dither are distortion from search made so far */
+static lossy_result
+gfc_lookup_lossy(Gif_CodeTable *gfc, Gif_Image *gfi, unsigned pos)
+{
+  lossy_result lr;
+  lr.node = NULL;
+  lr.start = pos;
+  lr.pos = pos;
+  lr.score = 0.0;
+  gfc_extend_lossy(gfc, gfi, &lr, pos, lr.node, 0, wkc_zero());
+  return lr;
+}
+
+static inline int
+gfc_lossy_candidate(Gif_CodeTable* gfc, Gif_Image* gfi,
+                    uint8_t expected, uint8_t actual, wkcolor error) {
+  if (expected == actual) {
+    return 1;
+  }
+  return expected != gfi->transparent
+    && actual != gfi->transparent
+    && gfc->kcdiff[(expected << 8) | actual] <= gfc->max_loss
+    && (wkc_iszero(error)
+        || kc_distance(kc_adjust(gfc->kcs[expected], error), gfc->kcs[actual]) <= gfc->max_loss);
+}
+
+/**
+ * Replaces best_t with a new node if it's better
+ *
+ * @param expected    Non-lossy pixel
+ * @param node        Current node to search (node->suffix is proposed pixel)
+ * @param error       Accumulated error
+ * @param base_diff   Difference accumulated in the search so far
+ * @param best_t      Current best candidate (input/output argument)
+ */
+static void
+gfc_extend_lossy_try(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
+  unsigned pos, uint8_t expected, Gif_Node *node,
+  unsigned long diffaccum, wkcolor error)
+{
+  uint8_t actual = node->suffix;
+  double score;
+  diffaccum += gfc->kcdiff[(expected << 8) | actual];
+  score = (pos - best->start) - diffaccum * gfc->loss_scale;
+  if (score > best->score) {
+    best->node = node;
+    best->pos = pos;
+    best->score = score;
+  }
+  gfc_extend_lossy(gfc, gfi, best, pos, node, diffaccum,
+                   diffused_difference(gfc, expected, actual, error));
+}
+
+static void
+gfc_extend_lossy(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
+                 unsigned pos, Gif_Node* parent, unsigned long diffaccum, wkcolor error)
+{
+  uint8_t expected;
+
+  if (pos % gfi->width == 0) {
+    if (pos == gfi->width * gfi->height) {
+      return;
+    }
+    /* Clear accumulated error at start of new line */
+    error = wkc_zero();
+  }
+
+  expected = gif_pixel_at_pos(gfi, pos);
+  if (expected >= gfc->clear_code) {
+    /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+    expected = 0;
+  }
+
+  /* always use first given pixel;
+     otherwise, search all nodes that are less than max_diff different from the desired pixel */
+  if (!best->node) {
+    gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, &gfc->nodes[expected], diffaccum, error);
+  } else if (parent->type == TABLE_TYPE) {
+    int i;
+    for (i = 0; i < gfc->clear_code; i++) {
+      Gif_Node* child = parent->child.m[i];
+      if (child && gfc_lossy_candidate(gfc, gfi, expected, i, error))
+        gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, child, diffaccum, error);
+    }
+  } else {
+    Gif_Node* child;
+    for (child = parent->child.s; child; child = child->sibling) {
+      if (gfc_lossy_candidate(gfc, gfi, expected, child->suffix, error))
+        gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, child, diffaccum, error);
+    }
+  }
+}
+
+static int
+write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
+                      int min_code_bits, Gif_Writer* grr)
 {
   Gif_CodeTable* gfc = &grr->code_table;
   uint8_t stack_buffer[512 - 24];
@@ -433,7 +494,6 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   Gif_Code next_code = 0;
   Gif_Code output_code;
   uint8_t suffix;
-  Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
 
   int cur_code_bits;
 
@@ -455,6 +515,10 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
   pos = clear_pos = clear_bufpos = 0;
   line_endpos = gfi->width;
   imageline = gif_imageline(gfi, pos);
+
+  if (gfc->max_loss > 0) {
+    gfc_lossy_init(gfc, gfs, gfi);
+  }
 
   while (1) {
 
@@ -526,9 +590,8 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
     /*****
      * Find the next code to output. */
-    if (grr->gcinfo.loss) {
-      gfc_rgbdiff zero_diff = {0, 0, 0};
-      struct selected_node t = gfc_lookup_lossy(gfc, gfcm, gfi, pos, NULL, 0, zero_diff, grr->gcinfo.loss * 10);
+    if (gfc->max_loss) {
+      lossy_result t = gfc_lookup_lossy(gfc, gfi, pos);
 
       work_node = t.node;
       run = t.pos - pos;
@@ -586,7 +649,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
           run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
       }
 
-      output_code = (work_node ? work_node->code : gfc->clear_code + 1);
+      output_code = work_node ? work_node->code : gfc->clear_code + 1;
     } else {
       /* If height is 0 -- no more pixels to write -- we output work_node next
          time around. */
@@ -686,7 +749,7 @@ write_compressed_data(Gif_Stream *gfs, Gif_Image *gfi,
 
 
 static int
-calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
+calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer* grr)
 {
   int colors_used = -1, min_code_bits, i;
 
@@ -729,11 +792,11 @@ calculate_min_code_bits(Gif_Image *gfi, const Gif_Writer *grr)
 }
 
 
-static int get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi,
-                                Gif_Writer *grr);
+static int get_color_table_size(const Gif_Stream* gfs, Gif_Image* gfi,
+                                Gif_Writer* grr);
 
 static void
-save_compression_result(Gif_Image *gfi, Gif_Writer *grr, int ok)
+save_compression_result(Gif_Image* gfi, Gif_Writer* grr, int ok)
 {
   if (!(grr->gcinfo.flags & GIF_WRITE_SHRINK)
       || (ok && (!gfi->compressed || gfi->compressed_len > grr->pos))) {
@@ -788,9 +851,9 @@ Gif_FullCompressImage(Gif_Stream *gfs, Gif_Image *gfi,
 
 
 static int
-get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
+get_color_table_size(const Gif_Stream* gfs, Gif_Image* gfi, Gif_Writer* grr)
 {
-  Gif_Colormap *gfcm = (gfi ? gfi->local : gfs->global);
+  Gif_Colormap *gfcm = gfi ? gfi->local : gfs->global;
   int ncol, totalcol, i;
 
   if (!gfcm || gfcm->ncol <= 0)
@@ -821,7 +884,7 @@ get_color_table_size(const Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
 }
 
 static void
-write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
+write_color_table(Gif_Colormap* gfcm, int totalcol, Gif_Writer* grr)
 {
   Gif_Color *c = gfcm->col;
   int i, ncol = gfcm->ncol;
@@ -842,7 +905,7 @@ write_color_table(Gif_Colormap *gfcm, int totalcol, Gif_Writer *grr)
 
 
 static int
-write_image(Gif_Stream *gfs, Gif_Image *gfi, Gif_Writer *grr)
+write_image(Gif_Stream* gfs, Gif_Image* gfi, Gif_Writer* grr)
 {
   uint8_t min_code_bits, packed = 0;
   grr->local_size = get_color_table_size(gfs, gfi, grr);

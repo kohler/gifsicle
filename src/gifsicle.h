@@ -280,6 +280,12 @@ enum {
 int     set_dither_type(Gt_OutputData* od, const char* name);
 void    colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*);
 
+struct kchist;
+Gif_Colormap* colormap_blend_diversity(struct kchist* kch, Gt_OutputData* od);
+Gif_Colormap* colormap_flat_diversity(struct kchist* kch, Gt_OutputData* od);
+Gif_Colormap* colormap_median_cut(struct kchist* kch, Gt_OutputData* od);
+
+
 /*****
  * parsing stuff
  **/

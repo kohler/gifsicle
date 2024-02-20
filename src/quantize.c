@@ -834,12 +834,11 @@ static void limit_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
 static void set_ordered_dither_plan(uint8_t* plan, int nplan, int nc,
                                     Gif_Color* gfc, kd3_tree* kd3) {
     kcolor want, cur;
-    wkcolor err;
+    wkcolor err = wkc_zero();
     int i, d;
 
     want = kd3_makegfcg(kd3, gfc);
 
-    wkc_clear(&err);
     for (i = 0; i != nplan; ++i) {
         for (d = 0; d != 3; ++d) {
             int v = want.a[d] + err.a[d];

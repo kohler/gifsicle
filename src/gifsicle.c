@@ -899,10 +899,6 @@ set_new_fixed_colormap(const char *name)
 static void
 do_colormap_change(Gif_Stream *gfs)
 {
-  if (active_output_data.colormap_fixed || active_output_data.colormap_size > 0)
-    kc_set_gamma(active_output_data.colormap_gamma_type,
-                 active_output_data.colormap_gamma);
-
   if (active_output_data.colormap_fixed)
     colormap_stream(gfs, active_output_data.colormap_fixed,
                     &active_output_data);
@@ -910,7 +906,7 @@ do_colormap_change(Gif_Stream *gfs)
   if (active_output_data.colormap_size > 0) {
     kchist kch;
     Gif_Colormap* (*adapt_func)(kchist*, Gt_OutputData*);
-    Gif_Colormap *new_cm;
+    Gif_Colormap* new_cm;
 
     /* set up the histogram */
     {
@@ -1025,6 +1021,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       w = active_output_data.resize_width;
       h = active_output_data.resize_height;
     }
+    kc_set_gamma(active_output_data.colormap_gamma_type,
+                 active_output_data.colormap_gamma);
     if (active_output_data.scaling != GT_SCALING_NONE)
       resize_stream(out, w, h, active_output_data.resize_flags,
                     active_output_data.scale_method,
