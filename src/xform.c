@@ -325,6 +325,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
   int x, y;
   int width = gfi->width;
   int height = gfi->height;
+  int ntop, nleft, nbottom, nright;
   uint8_t **img = gfi->img;
   uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) width * (unsigned) height);
   uint8_t *trav = new_data;
@@ -336,32 +337,52 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
     for (x = 0; x < width; x++)
       for (y = height - 1; y >= 0; y--)
         *trav++ = img[y][x];
-    x = gfi->left;
-    gfi->left = fr->stream->screen_height - (gfi->top + height);
-    gfi->top = x;
+  } else {
+    for (x = width - 1; x >= 0; x--)
+      for (y = 0; y < height; y++)
+        *trav++ = img[y][x];
+  }
+
+  if (rotation == 1) {
+    ntop = gfi->left;
+    nleft = fr->stream->screen_height - (gfi->top + height);
     if (fr->crop) {
         x = fr->left_offset;
         fr->left_offset = fr->stream->screen_height - (fr->top_offset + fr->crop->h);
         fr->top_offset = x;
     }
-
   } else {
-    for (x = width - 1; x >= 0; x--)
-      for (y = 0; y < height; y++)
-        *trav++ = img[y][x];
-    y = gfi->top;
-    gfi->top = fr->stream->screen_width - (gfi->left + width);
-    gfi->left = y;
+    ntop = fr->stream->screen_width - (gfi->left + width);
+    nleft = gfi->top;
     if (fr->crop) {
         y = fr->top_offset;
         fr->top_offset = fr->stream->screen_width - (fr->left_offset + fr->crop->w);
         fr->left_offset = y;
     }
   }
+  nbottom = ntop + width;
+  nright = nleft + height;
+
+  if (nbottom <= 0 || nright <= 0) {
+    ntop = nleft = nbottom = nright = 0;
+  } else if (ntop < 0 || nleft < 0) {
+    int nwidth = nright - (nleft < 0 ? 0 : nleft);
+    uint8_t *xdata;
+    xdata = Gif_NewArray(uint8_t, (unsigned) (nright - nleft) * (unsigned) (nbottom - ntop));
+    for (y = ntop < 0 ? -ntop : 0; y < width; ++y) {
+        memcpy(xdata + y * nwidth, new_data + y * height + (nleft < 0 ? -nleft : 0), nwidth);
+    }
+    Gif_DeleteArray(new_data);
+    new_data = xdata;
+    ntop = ntop < 0 ? 0 : ntop;
+    nleft = nleft < 0 ? 0 : nleft;
+  }
 
   Gif_ReleaseUncompressedImage(gfi);
-  gfi->width = height;
-  gfi->height = width;
+  gfi->width = nright - nleft;
+  gfi->height = nbottom - ntop;
+  gfi->left = nleft;
+  gfi->top = ntop;
   Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 }
 

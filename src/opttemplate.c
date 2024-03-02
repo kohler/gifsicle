@@ -250,8 +250,8 @@ X(find_difference_bounds)(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
 
   /* 19.Aug.1999 - handle case when there's no difference between frames */
   if (tp > bt) {
-    tp = bt = gfi->top;
-    lf = rt = gfi->left;
+    tp = bt = constrain(0, gfi->top, screen_height - 1);
+    lf = rt = constrain(0, gfi->left, screen_width - 1);
   }
 
   bounds->left = lf;

@@ -1253,21 +1253,8 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 
 
 static void
-handle_screen(Gif_Stream *dest, uint16_t width, uint16_t height)
+handle_flip_and_rotate(Gif_Image* desti, Gt_Frame* fr)
 {
-    /* Set the screen width & height, if the current input width and height are
-       larger */
-    if (dest->screen_width < width)
-        dest->screen_width = width;
-    if (dest->screen_height < height)
-        dest->screen_height = height;
-}
-
-static void
-handle_flip_and_screen(Gif_Stream* dest, Gif_Image* desti, Gt_Frame* fr)
-{
-    Gif_Stream* gfs = fr->stream;
-
     desti->left += fr->left_offset;
     desti->top += fr->top_offset;
 
@@ -1286,12 +1273,6 @@ handle_flip_and_screen(Gif_Stream* dest, Gif_Image* desti, Gt_Frame* fr)
 
     desti->left -= fr->left_offset;
     desti->top -= fr->top_offset;
-
-    /* handle screen size, which might have height & width exchanged */
-    if (fr->rotation == 1 || fr->rotation == 3)
-        handle_screen(dest, gfs->screen_height, gfs->screen_width);
-    else
-        handle_screen(dest, gfs->screen_width, gfs->screen_height);
 }
 
 static void
@@ -1611,11 +1592,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
     srci->transparent = old_transp; /* restore real transparent value */
 
-    /* Flipping and rotating, and also setting the screen size */
-    if (fr->flip_horizontal || fr->flip_vertical || fr->rotation)
-        handle_flip_and_screen(dest, desti, fr);
-    else
-        handle_screen(dest, fr->stream->screen_width, fr->stream->screen_height);
+    /* Flipping and rotating */
+    if (fr->flip_horizontal || fr->flip_vertical || fr->rotation) {
+      handle_flip_and_rotate(desti, fr);
+    }
 
     /* Names and comments */
     if (fr->name || fr->no_name) {
@@ -1661,6 +1641,37 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     }
     if (fr->disposal >= 0) {
       desti->disposal = fr->disposal;
+    }
+
+    /* logical screen */
+    if (output_data->screen_mode <= 0) {
+      int w, h;
+      if (output_data->screen_mode < 0
+          || fr->crop
+          || ((fr->left >= 0 || fr->top >= 0) && !fr->position_is_offset)) {
+        w = desti->left + desti->width;
+        h = desti->top + desti->height;
+      } else {
+        if (fr->rotation == 1 || fr->rotation == 3) {
+          w = fr->stream->screen_height;
+          h = fr->stream->screen_width;
+        } else {
+          w = fr->stream->screen_width;
+          h = fr->stream->screen_height;
+        }
+        if (fr->left >= 0) {
+          w += fr->left;
+        }
+        if (fr->top >= 0) {
+          h += fr->top;
+        }
+      }
+      if (w > dest->screen_width) {
+        dest->screen_width = w;
+      }
+      if (h > dest->screen_height) {
+        dest->screen_height = h;
+      }
     }
 
     /* compress immediately if possible to save on memory */
@@ -1710,28 +1721,10 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
   /** END MERGE LOOP **/
 
-  /* Cropping the whole output? Reset logical screen */
-  if (merger[0]->crop && merger[0]->crop == merger[nmerger - 1]->crop) {
-    /* 13.May.2008: Set the logical screen to the cropped dimensions */
-    /* 18.May.2008: Unless --crop-transparency is on */
-    Gt_Crop* crop = merger[0]->crop;
-    if (crop->transparent_edges)
-        dest->screen_width = dest->screen_height = 0;
-    else if (merger[0]->rotation == 1 || merger[0]->rotation == 3) {
-        dest->screen_width = (crop->h > 0 ? crop->h : 0);
-        dest->screen_height = (crop->w > 0 ? crop->w : 0);
-    } else {
-        dest->screen_width = (crop->w > 0 ? crop->w : 0);
-        dest->screen_height = (crop->h > 0 ? crop->h : 0);
-    }
-  }
-
-  /* Set the logical screen from the user's preferences */
-  if (output_data->screen_width >= 0)
+  if (output_data->screen_mode == 1) {
     dest->screen_width = output_data->screen_width;
-  if (output_data->screen_height >= 0)
     dest->screen_height = output_data->screen_height;
-  Gif_CalculateScreenSize(dest, 0);
+  }
 
   /* Find the background color in the colormap, or add it if we can */
   set_background(dest, output_data);
