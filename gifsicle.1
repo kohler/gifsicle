@@ -556,7 +556,7 @@ can be zero or negative. A zero dimension means the cropping area goes to
 the edge of the image; a negative dimension brings the cropping area that
 many pixels back from the image edge. For example,
 .Op \-\-crop " 2,2+-2x-2"
-will shave 2 pixels off each side of the input image. Cropping takes place
+will shave 2 pixels off each side of the input image. Cropping happens
 before any rotation, flipping, resizing, or positioning.
 '
 .Sp
@@ -594,10 +594,10 @@ Turn interlacing on.
 Set the output logical screen to
 .IR width x height .
 .Op \-\-no\-logical\-screen
-sets the output logical screen to the size of the largest output
-frame, while
+sets the output logical screen large enough to include all output frames, while
 .Op \-\-same\-logical\-screen
-sets the output logical screen to the largest input logical screen.
+sets the output logical screen large enough to include all input logical
+screens.
 .Op \-\-screen
 is a synonym for
 .Op \-\-logical\-screen .

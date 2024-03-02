@@ -327,6 +327,9 @@ int Clp_IsLong(Clp_Parser *clp, const char *long_name);
 /** @brief Test if the current option had short name @a name. */
 int Clp_IsShort(Clp_Parser *clp, int short_name);
 
+/** @brief Return a UTF-8 or normal single quote. */
+const char* Clp_QuoteChar(const Clp_Parser* clp, int isclose);
+
 #undef CLP_SENTINEL
 #ifdef __cplusplus
 }

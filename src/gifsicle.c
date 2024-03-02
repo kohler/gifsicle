@@ -455,7 +455,8 @@ set_frame_change(int kind)
    case INSERT_OPT:
     /* Define a nested frameset (or use an existing one). */
     fset = FRAME(frames, frame_spec_2).nest;
-    if (!fset) fset = new_frameset(8);
+    if (!fset)
+      fset = new_frameset(8);
     FRAME(frames, frame_spec_2).nest = fset;
 
     /* Later: Merge frames at the end of the nested frameset. */
@@ -846,9 +847,11 @@ input_stream(const char *name)
 void
 input_done(void)
 {
-  if (!input) return;
+  if (!input)
+    return;
 
-  if (verbosing) verbose_close('>');
+  if (verbosing)
+    verbose_close('>');
 
   Gif_DeleteStream(input);
   input = 0;
@@ -1248,6 +1251,7 @@ initialize_def_frame(void)
   /* output defaults */
   def_output_data.output_name = 0;
 
+  def_output_data.screen_mode = 0;
   def_output_data.screen_width = -1;
   def_output_data.screen_height = -1;
   def_output_data.background.haspixel = 0;
@@ -1286,6 +1290,7 @@ combine_output_options(void)
 
   if (CHANGED(recent, CH_LOGICAL_SCREEN)) {
     MARK_CH(output, CH_LOGICAL_SCREEN);
+    active_output_data.screen_mode = def_output_data.screen_mode;
     active_output_data.screen_width = def_output_data.screen_width;
     active_output_data.screen_height = def_output_data.screen_height;
   }
@@ -1701,9 +1706,11 @@ main(int argc, char *argv[])
 
      case LOGICAL_SCREEN_OPT:
       MARK_CH(output, CH_LOGICAL_SCREEN);
-      if (clp->negated)
+      if (clp->negated) {
+        def_output_data.screen_mode = -1;
         def_output_data.screen_width = def_output_data.screen_height = 0;
-      else {
+      } else {
+        def_output_data.screen_mode = 1;
         def_output_data.screen_width = dimensions_x;
         def_output_data.screen_height = dimensions_y;
       }
@@ -1711,11 +1718,13 @@ main(int argc, char *argv[])
 
      case SAME_LOGICAL_SCREEN_OPT:
       MARK_CH(output, CH_LOGICAL_SCREEN);
+      def_output_data.screen_mode = 0;
       def_output_data.screen_width = def_output_data.screen_height = -1;
       break;
 
      case CROP_OPT:
-      if (clp->negated) goto no_crop;
+      if (clp->negated)
+        goto no_crop;
       MARK_CH(frame, CH_CROP);
       {
         Gt_Crop *crop = copy_crop(def_frame.crop);
@@ -2152,7 +2161,7 @@ particular purpose.\n");
       break;
 
      case HELP_OPT:
-      usage();
+      usage(clp);
       exit(EXIT_OK);
       break;
 
@@ -2178,7 +2187,7 @@ particular purpose.\n");
 
      bad_option:
      case Clp_BadOption:
-      short_usage();
+      short_usage(clp);
       exit(EXIT_USER_ERR);
       break;
 

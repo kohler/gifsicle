@@ -1,5 +1,5 @@
 /* gifsicle.h - Function declarations for gifsicle.
-   Copyright (C) 1997-2021 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2024 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
@@ -108,6 +108,7 @@ typedef struct {
   const char *output_name;
   const char *active_output_name;
 
+  int screen_mode;
   int screen_width;
   int screen_height;
 
@@ -190,8 +191,8 @@ void lwarning(const char* landmark, const char* format, ...);
 void error(int need_file, const char* format, ...);
 void lerror(const char* landmark, const char* format, ...);
 void clp_error_handler(Clp_Parser *clp, const char *clp_message);
-void usage(void);
-void short_usage(void);
+void usage(Clp_Parser* clp);
+void short_usage(Clp_Parser* clp);
 
 void verbose_open(char, const char *);
 void verbose_close(char);
@@ -301,18 +302,18 @@ extern Gif_Color parsed_color2;
 extern double   parsed_scale_factor_x;
 extern double   parsed_scale_factor_y;
 
-int             parse_frame_spec(Clp_Parser *, const char *, int, void *);
-int             parse_dimensions(Clp_Parser *, const char *, int, void *);
-int             parse_position(Clp_Parser *, const char *, int, void *);
-int             parse_scale_factor(Clp_Parser *, const char *, int, void *);
-int             parse_color(Clp_Parser *, const char *, int, void *);
-int             parse_rectangle(Clp_Parser *, const char *, int, void *);
-int             parse_two_colors(Clp_Parser *, const char *, int, void *);
+int             parse_frame_spec(Clp_Parser*, const char*, int, void*);
+int             parse_dimensions(Clp_Parser*, const char*, int, void*);
+int             parse_position(Clp_Parser*, const char*, int, void*);
+int             parse_scale_factor(Clp_Parser*, const char*, int, void*);
+int             parse_color(Clp_Parser*, const char*, int, void*);
+int             parse_rectangle(Clp_Parser*, const char*, int, void*);
+int             parse_two_colors(Clp_Parser*, const char*, int, void*);
 
 extern Gif_Stream *input;
 extern const char *input_name;
 
-void            input_stream(const char *);
+void            input_stream(const char*);
 void            input_done(void);
 void            output_frames(void);
 
@@ -326,10 +327,10 @@ Gt_Frameset *   new_frameset(int initial_cap);
 Gt_Frame*       add_frame(Gt_Frameset*, Gif_Stream*, Gif_Image*);
 void            clear_def_frame_once_options(void);
 
-Gif_Stream *    merge_frame_interval(Gt_Frameset *, int f1, int f2,
-                                     Gt_OutputData *, int compress, int *huge);
-void            clear_frameset(Gt_Frameset *, int from);
-void            blank_frameset(Gt_Frameset *, int from, int to, int delete_ob);
+Gif_Stream *    merge_frame_interval(Gt_Frameset*, int f1, int f2,
+                                     Gt_OutputData*, int compress, int *huge);
+void            clear_frameset(Gt_Frameset*, int from);
+void            blank_frameset(Gt_Frameset*, int from, int to, int delete_ob);
 
 /*****
  * mode

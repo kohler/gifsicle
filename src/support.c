@@ -122,19 +122,21 @@ clp_error_handler(Clp_Parser *clp, const char *message)
 
 
 void
-short_usage(void)
+short_usage(Clp_Parser* clp)
 {
   fprintf(stderr, "Usage: %s [OPTION | FILE | FRAME]...\n\
-Try '%s --help' for more information.\n",
-          program_name, program_name);
+Try %s%s --help%s for more information.\n",
+          program_name, Clp_QuoteChar(clp, 0), program_name, Clp_QuoteChar(clp, 1));
 }
 
 
 void
-usage(void)
+usage(Clp_Parser* clp)
 {
+  const char* q0 = Clp_QuoteChar(clp, 0);
+  const char* q1 = Clp_QuoteChar(clp, 1);
   printf("\
-'Gifsicle' manipulates GIF images. Its most common uses include combining\n\
+Gifsicle manipulates GIF images. Its most common uses include combining\n\
 single images into animations, adding transparency, optimizing animations for\n\
 space, and printing information about GIFs.\n\
 \n\
@@ -145,16 +147,18 @@ Mode options: at most one, before any filenames.\n\
   -b, --batch                   Batch mode: modify inputs, write back to\n\
                                 same filenames.\n\
   -e, --explode                 Explode mode: write N files for each input,\n\
-                                one per frame, to 'input.frame-number'.\n\
-  -E, --explode-by-name         Explode mode, but write 'input.name'.\n\n");
+                                one per frame, to %sinput.frame-number%s.\n\
+  -E, --explode-by-name         Explode mode, but write %sinput.name%s.\n\n",
+    q0, q1, q0, q1);
   printf("\
 General options: Also --no-OPTION for info and verbose.\n\
-  -I, --info                    Print info about input GIFs. Two -I's means\n\
+  -I, --info                    Print info about input GIFs. Two %s-I%s means\n\
                                 normal output is not suppressed.\n\
       --color-info, --cinfo     --info plus colormap details.\n\
       --extension-info, --xinfo --info plus extension details.\n\
       --size-info, --sinfo      --info plus compression information.\n\
-  -V, --verbose                 Prints progress information.\n");
+  -V, --verbose                 Prints progress information.\n",
+    q0, q1);
   printf("\
   -h, --help                    Print this message and exit.\n\
       --version                 Print version number and exit.\n\
@@ -193,9 +197,10 @@ Extension options:\n\
       --app-extension N D       Add an app extension named N with data D.\n\
   -c, --comment TEXT            Add a comment before the next frame.\n\
       --extension N D           Add an extension number N with data D.\n\
-  -n, --name TEXT               Set next frame's name.\n\
+  -n, --name TEXT               Set next frame%ss name.\n\
       --no-comments, --no-names, --no-extensions\n\
-                                Remove comments (names, extensions) from input.\n");
+                                Remove comments (names, extensions) from input.\n",
+    q1);
   printf("\
 Animation options: Also --no-OPTION and --same-OPTION.\n\
   -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
@@ -231,11 +236,12 @@ Whole-GIF options: Also --no-OPTION.\n\
       --resize-method METHOD    Set resizing method.\n\
       --resize-colors N         Resize can add new colors up to N.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
-      --use-colormap CMAP       Set output GIF's colormap to CMAP, which can\n\
-                                be 'web', 'gray', 'bw', or a GIF file.\n\n");
+      --use-colormap CMAP       Set output GIF%ss colormap to CMAP, which can\n\
+                                be %sweb%s, %sgray%s, %sbw%s, or a GIF file.\n\n",
+    q1, q0, q1, q0, q1, q0, q1);
   printf("\
 Report bugs to <ekohler@gmail.com>.\n\
-Too much information? Try '%s --help | less'.\n", program_name);
+Too much information? Try %s%s --help | less%s.\n", q0, program_name, q1);
 #ifdef GIF_UNGIF
   printf("\
 This version of Gifsicle writes uncompressed GIFs, which can be far larger\n\
@@ -1350,7 +1356,7 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
 
     for (i = 0;
          i < nmerger && (l > have_l || t > have_t || r < have_r || b < have_b);
-         ++i)
+         ++i) {
       if (merger[i]->crop == crop) {
         Gt_Frame *fr = merger[i];
         Gif_Image *srci = fr->image;
@@ -1420,6 +1426,7 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
             b = bb;
         }
       }
+    }
 
     if (t > b) {
       crop->w = crop->h = 0;
@@ -1534,12 +1541,14 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     all_same_compressed_ok = 0;
 
   /* analyze crops */
-  for (i = 0; i < nmerger; i++)
+  for (i = 0; i < nmerger; i++) {
     if (merger[i]->crop)
       merger[i]->crop->ready = all_same_compressed_ok = 0;
-  for (i = 0; i < nmerger; i++)
+  }
+  for (i = 0; i < nmerger; i++) {
     if (merger[i]->crop && !merger[i]->crop->ready)
       analyze_crop(nmerger, merger[i]->crop, compress_immediately);
+  }
 
   /* mark used colors */
   for (i = 0; i < nmerger; ++i) {
@@ -1627,8 +1636,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       fr->comment = 0;
     }
 
-    if (fr->interlacing >= 0)
+    if (fr->interlacing >= 0) {
       desti->interlace = fr->interlacing;
+    }
     if (fr->left >= 0) {
       int left = fr->left + (fr->position_is_offset ? desti->left : 0);
       if (left + desti->width > 65535) {
@@ -1646,10 +1656,12 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       desti->top = top;
     }
 
-    if (fr->delay >= 0)
+    if (fr->delay >= 0) {
       desti->delay = fr->delay;
-    if (fr->disposal >= 0)
+    }
+    if (fr->disposal >= 0) {
       desti->disposal = fr->disposal;
+    }
 
     /* compress immediately if possible to save on memory */
     if (desti->img) {
@@ -1665,18 +1677,20 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 
    merge_frame_done:
     /* 6/17/02 store information about image's background */
-    if (fr->stream->images[0]->transparent >= 0)
+    if (fr->stream->images[0]->transparent >= 0) {
         fr->transparent.haspixel = 2;
-    else if (fr->stream->global
-             && fr->stream->background < fr->stream->global->ncol) {
+    } else if (fr->stream->global
+               && fr->stream->background < fr->stream->global->ncol) {
         fr->transparent = fr->stream->global->col[fr->stream->background];
         fr->transparent.haspixel = 1;
-    } else
+    } else {
         fr->transparent.haspixel = 0;
+    }
 
     /* Destroy the copied, cropped image if necessary */
-    if (fr->crop)
+    if (fr->crop) {
       Gif_DeleteImage(srci);
+    }
 
     /* if we can, delete the image's data right now to save memory */
     srci = fr->image;

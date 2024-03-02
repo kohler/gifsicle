@@ -203,13 +203,13 @@ static void
 X(find_difference_bounds)(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
 {
   int lf, rt, lf_min, rt_max, tp, bt, x, y;
-  Gif_OptBounds ob;
 
   /* 1.Aug.99 - use current bounds if possible, since this function is a speed
      bottleneck */
-  if (!last || last->disposal == GIF_DISPOSAL_NONE
+  if (!last
+      || last->disposal == GIF_DISPOSAL_NONE
       || last->disposal == GIF_DISPOSAL_ASIS) {
-    ob = safe_bounds(gfi);
+    Gif_OptBounds ob = safe_bounds(gfi);
     lf_min = ob.left;
     rt_max = ob.left + ob.width - 1;
     tp = ob.top;
@@ -503,9 +503,9 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
  retry_frame:
     /* find minimum area of difference between this image and last image */
     subimage->disposal = GIF_DISPOSAL_ASIS;
-    if (image_index > 0)
-        X(find_difference_bounds)(subimage, gfi, last_gfi);
-    else {
+    if (image_index > 0) {
+      X(find_difference_bounds)(subimage, gfi, last_gfi);
+    } else {
       Gif_OptBounds ob = safe_bounds(gfi);
       subimage->left = ob.left;
       subimage->top = ob.top;

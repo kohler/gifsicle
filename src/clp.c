@@ -2079,6 +2079,18 @@ build_string_program_prefix(Clp_BuildString* bs, const Clp_Parser* clp)
 }
 
 
+const char*
+Clp_QuoteChar(const Clp_Parser* clp, int isclose)
+{
+    if (!clp->internal->utf8) {
+        return "'";
+    } else if (isclose) {
+        return "\342\200\231";
+    } else {
+        return "\342\200\230";
+    }
+}
+
 static void
 Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
               const char *fmt, va_list val)
@@ -2175,12 +2187,12 @@ Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
             break;
 
           case '<':
-            append_build_string(bs, (cli->utf8 ? "\342\200\230" : "'"), -1);
+            append_build_string(bs, Clp_QuoteChar(clp, 0), -1);
             break;
 
           case ',':
           case '>':
-            append_build_string(bs, (cli->utf8 ? "\342\200\231" : "'"), -1);
+            append_build_string(bs, Clp_QuoteChar(clp, 1), -1);
             break;
 
         case 0:
