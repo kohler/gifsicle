@@ -157,7 +157,7 @@ General options: Also --no-OPTION for info and verbose.\n\
       --color-info, --cinfo     --info plus colormap details.\n\
       --extension-info, --xinfo --info plus extension details.\n\
       --size-info, --sinfo      --info plus compression information.\n\
-  -V, --verbose                 Prints progress information.\n",
+  -V, --verbose                 Prints progress information (files read and written).\n",
     q0, q1);
   printf("\
   -h, --help                    Print this message and exit.\n\
