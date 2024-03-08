@@ -202,6 +202,7 @@ static const char *output_option_types[] = {
 #define RESIZE_TOUCH_WIDTH_OPT  378
 #define RESIZE_TOUCH_HEIGHT_OPT 379
 #define LOSSY_OPT               380
+#define RESIZE_BG_FILL_OPT      381
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -310,6 +311,7 @@ const Clp_Option options[] = {
   { "rotate-180", 0, ROTATE_180_OPT, 0, 0 },
   { "rotate-270", 0, ROTATE_270_OPT, 0, 0 },
   { "no-rotate", 0, NO_ROTATE_OPT, 0, 0 },
+  { "resize-bg-fill", 0, RESIZE_BG_FILL_OPT, COLOR_TYPE, 0 },
 
   { "same-app-extensions", 0, SAME_APP_EXTENSIONS_OPT, 0, 0 },
   { "same-background", 0, SAME_BACKGROUND_OPT, 0, 0 },
@@ -1030,6 +1032,13 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       resize_stream(out, w, h, active_output_data.resize_flags,
                     active_output_data.scale_method,
                     active_output_data.scale_colors);
+    /** Ideally we'd do this in the same pass as resizing but
+     *  it's a lot easier to do it in a second pass, and the only
+     *  expensive work happens on the first frame.
+     */
+    if (active_output_data.resize_flags & GT_RESIZE_FILL
+        && (out->screen_width < w || out->screen_height < h))
+      pad_stream(out, w, h, def_output_data.resize_bg);
     if (colormap_change)
       do_colormap_change(out);
     if (output_transforms)
@@ -1437,7 +1446,7 @@ parse_resize_geometry_opt(Gt_OutputData* odata, const char* str, Clp_Parser* clp
         odata->resize_width = x;
         odata->resize_height = y;
     }
-    odata->resize_flags = flags;
+    odata->resize_flags |= flags;
     return;
 
 error:
@@ -2101,6 +2110,11 @@ main(int argc, char *argv[])
         error(0, "%s can be at most 256", Clp_CurOptionName(clp));
         def_output_data.scale_colors = 256;
       }
+      break;
+
+    case RESIZE_BG_FILL_OPT:
+      def_output_data.resize_bg = parsed_color;
+      def_output_data.resize_flags |= GT_RESIZE_FILL;
       break;
 
     case LOSSY_OPT:

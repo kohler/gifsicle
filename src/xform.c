@@ -1403,3 +1403,134 @@ resize_stream(Gif_Stream* gfs,
     gfs->screen_width = nw;
     gfs->screen_height = nh;
 }
+
+/**
+ * Low-cost LUV distance algorithm from https://www.compuphase.com/cmetric.htm
+ */
+double 
+color_distance(Gif_Color *c1, Gif_Color *c2)
+{
+    long rmean = ( (long)c1->gfc_red + (long)c2->gfc_blue ) / 2;
+    long r = (long)c1->gfc_red - (long)c2->gfc_red;
+    long g = (long)c1->gfc_green - (long)c2->gfc_green;
+    long b = (long)c1->gfc_blue - (long)c2->gfc_blue;
+    return sqrt((((512+rmean)*r*r)>>8) + 4*g*g + (((767-rmean)*b*b)>>8));
+}
+
+int
+find_or_add_color(Gif_Stream* gfs, Gif_Image* gfi, Gif_Color color) {
+    int cidx = -1;
+    Gif_Colormap *gfcm = gfi->local ? gfi->local : gfs->global;
+
+    double smallest_distance = 0;
+    double distance;
+
+    if (gfcm) {
+        cidx = Gif_FindColor(gfcm, &color);
+        
+        if (cidx == -1 && gfcm->ncol < 256) {
+            /* There's room in the map for another color, yay! */
+            cidx = Gif_AddColor(gfcm, &color, -1);
+        } else {
+            /* Find the closest colour that is already in the colourmap */
+            for (int i = 0; i < gfcm->ncol; i++) {
+                distance = color_distance(&gfcm->col[i], &color);
+                if (smallest_distance == 0 || smallest_distance > distance) {
+                    cidx = i;
+                    smallest_distance = distance;
+                }
+            }
+        }
+    }
+
+    if (cidx < 0) {
+        lwarning(gfs->landmark, "Requested color not in colormaps, could not add color", "");
+        return -1;
+    } else {
+        return cidx;
+    }
+
+}
+
+void 
+pad_image(Gif_Stream* gfs, Gif_Image* gfi, 
+          int w, int h,
+          int xoff, int yoff, 
+          Gif_Color color) 
+{
+    Gif_Image gfo;
+    int cidx;
+    int true_xoff = gfi->left + xoff;
+    int true_yoff = gfi->top + yoff;
+    int was_compressed = (gfi->img == 0);
+    gfo = *gfi;
+    gfo.img = NULL;
+    gfo.image_data = NULL;
+    gfo.compressed = NULL;
+    gfo.left = 0;
+    gfo.top = 0;
+
+    /* If all else fails, border falls back to color zero */
+    cidx = find_or_add_color(gfs, &gfo, color);
+    if (cidx < 0) {
+        cidx = 0;
+    }
+
+    /* If the frame we want to pad was offset, we need to adjust
+       for it, because we're need to fill the whole frame */
+    gfo.width = w;
+    gfo.height = h;
+
+
+    if (was_compressed)
+        Gif_UncompressImage(gfs, gfi);
+    
+    Gif_CreateUncompressedImage(&gfo, 0);
+
+    for (int y = 0; y < h; ++y) {
+        if (y < true_yoff || y >= true_yoff + gfi->height) {
+            memset(gfo.img[y], cidx, w);
+        } else if (true_xoff > 0) {
+            memset(gfo.img[y], cidx, true_xoff);
+            memcpy(gfo.img[y] + true_xoff, gfi->img[y - true_yoff], gfi->width);
+            memset(gfo.img[y] + true_xoff + gfi->width, cidx, w - true_xoff - gfi->width);
+        } else {
+            memcpy(gfo.img[y], gfi->img[y - true_yoff], gfi->width);
+        }
+    }
+
+    Gif_ReleaseUncompressedImage(gfi);
+    Gif_ReleaseCompressedImage(gfi);
+    *gfi = gfo;
+    if (was_compressed) {
+        Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        Gif_ReleaseUncompressedImage(gfi);
+    }
+}
+
+void 
+offset_image(Gif_Image* gfi, int xoff, int yoff) 
+{
+    gfi->top = gfi->top + yoff;
+    gfi->left = gfi->left + xoff;
+}
+
+void
+pad_stream(Gif_Stream* gfs,
+           int w, int h,
+           Gif_Color color)
+{
+    // Make sure nobody is trying to trick us into a buffer overrun
+    int safe_w = w >= gfs->screen_width ? w : gfs->screen_width;
+    int safe_h = h >= gfs->screen_height ? h : gfs->screen_height;
+
+    int x_offset = (safe_w - gfs->screen_width) / 2;
+    int y_offset = (safe_h - gfs->screen_height) / 2;
+
+    for (int i = 0; i < gfs->nimages; ++i) {
+        if (i == 0)
+            pad_image(gfs, gfs->images[i], safe_w, safe_h, x_offset, y_offset, color);
+        else
+            offset_image(gfs->images[i], x_offset, y_offset);
+    }
+}
