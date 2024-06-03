@@ -2,7 +2,6 @@
 
 Gifsicle
 ========
-[![TravisCI status](https://travis-ci.com/kohler/gifsicle.svg?branch=master)](https://travis-ci.com/kohler/gifsicle)
 
 Gifsicle manipulates GIF image files. Depending on command line
 options, it can merge several GIFs into a GIF animation; explode an
