@@ -1,6 +1,11 @@
 Gifsicle NEWS
 =============
 
+## Version 1.95 – 19.Feb.2024
+
+* Fix some bugs.
+
+
 ## Version 1.94 – 23.Jun.2023
 
 * Fix some bugs.
