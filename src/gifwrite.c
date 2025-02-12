@@ -54,6 +54,7 @@ typedef struct Gif_Node {
   Gif_Code code;
   uint8_t type;
   uint8_t suffix;
+  uint32_t length;
   struct Gif_Node* sibling;
   union {
     struct Gif_Node* s;
@@ -61,18 +62,28 @@ typedef struct Gif_Node {
   } child;
 } Gif_Node;
 
+typedef struct Gif_LossyNode {
+  Gif_Node node;
+  unsigned long diffaccum;
+  wkcolor error;
+} Gif_LossyNode;
 
 typedef struct Gif_CodeTable {
-  Gif_Node* nodes;
-  int nodes_pos;
   Gif_Node** links;
-  int links_pos;
   int clear_code;
+  unsigned max_loss;
+  uint32_t maxpos;
+
+  union {
+    Gif_Node* nl;
+    Gif_LossyNode* ls;
+  } nodes;
+  int nodes_pos;
+  int links_pos;
 
   kcolor* global_kcs;
   kcolor* local_kcs;
   kcolor* kcs;
-  unsigned max_loss;
   double loss_scale;
   unsigned* kcdiff;
 } Gif_CodeTable;
@@ -146,6 +157,25 @@ memory_block_putter(const uint8_t *data, size_t len, Gif_Writer *grr)
 }
 
 
+static inline int
+gfc_init(Gif_CodeTable* gfc, const Gif_CompressInfo* gcinfo)
+{
+  gfc->max_loss = 0;
+  if (gcinfo->loss > 0)
+    gfc->max_loss = gcinfo->loss * kc_distance(kc_make8g(0, 0, 0), kc_make8g(0, 0, 8));
+  if (gfc->max_loss > 0) {
+    gfc->loss_scale = 4.0 / gfc->max_loss;
+    gfc->nodes.ls = Gif_NewArray(Gif_LossyNode, NODES_SIZE);
+  } else
+    gfc->nodes.nl = Gif_NewArray(Gif_Node, NODES_SIZE);
+  gfc->links = Gif_NewArray(Gif_Node*, LINKS_SIZE);
+  gfc->global_kcs = NULL;
+  gfc->local_kcs = NULL;
+  gfc->kcs = NULL;
+  gfc->kcdiff = NULL;
+  return (gfc->max_loss > 0 ? !!gfc->nodes.ls : !!gfc->nodes.nl) && gfc->links;
+}
+
 static int
 gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
 {
@@ -158,8 +188,6 @@ gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
     Gif_InitCompressInfo(&grr->gcinfo);
   grr->errors = 0;
   grr->cleared = 0;
-  grr->code_table.nodes = Gif_NewArray(Gif_Node, NODES_SIZE);
-  grr->code_table.links = Gif_NewArray(Gif_Node*, LINKS_SIZE);
   if (f) {
     grr->byte_putter = file_byte_putter;
     grr->block_putter = file_block_putter;
@@ -167,24 +195,17 @@ gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
     grr->byte_putter = memory_byte_putter;
     grr->block_putter = memory_block_putter;
   }
-  grr->code_table.global_kcs = NULL;
-  grr->code_table.local_kcs = NULL;
-  grr->code_table.kcs = NULL;
-  grr->code_table.kcdiff = NULL;
-  if (gcinfo->loss > 0) {
-    grr->code_table.max_loss = gcinfo->loss * kc_distance(kc_make8g(0, 0, 0), kc_make8g(0, 0, 8));
-    grr->code_table.loss_scale = 4.0 / grr->code_table.max_loss;
-  } else {
-    grr->code_table.max_loss = 0;
-  }
-  return grr->code_table.nodes && grr->code_table.links;
+  return gfc_init(&grr->code_table, gcinfo);
 }
 
 static void
 gif_writer_cleanup(Gif_Writer* grr)
 {
   Gif_DeleteArray(grr->v);
-  Gif_DeleteArray(grr->code_table.nodes);
+  if (grr->code_table.max_loss > 0)
+    Gif_DeleteArray(grr->code_table.nodes.ls);
+  else
+    Gif_DeleteArray(grr->code_table.nodes.nl);
   Gif_DeleteArray(grr->code_table.links);
   Gif_DeleteArray(grr->code_table.global_kcs);
   Gif_DeleteArray(grr->code_table.local_kcs);
@@ -200,32 +221,29 @@ gfc_clear(Gif_CodeTable *gfc)
   gfc->nodes_pos = gfc->clear_code;
   gfc->links_pos = gfc->clear_code;
   for (c = 0; c < gfc->clear_code; c++) {
-    gfc->nodes[c].code = c;
-    gfc->nodes[c].type = LINKS_TYPE;
-    gfc->nodes[c].suffix = c;
-    gfc->nodes[c].child.s = 0;
-    gfc->links[c] = &gfc->nodes[c];
+    Gif_Node* n = gfc->max_loss > 0 ? &gfc->nodes.ls[c].node : &gfc->nodes.nl[c];
+    n->code = c;
+    n->type = LINKS_TYPE;
+    n->suffix = c;
+    n->length = 1;
+    n->child.s = NULL;
+    gfc->links[c] = n;
   }
 }
 
 static inline Gif_Node *
 gfc_lookup(Gif_CodeTable *gfc, Gif_Node *node, uint8_t suffix)
 {
-  assert(!node || (node >= gfc->nodes && node < gfc->nodes + NODES_SIZE));
   assert(suffix < gfc->clear_code);
   if (!node)
-    return &gfc->nodes[suffix];
-  else if (node->type == TABLE_TYPE)
+    return gfc->links[suffix];
+  if (node->type == TABLE_TYPE)
     return node->child.m[suffix];
-  else {
-    for (node = node->child.s; node; node = node->sibling)
-      if (node->suffix == suffix)
-        return node;
-    return NULL;
-  }
+  for (node = node->child.s; node; node = node->sibling)
+    if (node->suffix == suffix)
+      return node;
+  return NULL;
 }
-
-static inline uint8_t gif_pixel_at_pos(Gif_Image *gfi, unsigned pos);
 
 static void
 gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
@@ -248,17 +266,18 @@ gfc_change_node_to_table(Gif_CodeTable *gfc, Gif_Node *work_node,
 }
 
 static inline void
-gfc_define(Gif_CodeTable *gfc, Gif_Node *work_node, uint8_t suffix,
+gfc_define(Gif_CodeTable* gfc, Gif_Node* work_node, uint8_t suffix,
            Gif_Code next_code)
 {
   /* Add a new code to our dictionary. First reserve a node for the
      added code. It's LINKS_TYPE at first. */
-  Gif_Node *next_node = &gfc->nodes[gfc->nodes_pos];
+  Gif_Node* next_node = gfc->max_loss > 0 ? &gfc->nodes.ls[gfc->nodes_pos].node : &gfc->nodes.nl[gfc->nodes_pos];
   gfc->nodes_pos++;
   next_node->code = next_code;
   next_node->type = LINKS_TYPE;
   next_node->suffix = suffix;
-  next_node->child.s = 0;
+  next_node->length = work_node->length + 1;
+  next_node->child.s = NULL;
 
   /* link next_node into work_node's set of children */
   if (work_node->type == TABLE_TYPE)
@@ -297,15 +316,18 @@ gif_line_endpos(Gif_Image *gfi, unsigned pos)
 }
 
 static inline uint8_t
-gif_pixel_at_pos(Gif_Image *gfi, unsigned pos)
+gfc_pixel(Gif_CodeTable* gfc, Gif_Image* gfi, unsigned pos)
 {
-  unsigned y = pos / gfi->width, x = pos - y * gfi->width;
-  if (!gfi->interlace)
-    return gfi->img[y][x];
-  else
-    return gfi->img[Gif_InterlaceLine(y, gfi->height)][x];
+  unsigned y = pos / gfi->width;
+  unsigned x = pos - y * gfi->width;
+  if (gfi->interlace)
+    y = Gif_InterlaceLine(y, gfi->height);
+  uint8_t p = gfi->img[y][x];
+  if (p >= gfc->clear_code)
+    /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
+    p = 0;
+  return p;
 }
-
 
 static int
 gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
@@ -359,113 +381,98 @@ static inline wkcolor diffused_difference(const Gif_CodeTable* gfc,
   return wkc;
 }
 
-typedef struct lossy_result {
-  Gif_Node *node;  /* which node has been chosen by gfc_lookup_lossy */
-  unsigned start;  /* start position */
-  unsigned pos;    /* end position */
-  double score;    /* score of this node */
-} lossy_result;
-
-static void gfc_extend_lossy(Gif_CodeTable *gfc, Gif_Image *gfi, lossy_result* best,
-  unsigned pos, Gif_Node* node, unsigned long diffaccum,
-  wkcolor error);
-static void gfc_extend_lossy_try(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
-  unsigned pos, uint8_t expected, Gif_Node* node, unsigned long diffaccum,
-  wkcolor error);
-
-/* Recursive loop
- * Find node that is descendant of node that best matches pixels starting at pos
- * base_diff and dither are distortion from search made so far */
-static lossy_result
-gfc_lookup_lossy(Gif_CodeTable *gfc, Gif_Image *gfi, unsigned pos)
-{
-  lossy_result lr;
-  lr.node = NULL;
-  lr.start = pos;
-  lr.pos = pos;
-  lr.score = 0.0;
-  gfc_extend_lossy(gfc, gfi, &lr, pos, lr.node, 0, wkc_zero());
-  return lr;
-}
-
 static inline int
 gfc_lossy_candidate(Gif_CodeTable* gfc, Gif_Image* gfi,
-                    uint8_t expected, uint8_t actual, wkcolor error) {
+                    Gif_LossyNode* n, Gif_LossyNode* ch,
+                    uint8_t expected)
+{
+  uint8_t actual = ch->node.suffix;
+  unsigned diff;
+  /* exact match */
   if (expected == actual) {
+    ch->diffaccum = n->diffaccum;
+    ch->error = diffused_difference(gfc, expected, expected, n->error);
     return 1;
   }
-  return expected != gfi->transparent
-    && actual != gfi->transparent
-    && gfc->kcdiff[(expected << 8) | actual] <= gfc->max_loss
-    && (wkc_iszero(error)
-        || kc_distance(kc_adjust(gfc->kcs[expected], error), gfc->kcs[actual]) <= gfc->max_loss);
+  /* transparency never matches */
+  if (expected == gfi->transparent || actual == gfi->transparent)
+    return 0;
+  /* check local loss */
+  diff = gfc->kcdiff[(expected << 8) | actual];
+  if (diff > gfc->max_loss)
+    return 0;
+  /* check accumulated loss */
+  if (!wkc_iszero(n->error)
+      && kc_distance(kc_adjust(gfc->kcs[expected], n->error), gfc->kcs[actual]) > gfc->max_loss)
+    return 0;
+  /* success */
+  ch->diffaccum = n->diffaccum + diff;
+  ch->error = diffused_difference(gfc, expected, actual, n->error);
+  return 1;
 }
 
-/**
- * Replaces best_t with a new node if it's better
- *
- * @param expected    Non-lossy pixel
- * @param node        Current node to search (node->suffix is proposed pixel)
- * @param error       Accumulated error
- * @param base_diff   Difference accumulated in the search so far
- * @param best_t      Current best candidate (input/output argument)
- */
-static void
-gfc_extend_lossy_try(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
-  unsigned pos, uint8_t expected, Gif_Node *node,
-  unsigned long diffaccum, wkcolor error)
+static Gif_Node*
+gfc_lookup_lossy(Gif_CodeTable* gfc, Gif_Image* gfi, unsigned pos)
 {
-  uint8_t actual = node->suffix;
-  double score;
-  diffaccum += gfc->kcdiff[(expected << 8) | actual];
-  score = (pos - best->start) - diffaccum * gfc->loss_scale;
-  if (score > best->score) {
-    best->node = node;
-    best->pos = pos;
-    best->score = score;
-  }
-  gfc_extend_lossy(gfc, gfi, best, pos, node, diffaccum,
-                   diffused_difference(gfc, expected, actual, error));
-}
+  Gif_LossyNode* best;
+  double best_score;
+  Gif_LossyNode* stack[NODES_SIZE];
+  unsigned nstack;
 
-static void
-gfc_extend_lossy(Gif_CodeTable* gfc, Gif_Image* gfi, lossy_result* best,
-                 unsigned pos, Gif_Node* parent, unsigned long diffaccum, wkcolor error)
-{
-  uint8_t expected;
+  if (pos == gfc->maxpos)
+    return NULL;
 
-  if (pos % gfi->width == 0) {
-    if (pos == gfi->width * gfi->height) {
-      return;
-    }
-    /* Clear accumulated error at start of new line */
-    error = wkc_zero();
-  }
+  /* initialize with first node */
+  best = (Gif_LossyNode*) gfc_lookup(gfc, NULL, gfc_pixel(gfc, gfi, pos));
+  best->diffaccum = 0;
+  best->error = wkc_zero();
+  best_score = 1.0;
+  stack[0] = best;
+  nstack = 1;
 
-  expected = gif_pixel_at_pos(gfi, pos);
-  if (expected >= gfc->clear_code) {
-    /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
-    expected = 0;
-  }
-
-  /* always use first given pixel;
-     otherwise, search all nodes that are less than max_diff different from the desired pixel */
-  if (!best->node) {
-    gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, &gfc->nodes[expected], diffaccum, error);
-  } else if (parent->type == TABLE_TYPE) {
+  /* explore until stack is empty */
+  while (nstack > 0) {
+    Gif_LossyNode* n = stack[nstack - 1];
+    unsigned tpos = pos + n->node.length;
     int i;
-    for (i = 0; i < gfc->clear_code; i++) {
-      Gif_Node* child = parent->child.m[i];
-      if (child && gfc_lossy_candidate(gfc, gfi, expected, i, error))
-        gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, child, diffaccum, error);
+    double score;
+    uint8_t expected;
+    --nstack;
+
+    /* check if this node is better than current best */
+    if (n != best) {
+      score = n->node.length - n->diffaccum * gfc->loss_scale;
+      if (score > best_score) {
+        best = n;
+        best_score = score;
+      }
     }
-  } else {
-    Gif_Node* child;
-    for (child = parent->child.s; child; child = child->sibling) {
-      if (gfc_lossy_candidate(gfc, gfi, expected, child->suffix, error))
-        gfc_extend_lossy_try(gfc, gfi, best, pos + 1, expected, child, diffaccum, error);
+
+    /* reset error at start of line */
+    if (tpos == gfc->maxpos)
+      continue;
+    if (tpos % gfi->width == 0)
+      n->error = wkc_zero();
+
+    expected = gfc_pixel(gfc, gfi, tpos);
+
+    /* consider all children */
+    if (n->node.type == TABLE_TYPE) {
+      for (i = 0; i < gfc->clear_code; ++i) {
+        Gif_LossyNode* ch = (Gif_LossyNode*) n->node.child.m[i];
+        if (ch && gfc_lossy_candidate(gfc, gfi, n, ch, expected))
+          stack[nstack++] = ch;
+      }
+    } else {
+      Gif_LossyNode* ch;
+      for (ch = (Gif_LossyNode*) n->node.child.s; ch; ch = (Gif_LossyNode*) ch->node.sibling) {
+        if (gfc_lossy_candidate(gfc, gfi, n, ch, expected))
+          stack[nstack++] = ch;
+      }
     }
   }
+
+  return &best->node;
 }
 
 static int
@@ -501,6 +508,7 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
   gifputbyte(min_code_bits, grr);
 #define CUR_BUMP_CODE   (1 << cur_code_bits)
   gfc->clear_code = (Gif_Code) (1 << min_code_bits);
+  gfc->maxpos = gfi->width * gfi->height;
   grr->cleared = 0;
 
   cur_code_bits = min_code_bits + 1;
@@ -591,16 +599,14 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
     /*****
      * Find the next code to output. */
     if (gfc->max_loss) {
-      lossy_result t = gfc_lookup_lossy(gfc, gfi, pos);
-
-      work_node = t.node;
-      run = t.pos - pos;
-      pos = t.pos;
+      work_node = gfc_lookup_lossy(gfc, gfi, pos);
+      run = work_node ? work_node->length : 0;
+      pos += run;
 
       if (pos < image_endpos) {
         /* Output the current code. */
         if (next_code < GIF_MAX_CODE) {
-          gfc_define(gfc, work_node, gif_pixel_at_pos(gfi, pos), next_code);
+          gfc_define(gfc, work_node, gfc_pixel(gfc, gfi, pos), next_code);
           next_code++;
         } else
           next_code = GIF_MAX_CODE + 1; /* to match "> CUR_BUMP_CODE" above */
@@ -719,7 +725,7 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
         }
 
         output_code = work_node->code;
-        work_node = &gfc->nodes[suffix];
+        work_node = gfc->links[suffix];
         goto found_output_code;
       }
 
