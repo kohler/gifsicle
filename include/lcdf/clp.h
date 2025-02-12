@@ -8,7 +8,7 @@ extern "C" {
 /* clp.h - Public interface to CLP.
  * This file is part of CLP, the command line parser package.
  *
- * Copyright (c) 1997-2024 Eddie Kohler, ekohler@gmail.com
+ * Copyright (c) 1997-2025 Eddie Kohler, ekohler@gmail.com
  *
  * CLP is free software. It is distributed under the GNU General Public
  * License, Version 2, or, alternatively and at your discretion, under the

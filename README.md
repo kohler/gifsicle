@@ -1,8 +1,7 @@
 ![gifsicle-logo](https://raw.githubusercontent.com/kohler/gifsicle/master/logo.gif)
 
-Gifsicle
+Gifsicle [![Build Status](https://github.com/kohler/gifsicle/actions/workflows/tests.yml/badge.svg)](https://github.com/kohler/gifsicle/actions/workflows/tests.yml)
 ========
-[![TravisCI status](https://travis-ci.com/kohler/gifsicle.svg?branch=master)](https://travis-ci.com/kohler/gifsicle)
 
 Gifsicle manipulates GIF image files. Depending on command line
 options, it can merge several GIFs into a GIF animation; explode an
@@ -86,7 +85,7 @@ Please note that I do not provide support for Windows.
 Copyright/License
 -----------------
 
-All source code is Copyright (C) 1997-2024 Eddie Kohler.
+All source code is Copyright (C) 1997-2025 Eddie Kohler.
 
 IF YOU PLAN TO USE GIFSICLE ONLY TO CREATE OR MODIFY GIF IMAGES, DON'T
 WORRY ABOUT THE REST OF THIS SECTION. Anyone can use Gifsicle however

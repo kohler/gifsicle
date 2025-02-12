@@ -1,5 +1,5 @@
 /* gif.h - Interface to the LCDF GIF library.
-   Copyright (C) 1997-2021 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2025 Eddie Kohler, ekohler@gmail.com
    This file is part of the LCDF GIF library.
 
    The GIF library is free software. It is distributed under the GNU General

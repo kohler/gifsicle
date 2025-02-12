@@ -1,5 +1,5 @@
 /* support.c - Support functions for gifsicle.
-   Copyright (C) 1997-2024 Eddie Kohler, ekohler@gmail.com
+   Copyright (C) 1997-2025 Eddie Kohler, ekohler@gmail.com
    This file is part of gifsicle.
 
    Gifsicle is free software. It is distributed under the GNU Public License,
