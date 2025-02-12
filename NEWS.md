@@ -1,6 +1,23 @@
 Gifsicle NEWS
 =============
 
+## Version 1.96
+
+* `--lossy` uses the currently selected color space, and a different algorithm
+  for computing color differences. If you were depending on specific values of
+  `lossiness`, you may want to check a few images. `--gamma=1 --lossy` will
+  compute differences in the previous linear RGB color space.
+
+* Improve handling of GIFs with images positioned far outside the logical
+  screen. This can greatly reduce memory usage.
+
+* Add preliminary support for the Oklab color space (`--gamma=oklab`).
+
+* Add support for `--dither=atkinson` (daria@darkspot.net).
+
+* Fix some bugs.
+
+
 ## Version 1.95 – 19.Feb.2024
 
 * Fix some bugs.
