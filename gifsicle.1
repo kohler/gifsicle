@@ -1082,6 +1082,8 @@ dithering algorithm. For special effects, try the halftone methods
 .RB \(oq squarehalftone \(cq,
 and
 .RB \(oq diagonal \(cq.
+'
+.Sp
 Some methods take optional parameters using commas. The halftone methods
 take a cell size and a color limit:
 .RB \(oq halftone,10,3 \(cq
@@ -1092,17 +1094,20 @@ colors.
 .TP 5
 .Oa \-\-gamma gamma
 '
-Set the gamma correction to
+Set the color space/gamma correction to
 .IR gamma ,
-which can be a real number or
-.RB \(oq srgb \(cq.
+which can be a real number,
+.RB \(oq srgb \(cq
+(the default), or
+.RB \(oq oklab \(cq.
 Roughly speaking, higher
 numbers exaggerate shadows and lower numbers exaggerate highlights.
-The default is the function defined by the standard sRGB color space,
+The default color space is standard sRGB,
 which usually works well. (Its effects are similar to
 \fB\-\-gamma\fP=2.2.) Gifsicle uses gamma correction when choosing a
-color palette (\fB\-\-colors\fP) and when dithering
-(\fB\-\-dither\fP).
+color palette (\fB\-\-colors\fP), when dithering
+(\fB\-\-dither\fP), and when computing color errors during
+lossy compression (\fB\-\-lossy\fP).
 '
 .Sp
 .TP
@@ -1115,6 +1120,11 @@ determines how many artifacts are allowed; higher values can result
 in smaller file sizes, but cause more artifacts. The default
 .I lossiness
 is 20.
+'
+.Sp
+Gifsicle uses the color space set by \fB\-\-gamma\fP to evaluate artifacts.
+If unsatisfied with the operation of \fB\-\-lossy\fP,
+try another color space, such as \fB\-\-gamma\fP=1.
 '
 .Sp
 .PD 0

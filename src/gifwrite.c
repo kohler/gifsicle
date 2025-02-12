@@ -435,13 +435,12 @@ gfc_lookup_lossy(Gif_CodeTable* gfc, Gif_Image* gfi, unsigned pos)
     Gif_LossyNode* n = stack[nstack - 1];
     unsigned tpos = pos + n->node.length;
     int i;
-    double score;
     uint8_t expected;
     --nstack;
 
     /* check if this node is better than current best */
     if (n != best) {
-      score = n->node.length - n->diffaccum * gfc->loss_scale;
+      double score = n->node.length - n->diffaccum * gfc->loss_scale;
       if (score > best_score) {
         best = n;
         best_score = score;
