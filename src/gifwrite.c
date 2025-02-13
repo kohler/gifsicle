@@ -78,7 +78,6 @@ typedef struct Gif_CodeTable {
     Gif_Node* nl;
     Gif_LossyNode* ls;
   } nodes;
-  int nodes_pos;
   int links_pos;
 
   kcolor* global_kcs;
@@ -218,7 +217,6 @@ gfc_clear(Gif_CodeTable *gfc)
 {
   int c;
   /* The first clear_code nodes are reserved for single-pixel codes */
-  gfc->nodes_pos = gfc->clear_code;
   gfc->links_pos = gfc->clear_code;
   for (c = 0; c < gfc->clear_code; c++) {
     Gif_Node* n = gfc->max_loss > 0 ? &gfc->nodes.ls[c].node : &gfc->nodes.nl[c];
@@ -271,8 +269,7 @@ gfc_define(Gif_CodeTable* gfc, Gif_Node* work_node, uint8_t suffix,
 {
   /* Add a new code to our dictionary. First reserve a node for the
      added code. It's LINKS_TYPE at first. */
-  Gif_Node* next_node = gfc->max_loss > 0 ? &gfc->nodes.ls[gfc->nodes_pos].node : &gfc->nodes.nl[gfc->nodes_pos];
-  gfc->nodes_pos++;
+  Gif_Node* next_node = gfc->max_loss > 0 ? &gfc->nodes.ls[next_code].node : &gfc->nodes.nl[next_code];
   next_node->code = next_code;
   next_node->type = LINKS_TYPE;
   next_node->suffix = suffix;
