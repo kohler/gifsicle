@@ -215,11 +215,6 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
 }
 
 
-
-/*****
- * crop image; returns true if the image exists
- **/
-
 void
 combine_crop(Gt_Crop* dstcrop, const Gt_Crop* srccrop, const Gif_Image* gfi)
 {
@@ -243,6 +238,11 @@ combine_crop(Gt_Crop* dstcrop, const Gt_Crop* srccrop, const Gif_Image* gfi)
         dstcrop->h = 0;
     }
 }
+
+
+/*****
+ * crop image; returns true if the image exists
+ **/
 
 int
 crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)

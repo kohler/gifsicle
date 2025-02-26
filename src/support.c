@@ -1416,6 +1416,8 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
       crop->y = t;
       crop->w = r - l;
       crop->h = b - t;
+      crop->left_offset = crop->x;
+      crop->top_offset = crop->y;
     }
   }
 }
