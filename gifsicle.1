@@ -509,7 +509,7 @@ form means that the feature's value is copied from each input. The default
 is always
 .Qo \-\-same\-X .
 For example,
-.Op \-background= """#0000FF"""
+.Op \-\-background= """#0000FF"""
 sets the background color to blue,
 .Op \-\-no\-background
 turns the background color off (by setting it to 0), and
@@ -905,12 +905,18 @@ or
 .TP
 .Oa \-\-resize\-touch width x height
 '
-Resize the output GIF to fit within a rectangle with dimensions
+Resize the output GIF to fit a rectangle with dimensions
 .IR width x height .
 The aspect ratio remains unchanged. The
 .Op \-\-resize\-fit
-option only shrinks the image\(emno resize is performed if the GIF already
-fits within the rectangle. Either
+option only shrinks the image\*Eno resize is performed if the GIF already
+fits within the rectangle. The
+.Op \-\-resize\-touch
+option may shrink or grow the image; the output GIF will have width
+.IR width ,
+height
+.IR height ,
+or both. Either
 .I width
 or
 .I height
@@ -931,6 +937,36 @@ Like
 and
 .Op \-\-resize\-touch ,
 but constrains only one dimension.
+'
+.Sp
+.TP
+.Oa \-\-resize\-geometry geometry
+'
+Resize to a geometry specification as used in ImageMagick and GraphicsMagick.
+.I Geometry
+should match
+.RI \(oq width x height [%][!][^][<][>]\(cq,
+where
+.IR width " and " height
+are integers (or underscores, \(oq_\(cq, which leaves that dimension unconstrained).
+The suffixes mean:
+.RS
+.TP 5
+.Op %
+Treat the dimensions as percentages of the current size.
+.TP 5
+.Op !
+Resize to given dimensions ignoring original aspect ratio.
+.TP 5
+.Op <
+Resize only if the image is smaller than the specified size.
+.TP 5
+.Op >
+Resize only if the image is larger than the specified size.
+.TP 5
+.Op ^
+Dimensions are treated as minimum rather than maximum values.
+.RE
 '
 .Sp
 .TP

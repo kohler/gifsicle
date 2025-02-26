@@ -142,104 +142,106 @@ space, and printing information about GIFs.\n\
 \n\
 Usage: %s [OPTION | FILE | FRAME]...\n\n", program_name);
   printf("\
-Mode options: at most one, before any filenames.\n\
-  -m, --merge                   Merge mode: combine inputs, write stdout.\n\
+Mode options (at most one, before any filenames):\n\
+  -m, --merge                   Merge mode: combine inputs, write stdout\n\
   -b, --batch                   Batch mode: modify inputs, write back to\n\
-                                same filenames.\n\
+                                same filenames\n\
   -e, --explode                 Explode mode: write N files for each input,\n\
-                                one per frame, to %sinput.frame-number%s.\n\
-  -E, --explode-by-name         Explode mode, but write %sinput.name%s.\n\n",
+                                one per frame, to %sinput.frame-number%s\n\
+  -E, --explode-by-name         Explode mode, but write %sinput.name%s\n\n",
     q0, q1, q0, q1);
   printf("\
-General options: Also --no-OPTION for info and verbose.\n\
-  -I, --info                    Print info about input GIFs. Two %s-I%s means\n\
-                                normal output is not suppressed.\n\
-      --color-info, --cinfo     --info plus colormap details.\n\
-      --extension-info, --xinfo --info plus extension details.\n\
-      --size-info, --sinfo      --info plus compression information.\n\
-  -V, --verbose                 Prints progress information (files read and written).\n",
-    q0, q1);
+General options (also --no-OPTION for info and verbose):\n\
+  -I, --info                    Print info about input GIFs\n\
+  -I -I                         Print info to standard error; do not suppress\n\
+                                normal output\n\
+  --color-info, --cinfo         --info plus colormap details\n\
+  --extension-info, --xinfo     --info plus extension details\n\
+  --size-info, --sinfo          --info plus compression information\n\
+  -V, --verbose                 Print progress (files read and written)\n");
   printf("\
-  -h, --help                    Print this message and exit.\n\
-      --version                 Print version number and exit.\n\
-  -o, --output FILE             Write output to FILE.\n\
-  -w, --no-warnings             Don't report warnings.\n\
-      --no-ignore-errors        Quit on very erroneous input GIFs.\n\
-      --conserve-memory         Conserve memory at the expense of speed.\n\
-      --multifile               Support concatenated GIF files.\n\
-\n");
+  -h, --help                    Print this message and exit\n\
+  --version                     Print version number and exit\n\
+  -o, --output FILE             Write output to FILE\n\
+  -w, --no-warnings             Don%st report warnings\n\
+  --no-ignore-errors            Quit on very erroneous input GIFs\n\
+  --conserve-memory             Conserve memory at the expense of speed\n\
+  --nextfile, --multifile       Support concatenated GIF files\n\n",
+    q1);
   printf("\
 Frame selections:               #num, #num1-num2, #num1-, #name\n\
 \n\
 Frame change options:\n\
-  --delete FRAMES               Delete FRAMES from input.\n\
-  --insert-before FRAME GIFS    Insert GIFS before FRAMES in input.\n\
-  --append GIFS                 Append GIFS to input.\n\
-  --replace FRAMES GIFS         Replace FRAMES with GIFS in input.\n\
-  --done                        Done with frame changes.\n\n");
+  --delete FRAMES               Delete FRAMES from input\n\
+  --insert-before FRAME GIFS    Insert GIFS before FRAMES in input\n\
+  --append GIFS                 Append GIFS to input\n\
+  --replace FRAMES GIFS         Replace FRAMES with GIFS in input\n\
+  --done                        Done with frame changes\n\n");
   printf("\
-Image options: Also --no-OPTION and --same-OPTION.\n\
-  -B, --background COL          Make COL the background color.\n\
-      --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
-                                Crop the image.\n\
-      --crop-transparency       Crop transparent borders off the image.\n\
-      --flip-horizontal, --flip-vertical\n\
-                                Flip the image.\n");
+Image options (also --no-OPTION and --same-OPTION):\n\
+  -B, --background COL          Make COL the background color\n\
+  --crop X,Y+WxH, --crop X,Y-X2,Y2\n\
+                                Crop the image\n\
+  --crop-transparency           Crop transparent borders off the image\n\
+  --flip-horizontal, --flip-vertical\n\
+                                Flip the image\n");
   printf("\
-  -i, --interlace               Turn on interlacing.\n\
-  -S, --logical-screen WxH      Set logical screen to WxH.\n\
-  -p, --position X,Y            Set frame position to (X,Y).\n\
-      --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
-                                Rotate the image.\n\
-  -t, --transparent COL         Make COL transparent.\n\n");
+  -i, --interlace               Turn on interlacing\n\
+  -S, --logical-screen WxH      Set logical screen to WxH\n\
+  -p, --position X,Y            Set frame position to (X,Y)\n\
+  --rotate-90, --rotate-180, --rotate-270, --no-rotate\n\
+                                Rotate the image\n\
+  -t, --transparent COL         Make COL transparent\n\n");
   printf("\
 Extension options:\n\
-      --app-extension N D       Add an app extension named N with data D.\n\
-  -c, --comment TEXT            Add a comment before the next frame.\n\
-      --extension N D           Add an extension number N with data D.\n\
-  -n, --name TEXT               Set next frame%ss name.\n\
-      --no-comments, --no-names, --no-extensions\n\
-                                Remove comments (names, extensions) from input.\n",
+  --app-extension N D           Add an app extension named N with data D\n\
+  -c, --comment TEXT            Add a comment before the next frame\n\
+  --extension N D           Add an extension number N with data D\n\
+  -n, --name TEXT               Set next frame%ss name\n\
+  --no-comments, --no-names, --no-extensions\n\
+                                Remove comments (names, extensions) from input\n",
     q1);
   printf("\
-Animation options: Also --no-OPTION and --same-OPTION.\n\
-  -d, --delay TIME              Set frame delay to TIME (in 1/100sec).\n\
-  -D, --disposal METHOD         Set frame disposal to METHOD.\n\
-  -l, --loopcount[=N]           Set loop extension to N (default forever).\n\
-  -O, --optimize[=LEVEL]        Optimize output GIFs.\n\
-  -U, --unoptimize              Unoptimize input GIFs.\n");
+Animation options (also --no-OPTION and --same-OPTION):\n\
+  -d, --delay TIME              Set frame delay to TIME (in 1/100sec)\n\
+  -D, --disposal METHOD         Set frame disposal to METHOD\n\
+  -l, --loopcount[=N]           Set loop extension to N (default forever)\n\
+  -O, --optimize[=LEVEL]        Optimize output GIFs\n\
+  -U, --unoptimize              Unoptimize input GIFs\n");
 #if ENABLE_THREADS
   printf("\
-  -j, --threads[=THREADS]       Use multiple threads to improve speed.\n");
+  -j, --threads[=THREADS]       Use multiple threads to improve speed\n");
 #endif
   printf("\n\
-Whole-GIF options: Also --no-OPTION.\n\
-      --careful                 Write larger GIFs that avoid bugs in other\n\
-                                programs.\n\
-      --change-color COL1 COL2  Change COL1 to COL2 throughout.\n\
-  -k, --colors N                Reduce the number of colors to N.\n\
-      --color-method METHOD     Set method for choosing reduced colors.\n\
-  -f, --dither                  Dither image after changing colormap.\n");
+Whole-GIF options (also --no-OPTION):\n\
+  --careful                     Write larger GIFs that avoid bugs in other\n\
+                                programs\n\
+  --change-color COL1 COL2      Change COL1 to COL2 throughout\n\
+  -k, --colors N                Reduce the number of colors to N\n\
+  --color-method METHOD         Set method for choosing reduced colors\n\
+  -f, --dither                  Dither image after changing colormap\n");
 #if HAVE_POW
   printf("\
-      --gamma G                 Set gamma for color reduction [2.2].\n");
+  --gamma G                     Set gamma for color reduction [2.2]\n");
 #endif
   printf("\
-      --lossy[=LOSSINESS]       Alter image colors to shrink output file size\n\
-                                at the cost of artifacts and noise.\n\
-      --resize WxH              Resize the output GIF to WxH.\n\
-      --resize-width W          Resize to width W and proportional height.\n\
-      --resize-height H         Resize to height H and proportional width.\n\
-      --resize-fit WxH          Resize if necessary to fit within WxH.\n");
+  --lossy[=LOSSINESS]           Alter image colors to shrink output file size\n\
+                                at the cost of artifacts and noise\n\
+  --resize WxH                  Resize the output GIF to WxH\n\
+  --scale XFACTOR[xYFACTOR]     Scale the output GIF by XFACTORxYFACTOR\n\
+  --resize-width W              Resize to width W and proportional height\n\
+  --resize-height H             Resize to height H and proportional width\n\
+  --resize-fit WxH              Shrink to fit WxH, preserving aspect ratio\n\
+  --resize-touch WxH            Resize to touch WxH, preserving aspect ratio\n\
+  --resize-geometry GEOM        Resize to a geometry specification\n");
   printf("\
-      --scale XFACTOR[xYFACTOR] Scale the output GIF by XFACTORxYFACTOR.\n\
-      --resize-method METHOD    Set resizing method.\n\
-      --resize-colors N         Resize can add new colors up to N.\n\
-      --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
-      --use-colormap CMAP       Output GIF uses colors from CMAP, which can\n\
-                                be %sweb%s, %sgray%s, %sbw%s, or a GIF file.\n\
-      --use-exact-colormap CMAP Same, but use CMAP as is (not a subset).\n\
-      --gray                    Same as --use-colormap gray.\n\n",
+  --resize-method METHOD        Set resizing method\n\
+  --resize-colors N             Resize can add new colors up to N\n\
+  --transform-colormap CMD      Transform each output colormap by shell CMD\n\
+  --use-colormap CMAP           Output GIF uses colors from CMAP, which can\n\
+                                be %sweb%s, %sgray%s, %sbw%s, or a GIF file\n\
+  --use-exact-colormap CMAP     Same, but use CMAP as is (not a subset)\n\
+  --gray                        Same as --use-colormap gray\n\n",
     q1, q0, q1, q0, q1, q0);
   printf("\
 Report bugs to <ekohler@gmail.com>.\n\
