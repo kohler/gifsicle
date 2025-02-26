@@ -1,7 +1,7 @@
 Gifsicle NEWS
 =============
 
-## Version 1.96
+## Version 1.96 – 26.Feb.2025
 
 * `--lossy` measures color errors uses the currently selected color space
   (specified by `--gamma`, which defaults to sRGB). It also uses a different
