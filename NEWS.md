@@ -3,10 +3,14 @@ Gifsicle NEWS
 
 ## Version 1.96
 
-* `--lossy` uses the currently selected color space, and a different algorithm
-  for computing color differences. If you were depending on specific values of
-  `lossiness`, you may want to check a few images. `--gamma=1 --lossy` will
-  compute differences in the previous linear RGB color space.
+* `--lossy` measures color errors uses the currently selected color space
+  (specified by `--gamma`, which defaults to sRGB). It also uses a different
+  algorithm for computing color differences.
+
+  As a result, the `--lossy=N` option behaves differently in version 1.96 than
+  in previous versions. A given value of `N` may compress less than you
+  expect. The closest analogue to previous versions will be obtained with
+  `--lossy=N --gamma=1`.
 
 * Improve handling of GIFs with images positioned far outside the logical
   screen. This can greatly reduce memory usage.
@@ -14,6 +18,8 @@ Gifsicle NEWS
 * Add preliminary support for the Oklab color space (`--gamma=oklab`).
 
 * Add support for `--dither=atkinson` (daria@darkspot.net).
+
+* Add support for `--use-exact-colormap`.
 
 * Fix some bugs.
 
@@ -1121,8 +1127,8 @@ Gifsicle NEWS
 
 * Fixed bugs in `--unoptimize`: it would try to unoptimize images with
   local color tables and some transparency manipulations could cause a
-  silent failure (example: 2 colors; frame 0 = [*11], frame 1 = [*0*],
-  where * is a transparent pixel. Unoptimized, frame 1 should contain [*01]
+  silent failure (example: 2 colors; frame 0 = [`*11`], frame 1 = [`*0*`],
+  where `*` is a transparent pixel. Unoptimized, frame 1 should contain [`*01`]
   -- but this can't be expressed with only 2 colors.)
 
 * Greatly improved `--optimize`'s performance on some images by changing the
