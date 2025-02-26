@@ -236,9 +236,11 @@ Whole-GIF options: Also --no-OPTION.\n\
       --resize-method METHOD    Set resizing method.\n\
       --resize-colors N         Resize can add new colors up to N.\n\
       --transform-colormap CMD  Transform each output colormap by shell CMD.\n\
-      --use-colormap CMAP       Set output GIF%ss colormap to CMAP, which can\n\
-                                be %sweb%s, %sgray%s, %sbw%s, or a GIF file.\n\n",
-    q1, q0, q1, q0, q1, q0, q1);
+      --use-colormap CMAP       Output GIF uses colors from CMAP, which can\n\
+                                be %sweb%s, %sgray%s, %sbw%s, or a GIF file.\n\
+      --use-exact-colormap CMAP Same, but use CMAP as is (not a subset).\n\
+      --gray                    Same as --use-colormap gray.\n\n",
+    q1, q0, q1, q0, q1, q0);
   printf("\
 Report bugs to <ekohler@gmail.com>.\n\
 Too much information? Try %s%s --help | less%s.\n", q0, program_name, q1);

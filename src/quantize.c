@@ -1031,13 +1031,13 @@ static int color_compare_popularity(const void* va, const void* vb) {
 }
 
 void
-colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
+colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od,
+                int allow_shrink)
 {
   kd3_tree kd3;
   Gif_Color *new_col = new_cm->col;
   int new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
-  int compress_new_cm = 1;
   assert(new_cm->capacity >= 256);
 
   /* new_col[j].pixel == number of pixels with color j in the new image. */
@@ -1099,7 +1099,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
     } else {
       /* Can't compress new_cm afterwards if we didn't actively change colors
          over */
-      compress_new_cm = 0;
+      allow_shrink = 0;
     }
 
     if (gfi->local) {
@@ -1139,17 +1139,17 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od)
   gfs->global = Gif_CopyColormap(new_cm);
   for (j = 0; j < new_cm->ncol; ++j)
       gfs->global->col[j].haspixel = 0;
-  if (compress_new_cm) {
+  if (allow_shrink) {
     /* only bother to recompress if we'll get anything out of it */
-    compress_new_cm = 0;
+    allow_shrink = 0;
     for (j = 0; j < new_cm->ncol - 1; j++)
       if (new_col[j].pixel == 0 || new_col[j].pixel < new_col[j+1].pixel) {
-        compress_new_cm = 1;
+        allow_shrink = 1;
         break;
       }
   }
 
-  if (compress_new_cm) {
+  if (allow_shrink) {
     int map[256];
 
     /* Gif_CopyColormap copies the 'pixel' values as well */

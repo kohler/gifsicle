@@ -202,6 +202,7 @@ static const char *output_option_types[] = {
 #define RESIZE_TOUCH_WIDTH_OPT  378
 #define RESIZE_TOUCH_HEIGHT_OPT 379
 #define LOSSY_OPT               380
+#define USE_EXACT_COLORMAP_OPT  381
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -340,6 +341,7 @@ const Clp_Option options[] = {
 
   { "unoptimize", 'U', UNOPTIMIZE_OPT, 0, Clp_Negate },
   { "use-colormap", 0, USE_COLORMAP_OPT, Clp_ValString, Clp_Negate },
+  { "use-exact-colormap", 0, USE_EXACT_COLORMAP_OPT, Clp_ValString, Clp_Negate },
 
   { "verbose", 'V', VERBOSE_OPT, 0, Clp_Negate },
   { 0, 'v', VERBOSE_OPT, 0, Clp_Negate },
@@ -868,7 +870,7 @@ input_done(void)
  **/
 
 static void
-set_new_fixed_colormap(const char *name)
+set_new_fixed_colormap(const char *name, int exact)
 {
   int i;
   if (name && strcmp(name, "web") == 0) {
@@ -897,6 +899,8 @@ set_new_fixed_colormap(const char *name)
 
   } else
     def_output_data.colormap_fixed = read_colormap_file(name, 0);
+
+  def_output_data.colormap_fixed_exact = exact;
 }
 
 static void
@@ -904,7 +908,7 @@ do_colormap_change(Gif_Stream *gfs)
 {
   if (active_output_data.colormap_fixed)
     colormap_stream(gfs, active_output_data.colormap_fixed,
-                    &active_output_data);
+                    &active_output_data, !active_output_data.colormap_fixed_exact);
 
   if (active_output_data.colormap_size > 0) {
     kchist kch;
@@ -944,7 +948,7 @@ do_colormap_change(Gif_Stream *gfs)
     }
 
     new_cm = (*adapt_func)(&kch, &active_output_data);
-    colormap_stream(gfs, new_cm, &active_output_data);
+    colormap_stream(gfs, new_cm, &active_output_data, 1);
 
     Gif_DeleteColormap(new_cm);
     kchist_cleanup(&kch);
@@ -1259,6 +1263,7 @@ initialize_def_frame(void)
 
   def_output_data.colormap_size = 0;
   def_output_data.colormap_fixed = 0;
+  def_output_data.colormap_fixed_exact = 0;
   def_output_data.colormap_algorithm = COLORMAP_DIVERSITY;
   def_output_data.dither_type = dither_none;
   def_output_data.dither_name = "none";
@@ -1306,6 +1311,7 @@ combine_output_options(void)
       def_output_data.colormap_fixed->refcount++;
     Gif_DeleteColormap(active_output_data.colormap_fixed);
     active_output_data.colormap_fixed = def_output_data.colormap_fixed;
+    active_output_data.colormap_fixed_exact = def_output_data.colormap_fixed_exact;
   }
   if (CHANGED(recent, CH_DITHER)) {
     MARK_CH(output, CH_DITHER);
@@ -1341,6 +1347,7 @@ combine_output_options(void)
   COMBINE_ONE_OUTPUT_OPTION(CH_MEMORY, conserve_memory);
 
   def_output_data.colormap_fixed = 0;
+  def_output_data.colormap_fixed_exact = 0;
   def_output_data.output_name = 0;
 
   active_next_output |= next_output;
@@ -1937,7 +1944,7 @@ main(int argc, char *argv[])
      case GRAY_OPT:
       MARK_CH(output, CH_USE_COLORMAP);
       Gif_DeleteColormap(def_output_data.colormap_fixed);
-      set_new_fixed_colormap("gray");
+      set_new_fixed_colormap("gray", 0);
       break;
 
     case USE_COLORMAP_OPT:
@@ -1946,7 +1953,16 @@ main(int argc, char *argv[])
       if (clp->negated)
         def_output_data.colormap_fixed = 0;
       else
-        set_new_fixed_colormap(clp->vstr);
+        set_new_fixed_colormap(clp->vstr, 0);
+      break;
+
+    case USE_EXACT_COLORMAP_OPT:
+      MARK_CH(output, CH_USE_COLORMAP);
+      Gif_DeleteColormap(def_output_data.colormap_fixed);
+      if (clp->negated)
+        def_output_data.colormap_fixed = 0;
+      else
+        set_new_fixed_colormap(clp->vstr, 1);
       break;
 
      case COLORMAP_ALGORITHM_OPT:

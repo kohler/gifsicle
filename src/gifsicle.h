@@ -117,6 +117,7 @@ typedef struct {
 
   int colormap_size;
   Gif_Colormap *colormap_fixed;
+  int colormap_fixed_exact;
   int colormap_algorithm;
   int colormap_needs_transparency;
   int dither_type;
@@ -279,7 +280,7 @@ enum {
     dither_ordered, dither_ordered_new, dither_atkinson
 };
 int     set_dither_type(Gt_OutputData* od, const char* name);
-void    colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*);
+void    colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*, int allow_shrink);
 
 struct kchist;
 Gif_Colormap* colormap_blend_diversity(struct kchist* kch, Gt_OutputData* od);

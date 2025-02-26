@@ -44,7 +44,7 @@
 .fi
 .RE
 ..
-.TH GIFSICLE 1 "11 July 2017" "Version \*V"
+.TH GIFSICLE 1 "26 February 2025" "Version \*V"
 .SH NAME
 gifsicle \- manipulates GIF images and animations
 .SH SYNOPSIS
@@ -1203,6 +1203,16 @@ Text colormap files use this format:
 ; or use web hex notation
 #ffffff          ; like this
 .Ee
+'
+.Sp
+.TP
+.Oa \-\-use\-exact\-colormap colormap
+'
+Same as
+.Op \-\-use\-colormap\fR,
+but the output GIF will use
+.IR colormap
+as is, rather than reordering it and dropping unused colors.
 '
 .PD
 .PP
