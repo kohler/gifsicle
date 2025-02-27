@@ -1,0 +1,10 @@
+%script
+gifsicle -e rainbow.gif
+gifsicle rainbow.gif "#1" "#1" "#2-5" "#5" -o x.gif
+gifsicle rainbow.gif --delete "#0" --insert-before "#2" rainbow.gif.001 --append rainbow.gif.005 -o y.gif
+gifsicle rainbow.gif --delete "#0" --insert-before "#2" rainbow.gif "#1" --append rainbow.gif "#5" -o z.gif
+cmp x.gif y.gif
+cmp x.gif z.gif
+
+%file -e rainbow.gif
+R0lGODdhBAAEAPIAAP8AAP+AAP//AAD/AAAA/4AA/wAAAAAAACwAAAAABAAEAAACBISPCQUALAAAAAAEAAQAAAIEjI8ZBQAsAAAAAAQABAAAAgSUjykFACwAAAAABAAEAAACBJyPOQUALAAAAAAEAAQAAAMESLrclAAsAAAAAAQABAAAAwRYutyVADs=
