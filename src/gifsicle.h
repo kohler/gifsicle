@@ -343,6 +343,7 @@ void            blank_frameset(Gt_Frameset*, int from, int to, int delete_ob);
 #define INFOING         4
 #define DELETING        5
 #define INSERTING       6
+#define FRAME_SELECTION_MODE_MASK 0x1F
 
 extern int mode;
 extern int nested_mode;

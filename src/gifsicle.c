@@ -429,7 +429,7 @@ set_frame_change(int kind)
   Gt_Frameset *fset;
 
   set_mode(BLANK_MODE);
-  if (mode < DELETING && frames_done) {
+  if (frames_done & FRAME_SELECTION_MODE_MASK) {
     fatal_error("frame selection and frame changes don%,t mix");
     return;
   }
@@ -518,7 +518,7 @@ show_frame(int imagenumber, int usename)
   }
 
   next_frame = 0;
-  frames_done = 1;
+  frames_done |= 1 << mode;
 }
 
 
@@ -1167,18 +1167,17 @@ int
 frame_argument(Clp_Parser *clp, const char *arg)
 {
   /* Returns 0 iff you should try a file named 'arg'. */
-  int val = parse_frame_spec(clp, arg, -1, 0);
+  int val = parse_frame_spec(clp, arg, -1, 0), i, delta;
   if (val == -97)
     return 0;
-  else if (val > 0) {
-    int i, delta = (frame_spec_1 <= frame_spec_2 ? 1 : -1);
-    for (i = frame_spec_1; i != frame_spec_2 + delta; i += delta)
-      show_frame(i, frame_spec_name != 0);
-    if (next_output)
-      combine_output_options();
+  if (val <= 0)
     return 1;
-  } else
-    return 1;
+  delta = (frame_spec_1 <= frame_spec_2 ? 1 : -1);
+  for (i = frame_spec_1; i != frame_spec_2 + delta; i += delta)
+    show_frame(i, frame_spec_name != 0);
+  if (next_output)
+    combine_output_options();
+  return 1;
 }
 
 static int
