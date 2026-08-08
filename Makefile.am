@@ -20,7 +20,8 @@ EXTRA_DIST = COPYING README.md NEWS.md \
 	test/008-resizemix.testie \
 	test/009-zerowidth.testie \
 	test/010-warnings.testie \
-	test/011-resizemix.testie
+	test/011-resizemix.testie \
+	test/012-framechange.testie
 
 gifsicle: config.h
 	@cd src && $(MAKE) gifsicle
