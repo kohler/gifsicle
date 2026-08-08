@@ -64,6 +64,30 @@ static penalty_type *permuting_sort_values;
 #define REPLACE_TRANSP  1
 
 
+/* Preserve an explicitly supplied global colormap while making the
+   optimizer's internal colors refer to its existing indices. Colors outside
+   the global colormap can still be placed in local colormaps as usual. */
+static void
+create_preserved_out_global_map(void)
+{
+  int i;
+
+  out_global_map = Gif_CopyColormap(in_global_map);
+
+  for (i = 1; i < all_colormap->ncol; ++i)
+    all_colormap->col[i].pixel = NOT_IN_OUT_GLOBAL;
+
+  /* Duplicate palette entries represent the same internal color. Choose the
+     lowest palette index deterministically. */
+  for (i = 0; i < in_global_map->ncol; ++i) {
+    unsigned pixel = in_global_map->col[i].pixel;
+    if (pixel > TRANSP && pixel < (unsigned) all_colormap->ncol
+        && all_colormap->col[pixel].pixel == NOT_IN_OUT_GLOBAL)
+      all_colormap->col[pixel].pixel = i;
+  }
+}
+
+
 /*****
  * SIMPLE HELPERS
  * new and delete optimize data; and colormap_combine; and sorting permutations
@@ -448,18 +472,25 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
 /* the interface function! */
 
 void
-optimize_fragments(Gif_Stream *gfs, int optimize_flags, int huge_stream)
+optimize_fragments(Gif_Stream *gfs, int optimize_flags, int huge_stream,
+                   int preserve_global_colormap)
 {
     if (!initialize_optimizer(gfs))
         return;
     if ((unsigned) all_colormap->ncol >= 0xFFFF) {
         create_subimages32(gfs, optimize_flags, !huge_stream);
-        create_out_global_map32(gfs);
+        if (preserve_global_colormap)
+            create_preserved_out_global_map();
+        else
+            create_out_global_map32(gfs);
         create_new_image_data32(gfs, optimize_flags);
         finalize_optimizer_data32();
     } else {
         create_subimages16(gfs, optimize_flags, !huge_stream);
-        create_out_global_map16(gfs);
+        if (preserve_global_colormap)
+            create_preserved_out_global_map();
+        else
+            create_out_global_map16(gfs);
         create_new_image_data16(gfs, optimize_flags);
         finalize_optimizer_data16();
     }

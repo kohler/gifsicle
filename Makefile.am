@@ -22,7 +22,8 @@ EXTRA_DIST = COPYING README.md NEWS.md \
 	test/010-warnings.testie \
 	test/011-resizemix.testie \
 	test/012-framechange.testie \
-	test/013-eoi.testie
+	test/013-eoi.testie \
+	test/014-exact-colormap.testie
 
 gifsicle: config.h
 	@cd src && $(MAKE) gifsicle
