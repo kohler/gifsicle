@@ -1,0 +1,10 @@
+%script
+gifsicle -O2 boundary.gif -o actual.gif
+cmp actual.gif expected.gif
+gifdiff boundary.gif actual.gif
+
+%file -e boundary.gif
+R0lGODdhDgABAPH/AAAAAFVVVaqqqv///ywAAAAADgABAAACB8yAoRMIUQAAOw==
+
+%file -e expected.gif
+R0lGODdhDgABAPEAAAAAAFVVVf///wAAACwAAAAADgABAAACB4yAoRIIUQAAOw==

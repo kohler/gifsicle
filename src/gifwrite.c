@@ -526,6 +526,16 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
 
   while (1) {
 
+    /* The decoder defines one final dictionary entry after the last data
+     * code. If that entry reaches a code-width boundary, EOI is the first
+     * code that must use the wider size. During ordinary compression the
+     * encoder's next_code is one entry ahead, so the general bump below must
+     * remain a strict greater-than comparison. */
+    if (output_code == gfc->clear_code + 1
+        && next_code == CUR_BUMP_CODE
+        && cur_code_bits < GIF_MAX_CODE_BITS)
+      ++cur_code_bits;
+
     /*****
      * Output 'output_code' to the memory buffer. */
     if (bufpos + 32 >= bufcap) {
