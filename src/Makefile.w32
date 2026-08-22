@@ -20,7 +20,7 @@ GIFWRITE_OBJ = gifwrite.obj
 
 CC = cl
 CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W2 /O2 /GL
-LDFLAGS = /LTCG
+LDFLAGS = /LTCG /EMITTOOLVERSIONINFO:NO /NOVCFEATURE /NOCOFFGRPINFO /STUB:emptystub.bin
 LDLIBS = setargv.obj
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
