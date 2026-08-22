@@ -19,7 +19,8 @@ GIFWRITE_OBJ = gifwrite.obj
 #GIFWRITE_OBJ = ungifwrt.obj
 
 CC = cl
-CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W2 /O2
+CFLAGS = -I.. -I..\include -DHAVE_CONFIG_H -D_CONSOLE /W2 /O2 /GL
+LDFLAGS = /LTCG
 LDLIBS = setargv.obj
 
 GIFSICLE_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifunopt.obj \
@@ -32,10 +33,10 @@ GIFDIFF_OBJS = clp.obj fmalloc.obj giffunc.obj gifread.obj gifdiff.obj kcolor.ob
 	$(CC) $(CFLAGS) /c $<
 
 gifsicle.exe: $(GIFSICLE_OBJS)
-	$(CC) $(CFLAGS) /Fegifsicle.exe $(GIFSICLE_OBJS) /link $(LDLIBS)
+	$(CC) /Fegifsicle.exe $(GIFSICLE_OBJS) /link $(LDFLAGS) $(LDLIBS)
 
 gifdiff.exe: $(GIFDIFF_OBJS)
-	$(CC) $(CFLAGS) /Fegifdiff.exe $(GIFDIFF_OBJS) /link $(LDLIBS)
+	$(CC) /Fegifdiff.exe $(GIFDIFF_OBJS) /link $(LDFLAGS) $(LDLIBS)
 
 clp.obj: ..\config.h ..\include\lcdf\clp.h clp.c
 
