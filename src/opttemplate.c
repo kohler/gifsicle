@@ -21,16 +21,23 @@ static palindex_type *X(next_data);
    broken because I switched to uint32_t's for the sorting values without
    considering the consequences; and the consequences were bad. */
 
+/* qsort is not stable, so use the original palette index to break ties and
+   keep optimized colormaps identical across C library implementations. */
+
 static int
 X(permuting_sorter_up)(const void *v1, const void *v2) {
     const palindex_type *n1 = (const palindex_type *)v1;
     const palindex_type *n2 = (const palindex_type *)v2;
     if (permuting_sort_values[*n1] < permuting_sort_values[*n2])
         return -1;
-    else if (permuting_sort_values[*n1] == permuting_sort_values[*n2])
-        return 0;
-    else
+    else if (permuting_sort_values[*n1] > permuting_sort_values[*n2])
         return 1;
+    else if (*n1 < *n2)
+        return -1;
+    else if (*n1 > *n2)
+        return 1;
+    else
+        return 0;
 }
 
 static int
@@ -39,10 +46,14 @@ X(permuting_sorter_down)(const void *v1, const void *v2) {
     const palindex_type *n2 = (const palindex_type *)v2;
     if (permuting_sort_values[*n1] > permuting_sort_values[*n2])
         return -1;
-    else if (permuting_sort_values[*n1] == permuting_sort_values[*n2])
-        return 0;
-    else
+    else if (permuting_sort_values[*n1] < permuting_sort_values[*n2])
         return 1;
+    else if (*n1 < *n2)
+        return -1;
+    else if (*n1 > *n2)
+        return 1;
+    else
+        return 0;
 }
 
 static palindex_type*

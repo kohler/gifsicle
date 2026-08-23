@@ -1039,7 +1039,9 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
     if (output_transforms)
       apply_color_transforms(output_transforms, out);
     if (active_output_data.optimizing & GT_OPT_MASK)
-      optimize_fragments(out, active_output_data.optimizing, huge_stream);
+      optimize_fragments(out, active_output_data.optimizing, huge_stream,
+                         active_output_data.colormap_fixed
+                         && active_output_data.colormap_fixed_exact);
     write_stream(outfile, out);
     Gif_DeleteStream(out);
   }

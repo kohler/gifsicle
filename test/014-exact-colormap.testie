@@ -1,0 +1,13 @@
+%script
+gifsicle --use-exact-colormap palette.gif -O3 input.gif -o actual.gif
+cmp actual.gif expected.gif
+gifdiff input.gif actual.gif
+
+%file -e input.gif
+R0lGODdhDgABAPH/AAAAAFVVVaqqqv///ywAAAAADgABAAACB8yAoRMIUQAAOw==
+
+%file -e palette.gif
+R0lGODdhDgABAPH/AAAAAFVVVaqqqv///ywAAAAADgABAAACB8yAoRMIUQAAOw==
+
+%file -e expected.gif
+R0lGODdhDgABAPEAAAAAAFVVVaqqqv///ywAAAAADgABAAACB8yAoRMIUQAAOw==
