@@ -276,11 +276,14 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
      * <naughton@wind.sun.com>'s GIF-reading code, which does the same thing.
      * His code distributed as part of XV in xvgif.c. */
 
-    if (bit_position + bits_needed > bit_length)
+    if (bit_position + bits_needed > bit_length) {
       /* Read in the next data block. */
       if (!read_image_block(grr, buffer, &bit_position, &bit_length,
-                            bits_needed))
+                            bits_needed)) {
+        gif_read_error(gfc, 0, "missing end-of-information code");
         goto zero_length_block;
+      }
+    }
 
     i = bit_position / 8;
     accum = buffer[i] + (buffer[i+1] << 8);
