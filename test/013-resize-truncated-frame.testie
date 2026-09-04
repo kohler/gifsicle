@@ -1,0 +1,14 @@
+%script
+export LANG=C
+gifsicle truncated-frame.gif --resize 100x100 -o /dev/null 2>&1 && echo resize worked
+
+%file -e truncated-frame.gif
+R0lGODlhAQABAID/AMDAwAAAAAAALAAAAAABAAUA+f////////8AAgIiADsAIfkEAQAAAAAsAAAA
+EAAAAAQAAAABAAEAAAICIgA7Ymxua2ltZyNnaWYNAAA=
+
+%expect stdout
+gifsicle:truncated-frame.gif: read error: unknown block type 0 at file offset 19
+gifsicle:truncated-frame.gif:#0: read error: image corrupted, min_code_size too big
+gifsicle:truncated-frame.gif:#0: read error: missing 5 pixels of image data
+gifsicle:truncated-frame.gif:#1: read error: image corrupted, min_code_size too small
+gifsicle:truncated-frame.gif:#1: read error: missing 1024 pixels of image data

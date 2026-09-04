@@ -646,6 +646,17 @@ static void scale_image_data_point(scale_context* sctx, Gif_Image* gfo) {
 
     for (yo = 0; yo != gfo->height; ++yo) {
         int yi = (int) ((gfo->top + yo + 0.5) * sctx->oyf) - gfi->top;
+        /* A source frame with fewer rows than its declared header height
+           (possible after a truncated or otherwise malformed compressed
+           image failed to decode fully) can leave the point-scaling bounds
+           check above unable to catch every out-of-range row. Rather than
+           trust that check alone, skip a row this far off explicitly: it
+           leaves the corresponding output pixels untouched instead of
+           reading past the end of gfi->img. */
+        if (yi < 0 || yi >= gfi->height) {
+            data += gfo->width;
+            continue;
+        }
         const uint8_t* in_line = gfi->img[yi];
         for (xo = 0; xo != gfo->width; ++xo, ++data)
             *data = in_line[xoff[xo]];
