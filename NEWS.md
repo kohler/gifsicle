@@ -271,7 +271,7 @@ Gifsicle NEWS
   produce large results less often, and when it does generate larger
   results, they're larger by hundreds of bytes, not hundreds of
   thousands. However, due to restrictions in the current optimizer (and
-  on my time), I was unable to improve `gifsicle -O3`'s handling of
+  on my time), I was unable to improve `gifsicle -O3`’s handling of
   these images. The optimizer that produced the images must be doing
   something pretty clever. (Is it SuperGIF?)
 
