@@ -1,6 +1,18 @@
 Gifsicle NEWS
 =============
 
+## Version 1.97 – 12.Oct.2026
+
+* `--use-exact-colormap` works with `-O` (Evgeny Vrublevsky).
+
+* Fix encoder’s handling of EOI at code size boundaries (Evgeny Vrublevsky
+  report).
+
+* Improve lossy encoder’s run length measurement.
+
+* Fix interactions between frame selections and frame changes.
+
+
 ## Version 1.96 – 26.Feb.2025
 
 * `--lossy` measures color errors uses the currently selected color space
