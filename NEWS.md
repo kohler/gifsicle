@@ -976,7 +976,7 @@ Gifsicle NEWS
 * Changes to support Win32 port thanks to Emil Mikulic
   <darkmoon@connexus.net.au>.
 
-* Makefiles: Added `make uninstall` target, enabled `./configure`'s
+* Makefiles: Added `make uninstall` target, enabled `./configure`’s
   program name transformations, made VPATH builds possible.
 
 
