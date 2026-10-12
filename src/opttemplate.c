@@ -605,20 +605,32 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
    On return, the 'colormap_penalty' component of an image's Gif_OptData
    structure is <0 iff that image will need a local colormap.
 
+   If GT_OPT_KEEPCOLORMAP is set, out_global_map is the input global colormap,
+   unchanged, and colormap_penalty is not set.
+
    20.Aug.1999 - updated to new version that arranges the entire colormap, not
    just the stuff above 256 colors. */
 
 static void
-X(create_out_global_map)(Gif_Stream *gfs)
+X(create_out_global_map)(Gif_Stream *gfs, int optimize_flags)
 {
   int all_ncol = all_colormap->ncol;
-  penalty_type *penalty = Gif_NewArray(penalty_type, all_ncol);
-  palindex_type *permute = Gif_NewArray(palindex_type, all_ncol);
-  palindex_type *ordering = Gif_NewArray(palindex_type, all_ncol);
+  penalty_type *penalty;
+  palindex_type *permute;
+  palindex_type *ordering;
   int cur_ncol, i, imagei;
   int nglobal_all = (all_ncol <= 257 ? all_ncol - 1 : 256);
   int permutation_changed;
   assert(all_ncol <= 0x7FFFFFFF);
+
+  if ((optimize_flags & GT_OPT_KEEPCOLORMAP) && gfs->global) {
+    keep_out_global_map();
+    return;
+  }
+
+  penalty = Gif_NewArray(penalty_type, all_ncol);
+  permute = Gif_NewArray(palindex_type, all_ncol);
+  ordering = Gif_NewArray(palindex_type, all_ncol);
 
   /* initial permutation is null */
   for (i = 0; i < all_ncol - 1; i++)

@@ -116,7 +116,7 @@ typedef struct {
   int loopcount;
 
   int colormap_size;
-  Gif_Colormap *colormap_fixed;
+  Gif_Colormap* colormap_fixed;
   int colormap_fixed_exact;
   int colormap_algorithm;
   int colormap_needs_transparency;
@@ -163,6 +163,7 @@ extern Clp_Parser* clp;
 
 #define GT_OPT_MASK             0xFFFF
 #define GT_OPT_KEEPEMPTY        0x10000
+#define GT_OPT_KEEPCOLORMAP     0x20000
 
 
 /*****
@@ -233,7 +234,7 @@ void    merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
 Gif_Image* merge_image(Gif_Stream* dest, Gif_Stream* src, Gif_Image* srci,
                        Gt_Frame* srcfr, int same_compressed_ok);
 
-void    optimize_fragments(Gif_Stream *, int optimizeness, int huge_stream);
+void    optimize_fragments(Gif_Stream*, const Gt_OutputData*, int huge_stream);
 
 /*****
  * image/colormap transformations
