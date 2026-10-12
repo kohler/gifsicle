@@ -1301,19 +1301,15 @@ resize_dimensions(int* w, int* h, double new_width, double new_height,
 
     if (flags & GT_RESIZE_FIT) {
         double factor, xfactor, yfactor;
-        if (((flags & GT_RESIZE_FIT_DOWN)
-             && *w < new_width + 0.5
-             && *h < new_height + 0.5)
-            || ((flags & GT_RESIZE_FIT_UP)
-                && (*w >= new_width + 0.5
-                    || *h >= new_height + 0.5)))
-            return;
         xfactor = new_width / *w;
         yfactor = new_height / *h;
         if ((xfactor < yfactor) == !(flags & GT_RESIZE_MIN_DIMEN))
             factor = xfactor;
         else
             factor = yfactor;
+        if (((flags & GT_RESIZE_FIT_DOWN) && factor >= 1)
+            || ((flags & GT_RESIZE_FIT_UP) && factor <= 1))
+            return;
         new_width = *w * factor;
         new_height = *h * factor;
     }
