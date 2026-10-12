@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 #if HAVE_UNISTD_H
 # include <unistd.h>
 #endif
@@ -1166,12 +1167,13 @@ output_frames(void)
 int
 frame_argument(Clp_Parser *clp, const char *arg)
 {
-  /* Returns 0 iff you should try a file named 'arg'. */
+  /* Returns 0 iff you should try a file named 'arg', and -1 if 'arg' was
+     an invalid frame specification. */
   int val = parse_frame_spec(clp, arg, -1, 0), i, delta;
   if (val == -97)
     return 0;
   if (val <= 0)
-    return 1;
+    return -1;
   delta = (frame_spec_1 <= frame_spec_2 ? 1 : -1);
   for (i = frame_spec_1; i != frame_spec_2 + delta; i += delta)
     show_frame(i, frame_spec_name != 0);
@@ -1398,7 +1400,7 @@ copy_crop(Gt_Crop *oc)
   return nc;
 }
 
-static void
+static int
 parse_resize_geometry_opt(Gt_OutputData* odata, const char* str, Clp_Parser* clp)
 {
     double x, y;
@@ -1446,10 +1448,11 @@ parse_resize_geometry_opt(Gt_OutputData* odata, const char* str, Clp_Parser* clp
         odata->resize_height = y;
     }
     odata->resize_flags = flags;
-    return;
+    return 1;
 
 error:
     Clp_OptionError(clp, "argument to %O must be a valid geometry specification");
+    return 0;
 }
 
 
@@ -1937,7 +1940,7 @@ main(int argc, char *argv[])
         if (def_output_data.colormap_size < 2
             || def_output_data.colormap_size > 256) {
           Clp_OptionError(clp, "argument to %O must be between 2 and 256");
-          def_output_data.colormap_size = 0;
+          goto bad_option;
         }
       }
       break;
@@ -1986,8 +1989,10 @@ main(int argc, char *argv[])
               || strcmp(def_output_data.dither_name, "default") != 0))
         MARK_CH(output, CH_DITHER);
       UNCHECKED_MARK_CH(output, CH_DITHER);
-      if (set_dither_type(&def_output_data, name) < 0)
+      if (set_dither_type(&def_output_data, name) < 0) {
         Clp_OptionError(clp, "%<%s%> is not a valid dither", name);
+        goto bad_option;
+      }
       def_output_data.dither_name = name;
       break;
     }
@@ -2023,8 +2028,8 @@ main(int argc, char *argv[])
 #if HAVE_POW
       {
         char* ends;
-        double gamma = strtod(clp->val.s, &ends);
-        if (*clp->val.s && !*ends && !isspace((unsigned char) *clp->val.s)) {
+        double gamma = strtod_decimal(clp->val.s, &ends);
+        if (ends != clp->val.s && !*ends && gamma > 0 && isfinite(gamma)) {
           MARK_CH(output, CH_GAMMA);
           def_output_data.colormap_gamma_type = KC_GAMMA_NUMERIC;
           def_output_data.colormap_gamma = gamma;
@@ -2032,8 +2037,8 @@ main(int argc, char *argv[])
         }
       }
 #endif
-      Clp_OptionError(clp, "%O not supported");
-      break;
+      Clp_OptionError(clp, "invalid gamma %<%s%> (want srgb or a positive number)", clp->val.s);
+      goto bad_option;
     }
 
     case RESIZE_OPT:
@@ -2102,8 +2107,8 @@ main(int argc, char *argv[])
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
-      else
-        parse_resize_geometry_opt(&def_output_data, clp->val.s, clp);
+      else if (!parse_resize_geometry_opt(&def_output_data, clp->val.s, clp))
+        goto bad_option;
       break;
 
     case RESIZE_METHOD_OPT:
@@ -2192,12 +2197,16 @@ particular purpose.\n");
 
       /* NONOPTIONS */
 
-     case Clp_NotOption:
-      if (clp->vstr[0] != '#' || !frame_argument(clp, clp->vstr)) {
+     case Clp_NotOption: {
+      int fa = clp->vstr[0] == '#' ? frame_argument(clp, clp->vstr) : 0;
+      if (fa < 0)
+        goto bad_option;
+      else if (fa == 0) {
         input_done();
         input_stream(clp->vstr);
       }
       break;
+     }
 
      case Clp_Done:
       goto done;

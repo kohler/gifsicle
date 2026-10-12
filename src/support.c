@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 
 const char *program_name = "gifsicle";
 static int verbose_pos = 0;
@@ -579,9 +580,8 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   if (arg[0] != '#') {
     if (complain)
-      return Clp_OptionError(clp, "frame specifications must start with #");
-    else
-      return 0;
+      Clp_OptionError(clp, "frame specifications must start with #");
+    return 0;
   }
   arg++;
   c = (char *)arg;
@@ -617,19 +617,30 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
                                    frame numbers.' */
       return -97;               /* Return -97 on bad frame name. */
     else if (complain)
-      return Clp_OptionError(clp, "no frame named %<#%s%>", arg);
-    else
-      return 0;
+      Clp_OptionError(clp, "no frame named %<#%s%>", arg);
+    return 0;
 
   } else {
     if (frame_spec_1 >= 0 && frame_spec_1 < Gif_ImageCount(input)
         && frame_spec_2 >= 0 && frame_spec_2 < Gif_ImageCount(input))
       return 1;
-    else if (!complain)
-      return 0;
-    else
-      return Clp_OptionError(clp, "frame %<#%s%> out of range, image has %d frames", arg, Gif_ImageCount(input));
+    if (complain)
+      Clp_OptionError(clp, "frame %<#%s%> out of range, image has %d frames", arg, Gif_ImageCount(input));
+    return 0;
   }
+}
+
+/* Parse a decimal coordinate or dimension. Values outside +/-65535, the GIF
+   limit, leave *end pointing at `s` so the caller reports a parse error. */
+static int
+strtol_coord(const char *s, char **end)
+{
+  long v = strtol(s, end, 10);
+  if (v < -65535 || v > 65535) {
+    *end = (char *) s;
+    return 0;
+  }
+  return (int) v;
 }
 
 int
@@ -642,21 +653,20 @@ parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     dimensions_x = 0;
     val = (char *)(arg + 1);
   } else
-    dimensions_x = strtol(arg, &val, 10);
+    dimensions_x = strtol_coord(arg, &val);
   if (*val == 'x') {
     if (val[1] == '_' && val[2] == 0) {
       dimensions_y = 0;
       val = val + 2;
     } else
-      dimensions_y = strtol(val + 1, &val, 10);
+      dimensions_y = strtol_coord(val + 1, &val);
     if (*val == 0)
       return 1;
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid dimensions %<%s%> (want WxH)", arg);
-  else
-    return 0;
+    Clp_OptionError(clp, "invalid dimensions %<%s%> (want WxH)", arg);
+  return 0;
 }
 
 int
@@ -665,24 +675,38 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   char *val;
   (void)thunk;
 
-  position_x = strtol(arg, &val, 10);
+  position_x = strtol_coord(arg, &val);
   if (*val == ',') {
-    position_y = strtol(val + 1, &val, 10);
+    position_y = strtol_coord(val + 1, &val);
     if (*val == 0)
       return 1;
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid position %<%s%> (want 'X,Y')", arg);
-  else
-    return 0;
+    Clp_OptionError(clp, "invalid position %<%s%> (want 'X,Y')", arg);
+  return 0;
+}
+
+/* Like strtod, but accept only decimal numbers. strtod also accepts hex
+   floats, "inf", and "nan"; we parse pairs like "0x1" as 0 then "x1". */
+double strtod_decimal(const char* arg, char** endptr) {
+    const char* p = arg + (*arg == '+' || *arg == '-');
+    if (!isdigit((unsigned char) *p)
+        && !(*p == '.' && isdigit((unsigned char) p[1]))) {
+        *endptr = (char*) arg;
+        return 0;
+    } else if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+        *endptr = (char*) p + 1;
+        return 0;
+    } else
+        return strtod(arg, endptr);
 }
 
 static double strtod_fraction(const char* arg, char** endptr) {
     char* val, *val2;
-    double d = strtod(arg, &val);
+    double d = strtod_decimal(arg, &val);
     if (arg != val && *val == '/') {
-        double denom = strtod(val + 1, &val2);
+        double denom = strtod_decimal(val + 1, &val2);
         if (val2 != val + 1 && denom) {
             d /= denom;
             val = val2;
@@ -700,19 +724,20 @@ parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   (void)thunk;
 
   parsed_scale_factor_x = strtod_fraction(arg, &val);
-  if (*val == 'x') {
+  if (*val == 'x')
     parsed_scale_factor_y = strtod_fraction(val + 1, &val);
-    if (*val == 0)
-      return 1;
-  } else if (*val == 0) {
+  else
     parsed_scale_factor_y = parsed_scale_factor_x;
+
+  /* reject NaN and infinity */
+  if (*val == 0
+      && isfinite(parsed_scale_factor_x)
+      && isfinite(parsed_scale_factor_y))
     return 1;
-  }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid scale factor %<%s%> (want XxY)", arg);
-  else
-    return 0;
+    Clp_OptionError(clp, "invalid scale factor %<%s%> (want XxY)", arg);
+  return 0;
 }
 
 int
@@ -720,11 +745,11 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   const char *input_arg = arg;
   char *val;
-  int x = position_x = strtol(arg, &val, 10);
+  int x = position_x = strtol_coord(arg, &val);
   (void)thunk;
 
   if (*val == ',') {
-    int y = position_y = strtol(val + 1, &val, 10);
+    int y = position_y = strtol_coord(val + 1, &val);
     if (*val == '-' && parse_position(clp, val + 1, 0, 0)) {
       if (x >= 0 && y >= 0
           && (position_x <= 0 || x < position_x)
@@ -743,7 +768,7 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
       return 1;
   } else if (*val == 'x') {
     dimensions_x = position_x;
-    dimensions_y = strtol(val + 1, &val, 10);
+    dimensions_y = strtol_coord(val + 1, &val);
     if (*val == 0) {
       position_x = position_y = 0;
       return 1;
@@ -751,9 +776,8 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   }
 
   if (complain)
-    return Clp_OptionError(clp, "invalid rectangle %<%s%> (want X1,Y1-X2,Y2 or X1,Y1+WxH", input_arg);
-  else
-    return 0;
+    Clp_OptionError(clp, "invalid rectangle %<%s%> (want X1,Y1-X2,Y2 or X1,Y1+WxH", input_arg);
+  return 0;
 }
 
 static int
@@ -844,9 +868,8 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
  error:
   if (complain)
-    return Clp_OptionError(clp, "invalid color %<%s%>", input_arg);
-  else
-    return 0;
+    Clp_OptionError(clp, "invalid color %<%s%>", input_arg);
+  return 0;
 }
 
 int
@@ -858,10 +881,11 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   old_color = parsed_color;
 
   arg = Clp_Shift(clp, 0);
-  if (!arg && complain)
-    return Clp_OptionError(clp, "%<%O%> takes two color arguments");
-  else if (!arg)
+  if (!arg) {
+    if (complain)
+      Clp_OptionError(clp, "%<%O%> takes two color arguments");
     return 0;
+  }
 
   if (parse_color(clp, arg, complain, thunk) <= 0)
     return 0;

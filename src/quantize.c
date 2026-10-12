@@ -1410,9 +1410,11 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
         name = buf;
     }
     for (nparm = 0;
-         comma && *comma && isdigit((unsigned char) comma[1]);
+         nparm < 4 && comma && *comma && isdigit((unsigned char) comma[1]);
          ++nparm)
         parm[nparm] = strtol(&comma[1], (char**) &comma, 10);
+    if (comma && *comma)
+        return -1;
 
     /* parse dither name */
     if (od->dither_type == dither_ordered_new)

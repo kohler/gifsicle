@@ -308,6 +308,7 @@ int             parse_frame_spec(Clp_Parser*, const char*, int, void*);
 int             parse_dimensions(Clp_Parser*, const char*, int, void*);
 int             parse_position(Clp_Parser*, const char*, int, void*);
 int             parse_scale_factor(Clp_Parser*, const char*, int, void*);
+double          strtod_decimal(const char*, char**);
 int             parse_color(Clp_Parser*, const char*, int, void*);
 int             parse_rectangle(Clp_Parser*, const char*, int, void*);
 int             parse_two_colors(Clp_Parser*, const char*, int, void*);
