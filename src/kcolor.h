@@ -25,12 +25,10 @@ typedef struct kcolor {
     int16_t a[3];
 } kcolor;
 
-#undef min
-#undef max
-#define min(a, b)       ((a) < (b) ? (a) : (b))
-#define max(a, b)       ((a) > (b) ? (a) : (b))
+#define kc_min(a, b)    ((a) < (b) ? (a) : (b))
+#define kc_max(a, b)    ((a) > (b) ? (a) : (b))
 
-#define KC_CLAMPV(v) (max(0, min((v), KC_MAX)))
+#define KC_CLAMPV(v)    (kc_max(0, kc_min((v), KC_MAX)))
 
 typedef union kacolor {
     kcolor k;

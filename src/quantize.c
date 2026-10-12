@@ -86,8 +86,8 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
             minc = maxc = trav->ka.k;
             for (i = 1, trav++; i < split->size; i++, trav++)
                 for (k = 0; k != 3; ++k) {
-                    minc.a[k] = min(minc.a[k], trav->ka.a[k]);
-                    maxc.a[k] = max(maxc.a[k], trav->ka.a[k]);
+                    minc.a[k] = kc_min(minc.a[k], trav->ka.a[k]);
+                    maxc.a[k] = kc_max(maxc.a[k], trav->ka.a[k]);
                 }
         }
 
