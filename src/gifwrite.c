@@ -493,7 +493,6 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
 #define RUN_INV_THRESH ((unsigned) (1 << RUN_EWMA_SCALE) / 3000)
   unsigned run_ewma = 0;
   Gif_Node *work_node;
-  Gif_Node *next_node;
   Gif_Code next_code = 0;
   Gif_Code output_code;
   uint8_t suffix;
@@ -642,13 +641,6 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
             continue;
           }
         }
-
-        /* Adjust current run length average. */
-        run = (run << RUN_EWMA_SCALE) + (1 << (RUN_EWMA_SHIFT - 1));
-        if (run < run_ewma)
-          run_ewma -= (run_ewma - run) >> RUN_EWMA_SHIFT;
-        else
-          run_ewma += (run - run_ewma) >> RUN_EWMA_SHIFT;
       }
 
       output_code = work_node ? work_node->code : gfc->clear_code + 1;
@@ -656,14 +648,15 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
       /* If height is 0 -- no more pixels to write -- we output work_node next
          time around. */
       while (imageline) {
+        Gif_Node *next_node;
         suffix = *imageline;
         if (suffix >= gfc->clear_code)
           /* should not happen unless GIF_WRITE_CAREFUL_MIN_CODE_BITS */
           suffix = 0;
         next_node = gfc_lookup(gfc, work_node, suffix);
 
-        imageline++;
-        pos++;
+        ++imageline;
+        ++pos;
         if (pos == line_endpos) {
           imageline = gif_imageline(gfi, pos);
           line_endpos += gfi->width;
