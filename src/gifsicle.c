@@ -1192,9 +1192,12 @@ handle_extension(Clp_Parser *clp, int is_app)
   }
 
   UNCHECKED_MARK_CH(frame, CH_EXTENSION);
-  if (is_app)
-    gfex = Gif_NewExtension(255, extension_type, 11);
-  else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
+  if (is_app) {
+    /* identifier + authentication code: exactly 11 bytes, NUL-padded */
+    char appname[11];
+    strncpy(appname, extension_type, sizeof(appname));
+    gfex = Gif_NewExtension(255, appname, sizeof(appname));
+  } else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
     gfex = Gif_NewExtension(extension_type[0], 0, 0);
   else {
     long l = strtol(extension_type, (char **)&extension_type, 0);
@@ -1371,8 +1374,7 @@ print_useless_options(const char *type_name, int value, const char *names[])
 {
   int explanation_printed = 0;
   int i;
-  if (!value) return;
-  for (i = 0; i < 32; i++)
+  for (i = 0; (1 << i) <= value; ++i)
     if (CHANGED(value, i)) {
       if (!explanation_printed) {
         warning(0, "useless %s-related %s option\n"

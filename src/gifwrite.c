@@ -194,7 +194,7 @@ gif_writer_init(Gif_Writer* grr, FILE* f, const Gif_CompressInfo* gcinfo)
     grr->byte_putter = memory_byte_putter;
     grr->block_putter = memory_block_putter;
   }
-  return gfc_init(&grr->code_table, gcinfo);
+  return gfc_init(&grr->code_table, &grr->gcinfo);
 }
 
 static void
@@ -331,6 +331,7 @@ gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
 {
   int i, j;
   Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+  int ncol = gfcm ? gfcm->ncol : 0;
   kcolor** kcs = gfi->local ? &gfc->local_kcs : &gfc->global_kcs;
   kcolor* old_kcs = gfc->kcs;
   if (!*kcs) {
@@ -339,7 +340,7 @@ gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
       gfc->max_loss = 0;
       return 0;
     }
-    for (i = 0; i != gfcm->ncol; ++i) {
+    for (i = 0; i != ncol; ++i) {
       (*kcs)[i] = kc_makegfcg(&gfcm->col[i]);
     }
     for (; i < 256; ++i) {
@@ -355,7 +356,7 @@ gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
     gfc->max_loss = 0;
     return 0;
   }
-  for (i = 0; i != gfcm->ncol; ++i) {
+  for (i = 0; i != 256; ++i) {
     for (j = 0; j != i; ++j) {
       gfc->kcdiff[(i << 8) | j] = gfc->kcdiff[(j << 8) | i] =
         kc_distance(gfc->kcs[i], gfc->kcs[j]);
@@ -1012,7 +1013,7 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);
   if (gfex->kind == 255) {      /* an application extension */
-    if (gfex->applength) {
+    if (gfex->appname) {
       gifputbyte(gfex->applength, grr);
       gifputblock((const uint8_t*) gfex->appname, gfex->applength, grr);
     }
