@@ -728,7 +728,7 @@ Gif_ClipImage(Gif_Image *gfi, int left, int top, int width, int height)
 
   if (gfi->top < top) {
     int shift = top - gfi->top;
-    for (y = gfi->height - 1; y >= shift; y++)
+    for (y = shift; y < gfi->height; y++)
       gfi->img[y - shift] = gfi->img[y];
     gfi->top += shift;
     new_height -= shift;
@@ -802,7 +802,11 @@ Gif_CreateUncompressedImage(Gif_Image *gfi, int data_interlaced)
 {
     size_t sz = (size_t) gfi->width * (size_t) gfi->height;
     uint8_t *data = Gif_NewArray(uint8_t, sz ? sz : 1);
-    return Gif_SetUncompressedImage(gfi, data, Gif_Free, data_interlaced);
+    int r = Gif_SetUncompressedImage(gfi, data, Gif_Free, data_interlaced);
+    if (!r) {
+      Gif_DeleteArray(data);
+    }
+    return r;
 }
 
 void

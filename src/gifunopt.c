@@ -19,17 +19,25 @@ extern "C" {
 
 #define TRANSPARENT 256
 
+/* set *w and *h to the size of the part of gfi that's on the screen.
+   Frames can extend past the logical screen, or start beyond it. */
+static void
+clip_to_screen(Gif_Stream *gfs, Gif_Image *gfi, unsigned *w, unsigned *h)
+{
+  *w = gfi->left < gfs->screen_width ? gfs->screen_width - gfi->left : 0;
+  if (*w > gfi->width)
+    *w = gfi->width;
+  *h = gfi->top < gfs->screen_height ? gfs->screen_height - gfi->top : 0;
+  if (*h > gfi->height)
+    *h = gfi->height;
+}
+
 static void
 put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   int transparent = gfi->transparent;
-  unsigned x, y;
-  unsigned w = gfi->width;
-  unsigned h = gfi->height;
-  if (gfi->left + w > gfs->screen_width)
-      w = gfs->screen_width - gfi->left;
-  if (gfi->top + h > gfs->screen_height)
-      h = gfs->screen_height - gfi->top;
+  unsigned x, y, w, h;
+  clip_to_screen(gfs, gfi, &w, &h);
 
   for (y = 0; y < h; y++) {
     uint16_t *move = screen + (unsigned) gfs->screen_width * (y + gfi->top) + gfi->left;
@@ -45,11 +53,8 @@ static void
 put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   uint16_t solid;
-  unsigned x, y;
-  unsigned w = gfi->width;
-  unsigned h = gfi->height;
-  if (gfi->left + w > gfs->screen_width) w = gfs->screen_width - gfi->left;
-  if (gfi->top + h > gfs->screen_height) h = gfs->screen_height - gfi->top;
+  unsigned x, y, w, h;
+  clip_to_screen(gfs, gfi, &w, &h);
 
   if (gfi->transparent < 0 && gfs->images[0]->transparent < 0
       && gfs->global && gfs->background < gfs->global->ncol)

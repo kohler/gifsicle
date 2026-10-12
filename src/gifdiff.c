@@ -93,6 +93,8 @@ static void
 expand_bounds(int *lf, int *tp, int *rt, int *bt, const Gif_Image *gfi)
 {
   int empty = (*lf >= *rt || *tp >= *bt);
+  if (gfi->width == 0 || gfi->height == 0)
+    return;
   if (empty || gfi->left < *lf)
     *lf = gfi->left;
   if (empty || gfi->top < *tp)
@@ -110,7 +112,7 @@ apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
   int i, x, y, any_change;
   Gif_Image *gfi = gfs->images[imageno];
   Gif_Image *pgfi = imageno ? gfs->images[imageno - 1] : 0;
-  int width = gfi->width;
+  int width;
   uint16_t map[256];
   uint16_t *data = gdata[is_second];
   uint16_t *last = glast[is_second];
@@ -125,6 +127,12 @@ apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
   if (gfi->transparent >= 0 && gfi->transparent < 256)
     map[gfi->transparent] = TRANSP;
 
+  /* uncompress and clip. Frames can extend past the logical screen; clip
+     before using the frame's bounds */
+  Gif_UncompressImage(gfs, gfi);
+  Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
+  width = gfi->width;
+
   /* if this image's disposal is 'previous', save the post-disposal version in
      'scratch' */
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
@@ -134,10 +142,6 @@ apply_image(int is_second, Gif_Stream *gfs, int imageno, uint16_t background)
     else if (pgfi && pgfi->disposal == GIF_DISPOSAL_BACKGROUND)
       fill_area(scratch, pgfi->left, pgfi->top, pgfi->width, pgfi->height, background);
   }
-
-  /* uncompress and clip */
-  Gif_UncompressImage(gfs, gfi);
-  Gif_ClipImage(gfi, 0, 0, screen_width, screen_height);
 
   any_change = imageno == 0;
   {

@@ -1,0 +1,75 @@
+%script
+# frames that lie partly or entirely outside the logical screen (issue #217)
+gifsicle --no-warnings --resize 100x100 offscreen1.gif 2>/dev/null | gifsicle -I
+gifsicle --no-warnings --resize-method mix --resize 2x2 offscreen2.gif | gifsicle -I
+gifsicle --no-warnings -U offscreen3.gif | gifsicle -I
+gifsicle --no-warnings --flip-horizontal offscreen2.gif | gifsicle -I
+gifsicle --no-warnings --rotate-270 offscreen2.gif | gifsicle -I
+gifsicle --no-warnings --crop 1,1+0x0 offscreen4.gif | gifsicle -I
+gifdiff offscreen2.gif offscreen2.gif && echo gifdiff same
+gifsicle --no-warnings --crop-transparency --flip-vertical offscreen5.gif | gifsicle -I
+
+%file -e offscreen1.gif
+R0lGODlhAQABAID/AMDAwAAAAAAALAAAAAABAAUA+f////////8AAgIiADsAIfkEAQAAAAAsAAAA
+EAAAAAQAAAABAAEAAAICIgA7Ymxua2ltZyNnaWYNAAA=
+
+%file -e offscreen2.gif
+R0lGODlhBAAEAIEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAACDQzDMAzDMAzDMAzDMAUALAIAAgAG
+AAMAAAIOFEVRFEVRFEVRFEVRFFUAOw==
+
+%file -e offscreen3.gif
+R0lGODlhBAAEAIEAAAAAAP8AAAD/AAAA/yH5BAgAAAAALAAAAAAEAAQAAAINDMMwDMMwDMMwDMMw
+BQAh+QQIAAAAACwGAAEAAgACAAACBBRFUQUAIfkECAAAAAAsAQAsAQMAAgAAAgUcx3EcVwA7
+
+%file -e offscreen4.gif
+R0lGODlhBAAEAIEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAACDQzDMAzDMAzDMAzDMAUALGDqYOoC
+AAIAAAIEFEVRBQA7
+
+%file -e offscreen5.gif
+R0lGODlhBAAEAIEAAAAAAP8AAAD/AAAA/yH5BAEAAAAALAAAAAAEAAQAAAINBEEQBEEQBEEQBEEQBQA7
+
+%expect stdout
+* <stdin> 2 images
+  logical screen 100x100
+  global color table [2]
+  background 0
+  + image #0 100x100 interlaced
+  + image #1 1x1 at 0,99 transparent 0
+    disposal asis
+* <stdin> 2 images
+  logical screen 2x2
+  global color table [4]
+  background 0
+  + image #0 2x2
+  + image #1 1x1 at 1,1
+* <stdin> 3 images
+  logical screen 4x4
+  global color table [2]
+  background 0
+  + image #0 4x4
+  + image #1 4x4
+  + image #2 4x4
+* <stdin> 2 images
+  logical screen 4x4
+  global color table [4]
+  background 0
+  + image #0 4x4
+  + image #1 2x2 at 0,2
+* <stdin> 2 images
+  logical screen 4x4
+  global color table [4]
+  background 0
+  + image #0 4x4
+  + image #1 2x2 at 2,0
+* <stdin> 2 images
+  logical screen 3x3
+  global color table [2]
+  background 0
+  + image #0 3x3
+  + image #1 1x1 transparent 0
+gifdiff same
+* <stdin> 1 image
+  logical screen 1x1
+  global color table [2]
+  background 0
+  + image #0 1x1 transparent 0

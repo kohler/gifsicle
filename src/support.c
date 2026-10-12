@@ -1259,8 +1259,20 @@ fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
 static void
 handle_flip_and_rotate(Gif_Image* desti, Gt_Frame* fr)
 {
+    int sw = fr->stream->screen_width, sh = fr->stream->screen_height;
     desti->left += fr->left_offset;
     desti->top += fr->top_offset;
+
+    /* Flips and rotations are relative to the logical screen. Parts of
+       frames outside the screen are invisible and have no transformed
+       position, so drop them; a frame entirely outside the screen becomes a
+       transparent 1x1 placeholder inside the screen. */
+    Gif_ClipImage(desti, 0, 0, sw, sh);
+    if ((desti->width == 0 || desti->height == 0) && sw > 0 && sh > 0) {
+        desti->left = desti->left < sw ? desti->left : sw - 1;
+        desti->top = desti->top < sh ? desti->top : sh - 1;
+        Gif_MakeImageEmpty(desti);
+    }
 
     if (fr->flip_horizontal)
         flip_image(desti, fr, 0);
@@ -1296,10 +1308,14 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
       Gt_Frame *fr = merger[i];
       int ll, tt, rr, bb;
       if (!fr->position_is_offset) {
+        /* only consider the part of the frame on the logical screen */
+        int sw = fr->stream->screen_width, sh = fr->stream->screen_height;
         ll = fr->image->left;
         tt = fr->image->top;
-        rr = fr->image->left + fr->image->width;
-        bb = fr->image->top + fr->image->height;
+        rr = constrain(ll, fr->image->left + fr->image->width, sw);
+        bb = constrain(tt, fr->image->top + fr->image->height, sh);
+        if (ll >= rr || tt >= bb)
+          continue;
       } else {
         ll = tt = 0;
         rr = fr->stream->screen_width;
@@ -1414,7 +1430,9 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
     }
 
     if (t > b) {
-      crop->w = crop->h = 0;
+      /* everything is transparent; keep a 1x1 crop, since later code
+         assumes a nonempty crop */
+      crop->w = crop->h = 1;
     } else {
       crop->x = l;
       crop->y = t;

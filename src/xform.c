@@ -267,6 +267,9 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
         gfi->width = c.w;
         gfi->height = c.h;
     } else if (preserve_total_crop) {
+        /* combine_crop positions an empty image inside the crop */
+        gfi->left += c.x - fr->left_offset;
+        gfi->top += c.y - fr->top_offset;
         Gif_MakeImageEmpty(gfi);
     } else {
         Gif_DeleteArray(gfi->img);
@@ -325,7 +328,7 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
   int x, y;
   int width = gfi->width;
   int height = gfi->height;
-  int ntop, nleft, nbottom, nright;
+  int ntop, nleft;
   uint8_t **img = gfi->img;
   uint8_t *new_data = Gif_NewArray(uint8_t, (unsigned) width * (unsigned) height);
   uint8_t *trav = new_data;
@@ -360,29 +363,13 @@ rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation)
         fr->left_offset = y;
     }
   }
-  nbottom = ntop + width;
-  nright = nleft + height;
-
-  if (nbottom <= 0 || nright <= 0) {
-    ntop = nleft = nbottom = nright = 0;
-  } else if (ntop < 0 || nleft < 0) {
-    int nwidth = nright - (nleft < 0 ? 0 : nleft);
-    uint8_t *xdata;
-    xdata = Gif_NewArray(uint8_t, (unsigned) (nright - nleft) * (unsigned) (nbottom - ntop));
-    for (y = ntop < 0 ? -ntop : 0; y < width; ++y) {
-        memcpy(xdata + y * nwidth, new_data + y * height + (nleft < 0 ? -nleft : 0), nwidth);
-    }
-    Gif_DeleteArray(new_data);
-    new_data = xdata;
-    ntop = ntop < 0 ? 0 : ntop;
-    nleft = nleft < 0 ? 0 : nleft;
-  }
-
+  /* handle_flip_and_rotate clipped the image to the screen, so ntop and
+     nleft are nonnegative unless the screen is empty */
   Gif_ReleaseUncompressedImage(gfi);
-  gfi->width = nright - nleft;
-  gfi->height = nbottom - ntop;
-  gfi->left = nleft;
-  gfi->top = ntop;
+  gfi->width = height;
+  gfi->height = width;
+  gfi->left = nleft > 0 ? nleft : 0;
+  gfi->top = ntop > 0 ? ntop : 0;
   Gif_SetUncompressedImage(gfi, new_data, Gif_Free, 0);
 }
 
@@ -516,26 +503,40 @@ static void ksscreen_cleanup(ksscreen* kss) {
     Gif_DeleteArray(kss->scratch);
 }
 
+/* set `*right` and `*bottom` to the edges of image `gfi`, clipped to screen
+   `kss`. Frames can extend past the logical screen; those parts are
+   invisible. Returns 0 if no part of `gfi` is on the screen. */
+static int ksscreen_clip(const ksscreen* kss, const Gif_Image* gfi,
+                         unsigned* right, unsigned* bottom) {
+    *right = (unsigned) gfi->left + gfi->width;
+    if (*right > kss->width)
+        *right = kss->width;
+    *bottom = (unsigned) gfi->top + gfi->height;
+    if (*bottom > kss->height)
+        *bottom = kss->height;
+    return gfi->left < *right && gfi->top < *bottom;
+}
+
 /* apply image `gfi` to screen `kss`, using the color array `ks` */
 static void ksscreen_apply(ksscreen* kss, const Gif_Image* gfi,
                            const kcolor* ks) {
-    int x, y;
-    assert((unsigned) gfi->left + gfi->width <= kss->width);
-    assert((unsigned) gfi->top + gfi->height <= kss->height);
+    unsigned x, y, right, bottom;
+    if (!ksscreen_clip(kss, gfi, &right, &bottom))
+        return;
 
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
         if (!kss->scratch)
             kss->scratch = Gif_NewArray(scale_color, kss->width * kss->height);
-        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
+        for (y = gfi->top; y != bottom; ++y)
             memcpy(&kss->scratch[y * kss->width + gfi->left],
                    &kss->data[y * kss->width + gfi->left],
-                   sizeof(scale_color) * gfi->width);
+                   sizeof(scale_color) * (right - gfi->left));
     }
 
-    for (y = gfi->top; y != gfi->top + gfi->height; ++y) {
+    for (y = gfi->top; y != bottom; ++y) {
         const uint8_t* linein = gfi->img[y - gfi->top];
         scale_color* lineout = &kss->data[y * kss->width + gfi->left];
-        for (x = 0; x != gfi->width; ++x)
+        for (x = 0; x != right - gfi->left; ++x)
             if (linein[x] != gfi->transparent)
                 lineout[x] = sc_makekc(ks[linein[x]]);
     }
@@ -543,18 +544,18 @@ static void ksscreen_apply(ksscreen* kss, const Gif_Image* gfi,
 
 /* dispose of image `gfi`, which was previously applied by ksscreen_apply */
 static void ksscreen_dispose(ksscreen* kss, const Gif_Image* gfi) {
-    int x, y;
-    assert((unsigned) gfi->left + gfi->width <= kss->width);
-    assert((unsigned) gfi->top + gfi->height <= kss->height);
+    unsigned x, y, right, bottom;
+    if (!ksscreen_clip(kss, gfi, &right, &bottom))
+        return;
 
     if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
-        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
+        for (y = gfi->top; y != bottom; ++y)
             memcpy(&kss->data[y * kss->width + gfi->left],
                    &kss->scratch[y * kss->width + gfi->left],
-                   sizeof(scale_color) * gfi->width);
+                   sizeof(scale_color) * (right - gfi->left));
     } else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND) {
-        for (y = gfi->top; y != gfi->top + gfi->height; ++y)
-            for (x = gfi->left; x != gfi->left + gfi->width; ++x)
+        for (y = gfi->top; y != bottom; ++y)
+            for (x = gfi->left; x != right; ++x)
                 kss->data[y * kss->width + x] = kss->bg;
     }
 }
@@ -1156,6 +1157,7 @@ static void scale_image(scale_context* sctx, int method) {
     Gif_Image* gfi = sctx->gfi;
     Gif_Image gfo;
     int was_compressed = (gfi->img == 0);
+    int left, top, right, bottom;
 
     /* Fri 9 Jan 1999: Fix problem with resizing animated GIFs: we scaled
        from left edge of the *subimage* to right edge of the subimage,
@@ -1173,15 +1175,30 @@ static void scale_image(scale_context* sctx, int method) {
     gfo.image_data = NULL;
     gfo.compressed = NULL;
 
-    gfo.left = (int) (gfi->left * sctx->ixf);
-    gfo.top = (int) (gfi->top * sctx->iyf);
-    gfo.width = (int) ceil((gfi->left + gfi->width) * sctx->ixf) - gfo.left;
-    gfo.height = (int) ceil((gfi->top + gfi->height) * sctx->iyf) - gfo.top;
+    left = (int) (gfi->left * sctx->ixf);
+    top = (int) (gfi->top * sctx->iyf);
+    right = (int) ceil((gfi->left + gfi->width) * sctx->ixf);
+    bottom = (int) ceil((gfi->top + gfi->height) * sctx->iyf);
     /* account for floating point errors at bottom right edge */
     if ((unsigned) gfi->left + gfi->width == sctx->iscr.width)
-        gfo.width = sctx->oscr.width - gfo.left;
+        right = sctx->oscr.width;
     if ((unsigned) gfi->top + gfi->height == sctx->iscr.height)
-        gfo.height = sctx->oscr.height - gfo.top;
+        bottom = sctx->oscr.height;
+    /* clip to the output screen. Frames can extend past the logical screen;
+       those parts are invisible, and their scaled coordinates might not fit
+       in 16 bits. */
+    if (right > (int) sctx->oscr.width)
+        right = sctx->oscr.width;
+    if (bottom > (int) sctx->oscr.height)
+        bottom = sctx->oscr.height;
+    if (left > right)
+        left = right;
+    if (top > bottom)
+        top = bottom;
+    gfo.left = left;
+    gfo.top = top;
+    gfo.width = right - left;
+    gfo.height = bottom - top;
 
     /* Point scaling method is special: rather than rendering the input
        image into a frame buffer, it works on per-frame data. Thus we must
@@ -1201,6 +1218,11 @@ static void scale_image(scale_context* sctx, int method) {
     }
 
     if (gfo.width == 0 || gfo.height == 0) {
+        /* keep the placeholder on the screen */
+        if (gfo.left >= sctx->oscr.width)
+            gfo.left = sctx->oscr.width - 1;
+        if (gfo.top >= sctx->oscr.height)
+            gfo.top = sctx->oscr.height - 1;
         gfo.width = gfo.height = 1;
         Gif_CreateUncompressedImage(&gfo, 0);
         gfo.image_data[0] = gfo.transparent = 0;
