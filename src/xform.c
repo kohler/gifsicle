@@ -867,45 +867,35 @@ static inline pixel_range2 make_pixel_range2(int xi, int maxi,
 }
 
 static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
-    uint16_t* xoff = Gif_NewArray(uint16_t, sctx->iscr.width);
+    pixel_range* xpr = Gif_NewArray(pixel_range, gfo->width);
     scale_color* sc = Gif_NewArray(scale_color, gfo->width);
-    int* nsc = Gif_NewArray(int, gfo->width);
-    int xi0, xi1, xo, yo, i, j;
+    int xo, yo, i, j;
     scale_image_prepare(sctx);
 
-    /* develop scale mapping of input -> output pixels */
-    for (xo = 0; xo != gfo->width; ++xo) {
-        pixel_range xpr = make_pixel_range(xo + gfo->left, sctx->oscr.width,
-                                           sctx->iscr.width, sctx->oxf);
-        for (i = xpr.lo; i != xpr.hi; ++i)
-            xoff[i] = xo;
-    }
-    xi0 = make_pixel_range(gfo->left, sctx->oscr.width,
-                           sctx->iscr.width, sctx->oxf).lo;
-    xi1 = make_pixel_range(gfo->left + gfo->width - 1, sctx->oscr.width,
-                           sctx->iscr.width, sctx->oxf).hi;
+    /* input column range for each output column; ranges overlap when
+       upscaling */
+    for (xo = 0; xo != gfo->width; ++xo)
+        xpr[xo] = make_pixel_range(xo + gfo->left, sctx->oscr.width,
+                                   sctx->iscr.width, sctx->oxf);
 
     /* walk over output image */
     for (yo = 0; yo != gfo->height; ++yo) {
         pixel_range ypr = make_pixel_range(yo + gfo->top, sctx->oscr.height,
                                            sctx->iscr.height, sctx->oyf);
-        for (xo = 0; xo != gfo->width; ++xo)
+
+        for (xo = 0; xo != gfo->width; ++xo) {
+            /* collect input mix */
             sc_clear(&sc[xo]);
-        for (xo = 0; xo != gfo->width; ++xo)
-            nsc[xo] = 0;
-
-        /* collect input mixes */
-        for (j = ypr.lo; j != ypr.hi; ++j) {
-            const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
-            for (i = xi0; i != xi1; ++i) {
-                ++nsc[xoff[i]];
-                SCVEC_ADDV(sc[xoff[i]], indata[i]);
+            for (j = ypr.lo; j != ypr.hi; ++j) {
+                const scale_color* indata = &sctx->iscr.data[sctx->iscr.width*j];
+                for (i = xpr[xo].lo; i != xpr[xo].hi; ++i)
+                    SCVEC_ADDV(sc[xo], indata[i]);
             }
-        }
 
-        /* scale channels */
-        for (xo = 0; xo != gfo->width; ++xo)
-            SCVEC_DIVF(sc[xo], (float) nsc[xo]);
+            /* scale channels */
+            SCVEC_DIVF(sc[xo], (float) ((ypr.hi - ypr.lo)
+                                        * (xpr[xo].hi - xpr[xo].lo)));
+        }
 
         /* generate output */
         scale_image_output_row(sctx, sc, gfo, yo);
@@ -913,9 +903,8 @@ static void scale_image_data_box(scale_context* sctx, Gif_Image* gfo) {
 
     scale_image_complete(sctx, gfo);
 
-    Gif_DeleteArray(xoff);
+    Gif_DeleteArray(xpr);
     Gif_DeleteArray(sc);
-    Gif_DeleteArray(nsc);
 }
 
 static inline float mix_factor(int val, const float bounds[2]) {
