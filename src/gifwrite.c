@@ -486,8 +486,8 @@ write_compressed_data(Gif_Stream* gfs, Gif_Image* gfi,
   unsigned clear_bufpos = 0, clear_pos = 0;
   const unsigned image_endpos = (size_t) gfi->height * (size_t) gfi->width;
 
-  const uint8_t *imageline;
-  unsigned line_endpos;
+  const uint8_t *imageline = NULL;
+  unsigned line_endpos = 0;
 
 #define RUN_EWMA_SHIFT 4
 #define RUN_EWMA_SCALE 19

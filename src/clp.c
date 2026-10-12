@@ -2132,8 +2132,10 @@ Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
                 } else if (cli->utf8 && c >= 127 && c < 0x110000) {
                     bs->pos = encode_utf8(bs->pos, 4, c);
                 } else if (c >= 127 && c <= 255) {
-                    snprintf(bs->pos, 5, "\\%03o", c & 0xFF);
-                    bs->pos += 4;
+                    *bs->pos++ = '\\';
+                    *bs->pos++ = (c >> 6) + '0';
+                    *bs->pos++ = ((c >> 3) & 7) + '0';
+                    *bs->pos++ = (c & 7) + '0';
                 } else {
                     *bs->pos++ = '\\';
                     *bs->pos++ = '?';

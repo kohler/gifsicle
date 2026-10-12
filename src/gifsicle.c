@@ -1194,9 +1194,9 @@ handle_extension(Clp_Parser *clp, int is_app)
   UNCHECKED_MARK_CH(frame, CH_EXTENSION);
   if (is_app) {
     /* identifier + authentication code: exactly 11 bytes, NUL-padded */
-    char appname[11];
-    strncpy(appname, extension_type, sizeof(appname));
-    gfex = Gif_NewExtension(255, appname, sizeof(appname));
+    char appname[12]; /* extra byte to quiet compiler warning */
+    strncpy(appname, extension_type, sizeof(appname) - 1);
+    gfex = Gif_NewExtension(255, appname, sizeof(appname) - 1);
   } else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
     gfex = Gif_NewExtension(extension_type[0], 0, 0);
   else {
