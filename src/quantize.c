@@ -1354,10 +1354,40 @@ static inline int halftone_pixel_compare(const void* va, const void* vb) {
         return a->angle < b->angle ? -1 : 1;
 }
 
+/* dither_ordered_new matrices are reference counted. The count is an int
+   stored just before the matrix data. */
+static uint8_t* dither_matrix_new(int size) {
+    int* refcount = (int*) Gif_NewArray(uint8_t, sizeof(int) + size);
+    *refcount = 1;
+    return (uint8_t*) (refcount + 1);
+}
+
+static int* dither_matrix_refcount(const Gt_OutputData* od) {
+    return (int*) od->dither_data - 1;
+}
+
+static void dither_release(Gt_OutputData* od) {
+    if (od->dither_type == dither_ordered_new) {
+        int* refcount = dither_matrix_refcount(od);
+        if (--*refcount == 0)
+            Gif_DeleteArray(refcount);
+    }
+    od->dither_type = dither_none;
+    od->dither_data = NULL;
+}
+
+void copy_dither(Gt_OutputData* dst, const Gt_OutputData* src) {
+    if (src->dither_type == dither_ordered_new)
+        ++*dither_matrix_refcount(src);
+    dither_release(dst);
+    dst->dither_type = src->dither_type;
+    dst->dither_data = src->dither_data;
+}
+
 static uint8_t* halftone_pixel_matrix(halftone_pixelinfo* hp,
                                       int w, int h, int nc) {
     int i;
-    uint8_t* m = Gif_NewArray(uint8_t, 4 + w * h);
+    uint8_t* m = dither_matrix_new(4 + w * h);
     m[0] = w;
     m[1] = h;
     m[3] = nc;
@@ -1411,15 +1441,18 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
     }
     for (nparm = 0;
          nparm < 4 && comma && *comma && isdigit((unsigned char) comma[1]);
-         ++nparm)
-        parm[nparm] = strtol(&comma[1], (char**) &comma, 10);
+         ++nparm) {
+        long v = strtol(&comma[1], (char**) &comma, 10);
+        parm[nparm] = v > 65535 ? 65535 : (int) v;
+    }
     if (comma && *comma)
+        return -1;
+    /* matrices store the number of colors in a uint8_t */
+    if (nparm >= 2 && parm[1] > 255)
         return -1;
 
     /* parse dither name */
-    if (od->dither_type == dither_ordered_new)
-        Gif_DeleteArray(od->dither_data);
-    od->dither_type = dither_none;
+    dither_release(od);
 
     if (strcmp(name, "none") == 0 || strcmp(name, "posterize") == 0)
         /* ok */;
@@ -1455,12 +1488,16 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
                || strcmp(name, "trihalf") == 0) {
         int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 6;
         int ncol = nparm >= 2 && parm[1] > 1 ? parm[1] : 2;
+        if (size > 147) /* matrix height (size * sqrt(3)) must fit in 255 */
+            return -1;
         od->dither_type = dither_ordered_new;
         od->dither_data = make_halftone_matrix_triangular(size, (int) (size * sqrt(3) + 0.5), ncol);
     } else if (strcmp(name, "sqhalftone") == 0 || strcmp(name, "sqhalf") == 0
                || strcmp(name, "squarehalftone") == 0) {
         int size = nparm >= 1 && parm[0] > 0 ? parm[0] : 6;
         int ncol = nparm >= 2 && parm[1] > 1 ? parm[1] : 2;
+        if (size > 255)
+            return -1;
         od->dither_type = dither_ordered_new;
         od->dither_data = make_halftone_matrix_square(size, size, ncol);
     } else
@@ -1469,7 +1506,7 @@ int set_dither_type(Gt_OutputData* od, const char* name) {
     if (od->dither_type == dither_ordered
         && nparm >= 2 && parm[1] > 1 && parm[1] != od->dither_data[3]) {
         int size = od->dither_data[0] * od->dither_data[1];
-        uint8_t* dd = Gif_NewArray(uint8_t, 4 + size);
+        uint8_t* dd = dither_matrix_new(4 + size);
         memcpy(dd, od->dither_data, 4 + size);
         dd[3] = parm[1];
         od->dither_data = dd;

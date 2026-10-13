@@ -281,6 +281,7 @@ enum {
     dither_ordered, dither_ordered_new, dither_atkinson
 };
 int     set_dither_type(Gt_OutputData* od, const char* name);
+void    copy_dither(Gt_OutputData* dst, const Gt_OutputData* src);
 void    colormap_stream(Gif_Stream*, Gif_Colormap*, Gt_OutputData*, int allow_shrink);
 
 struct kchist;

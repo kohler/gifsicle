@@ -1322,8 +1322,7 @@ combine_output_options(void)
   }
   if (CHANGED(recent, CH_DITHER)) {
     MARK_CH(output, CH_DITHER);
-    active_output_data.dither_type = def_output_data.dither_type;
-    active_output_data.dither_data = def_output_data.dither_data;
+    copy_dither(&active_output_data, &def_output_data);
   }
   if (CHANGED(recent, CH_GAMMA)) {
     MARK_CH(output, CH_GAMMA);
