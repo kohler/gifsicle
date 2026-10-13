@@ -745,6 +745,11 @@ static int scale_image_add_colors(scale_context* sctx, Gif_Image* gfo) {
             break;
         kcdiversity_choose(&div, chosen, 0);
         gfc = kc_togfcg(kch.h[chosen].ka.k);
+        /* Rounding to 8 bits can yield a color already in the colormap
+           (the rounding error can exceed max_desired_dist); don't add it
+           again. */
+        if (Gif_FindColor(gfcm, &gfc) >= 0)
+            continue;
         Gif_AddColor(gfcm, &gfc, gfcm->ncol);
         kd3_add8g(sctx->kd3, gfc.gfc_red, gfc.gfc_green, gfc.gfc_blue);
         ++nadded;
@@ -1336,6 +1341,7 @@ resize_stream(Gif_Stream* gfs,
               int flags, int method, int scale_colors)
 {
     int nw, nh, nthreads = thread_count, i;
+    scale_context sctx;
     (void) i;
 
     Gif_CalculateScreenSize(gfs, 0);
@@ -1365,6 +1371,9 @@ resize_stream(Gif_Stream* gfs,
 
     if (nthreads > gfs->nimages)
         nthreads = gfs->nimages;
+    sctx_init(&sctx, gfs, nw, nh);
+    sctx.scale_colors = scale_colors;
+    sctx.imageno = 0;
 #if ENABLE_THREADS
     /* Threaded resize only works if the input image is unoptimized. */
     for (i = 0; nthreads > 1 && i < gfs->nimages; ++i)
@@ -1378,12 +1387,25 @@ resize_stream(Gif_Stream* gfs,
             warning(1, "image too complex for multithreaded resize, using 1 thread\n  (Try running the GIF through %<gifsicle -U%>.)");
             nthreads = 1;
         }
+    if (nthreads > 1 && scale_colors > 0 && gfs->global) {
+        /* Frames add colors to the global colormap in the order they
+           finish, so the output would depend on thread timing. Resize
+           frames in order until the colormap is full. */
+        while (sctx.imageno < gfs->nimages
+               && gfs->global->ncol < scale_colors) {
+            sctx.gfi = gfs->images[sctx.imageno];
+            scale_image(&sctx, method);
+            ++sctx.imageno;
+        }
+        if (nthreads > gfs->nimages - sctx.imageno)
+            nthreads = gfs->nimages - sctx.imageno;
+    }
     if (nthreads > 1) {
-        int next_imageno = nthreads - 1, i;
+        int next_imageno = sctx.imageno + nthreads - 1, i;
         scale_thread_context* ctx = Gif_NewArray(scale_thread_context, nthreads);
         for (i = 0; i < nthreads; ++i) {
             ctx[i].gfs = gfs;
-            ctx[i].imageno = i;
+            ctx[i].imageno = sctx.imageno + i;
             ctx[i].next_imageno = &next_imageno;
             ctx[i].nw = nw;
             ctx[i].nh = nh;
@@ -1394,22 +1416,15 @@ resize_stream(Gif_Stream* gfs,
         for (i = 0; i < nthreads; ++i)
             pthread_join(ctx[i].threadid, NULL);
         Gif_DeleteArray(ctx);
+        sctx.imageno = gfs->nimages;
     }
-#else
-    nthreads = 1;
 #endif
 
-    if (nthreads <= 1) {
-        scale_context sctx;
-        sctx_init(&sctx, gfs, nw, nh);
-        sctx.scale_colors = scale_colors;
-
-        for (sctx.imageno = 0; sctx.imageno < gfs->nimages; ++sctx.imageno) {
-            sctx.gfi = gfs->images[sctx.imageno];
-            scale_image(&sctx, method);
-        }
-        sctx_cleanup(&sctx);
+    for (; sctx.imageno < gfs->nimages; ++sctx.imageno) {
+        sctx.gfi = gfs->images[sctx.imageno];
+        scale_image(&sctx, method);
     }
+    sctx_cleanup(&sctx);
 
     gfs->screen_width = nw;
     gfs->screen_height = nh;
