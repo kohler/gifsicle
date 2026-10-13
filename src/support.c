@@ -1161,7 +1161,7 @@ static void
 set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 {
     Gif_Color background;
-    int i, j, conflict, want_transparent;
+    int i, conflict, want_transparent;
     Gif_Image *gfi;
 
     /* Check for user-specified background. */
@@ -1190,15 +1190,13 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* If we get here, user doesn't care about background. */
     /* Search for required background colors. */
     conflict = want_transparent = background.haspixel = 0;
-    for (i = j = 0; i < nmerger; i++) {
-        if (merger[i]->total_crop) /* frame does not correspond to an image */
-            continue;
-        gfi = gfs->images[j];
+    for (i = 0; i < nmerger; i++) {
+        gfi = gfs->images[i];
         if (gfi->disposal == GIF_DISPOSAL_BACKGROUND
-            || (j == 0 && (gfi->left != 0 || gfi->top != 0
+            || (i == 0 && (gfi->left != 0 || gfi->top != 0
                            || gfi->width != gfs->screen_width
                            || gfi->height != gfs->screen_height))) {
-            /* transparent.haspixel set below, at merge_frame_done */
+            /* transparent.haspixel set in merge_frame_interval */
             int original_bg_transparent = (merger[i]->transparent.haspixel == 2);
             if ((original_bg_transparent && background.haspixel)
                 || (!original_bg_transparent && want_transparent))
@@ -1215,7 +1213,6 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
                 }
             }
         }
-        j++;
     }
 
     /* Report conflicts. */
@@ -1240,44 +1237,6 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     gfs->background = (i >= 0 ? i : 0);
 }
 
-
-
-static void
-fix_total_crop(Gif_Stream *dest, Gif_Image *srci, int merger_index)
-{
-  /* Salvage any relevant information from a frame that's been completely
-     cropped away. This ends up being comments and delay. */
-  Gt_Frame *fr = merger[merger_index];
-  Gt_Frame *next_fr = 0;
-  Gif_Image *prev_image;
-  assert(dest->nimages > 0);
-  prev_image = dest->images[dest->nimages - 1];
-  if (merger_index < nmerger - 1)
-    next_fr = merger[merger_index + 1];
-
-  /* Don't save identifiers since the frame that was to be identified, is
-     gone. Save comments though. */
-  if (!fr->no_comments && srci->comment && next_fr) {
-    if (!next_fr->comment)
-      next_fr->comment = Gif_NewComment();
-    merge_comments(next_fr->comment, srci->comment);
-  }
-  if (fr->comment && next_fr) {
-    if (!next_fr->comment)
-      next_fr->comment = Gif_NewComment();
-    merge_comments(next_fr->comment, fr->comment);
-    Gif_DeleteComment(fr->comment);
-    fr->comment = 0;
-  }
-
-  /* Save delay by adding it to the previous frame's delay. */
-  if (fr->delay < 0)
-    fr->delay = srci->delay;
-  prev_image->delay += fr->delay;
-
-  /* Mark this image as totally cropped. */
-  fr->total_crop = 1;
-}
 
 
 static void
@@ -1619,23 +1578,9 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* Make a copy of the image and crop it if we're cropping */
     fr->left_offset = fr->top_offset = 0;
     if (fr->crop) {
-      int preserve_total_crop;
       srci = Gif_CopyImage(fr->image);
       Gif_UncompressImage(fr->stream, srci);
-
-      /* Zero-delay frames are a special case.  You might think it was OK to
-         get rid of totally-cropped delay-0 frames, but many browsers treat
-         zero-delay frames as 100ms.  So don't completely crop a zero-delay
-         frame: leave it around.  Problem reported by Calle Kabo. */
-      preserve_total_crop = (dest->nimages == 0 || fr->delay == 0
-                             || (fr->delay < 0 && srci->delay == 0));
-
-      if (!crop_image(srci, fr, preserve_total_crop)) {
-        /* We cropped the image out of existence! Be careful not to make 0x0
-           frames. */
-        fix_total_crop(dest, srci, i);
-        goto merge_frame_done;
-      }
+      crop_image(srci, fr);
     } else {
       srci = fr->image;
       Gif_UncompressImage(fr->stream, srci);
@@ -1752,7 +1697,6 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_ReleaseCompressedImage(desti);
     }
 
-   merge_frame_done:
     /* 6/17/02 store information about image's background */
     if (fr->stream->images[0]->transparent >= 0) {
         fr->transparent.haspixel = 2;

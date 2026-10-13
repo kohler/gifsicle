@@ -62,7 +62,6 @@ typedef struct Gt_Frame {
   unsigned flip_vertical: 1;
   unsigned info_flags: 3;
   unsigned position_is_offset: 1;
-  unsigned total_crop: 1;
   unsigned rotation;
 
   const char *input_filename;
@@ -255,7 +254,7 @@ Gt_ColorTransform *append_color_change
 void    pipe_color_transformer(Gif_Colormap *, void *);
 
 void    combine_crop(Gt_Crop *dstcrop, const Gt_Crop *srccrop, const Gif_Image *gfi);
-int     crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop);
+void    crop_image(Gif_Image* gfi, Gt_Frame* fr);
 
 void    flip_image(Gif_Image* gfi, Gt_Frame* fr, int is_vert);
 void    rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation);

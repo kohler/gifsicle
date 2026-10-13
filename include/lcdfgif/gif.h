@@ -119,6 +119,8 @@ struct Gif_Image {
 #define         GIF_DISPOSAL_BACKGROUND         2
 #define         GIF_DISPOSAL_PREVIOUS           3
 
+#define         GIF_MAX_DELAY                   65535
+
 Gif_Image *     Gif_NewImage(void);
 void            Gif_DeleteImage(Gif_Image *gfi);
 

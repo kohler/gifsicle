@@ -242,11 +242,11 @@ combine_crop(Gt_Crop* dstcrop, const Gt_Crop* srccrop, const Gif_Image* gfi)
 
 
 /*****
- * crop image; returns true if the image exists
+ * crop image
  **/
 
-int
-crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
+void
+crop_image(Gif_Image* gfi, Gt_Frame* fr)
 {
     Gt_Crop c;
     int j;
@@ -267,18 +267,17 @@ crop_image(Gif_Image* gfi, Gt_Frame* fr, int preserve_total_crop)
         gfi->top += c.y - fr->top_offset;
         gfi->width = c.w;
         gfi->height = c.h;
-    } else if (preserve_total_crop) {
-        /* combine_crop positions an empty image inside the crop */
+    } else {
+        /* The image was cropped out of existence. Keep an empty frame
+           (positioned inside the crop by combine_crop) to preserve its
+           delay, comments, and extensions. The original frame drew nothing
+           visible, so drop its disposal; background disposal of the empty
+           frame would erase a visible pixel. */
         gfi->left += c.x - fr->left_offset;
         gfi->top += c.y - fr->top_offset;
         Gif_MakeImageEmpty(gfi);
-    } else {
-        Gif_DeleteArray(gfi->img);
-        gfi->img = 0;
-        gfi->width = gfi->height = 0;
+        gfi->disposal = GIF_DISPOSAL_NONE;
     }
-
-    return gfi->img != 0;
 }
 
 

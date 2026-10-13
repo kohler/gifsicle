@@ -425,12 +425,18 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
   /* 11.Mar.2010 - remove entirely transparent frames. */
   for (i = 1; i < gfs->nimages && !(optimize_flags & GT_OPT_KEEPEMPTY); ++i) {
     Gif_Image *gfi = gfs->images[i];
-    if (gfi->width == 1 && gfi->height == 1 && gfi->transparent >= 0
-        && !gfi->identifier && !gfi->comment
+    if (gfi->width == 1
+        && gfi->height == 1
+        && gfi->transparent >= 0
+        && !gfi->identifier
+        && !gfi->comment
+        && !gfi->extension_list
         && (gfi->disposal == GIF_DISPOSAL_ASIS
             || gfi->disposal == GIF_DISPOSAL_NONE
             || gfi->disposal == GIF_DISPOSAL_PREVIOUS)
-        && gfi->delay && gfs->images[i-1]->delay) {
+        && gfi->delay
+        && gfs->images[i-1]->delay
+        && gfi->delay <= GIF_MAX_DELAY - gfs->images[i-1]->delay) {
       Gif_UncompressImage(gfs, gfi);
       if (gfi->img[0][0] == gfi->transparent
           && (gfs->images[i-1]->disposal == GIF_DISPOSAL_ASIS

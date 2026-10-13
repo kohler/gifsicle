@@ -1266,7 +1266,6 @@ initialize_def_frame(void)
 
   def_frame.flip_horizontal = 0;
   def_frame.flip_vertical = 0;
-  def_frame.total_crop = 0;
 
   /* output defaults */
   def_output_data.output_name = 0;
@@ -1845,7 +1844,12 @@ main(int argc, char *argv[])
 
      case 'd':
       MARK_CH(frame, CH_DELAY);
-      def_frame.delay = clp->negated ? 0 : clp->val.i;
+      if (clp->negated)
+        def_frame.delay = 0;
+      else if (clp->val.i < 0 || clp->val.i > GIF_MAX_DELAY)
+        error(0, "delay must be between 0 and 65535");
+      else
+        def_frame.delay = clp->val.i;
       break;
 
      case SAME_DELAY_OPT:
