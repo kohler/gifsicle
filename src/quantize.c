@@ -571,9 +571,11 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
       c->haspixel = 1;
   }
 
-  /* Initialize Atkinson error vectors */
+  /* Initialize Atkinson error vectors. As in Floyd-Steinberg, the error for
+     pixel x is stored at index x+1; the extra slots catch errors propagated
+     past the image edges. */
   for (i = 0; i < 3; i++)
-    err[i] = Gif_NewArray(wkcolor, gfi->width + 2);
+    err[i] = Gif_NewArray(wkcolor, gfi->width + 3);
 
   /* Use the same random values on each call in an attempt to minimize
      "jumping dithering" effects on animations */
@@ -583,7 +585,7 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
       random_values[i] = RANDOM() % (DITHER_SCALE_M1 * 2) - DITHER_SCALE_M1;
   }
 
-  for (i = 0; i < gfi->width + 2; i++) {
+  for (i = 0; i < gfi->width + 3; i++) {
     j = (i + gfi->left) * 3;
     for (k = 0; k < 3; ++k)
         err[0][i].a[k] = random_values[ (j + k) % N_RANDOM_VALUES ];
@@ -591,15 +593,20 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
 
   kd3_build_xradius(kd3);
 
+  for (i = 0; i < gfi->width + 3; i++)
+    for (k = 0; k < 3; k++)
+      err[1][i].a[k] = 0;
+
   /* Do the image! */
   for (j = 0; j < gfi->height; j++) {
     uint8_t *data = &gfi->img[j][0];
     uint8_t *new_data = all_new_data + j * (unsigned) gfi->width;
 
-    /* Initialize error rows for this pass */
-    for (i = 0; i < gfi->width + 2; i++)
+    /* Initialize the error row two rows down; err[1] already holds errors
+       propagated from the previous rows */
+    for (i = 0; i < gfi->width + 3; i++)
       for (k = 0; k < 3; k++)
-        err[1][i].a[k] = err[2][i].a[k] = 0;
+        err[2][i].a[k] = 0;
 
     for (int x = 0; x < gfi->width; x++, data++, new_data++) {
       int e;
@@ -614,7 +621,7 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
       use = old_kc[*data];
 
       for (k = 0; k < 3; ++k)
-        use.a[k] = KC_CLAMPV(use.a[k] + err[0][x].a[k] / DITHER_SCALE);
+        use.a[k] = KC_CLAMPV(use.a[k] + err[0][x + 1].a[k] / DITHER_SCALE);
 
       /* Find the closest color in the colormap */
       e = old_cm->col[*data].pixel;
@@ -628,15 +635,12 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
          algorithm */
       for (k = 0; k < 3; ++k) {
         int e = (use.a[k] - kd3->ks[*new_data].a[k]) * DITHER_SCALE;
-        if (x + 1 < gfi->width) err[0][x + 1].a[k] += e / 8;
-        if (x + 2 < gfi->width) err[0][x + 2].a[k] += e / 8;
-        if (j + 1 < gfi->height) {
-          err[1][x].a[k] += e / 8;
-          err[1][x + 1].a[k] += e / 8;
-          if (x + 1 < gfi->width) err[1][x + 1].a[k] += e / 8;
-        }
-        if (j + 2 < gfi->height)
-          err[2][x].a[k] += e / 8;
+        err[0][x + 2].a[k] += e / 8;
+        err[0][x + 3].a[k] += e / 8;
+        err[1][x].a[k] += e / 8;
+        err[1][x + 1].a[k] += e / 8;
+        err[1][x + 2].a[k] += e / 8;
+        err[2][x + 1].a[k] += e / 8;
       }
     }
 
