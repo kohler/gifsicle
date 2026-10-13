@@ -558,27 +558,15 @@ static int
 apply_background(Gif_XContext *gfx, Gif_Stream *gfs, int i, Pixmap pixmap)
 {
   Gif_Image *gfi = gfs->images[i >= 0 ? i : 0];
-  Gif_Colormap *gfcm = (gfi->local ? gfi->local : gfs->global);
-  unsigned long bg_pixel;
 
-  /* find bg_pixel */
-  if (gfs->global && gfs->background < gfs->global->ncol
-      && gfs->images[0]->transparent < 0) {
-    Gif_XColormap *gfxc = find_x_colormap_extension(gfx, gfcm, 1);
-    if (!gfxc)
-      return -1;
-    allocate_colors(gfxc);
-    bg_pixel = gfxc->pixels[gfs->background];
-  } else
-    bg_pixel = gfx->transparent_pixel;
-
-  /* install it as the foreground color on gfx->image_gc */
+  /* The background is transparent, as in browsers; ignore the GIF's
+     background color. Install the transparent pixel as the foreground
+     color on gfx->image_gc. */
   if (!gfx->image_gc)
     gfx->image_gc = XCreateGC(gfx->display, pixmap, 0, 0);
   if (!gfx->image_gc)
     return -1;
-  XSetForeground(gfx->display, gfx->image_gc, bg_pixel);
-  gfx->transparent_pixel = bg_pixel;
+  XSetForeground(gfx->display, gfx->image_gc, gfx->transparent_pixel);
 
   /* clear the image portion */
   if (i < 0)
@@ -672,7 +660,6 @@ Pixmap
 Gif_XNextImage(Gif_XContext *gfx, Gif_Stream *gfs, int i, Gif_XFrame *frames)
 {
   Pixmap result = None;
-  unsigned long old_transparent = gfx->transparent_pixel;
   Gif_Image *gfi;
   int previ, scani;
 
@@ -745,7 +732,6 @@ Gif_XNextImage(Gif_XContext *gfx, Gif_Stream *gfs, int i, Gif_XFrame *frames)
 
  error_exit:
   XFreePixmap(gfx->display, result);
-  gfx->transparent_pixel = old_transparent;
   return None;
 }
 

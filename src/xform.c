@@ -402,12 +402,8 @@ static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
     kcs->height = sh <= 0 ? gfs->screen_height : sh;
     sz = kcs->width * kcs->height;
     kcs->data = Gif_NewArray(kacolor, sz);
-    if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
-        && gfs->global && gfs->background < gfs->global->ncol) {
-        kcs->bg.k = kc_makegfcg(&gfs->global->col[gfs->background]);
-        kcs->bg.a[3] = KC_MAX;
-    } else
-        kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
+    /* the background is transparent, as in browsers */
+    kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
     for (i = 0; i != sz; ++i)
         kcs->data[i] = kcs->bg;
 }
@@ -488,11 +484,8 @@ static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
     kss->height = sh <= 0 ? gfs->screen_height : sh;
     sz = kss->width * kss->height;
     kss->data = Gif_NewArray(scale_color, sz);
-    if ((gfs->nimages == 0 || gfs->images[0]->transparent < 0)
-        && gfs->global && gfs->background < gfs->global->ncol) {
-        kss->bg = sc_makekc(kc_makegfcg(&gfs->global->col[gfs->background]));
-    } else
-        sc_clear(&kss->bg);
+    /* the background is transparent, as in browsers */
+    sc_clear(&kss->bg);
     for (i = 0; i != sz; ++i)
         kss->data[i] = kss->bg;
 }

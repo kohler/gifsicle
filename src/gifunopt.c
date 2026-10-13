@@ -49,9 +49,9 @@ put_image_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 }
 
 
+/* Background disposal makes the frame's area transparent, as in browsers. */
 static void
-put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
-                         uint16_t background)
+put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 {
   unsigned x, y, w, h;
   clip_to_screen(gfs, gfi, &w, &h);
@@ -59,7 +59,7 @@ put_background_in_screen(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
   for (y = 0; y < h; y++) {
     uint16_t *move = screen + (unsigned) gfs->screen_width * (y + gfi->top) + gfi->left;
     for (x = 0; x < w; x++, move++)
-      *move = background;
+      *move = TRANSPARENT;
   }
 }
 
@@ -83,12 +83,12 @@ draw_frame(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen)
 
 static void
 dispose_frame(Gif_Stream *gfs, Gif_Image *gfi, uint16_t *screen,
-              uint16_t *shown, uint16_t background)
+              uint16_t *shown)
 {
   if (gfi->disposal == GIF_DISPOSAL_PREVIOUS)
     Gif_DeleteArray(shown);
   else if (gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-    put_background_in_screen(gfs, gfi, screen, background);
+    put_background_in_screen(gfs, gfi, screen);
 }
 
 
@@ -148,19 +148,15 @@ no_more_transparency(Gif_Image *gfi1, Gif_Image *gfi2)
 
 
 /* Return true if the unoptimized frames might use all 256 colors. They can
-   only use the opaque colors in the frames and the background. A global
-   colormap alone doesn't rule this out: a frame can show all 256 colors
-   plus transparency, leaving no index for the transparent color. */
+   only use the opaque colors in the frames. A global colormap alone doesn't
+   rule this out: a frame can show all 256 colors plus transparency, leaving
+   no index for the transparent color. */
 static int
-might_run_out_of_colors(Gif_Stream *gfs, uint16_t background)
+might_run_out_of_colors(Gif_Stream *gfs)
 {
   int have[256], ncolors = 0, i, x, y;
   for (i = 0; i < 256; i++)
     have[i] = 0;
-  if (background != TRANSPARENT) {
-    have[background] = 1;
-    ncolors = 1;
-  }
   for (i = 0; i < gfs->nimages && ncolors < 256; i++) {
     Gif_Image *gfi = gfs->images[i];
     Gif_UncompressImage(gfs, gfi);
@@ -196,8 +192,7 @@ ensure_global_color(Gif_Stream *gfs, int c)
 /* Unoptimize every frame. If !commit, only check whether that's possible,
    without changing the stream. */
 static int
-unoptimize_frames(Gif_Stream *gfs, uint16_t *screen, uint16_t background,
-                  int commit)
+unoptimize_frames(Gif_Stream *gfs, uint16_t *screen, int commit)
 {
   unsigned pos, size = (unsigned) gfs->screen_width * (unsigned) gfs->screen_height;
   int i, unused, has_transparent;
@@ -206,7 +201,7 @@ unoptimize_frames(Gif_Stream *gfs, uint16_t *screen, uint16_t background,
   uint8_t *new_data = 0;
 
   for (pos = 0; pos != size; ++pos)
-    screen[pos] = background;
+    screen[pos] = TRANSPARENT;
 
   for (i = 0; i < gfs->nimages; i++) {
     Gif_Image *gfi = gfs->images[i];
@@ -224,13 +219,13 @@ unoptimize_frames(Gif_Stream *gfs, uint16_t *screen, uint16_t background,
     if (!has_transparent)
       unused = -1;
     else if (unused < 0) {
-      dispose_frame(gfs, gfi, screen, shown, background);
+      dispose_frame(gfs, gfi, screen, shown);
       return 0;
     }
 
     if (commit)
       new_data = unoptimized_data(gfs, shown, unused);
-    dispose_frame(gfs, gfi, screen, shown, background);
+    dispose_frame(gfs, gfi, screen, shown);
 
     if (commit) {
       if (!new_data)
@@ -247,10 +242,12 @@ unoptimize_frames(Gif_Stream *gfs, uint16_t *screen, uint16_t background,
     }
   }
 
-  /* The background is transparent iff the first frame has a transparent
-     color. If any frame shows a transparent background, keep a
-     transparent color in the first frame, even if it is unused there. */
-  if (background == TRANSPARENT && !frame0_transparent && any_transparent) {
+  /* The background is transparent. Older readers, including older gifsicles,
+     instead show the background color when the first frame has no
+     transparent color. If any frame shows the background, keep a
+     transparent color in the first frame, even if it is unused there, so
+     those readers agree. */
+  if (!frame0_transparent && any_transparent) {
     if (frame0_unused < 0)
       return 0;
     if (commit) {
@@ -268,8 +265,6 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
   int ok = 1;
   int i;
   uint16_t *screen;
-  uint16_t background;
-  Gif_Image *gfi;
 
   if (gfs->nimages < 1) return 1;
   for (i = 0; i < gfs->nimages; i++)
@@ -283,20 +278,13 @@ Gif_FullUnoptimize(Gif_Stream *gfs, int flags)
   if (!screen)
     return 0;
 
-  gfi = gfs->images[0];
-  if (gfi->transparent < 0
-      && gfs->global && gfs->background < gfs->global->ncol)
-      background = gfs->background;
-  else
-      background = TRANSPARENT;
-
   /* Unoptimizing fails only if a frame needs a transparent color but uses
      all 256 colors. If that's possible, check first, so failure leaves the
      stream unchanged. */
-  if (might_run_out_of_colors(gfs, background))
-    ok = unoptimize_frames(gfs, screen, background, 0);
+  if (might_run_out_of_colors(gfs))
+    ok = unoptimize_frames(gfs, screen, 0);
   if (ok)
-    ok = unoptimize_frames(gfs, screen, background, 1);
+    ok = unoptimize_frames(gfs, screen, 1);
 
   if (ok) {
     if (flags & GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL) {

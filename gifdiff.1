@@ -32,7 +32,10 @@ GIF\-file\-2
 .B gifdiff
 compares two GIF files and determines if they appear identical. Differences
 that don't affect appearance (like colormap ordering or how much an
-animation is optimized) are not reported.
+animation is optimized) are not reported. Like web browsers,
+.B gifdiff
+treats the area outside the first frame, and areas cleared by background
+disposal, as transparent; it ignores the GIF's background color.
 .PP
 .B gifdiff
 prints details of any differences it finds. If the GIFs are the same, it
@@ -58,7 +61,7 @@ do not change the displayed image).
 .TP 5
 .Op \-\-ignore\-background ", " \-B
 '
-Do not report differences in background colors.
+Accepted for compatibility; has no effect.
 '
 .Sp
 .TP 5

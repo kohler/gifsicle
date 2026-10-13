@@ -46,9 +46,10 @@ R0lGODlhBAAEAIEAAAAAAP8AAAD/AAAA/yH5BAEAAAAALAAAAAAEAAQAAAINBEEQBEEQBEEQBEEQBQA7
   logical screen 4x4
   global color table [2]
   background 0
-  + image #0 4x4
-  + image #1 4x4
-  + image #2 4x4
+  + image #0 4x4 transparent 0
+    disposal background
+  + image #1 4x4 transparent 0
+  + image #2 4x4 transparent 0
 * <stdin> 2 images
   logical screen 4x4
   global color table [4]
