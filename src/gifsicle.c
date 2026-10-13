@@ -1170,7 +1170,8 @@ output_frames(void)
   if (infoing)
     output_information(outfile);
 
-  if (infoing != 1 && frames->count > 0)
+  /* An input with no images produces no output, which is an error. */
+  if (infoing != 1)
     switch (mode) {
 
      case MERGING:
@@ -1192,6 +1193,8 @@ output_frames(void)
 
        if (!outfile) /* Watch out! */
          outfile = "-";
+       if (frames->count == 0)
+         error(1, "empty output GIF not written");
 
        for (i = 0; i < frames->count; i++) {
          Gt_Frame *fr = &FRAME(frames, i);
