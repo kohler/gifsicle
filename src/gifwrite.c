@@ -334,12 +334,14 @@ gfc_lossy_init(Gif_CodeTable* gfc, Gif_Stream* gfs, Gif_Image* gfi)
   int ncol = gfcm ? gfcm->ncol : 0;
   kcolor** kcs = gfi->local ? &gfc->local_kcs : &gfc->global_kcs;
   kcolor* old_kcs = gfc->kcs;
-  if (!*kcs) {
-    *kcs = Gif_NewArray(kcolor, 256);
-    if (!*kcs) {
-      gfc->max_loss = 0;
-      return 0;
-    }
+  /* The global colormap is the same for every image, but local colormaps
+     differ, so recompute local colors each time */
+  int fill = !*kcs || gfi->local;
+  if (!*kcs && !(*kcs = Gif_NewArray(kcolor, 256))) {
+    gfc->max_loss = 0;
+    return 0;
+  }
+  if (fill) {
     for (i = 0; i != ncol; ++i) {
       (*kcs)[i] = kc_makegfcg(&gfcm->col[i]);
     }
