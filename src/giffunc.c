@@ -311,6 +311,8 @@ Gif_CalculateScreenSize(Gif_Stream *gfs, int force)
       screen_height = gfi->top + gfi->height;
   }
 
+  screen_width = screen_width > 65535 ? 65535 : screen_width;
+  screen_height = screen_height > 65535 ? 65535 : screen_height;
   if (gfs->screen_width < screen_width || force)
     gfs->screen_width = screen_width;
   if (gfs->screen_height < screen_height || force)

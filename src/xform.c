@@ -227,14 +227,14 @@ combine_crop(Gt_Crop* dstcrop, const Gt_Crop* srccrop, const Gif_Image* gfi)
         dstcrop->x = dl;
         dstcrop->w = dr - dl;
     } else {
-        dstcrop->x = (cl <= 0 ? 0 : srccrop->w - 1) + (srccrop->left_offset - gfi->left);
+        dstcrop->x = (cl <= 0 || srccrop->w <= 0 ? 0 : srccrop->w - 1) + (srccrop->left_offset - gfi->left);
         dstcrop->w = 0;
     }
     if (dt < db) {
         dstcrop->y = dt;
         dstcrop->h = db - dt;
     } else {
-        dstcrop->y = (ct <= 0 ? 0 : srccrop->h - 1) + (srccrop->top_offset - gfi->top);
+        dstcrop->y = (ct <= 0 || srccrop->h <= 0 ? 0 : srccrop->h - 1) + (srccrop->top_offset - gfi->top);
         dstcrop->h = 0;
     }
 }
@@ -701,8 +701,12 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
     kacolor* oscr = &sctx->xscr.data[sctx->xscr.width * (yo + gfo->top)
                                      + gfo->left];
 
+    /* if the input image has no transparent color, output is opaque
+       wherever any input pixel contributed */
+    float min_alpha = sctx->gfi->transparent >= 0 ? KC_MAX / 4 : 0;
+
     for (xo = 0; xo != gfo->width; ++xo)
-        if (sc[xo].a[3] <= (int) (KC_MAX / 4))
+        if (sc[xo].a[3] <= min_alpha)
             oscr[xo] = kac_transparent();
         else {
             /* don't effectively mix partially transparent pixels with black */
@@ -710,8 +714,8 @@ static void scale_image_output_row(scale_context* sctx, scale_color* sc,
                 SCVEC_MULF(sc[xo], KC_MAX / sc[xo].a[3]);
             /* find closest color */
             for (k = 0; k != 3; ++k) {
-                int v = (int) (sc[xo].a[k] + 0.5);
-                oscr[xo].a[k] = KC_CLAMPV(v);
+                float v = sc[xo].a[k] + 0.5f;
+                oscr[xo].a[k] = v <= 0 ? 0 : v >= KC_MAX ? KC_MAX : (int) v;
             }
             oscr[xo].a[3] = KC_MAX;
         }
@@ -783,8 +787,11 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
                     }
                 }
                 max_dist = dist > max_dist ? dist : max_dist;
-            } else
+            } else if (transparent >= 0)
                 data[xo] = transparent;
+            else
+                /* no input pixel contributed, but the image is opaque */
+                data[xo] = kd3_closest_transformed(sctx->kd3, oscr[xo].a[3] ? oscr[xo].k : xscr[xo].k, &dist);
     }
 
     /* if the global colormap has changed, we must retry
@@ -1142,6 +1149,10 @@ static void scale_image_data_lanczos3(scale_context* sctx, Gif_Image* gfo) {
 }
 
 
+static int scale_clip_coord(double v, int max) {
+    return v <= 0 ? 0 : v >= max ? max : (int) v;
+}
+
 static void scale_image(scale_context* sctx, int method) {
     Gif_Image* gfi = sctx->gfi;
     Gif_Image gfo;
@@ -1164,21 +1175,19 @@ static void scale_image(scale_context* sctx, int method) {
     gfo.image_data = NULL;
     gfo.compressed = NULL;
 
-    left = (int) (gfi->left * sctx->ixf);
-    top = (int) (gfi->top * sctx->iyf);
-    right = (int) ceil((gfi->left + gfi->width) * sctx->ixf);
-    bottom = (int) ceil((gfi->top + gfi->height) * sctx->iyf);
+    /* clip to the output screen. Frames can extend past the logical screen;
+       those parts are invisible, and their scaled coordinates might not fit
+       in 16 bits (or an int). */
+    left = scale_clip_coord(gfi->left * sctx->ixf, sctx->oscr.width);
+    top = scale_clip_coord(gfi->top * sctx->iyf, sctx->oscr.height);
+    right = scale_clip_coord(ceil((gfi->left + gfi->width) * sctx->ixf),
+                             sctx->oscr.width);
+    bottom = scale_clip_coord(ceil((gfi->top + gfi->height) * sctx->iyf),
+                              sctx->oscr.height);
     /* account for floating point errors at bottom right edge */
     if ((unsigned) gfi->left + gfi->width == sctx->iscr.width)
         right = sctx->oscr.width;
     if ((unsigned) gfi->top + gfi->height == sctx->iscr.height)
-        bottom = sctx->oscr.height;
-    /* clip to the output screen. Frames can extend past the logical screen;
-       those parts are invisible, and their scaled coordinates might not fit
-       in 16 bits. */
-    if (right > (int) sctx->oscr.width)
-        right = sctx->oscr.width;
-    if (bottom > (int) sctx->oscr.height)
         bottom = sctx->oscr.height;
     if (left > right)
         left = right;
@@ -1338,6 +1347,8 @@ resize_stream(Gif_Stream* gfs,
 
     Gif_CalculateScreenSize(gfs, 0);
     assert(gfs->nimages > 0);
+    if (gfs->screen_width == 0 || gfs->screen_height == 0)
+        return;
     nw = gfs->screen_width;
     nh = gfs->screen_height;
     resize_dimensions(&nw, &nh, new_width, new_height, flags);

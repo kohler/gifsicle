@@ -1025,6 +1025,9 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
     if (active_output_data.scaling == GT_SCALING_SCALE) {
       w = active_output_data.scale_x * out->screen_width;
       h = active_output_data.scale_y * out->screen_height;
+      /* tiny scale factors still produce at least 1 pixel */
+      w = w < 1 ? 1 : w;
+      h = h < 1 ? 1 : h;
     } else {
       w = active_output_data.resize_width;
       h = active_output_data.resize_height;

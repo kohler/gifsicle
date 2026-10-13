@@ -1311,8 +1311,10 @@ handle_flip_and_rotate(Gif_Image* desti, Gt_Frame* fr)
     } else if (fr->rotation == 3)
         rotate_image(desti, fr, 3);
 
-    desti->left -= fr->left_offset;
-    desti->top -= fr->top_offset;
+    /* a placeholder for a frame outside an empty crop can land before the
+       crop origin; don't let its position wrap */
+    desti->left = desti->left > fr->left_offset ? desti->left - fr->left_offset : 0;
+    desti->top = desti->top > fr->top_offset ? desti->top - fr->top_offset : 0;
 }
 
 static void
@@ -1370,6 +1372,19 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
       lerror(cropped_gfs ? cropped_gfs->landmark : (const char*) 0,
              "cropping dimensions don%,t fit image");
       crop->ready = 2;
+      /* clip the crop to the image so later computations stay sane */
+      if (crop->w < 0)
+        crop->w = 0;
+      if (crop->h < 0)
+        crop->h = 0;
+      crop->w = constrain(l, crop->x + crop->w, r);
+      crop->x = constrain(l, crop->x, r);
+      crop->w = crop->w > crop->x ? crop->w - crop->x : 0;
+      crop->h = constrain(t, crop->y + crop->h, b);
+      crop->y = constrain(t, crop->y, b);
+      crop->h = crop->h > crop->y ? crop->h - crop->y : 0;
+      crop->left_offset = crop->x;
+      crop->top_offset = crop->y;
   } else
       crop->ready = 1;
 
@@ -1440,7 +1455,8 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
             Gif_ReleaseUncompressedImage(srci);
         }
 
-        if (tt < bb) {
+        /* a frame outside the crop horizontally contributes nothing */
+        if (tt < bb && ll < rr) {
           if (ll < l)
             l = ll;
           if (tt < t)
@@ -1453,7 +1469,7 @@ analyze_crop(int nmerger, Gt_Crop* crop, int compress_immediately)
       }
     }
 
-    if (t > b) {
+    if (t >= b || l >= r) {
       /* everything is transparent; keep a 1x1 crop, since later code
          assumes a nonempty crop */
       crop->w = crop->h = 1;
@@ -1714,6 +1730,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
           h += fr->top;
         }
       }
+      w = w > 65535 ? 65535 : w;
+      h = h > 65535 ? 65535 : h;
       if (w > dest->screen_width) {
         dest->screen_width = w;
       }
