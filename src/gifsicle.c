@@ -441,6 +441,15 @@ set_frame_change(int kind)
     frame_spec_1 = frame_spec_2;
     frame_spec_2 = i;
   }
+  /* frame specs are relative to the most recent input */
+  if (kind == REPLACE_OPT || kind == INSERT_OPT) {
+    frame_spec_1 += first_input_frame;
+    frame_spec_2 += first_input_frame;
+    if (frame_spec_1 < first_input_frame || frame_spec_2 >= frames->count) {
+      fatal_error("frame out of range");
+      return;
+    }
+  }
 
   switch (kind) {
 
