@@ -1,0 +1,16 @@
+%script
+gifsicle one.gif rich.gif --insert-before "#1" "#0" | gifsicle -I | grep image
+
+%file -e one.gif
+R0lGODlhBAAEAPEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAAIJwABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAADAgA7
+
+%file -e rich.gif
+R0lGODlhBAAEAPEAAP8AAP+AAP//AAAAACHOAUEAIf4CQ0EAIQECWEEAIf8LQVBQQVBQQVAxLjAFZGF0YUEALAAAAAAEAAQAAAIEhI8JBQAhzgFCACH+A0NCMQAh/gNDQjIALAAAAAAEAAQAAAIEjI8ZBQAhAgJYMgAsAAAAAAQABAAAAgSUjykFACH+A0VORAA7
+
+%expect stdout
+* <stdin> 5 images
+  + image #0 4x4
+  + image #1 #A 4x4
+  + image #2 #A 4x4
+  + image #3 #B 4x4
+  + image #4 4x4

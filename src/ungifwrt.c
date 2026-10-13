@@ -649,41 +649,6 @@ write_graphic_control_extension(Gif_Image *gfi, Gif_Writer *grr)
 
 
 static void
-blast_data(const uint8_t *data, int len, Gif_Writer *grr)
-{
-  while (len > 0) {
-    int s = len > 255 ? 255 : len;
-    gifputbyte(s, grr);
-    gifputblock(data, s, grr);
-    data += s;
-    len -= s;
-  }
-  gifputbyte(0, grr);
-}
-
-
-static void
-write_name_extension(char *id, Gif_Writer *grr)
-{
-  gifputbyte('!', grr);
-  gifputbyte(0xCE, grr);
-  blast_data((uint8_t *)id, strlen(id), grr);
-}
-
-
-static void
-write_comment_extensions(Gif_Comment *gfcom, Gif_Writer *grr)
-{
-  int i;
-  for (i = 0; i < gfcom->count; i++) {
-    gifputbyte('!', grr);
-    gifputbyte(0xFE, grr);
-    blast_data((const uint8_t *)gfcom->str[i], gfcom->len[i], grr);
-  }
-}
-
-
-static void
 write_netscape_loop_extension(uint16_t value, Gif_Writer *grr)
 {
   gifputblock((const uint8_t *)"!\xFF\x0BNETSCAPE2.0\x03\x01", 16, grr);
@@ -700,11 +665,9 @@ write_generic_extension(Gif_Extension *gfex, Gif_Writer *grr)
 
   gifputbyte('!', grr);
   gifputbyte(gfex->kind, grr);
-  if (gfex->kind == 255) {	/* an application extension */
-    if (gfex->applength) {
-      gifputbyte(gfex->applength, grr);
-      gifputblock((const uint8_t*) gfex->appname, gfex->applength, grr);
-    }
+  if (gfex->kind == GIF_EX_APP) { /* an application extension */
+    gifputbyte(GIF_EX_APPIDSIZE, grr);
+    gifputblock((const uint8_t*) gfex->appname, GIF_EX_APPIDSIZE, grr);
   }
   if (gfex->packetized)
     gifputblock(gfex->data, gfex->length, grr);
@@ -732,12 +695,14 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
 
   {
     uint8_t isgif89a = 0;
-    if (gfs->end_comment || gfs->end_extension_list || gfs->loopcount > -1)
+    if (gfs->end_extensions.head || gfs->loopcount > -1)
       isgif89a = 1;
     for (i = 0; i < gfs->nimages && !isgif89a; i++) {
       Gif_Image* gfi = gfs->images[i];
-      if (gfi->identifier || gfi->transparent != -1 || gfi->disposal
-          || gfi->delay || gfi->comment || gfi->extension_list)
+      if (gfi->transparent != -1
+          || gfi->disposal
+          || gfi->delay
+          || gfi->extensions.head)
         isgif89a = 1;
     }
     if (isgif89a)
@@ -755,10 +720,8 @@ write_gif(Gif_Stream *gfs, Gif_Writer *grr)
     if (!Gif_IncrementalWriteImage(grr, gfs, gfs->images[i]))
       goto done;
 
-  for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next)
+  for (gfex = gfs->end_extensions.head; gfex; gfex = gfex->next)
     write_generic_extension(gfex, grr);
-  if (gfs->end_comment)
-    write_comment_extensions(gfs->end_comment, grr);
 
   gifputbyte(';', grr);
   ok = 1;
@@ -800,12 +763,8 @@ int
 Gif_IncrementalWriteImage(Gif_Writer* grr, Gif_Stream* gfs, Gif_Image* gfi)
 {
     Gif_Extension *gfex;
-    for (gfex = gfi->extension_list; gfex; gfex = gfex->next)
+    for (gfex = gfi->extensions.head; gfex; gfex = gfex->next)
         write_generic_extension(gfex, grr);
-    if (gfi->comment)
-        write_comment_extensions(gfi->comment, grr);
-    if (gfi->identifier)
-        write_name_extension(gfi->identifier, grr);
     if (gfi->transparent != -1 || gfi->disposal || gfi->delay)
         write_graphic_control_extension(gfi, grr);
     return write_image(gfs, gfi, grr);
@@ -815,10 +774,8 @@ int
 Gif_IncrementalWriteComplete(Gif_Writer* grr, Gif_Stream* gfs)
 {
     Gif_Extension* gfex;
-    for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next)
+    for (gfex = gfs->end_extensions.head; gfex; gfex = gfex->next)
         write_generic_extension(gfex, grr);
-    if (gfs->end_comment)
-        write_comment_extensions(gfs->end_comment, grr);
     gifputbyte(';', grr);
     gif_writer_cleanup(grr);
     Gif_Delete(grr);

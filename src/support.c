@@ -338,18 +338,6 @@ safe_puts(const char *s, uint32_t len, FILE *f)
 }
 
 
-static void
-comment_info(FILE *where, Gif_Comment *gfcom, const char *prefix)
-{
-  int i;
-  for (i = 0; i < gfcom->count; i++) {
-    fputs(prefix, where);
-    safe_puts(gfcom->str[i], gfcom->len[i], where);
-    fputc('\n', where);
-  }
-}
-
-
 #define COLORMAP_COLS   4
 
 static void
@@ -372,17 +360,25 @@ colormap_info(FILE *where, Gif_Colormap *gfcm, const char *prefix)
 
 
 static void
-extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex,
-               int count, int image_position)
+comment_info(FILE *where, Gif_Extension *gfex, const char *prefix)
+{
+  fputs(prefix, where);
+  safe_puts((const char*) gfex->data, gfex->length, where);
+  fputc('\n', where);
+}
+
+static void
+extension_info(FILE *where, Gif_Extension *gfex, const char *prefix,
+               const char *hexprefix)
 {
   uint8_t *data = gfex->data;
   uint32_t pos = 0;
   uint32_t len = gfex->length;
 
-  fprintf(where, "  extension %d: ", count);
-  if (gfex->kind == 255) {
+  fprintf(where, "%sextension ", prefix);
+  if (gfex->kind == GIF_EX_APP) {
     fprintf(where, "app '");
-    safe_puts(gfex->appname, gfex->applength, where);
+    safe_puts(gfex->appname, GIF_EX_APPIDSIZE, where);
     fprintf(where, "'");
   } else {
     if (gfex->kind >= 32 && gfex->kind < 127)
@@ -390,10 +386,6 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex,
     else
       fprintf(where, "0x%02X", gfex->kind);
   }
-  if (image_position >= gfs->nimages)
-    fprintf(where, " at end");
-  else
-    fprintf(where, " before #%d", image_position);
   if (gfex->packetized)
     fprintf(where, " packetized");
   fprintf(where, "\n");
@@ -403,7 +395,7 @@ extension_info(FILE *where, Gif_Stream *gfs, Gif_Extension *gfex,
     uint32_t row = 16;
     uint32_t i;
     if (row > len) row = len;
-    fprintf(where, "    %08x: ", pos);
+    fprintf(where, "%s%08x: ", hexprefix, pos);
 
     for (i = 0; i < row; i += 2) {
       if (i + 1 >= row)
@@ -429,7 +421,7 @@ void
 stream_info(FILE *where, Gif_Stream *gfs, const char *filename, int flags)
 {
   Gif_Extension *gfex;
-  int n, i;
+  int n;
 
   if (!gfs)
     return;
@@ -447,24 +439,24 @@ stream_info(FILE *where, Gif_Stream *gfs, const char *filename, int flags)
     fprintf(where, "  background %d\n", gfs->background);
   }
 
-  if (gfs->end_comment)
-    comment_info(where, gfs->end_comment, "  end comment ");
-
   if (gfs->loopcount == 0)
     fprintf(where, "  loop forever\n");
   else if (gfs->loopcount > 0)
     fprintf(where, "  loop count %u\n", (unsigned)gfs->loopcount);
 
   n = 0;
-  for (i = 0; i < gfs->nimages; ++i)
-      for (gfex = gfs->images[i]->extension_list; gfex; gfex = gfex->next, ++n)
-          if (flags & INFO_EXTENSIONS)
-              extension_info(where, gfs, gfex, n, i);
-  for (gfex = gfs->end_extension_list; gfex; gfex = gfex->next, ++n)
+  for (gfex = gfs->end_extensions.head; gfex; gfex = gfex->next) {
+    if (gfex->kind == GIF_EX_COMMENT)
+      comment_info(where, gfex, "  end comment ");
+    else {
       if (flags & INFO_EXTENSIONS)
-          extension_info(where, gfs, gfex, n, gfs->nimages);
-  if (n && !(flags & INFO_EXTENSIONS))
-    fprintf(where, "  extensions %d\n", n);
+        extension_info(where, gfex, "  end ", "    ");
+      else
+        ++n;
+    }
+  }
+  if (n)
+    fprintf(where, "  end extensions %d\n", n);
 }
 
 
@@ -475,15 +467,16 @@ static const char *disposal_names[] = {
 void
 image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int flags)
 {
-  int num;
+  Gif_Extension* gfex;
+  int num, nex;
   if (!gfs || !gfi)
     return;
   num = Gif_ImageNumber(gfs, gfi);
 
   verbose_endline();
   fprintf(where, "  + image #%d ", num);
-  if (gfi->identifier)
-    fprintf(where, "#%s ", gfi->identifier);
+  if (Gif_ImageName(gfi))
+    fprintf(where, "#%s ", Gif_ImageName(gfi));
 
   fprintf(where, "%dx%d", gfi->width, gfi->height);
   if (gfi->left || gfi->top)
@@ -500,8 +493,19 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int flags)
   if ((flags & INFO_SIZES) && gfi->compressed)
     fprintf(where, "    compressed size %u\n", gfi->compressed_len);
 
-  if (gfi->comment)
-    comment_info(where, gfi->comment, "    comment ");
+  nex = 0;
+  for (gfex = gfi->extensions.head; gfex; gfex = gfex->next) {
+    if (gfex->kind == GIF_EX_COMMENT)
+      comment_info(where, gfex, "    comment ");
+    else if (gfex->kind != GIF_EX_NAME) {
+      if (flags & INFO_EXTENSIONS)
+        extension_info(where, gfex, "    ", "      ");
+      else
+        ++nex;
+    }
+  }
+  if (nex)
+    fprintf(where, "    extensions %d\n", nex);
 
   if (gfi->local) {
     fprintf(where, "    local color table [%d]\n", gfi->local->ncol);
@@ -1056,9 +1060,8 @@ clear_def_frame_once_options(void)
 
      We handle this in gifsicle.c using the _change fields. */
 
-  def_frame.name = 0;
-  def_frame.comment = 0;
-  def_frame.extensions = 0;
+  Gif_DeleteExtensions(&def_frame.extensions);
+  def_frame.frame_no_extensions_flag = 0;
 }
 
 
@@ -1077,6 +1080,9 @@ add_frame(Gt_Frameset *fset, Gif_Stream *gfs, Gif_Image *gfi)
   fset->f[number] = def_frame;
   fset->f[number].stream = gfs;
   fset->f[number].image = gfi;
+  fset->f[number].extensions.head = fset->f[number].extensions.tail = 0;
+  if (!Gif_CopyExtensions(&fset->f[number].extensions, &def_frame.extensions))
+    fatal_error("out of memory");
 
   clear_def_frame_once_options();
 
@@ -1119,9 +1125,16 @@ merger_flatten(Gt_Frameset *fset, int f1, int f2)
           FRAME(nest, 0).delay = FRAME(fset, i).image->delay;
         if (FRAME(nest, 0).disposal < 0)
           FRAME(nest, 0).disposal = FRAME(fset, i).image->disposal;
-        if (FRAME(nest, 0).name == 0 && FRAME(nest, 0).no_name == 0)
-          FRAME(nest, 0).name =
-            Gif_CopyString(FRAME(fset, i).image->identifier);
+        if (!(FRAME(nest, 0).no_extensions_flag & NOEXF_NAME)
+            && !Gif_ExtensionListName(&FRAME(nest, 0).extensions)) {
+          const char* identifier = Gif_ImageName(FRAME(fset, i).image);
+          Gif_Extension* ngfex;
+          if (identifier
+              && (ngfex = Gif_NewExtensionData(GIF_EX_NAME, 0, identifier, strlen(identifier)))) {
+            Gif_AppendExtension(&FRAME(nest, 0).extensions, ngfex);
+            FRAME(nest, 0).frame_no_extensions_flag |= NOEXF_NAME;
+          }
+        }
       }
       merger_flatten(nest, 0, nest->count - 1);
     }
@@ -1524,7 +1537,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       Gif_Stream *src = merger[i]->stream;
       Gif_CalculateScreenSize(src, 0);
       /* merge_stream() unmarks the global colormap */
-      merge_stream(dest, src, merger[i]->no_comments);
+      merge_stream(dest, src, merger[i]->no_extensions_flag);
       src->user_flags = 0;
     }
     if (merger[i]->image->local)
@@ -1606,23 +1619,15 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       handle_flip_and_rotate(desti, fr);
     }
 
-    /* Names and comments */
-    if (fr->name || fr->no_name) {
-      Gif_DeleteArray(desti->identifier);
-      desti->identifier = Gif_CopyString(fr->name);
-    }
-    if (fr->no_comments && desti->comment) {
-      Gif_DeleteComment(desti->comment);
-      desti->comment = 0;
-    }
-    if (fr->comment) {
-      if (!desti->comment)
-        desti->comment = Gif_NewComment();
-      merge_comments(desti->comment, fr->comment);
-      /* delete the comment early to help with memory; set field to 0 so we
-         don't re-free it later */
-      Gif_DeleteComment(fr->comment);
-      fr->comment = 0;
+    /* Extensions */
+    if (fr->extensions.head) {
+      if (desti->extensions.tail) {
+        desti->extensions.tail->next = fr->extensions.head;
+      } else {
+        desti->extensions.head = fr->extensions.head;
+      }
+      desti->extensions.tail = fr->extensions.tail;
+      fr->extensions.head = fr->extensions.tail = 0;
     }
 
     if (fr->interlacing >= 0) {
@@ -1768,7 +1773,7 @@ blank_frameset(Gt_Frameset *fset, int f1, int f2, int delete_object)
     if (FRAME(fset, i).image && FRAME(fset, i).image->refcount > 1)
       FRAME(fset, i).image->refcount--;
     Gif_DeleteStream(FRAME(fset, i).stream);
-    Gif_DeleteComment(FRAME(fset, i).comment);
+    Gif_DeleteExtensions(&FRAME(fset, i).extensions);
     if (FRAME(fset, i).nest)
       blank_frameset(FRAME(fset, i).nest, 0, 0, 1);
   }

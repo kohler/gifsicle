@@ -30,6 +30,7 @@ Gt_Frame def_frame;
 
 Gt_Frameset *frames = 0;
 int first_input_frame = 0;
+static Gt_Frameset *input_frames = 0; /* frameset holding the input's frames */
 Gt_Frameset *nested_frames = 0;
 
 Gif_Stream *input = 0;
@@ -498,6 +499,44 @@ frame_change_done(void)
 
 
 static void
+delete_matching_extensions(Gt_Frame* fr, int flags)
+{
+  Gif_Extension** gfexp = &fr->extensions.head;
+  Gif_Extension* last_gfex = 0;
+  while (*gfexp) {
+    Gif_Extension* gfex = *gfexp;
+    if (flags & extension_flag(gfex)) {
+      *gfexp = gfex->next;
+      Gif_DeleteExtension(gfex);
+    } else {
+      gfexp = &gfex->next;
+      last_gfex = gfex;
+    }
+  }
+  fr->extensions.tail = last_gfex;
+}
+
+/* Start a new set of def_frame extensions of type 'noexf' unless an
+   option of that type has already been given for the next frame. */
+static void
+mark_extension_change(int noexf)
+{
+  int ch;
+  if (noexf & NOEXF_NAME)
+    ch = CH_NAME;
+  else if (noexf & NOEXF_COMMENT)
+    ch = CH_COMMENT;
+  else {
+    ch = CH_EXTENSION;
+    noexf = NOEXF_GENERIC | NOEXF_APP;
+  }
+  if (!CHANGED(next_frame, ch))
+    delete_matching_extensions(&def_frame, noexf);
+  UNCHECKED_MARK_CH(frame, ch);
+}
+
+
+static void
 show_frame(int imagenumber, int usename)
 {
   Gif_Image *gfi;
@@ -513,15 +552,8 @@ show_frame(int imagenumber, int usename)
    case EXPLODING:
    case INFOING:
    case BATCHING:
-    if (!frames_done) {
-      /* input_stream gave the input's first frame the pending comment,
-         but def_frame still holds it so the selected frame gets it
-         instead. Don't free it with the discarded frames. */
-      if (first_input_frame < frames->count
-          && FRAME(frames, first_input_frame).comment == def_frame.comment)
-        FRAME(frames, first_input_frame).comment = 0;
+    if (!frames_done && frames == input_frames)
       clear_frameset(frames, first_input_frame);
-    }
     frame = add_frame(frames, input, gfi);
     if (usename)
       frame->explode_by_name = 1;
@@ -705,6 +737,7 @@ input_stream(const char *name)
   int saved_next_frame = next_frame;
   int componentno = 0;
   const char *main_name = 0;
+  int noexf;
   Gt_Frame old_def_frame;
 
   input = 0;
@@ -821,19 +854,29 @@ input_stream(const char *name)
      [-.] g.gif [-.] --name=X [X*] h.gif  == name on h.gif #0 */
 
   /* Clear old options from the last input stream */
+  noexf = 0;
   if (!CHANGED(saved_next_frame, CH_NAME))
-    def_frame.name = 0;
+    noexf |= NOEXF_NAME;
   if (!CHANGED(saved_next_frame, CH_COMMENT))
-    def_frame.comment = 0;
+    noexf |= NOEXF_COMMENT;
   if (!CHANGED(saved_next_frame, CH_EXTENSION))
-    def_frame.extensions = 0;
+    noexf |= NOEXF_GENERIC | NOEXF_APP;
+  delete_matching_extensions(&def_frame, noexf);
+  def_frame.frame_no_extensions_flag &= ~noexf;
   def_frame.input_filename = input_name;
 
+  /* The first frame gets a copy of def_frame's extensions; def_frame keeps
+     them for a later frame selection. */
   old_def_frame = def_frame;
+  def_frame.extensions.head = def_frame.extensions.tail = 0;
+  if (!Gif_CopyExtensions(&def_frame.extensions, &old_def_frame.extensions))
+    fatal_error("out of memory");
+  input_frames = frames;
   first_input_frame = frames->count;
   def_frame.position_is_offset = 1;
   for (i = 0; i < gfs->nimages; i++)
     add_frame(frames, gfs, gfs->images[i]);
+  clear_def_frame_once_options();
   def_frame = old_def_frame;
 
   if (unoptimizing)
@@ -851,10 +894,13 @@ input_stream(const char *name)
   apply_color_transforms(input_transforms, gfs);
   gfs->refcount++;
 
-  /* Read more files. */
+  /* Read more files. Once-only frame options apply to the first
+     component only. */
   free(component_namebuf);
-  if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile)
+  if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile) {
+    saved_next_frame = 0;
     goto retry_file;
+  }
   close_giffile(f, 0);
   return;
 
@@ -1152,9 +1198,13 @@ output_frames(void)
          int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
          char *explodename;
 
-         const char *imagename = 0;
-         if (fr->explode_by_name)
-           imagename = fr->name ? fr->name : fr->image->identifier;
+         const char* imagename = 0;
+         if (fr->explode_by_name) {
+           int noexf = fr->no_extensions_flag | fr->frame_no_extensions_flag;
+           imagename = Gif_ExtensionListName(&fr->extensions);
+           if (!imagename && !(noexf & NOEXF_NAME))
+             imagename = Gif_ImageName(fr->image);
+         }
 
          explodename = explode_filename(outfile, imagenumber, imagename,
                                         max_nimages);
@@ -1207,31 +1257,42 @@ handle_extension(Clp_Parser *clp, int is_app)
   Gif_Extension *gfex;
   const char *extension_type = clp->vstr;
   const char *extension_body = Clp_Shift(clp, 1);
+  int kind;
+  char* appname = 0;
+  char appname_buf[12]; /* extra byte to quiet compiler warning */
   if (!extension_body) {
     Clp_OptionError(clp, "%O requires two arguments");
     return 0;
   }
 
-  UNCHECKED_MARK_CH(frame, CH_EXTENSION);
   if (is_app) {
-    /* identifier + authentication code: exactly 11 bytes, NUL-padded */
-    char appname[12]; /* extra byte to quiet compiler warning */
-    strncpy(appname, extension_type, sizeof(appname) - 1);
-    gfex = Gif_NewExtension(255, appname, sizeof(appname) - 1);
-  } else if (!isdigit(extension_type[0]) && extension_type[1] == 0)
-    gfex = Gif_NewExtension(extension_type[0], 0, 0);
-  else {
-    long l = strtol(extension_type, (char **)&extension_type, 0);
-    if (*extension_type != 0 || l < 0 || l >= 256)
-      fatal_error("bad extension type: must be a number between 0 and 255");
-    gfex = Gif_NewExtension(l, 0, 0);
+    /* identifier + authentication code: exactly 11 bytes */
+    /* XXX first 8 should printable ASCII */
+    if (strlen(extension_type) > sizeof(appname_buf) - 1) {
+      Clp_OptionError(clp, "%O: extension name too long");
+      return 0;
+    }
+    strncpy(appname_buf, extension_type, sizeof(appname_buf) - 1);
+    appname = appname_buf;
+    kind = 255;
+  } else if (!isdigit(extension_type[0]) && extension_type[1] == 0) {
+    kind = (unsigned char) extension_type[0];
+  } else {
+    long l = strtol(extension_type, (char**) &extension_type, 0);
+    if (*extension_type != 0 || l < 0 || l >= 255) {
+      Clp_OptionError(clp, "%O: extension type must be number between 0 and 254");
+      return 0;
+    }
+    kind = l;
   }
 
-  gfex->data = (uint8_t *)extension_body;
-  gfex->length = strlen(extension_body);
-  gfex->next = def_frame.extensions;
-  def_frame.extensions = gfex;
-
+  gfex = Gif_NewExtensionData(kind, appname, extension_body, strlen(extension_body));
+  if (!gfex) {
+    error(0, "out of memory");
+    return 0;
+  }
+  mark_extension_change(extension_flag(gfex));
+  Gif_AppendExtension(&def_frame.extensions, gfex);
   return 1;
 }
 
@@ -1248,11 +1309,6 @@ initialize_def_frame(void)
   def_frame.image = 0;
   def_frame.use = 1;
 
-  def_frame.name = 0;
-  def_frame.no_name = 0;
-  def_frame.comment = 0;
-  def_frame.no_comments = 0;
-
   def_frame.interlacing = -1;
   def_frame.transparent.haspixel = 0;
   def_frame.left = -1;
@@ -1267,9 +1323,10 @@ initialize_def_frame(void)
   def_frame.nest = 0;
   def_frame.explode_by_name = 0;
 
-  def_frame.no_extensions = 0;
-  def_frame.no_app_extensions = 0;
-  def_frame.extensions = 0;
+  def_frame.no_extensions_flag = 0;
+  def_frame.frame_no_extensions_flag = 0;
+  def_frame.extensions.head = 0;
+  def_frame.extensions.tail = 0;
 
   def_frame.flip_horizontal = 0;
   def_frame.flip_vertical = 0;
@@ -1648,38 +1705,55 @@ main(int argc, char *argv[])
 
      case NAME_OPT:
       if (clp->negated) goto no_names;
-      MARK_CH(frame, CH_NAME);
-      def_frame.name = clp->vstr;
+      if (CHANGED(next_frame, CH_NAME)
+          && Gif_ExtensionListName(&def_frame.extensions))
+        redundant_option_warning(frame_option_types[CH_NAME]);
+      UNCHECKED_MARK_CH(frame, CH_NAME);
+      {
+        Gif_Extension* gfex = Gif_NewExtensionData(GIF_EX_NAME, 0, clp->vstr, strlen(clp->vstr));
+        if (gfex) {
+          delete_matching_extensions(&def_frame, NOEXF_NAME);
+          Gif_AppendExtension(&def_frame.extensions, gfex);
+        } else
+          error(0, "out of memory");
+        def_frame.frame_no_extensions_flag |= NOEXF_NAME;
+      }
       break;
 
      no_names:
      case NO_NAME_OPT:
       MARK_CH(frame, CH_NAME);
-      def_frame.no_name = 1;
-      def_frame.name = 0;
+      def_frame.no_extensions_flag |= NOEXF_NAME;
+      def_frame.frame_no_extensions_flag &= ~NOEXF_NAME;
+      delete_matching_extensions(&def_frame, NOEXF_NAME);
       break;
 
      case SAME_NAME_OPT:
-      def_frame.no_name = 0;
-      def_frame.name = 0;
+      def_frame.no_extensions_flag &= ~NOEXF_NAME;
+      def_frame.frame_no_extensions_flag &= ~NOEXF_NAME;
+      delete_matching_extensions(&def_frame, NOEXF_NAME);
       break;
 
      case COMMENT_OPT:
       if (clp->negated) goto no_comments;
-      MARK_CH(frame, CH_COMMENT);
-      if (!def_frame.comment) def_frame.comment = Gif_NewComment();
-      Gif_AddComment(def_frame.comment, clp->vstr, -1);
+      mark_extension_change(NOEXF_COMMENT);
+      {
+        Gif_Extension* gfex = Gif_NewExtensionData(GIF_EX_COMMENT, 0, clp->vstr, strlen(clp->vstr));
+        if (gfex) {
+          Gif_AppendExtension(&def_frame.extensions, gfex);
+        } else
+          error(0, "out of memory");
+      }
       break;
 
      no_comments:
      case NO_COMMENTS_OPT:
-      Gif_DeleteComment(def_frame.comment);
-      def_frame.comment = 0;
-      def_frame.no_comments = 1;
+      def_frame.no_extensions_flag |= NOEXF_COMMENT;
+      delete_matching_extensions(&def_frame, NOEXF_COMMENT);
       break;
 
      case SAME_COMMENTS_OPT:
-      def_frame.no_comments = 0;
+      def_frame.no_extensions_flag &= ~NOEXF_COMMENT;
       break;
 
      case 'i':
@@ -1787,19 +1861,19 @@ main(int argc, char *argv[])
       /* extensions options */
 
      case NO_EXTENSIONS_OPT:
-      def_frame.no_extensions = 1;
+      def_frame.no_extensions_flag |= NOEXF_GENERIC | NOEXF_APP;
       break;
 
     case NO_APP_EXTENSIONS_OPT:
-      def_frame.no_app_extensions = 1;
+      def_frame.no_extensions_flag |= NOEXF_APP;
       break;
 
      case SAME_EXTENSIONS_OPT:
-      def_frame.no_extensions = 0;
+      def_frame.no_extensions_flag &= ~NOEXF_GENERIC & ~NOEXF_APP;
       break;
 
     case SAME_APP_EXTENSIONS_OPT:
-      def_frame.no_app_extensions = 0;
+      def_frame.no_extensions_flag &= ~NOEXF_APP;
       break;
 
      case EXTENSION_OPT:

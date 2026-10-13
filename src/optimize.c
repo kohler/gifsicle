@@ -428,9 +428,7 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
     if (gfi->width == 1
         && gfi->height == 1
         && gfi->transparent >= 0
-        && !gfi->identifier
-        && !gfi->comment
-        && !gfi->extension_list
+        && !gfi->extensions.head
         && (gfi->disposal == GIF_DISPOSAL_ASIS
             || gfi->disposal == GIF_DISPOSAL_NONE
             || gfi->disposal == GIF_DISPOSAL_PREVIOUS)

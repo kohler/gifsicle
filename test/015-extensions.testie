@@ -1,0 +1,90 @@
+%script
+gifsicle --multifile -c X two.gif | gifsicle -I | grep -e image -e comment
+gifsicle -c X one.gif '#0' | gifsicle -I | grep -e image -e comment
+gifsicle -c X one.gif --no-comments one.gif | gifsicle -I | grep -e image -e comment
+gifsicle -c X one.gif -c Y one.gif '#0' | gifsicle -I | grep -e image -e comment
+gifsicle -n X one.gif one.gif | gifsicle -I | grep -e image
+gifsicle -n N ext.gif '#0' ext.gif | gifsicle -I | grep -e image
+gifsicle --no-extensions ext.gif | gifsicle --xinfo | grep -e comment -e extension
+gifsicle --no-comments ext.gif | gifsicle --xinfo | grep -e comment -e extension
+gifsicle -I names.gif 2>&1
+gifsicle names.gif '#B' | gifsicle -I 2>/dev/null | grep -e image
+gifsicle -c A -c B one.gif 2>&1 | gifsicle -I | grep comment
+gifsicle --no-app-extensions --same-extensions rich.gif | gifsicle --xinfo | grep "extension app" | wc -l | tr -d " "
+gifsicle --no-extensions --same-extensions rich.gif | gifsicle --xinfo | grep "extension app" | wc -l | tr -d " "
+gifsicle --no-extensions --same-app-extensions rich.gif | gifsicle --xinfo | grep "extension app" | wc -l | tr -d " "
+gifsicle --no-extensions rich.gif | gifsicle --xinfo | grep "extension" | wc -l | tr -d " "
+gifsicle -x APPAPPAP1.0 d one.gif --extension 1 b one.gif | gifsicle --xinfo | grep -e "image #" -e "extension"
+gifsicle -E --no-name rich.gif -o nn.gif; gifsicle -E --no-name -n X rich.gif -o nx.gif; ls nn.gif.* nx.gif.*
+gifsicle -c X rich.gif --no-comments '#1' | gifsicle -I | grep -e image -e comment
+
+%file -e one.gif
+R0lGODlhBAAEAPEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAAIJwABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAADAgA7
+
+%file -e two.gif
+R0lGODlhBAAEAPEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAAIJwABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAADAgA7R0lGODlhBAAEAPEAAAAAAP8AAAD/AAAA/ywAAAAABAAEAAAIJwABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAABAAQAEABAAAADAgA7
+
+%file -e ext.gif
+R0lGODlhAQABAIAAAAAAAP///yH+A2FiYwAhAQJ4eQAsAAAAAAEAAQAAAgJEAQAhBQJ6egAh/gNlbmQAOw==
+
+
+%file -e names.gif
+R0lGODlhAQABAIAAAAAAAP///yHOAUEAIc4BQgAsAAAAAAEAAQAAAgJEAQAh/wVBQkNERQEAADs=
+
+%file -e rich.gif
+R0lGODlhBAAEAPEAAP8AAP+AAP//AAAAACHOAUEAIf4CQ0EAIQECWEEAIf8LQVBQQVBQQVAxLjAFZGF0YUEALAAAAAAEAAQAAAIEhI8JBQAhzgFCACH+A0NCMQAh/gNDQjIALAAAAAAEAAQAAAIEjI8ZBQAhAgJYMgAsAAAAAAQABAAAAgSUjykFACH+A0VORAA7
+
+%expect stdout
+* <stdin> 2 images
+  + image #0 4x4
+    comment X
+  + image #1 4x4
+* <stdin> 1 image
+  + image #0 4x4
+    comment X
+* <stdin> 2 images
+  + image #0 4x4
+    comment X
+  + image #1 4x4
+* <stdin> 2 images
+  + image #0 4x4
+    comment X
+  + image #1 4x4
+    comment Y
+* <stdin> 2 images
+  + image #0 #X 4x4
+  + image #1 4x4
+* <stdin> 2 images
+  + image #0 #N 1x1
+  + image #1 1x1
+  end comment end
+    comment abc
+  end extension 0x05 packetized
+    extension 0x01 packetized
+gifsicle:names.gif:#1: warning: bad application extension identifier
+* names.gif 1 image
+  logical screen 1x1
+  global color table [2]
+  background 0
+  end extensions 1
+  + image #0 #B 1x1
+* <stdin> 1 image
+  + image #0 #B 1x1
+    comment A
+    comment B
+1
+1
+1
+0
+  + image #0 4x4
+    extension app 'APPAPPAP1.0' packetized
+  + image #1 4x4
+    extension 0x01 packetized
+nn.gif.000
+nn.gif.001
+nn.gif.002
+nx.gif.001
+nx.gif.002
+nx.gif.X
+* <stdin> 1 image
+  + image #0 #B 4x4

@@ -26,8 +26,8 @@ extern "C" {
 typedef struct Gif_Stream       Gif_Stream;
 typedef struct Gif_Image        Gif_Image;
 typedef struct Gif_Colormap     Gif_Colormap;
-typedef struct Gif_Comment      Gif_Comment;
 typedef struct Gif_Extension    Gif_Extension;
+typedef struct Gif_ExtensionList Gif_ExtensionList;
 typedef struct Gif_Record       Gif_Record;
 
 typedef uint16_t Gif_Code;
@@ -35,6 +35,13 @@ typedef uint16_t Gif_Code;
 #define GIF_MAX_CODE            0x1000
 #define GIF_MAX_BLOCK           255
 
+
+/** GIF_EXTENSIONLIST **/
+
+struct Gif_ExtensionList {
+    Gif_Extension* head;
+    Gif_Extension* tail;
+};
 
 /** GIF_STREAM **/
 
@@ -50,8 +57,7 @@ struct Gif_Stream {
     uint16_t screen_height;
     long loopcount;             /* -1 means no loop count */
 
-    Gif_Comment* end_comment;
-    Gif_Extension* end_extension_list;
+    Gif_ExtensionList end_extensions;
 
     unsigned errors;
     uint32_t user_flags;
@@ -96,9 +102,7 @@ struct Gif_Image {
     short transparent;          /* -1 means no transparent index */
     Gif_Colormap *local;
 
-    char* identifier;
-    Gif_Comment* comment;
-    Gif_Extension* extension_list;
+    Gif_ExtensionList extensions;
 
     void (*free_image_data)(void *);
 
@@ -204,43 +208,37 @@ int             Gif_FindColor(Gif_Colormap *, Gif_Color *);
 int             Gif_AddColor(Gif_Colormap *, Gif_Color *, int look_from);
 
 
-/** GIF_COMMENT **/
-
-struct Gif_Comment {
-    char **str;
-    int *len;
-    int count;
-    int cap;
-};
-
-Gif_Comment *   Gif_NewComment(void);
-void            Gif_DeleteComment(Gif_Comment *);
-int             Gif_AddCommentTake(Gif_Comment *, char *, int);
-int             Gif_AddComment(Gif_Comment *, const char *, int);
-
-
 /** GIF_EXTENSION **/
+
+#define GIF_EX_NAME             0xCE
+#define GIF_EX_COMMENT          0xFE
+#define GIF_EX_APP              0xFF
+#define GIF_EX_APPIDSIZE        11
 
 struct Gif_Extension {
     int kind;                   /* negative kinds are reserved */
-    char* appname;
-    int applength;
+    char appname[GIF_EX_APPIDSIZE];
     uint8_t* data;
     uint32_t length;
     int packetized;
-
-    Gif_Stream *stream;
-    Gif_Image *image;
     Gif_Extension *next;
+
     void (*free_data)(void *);
 };
 
 
-Gif_Extension*  Gif_NewExtension(int kind, const char* appname, int applength);
+Gif_Extension*  Gif_NewExtension(int kind, const char* appname);
+Gif_Extension*  Gif_NewExtensionData(int kind, const char* appname,
+                                     const void* data, uint32_t length);
 void            Gif_DeleteExtension(Gif_Extension* gfex);
 Gif_Extension*  Gif_CopyExtension(Gif_Extension* gfex);
-int             Gif_AddExtension(Gif_Stream* gfs, Gif_Image* gfi,
-                                 Gif_Extension* gfex);
+void            Gif_AppendExtension(Gif_ExtensionList* list, Gif_Extension* gfex);
+int             Gif_CopyExtensions(Gif_ExtensionList* dst, Gif_ExtensionList* src);
+void            Gif_DeleteExtensions(Gif_ExtensionList* list);
+const char*     Gif_ExtensionListName(const Gif_ExtensionList* list);
+#define Gif_ImageName(gfi)      Gif_ExtensionListName(&(gfi)->extensions)
+void            Gif_AppendExtensionNear(Gif_Stream* gfs, Gif_Image* gfi,
+                                        Gif_Extension* gfex);
 
 
 /** READING AND WRITING **/
@@ -285,7 +283,7 @@ int             Gif_IncrementalWriteComplete(Gif_Writer* grr, Gif_Stream* gfs);
 /** HOOKS AND MISCELLANEOUS **/
 
 int             Gif_InterlaceLine(int y, int height);
-char *          Gif_CopyString(const char *);
+char*           Gif_CopyString(const char*);
 
 #define GIF_T_STREAM                    (0)
 #define GIF_T_IMAGE                     (1)

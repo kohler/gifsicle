@@ -819,7 +819,7 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
 {
   Gif_Image *gfi;
   char *strs[2];
-  char *identifier;
+  const char *identifier = 0;
   XTextProperty name_prop;
   int im_pos = (slow_number >= 0 ? slow_number : viewer->im_pos);
   int len;
@@ -829,7 +829,8 @@ set_viewer_name(Gt_Viewer *viewer, int slow_number)
 
   gfi = viewer->im[im_pos];
   len = strlen(viewer->title) + strlen(viewer->name) + 14;
-  identifier = (slow_number >= 0 ? (char *)0 : gfi->identifier);
+  if (slow_number < 0)
+    identifier = Gif_ImageName(gfi);
   if (identifier)
     len += 2 + strlen(identifier);
 

@@ -34,11 +34,6 @@ typedef struct Gt_Frame {
   Gif_Image *image;
   int use;
 
-  const char *name;
-  int no_name;
-  Gif_Comment *comment;
-  int no_comments;
-
   Gif_Color transparent;        /* also background */
   int interlacing;
   int left;
@@ -54,9 +49,9 @@ typedef struct Gt_Frame {
   Gt_Frameset *nest;
   int explode_by_name;
 
-  int no_extensions;
-  int no_app_extensions;
-  Gif_Extension *extensions;
+  int no_extensions_flag;
+  int frame_no_extensions_flag;
+  Gif_ExtensionList extensions;
 
   unsigned flip_horizontal: 1;
   unsigned flip_vertical: 1;
@@ -228,8 +223,7 @@ int     find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int     merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 
 extern int warn_local_colormaps;
-void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_comments);
-void    merge_comments(Gif_Comment *destc, Gif_Comment *srcc);
+void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_extensions_flag);
 Gif_Image* merge_image(Gif_Stream* dest, Gif_Stream* src, Gif_Image* srci,
                        Gt_Frame* srcfr, int same_compressed_ok);
 
@@ -349,5 +343,21 @@ void            blank_frameset(Gt_Frameset*, int from, int to, int delete_ob);
 
 extern int mode;
 extern int nested_mode;
+
+
+#define NOEXF_NAME      1
+#define NOEXF_COMMENT   2
+#define NOEXF_GENERIC   4
+#define NOEXF_APP       8
+
+static inline int extension_flag(Gif_Extension* ex) {
+  if (ex->kind == GIF_EX_APP)
+    return NOEXF_APP;
+  else if (ex->kind == GIF_EX_NAME)
+    return NOEXF_NAME;
+  else if (ex->kind == GIF_EX_COMMENT)
+    return NOEXF_COMMENT;
+  return NOEXF_GENERIC;
+}
 
 #endif
