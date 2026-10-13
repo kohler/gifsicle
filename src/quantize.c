@@ -1039,7 +1039,7 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od,
 {
   kd3_tree kd3;
   Gif_Color *new_col = new_cm->col;
-  int new_ncol = new_cm->ncol, new_gray;
+  int orig_ncol = new_cm->ncol, new_ncol = new_cm->ncol, new_gray;
   int imagei, j;
   assert(new_cm->capacity >= 256);
 
@@ -1195,6 +1195,10 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od,
       }
     }
   }
+
+  /* new_cm may be shared with later outputs (--use-colormap), so remove any
+     transparent colors added to it */
+  new_cm->ncol = orig_ncol;
 }
 
 
