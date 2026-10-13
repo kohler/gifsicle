@@ -1095,10 +1095,12 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od,
       /* update count of used colors */
       for (j = 0; j < 256; j++)
         new_col[j].pixel += histogram[j];
-      if (gfi->transparent >= 0)
+      if (gfi->transparent >= 0) {
         /* we don't have data on the number of used colors for transparency
-           so fudge it. */
-        new_col[gfi->transparent].pixel += (unsigned) gfi->width * (unsigned) gfi->height / 8;
+           so fudge it; but always count it, so allow_shrink keeps it */
+        uint32_t fudge = (unsigned) gfi->width * (unsigned) gfi->height / 8;
+        new_col[gfi->transparent].pixel += fudge ? fudge : 1;
+      }
 
     } else {
       /* Can't compress new_cm afterwards if we didn't actively change colors
@@ -1111,9 +1113,17 @@ colormap_stream(Gif_Stream* gfs, Gif_Colormap* new_cm, Gt_OutputData* od,
       gfi->local = 0;
     }
 
-    /* 1.92: recompress *after* deleting the local colormap */
+    /* 1.92: recompress *after* deleting the local colormap. The image now
+       uses new_cm, so compress against it (--careful sizes codes from the
+       colormap). */
     if (gfcm && only_compressed) {
+        Gif_Colormap* old_global = gfs->global;
+        int old_ncol = new_cm->ncol;
+        gfs->global = new_cm;
+        new_cm->ncol = new_ncol;
         Gif_FullCompressImage(gfs, gfi, &gif_write_info);
+        new_cm->ncol = old_ncol;
+        gfs->global = old_global;
         Gif_ReleaseUncompressedImage(gfi);
     }
   }
