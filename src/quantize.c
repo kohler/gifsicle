@@ -136,13 +136,14 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
         double px[3];
         kchistitem* slice = &kch->h[ slots[i].first ];
         kcolor kc;
+        uint32_t pixel = slots[i].pixel ? slots[i].pixel : 1;
         px[0] = px[1] = px[2] = 0;
         for (j = 0; j != slots[i].size; ++j)
             for (k = 0; k != 3; ++k)
                 px[k] += slice[j].ka.a[k] * (double) slice[j].count;
-        kc.a[0] = (int) (px[0] / slots[i].pixel);
-        kc.a[1] = (int) (px[1] / slots[i].pixel);
-        kc.a[2] = (int) (px[2] / slots[i].pixel);
+        kc.a[0] = (int) (px[0] / pixel);
+        kc.a[1] = (int) (px[1] / pixel);
+        kc.a[2] = (int) (px[2] / pixel);
         adapt[i] = kc_togfcg(kc);
     }
 

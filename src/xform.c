@@ -200,11 +200,12 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
 
   if (new_cm) {
     int nc = new_cm->ncol;
-    if (nc < gfcm->ncol) {
-      nc = gfcm->ncol;
+    if (nc < gfcm->ncol)
       warning(1, "too few colors in color transformation results");
-    } else if (nc > gfcm->ncol)
+    else if (nc > gfcm->ncol) {
       warning(1, "too many colors in color transformation results");
+      nc = gfcm->ncol;
+    }
     for (i = 0; i < nc; i++)
       col[i] = new_cm->col[i];
   }
