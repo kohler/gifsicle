@@ -989,7 +989,7 @@ read_colormap_file(const char *name, FILE *f)
     else
       f = fopen(name, "rb");
     if (!f) {
-      lerror(name, "%s", name, strerror(errno));
+      lerror(name, "%s", strerror(errno));
       return 0;
     }
   }
