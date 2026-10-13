@@ -476,6 +476,7 @@ void
 optimize_fragments(Gif_Stream* gfs, const Gt_OutputData* od, int huge_stream)
 {
     int optimize_flags = od->optimizing;
+    int ok;
     if (od->colormap_fixed && od->colormap_fixed_exact) {
         optimize_flags |= GT_OPT_KEEPCOLORMAP;
     }
@@ -483,15 +484,25 @@ optimize_fragments(Gif_Stream* gfs, const Gt_OutputData* od, int huge_stream)
         return;
     }
     if ((unsigned) all_colormap->ncol >= 0xFFFF) {
-        create_subimages32(gfs, optimize_flags, !huge_stream);
-        create_out_global_map32(gfs, optimize_flags);
-        create_new_image_data32(gfs, optimize_flags);
+        ok = create_subimages32(gfs, optimize_flags, !huge_stream);
+        if (ok) {
+            create_out_global_map32(gfs, optimize_flags);
+            create_new_image_data32(gfs, optimize_flags);
+        }
         finalize_optimizer_data32();
     } else {
-        create_subimages16(gfs, optimize_flags, !huge_stream);
-        create_out_global_map16(gfs, optimize_flags);
-        create_new_image_data16(gfs, optimize_flags);
+        ok = create_subimages16(gfs, optimize_flags, !huge_stream);
+        if (ok) {
+            create_out_global_map16(gfs, optimize_flags);
+            create_new_image_data16(gfs, optimize_flags);
+        }
         finalize_optimizer_data16();
     }
-    finalize_optimizer(gfs, optimize_flags);
+    if (ok)
+        finalize_optimizer(gfs, optimize_flags);
+    else {
+        if (in_global_map != gfs->global)
+            Gif_DeleteColormap(in_global_map);
+        Gif_DeleteColormap(all_colormap);
+    }
 }

@@ -269,7 +269,9 @@ X(find_difference_bounds)(Gif_OptData *bounds, Gif_Image *gfi, Gif_Image *last)
    the background is transparent, we must expand the difference bounds to
    include any blanked (newly transparent) pixels that are still transparent
    in the next image. This function does that by comparing this_data and
-   next_data. The new bounds are passed and stored in 'bounds'; the image's
+   next_data. (If the next image has PREVIOUS disposal, next_data holds the
+   disposed screen without the next image, since later images will see the
+   blanked pixels.) The new bounds are passed and stored in 'bounds'; the image's
    old bounds, which are also the maximum bounds, are passed in
    'this_bounds'. */
 
@@ -452,14 +454,16 @@ X(get_used_colors)(Gif_OptData *bounds, int use_transparency)
  * FIND SUBIMAGES AND COLORS USED
  **/
 
-static void
+static int
 X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
 {
   unsigned screen_size;
   Gif_Image *last_gfi;
   int next_data_valid;
   palindex_type *previous_data = 0;
+  palindex_type *previous_last_data = 0;
   int local_color_tables = 0;
+  int ok = 1;
 
   screen_size = (unsigned) screen_width * (unsigned) screen_height;
 
@@ -476,6 +480,8 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
   /* PRECONDITION:
      previous_data -- garbage
      last_data -- optimized image after disposal of previous optimized frame
+     previous_last_data -- last_data before the previous frame was applied,
+                  if that frame has PREVIOUS disposal
      this_data -- input image after disposal of previous input frame
      next_data -- input image after application of current input frame,
                   if next_image_valid */
@@ -486,9 +492,7 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
         local_color_tables = 1;
 
     /* save previous data if necessary */
-    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS
-        || (local_color_tables && image_index > 0
-            && last_gfi->disposal > GIF_DISPOSAL_ASIS)) {
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
       if (!previous_data)
         previous_data = Gif_NewArray(palindex_type, screen_size);
       memcpy(previous_data, X(this_data),
@@ -523,11 +527,19 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
         && image_index < gfs->nimages - 1) {
       /* set up next_data */
       Gif_Image *next_gfi = gfs->images[image_index + 1];
+      int expanded = 0;
       X(apply_frame_disposal)(X(next_data), X(this_data), previous_data, gfi);
+      /* If the next frame has PREVIOUS disposal, later frames will be drawn
+         over this frame's disposed screen, so pixels blanked by this frame's
+         disposal must stay blank even if the next frame covers them. */
+      if (next_gfi->disposal == GIF_DISPOSAL_PREVIOUS)
+        expanded = X(expand_difference_bounds)(subimage, gfi);
       X(apply_frame)(X(next_data), gfs, next_gfi, 0, save_uncompressed);
       next_data_valid = 1;
       /* expand border as necessary */
-      if (X(expand_difference_bounds)(subimage, gfi))
+      if (next_gfi->disposal != GIF_DISPOSAL_PREVIOUS)
+        expanded = X(expand_difference_bounds)(subimage, gfi);
+      if (expanded)
         subimage->disposal = GIF_DISPOSAL_BACKGROUND;
     }
 
@@ -546,22 +558,42 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
          require more than 256 colors. Detect this case and try to recover. */
       if (subimage->required_color_count > 256) {
           if (image_index > 0 && local_color_tables) {
-              Gif_OptData *subimage = (Gif_OptData*) last_gfi->user_data;
+              Gif_OptData *last_subimage = (Gif_OptData*) last_gfi->user_data;
               if ((last_gfi->disposal == GIF_DISPOSAL_PREVIOUS
                    || last_gfi->disposal == GIF_DISPOSAL_BACKGROUND)
-                  && subimage->disposal != last_gfi->disposal) {
-                  subimage->disposal = last_gfi->disposal;
-                  memcpy(X(last_data), previous_data, sizeof(palindex_type) * screen_size);
+                  && last_subimage->disposal != last_gfi->disposal) {
+                  /* Redo the previous frame's optimized disposal, as in
+                     create_new_image_data. */
+                  last_subimage->disposal = last_gfi->disposal;
+                  if (last_subimage->disposal == GIF_DISPOSAL_BACKGROUND)
+                      X(erase_data_area_subimage)(X(last_data), last_subimage);
+                  else
+                      memcpy(X(last_data), previous_last_data,
+                             sizeof(palindex_type) * screen_size);
+                  Gif_DeleteArray(subimage->needed_colors);
+                  subimage->needed_colors = 0;
                   goto retry_frame;
               }
           }
-          fatal_error("%d colors required in a frame (256 is max)",
-                      subimage->required_color_count);
+          warning(1, "frame #%d needs %d colors after optimization (256 is max)\n"
+                  "  (Leaving the animation unoptimized.)",
+                  image_index, subimage->required_color_count);
+          delete_opt_data(subimage);
+          ok = 0;
+          break;
       }
     }
 
     gfi->user_data = subimage;
     last_gfi = gfi;
+
+    /* save last_data in case a retry changes this frame's disposal */
+    if (gfi->disposal == GIF_DISPOSAL_PREVIOUS) {
+      if (!previous_last_data)
+        previous_last_data = Gif_NewArray(palindex_type, screen_size);
+      memcpy(previous_last_data, X(last_data),
+             sizeof(palindex_type) * screen_size);
+    }
 
     /* Apply optimized disposal to last_data and unoptimized disposal to
        this_data. Before 9.Dec.1998 I applied unoptimized disposal uniformly
@@ -586,6 +618,15 @@ X(create_subimages)(Gif_Stream *gfs, int optimize_flags, int save_uncompressed)
   Gif_DeleteArray(X(next_data));
   if (previous_data)
       Gif_DeleteArray(previous_data);
+  if (previous_last_data)
+      Gif_DeleteArray(previous_last_data);
+
+  if (!ok)
+    while (--image_index >= 0) {
+      delete_opt_data((Gif_OptData *) gfs->images[image_index]->user_data);
+      gfs->images[image_index]->user_data = 0;
+    }
+  return ok;
 }
 
 
