@@ -696,8 +696,7 @@ static int kc_line_closest(kcolor p0, kcolor p1, kcolor ref,
         p01.a[d] = p1.a[d] - p0.a[d];
         p0ref.a[d] = ref.a[d] - p0.a[d];
     }
-    den = (unsigned)
-        (p01.a[0]*p01.a[0] + p01.a[1]*p01.a[1] + p01.a[2]*p01.a[2]);
+    den = kc_distance(p0, p1);
     if (den == 0)
         return 0;
     /* NB: We've run out of bits of precision. We can calculate the
