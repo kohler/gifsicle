@@ -513,8 +513,15 @@ show_frame(int imagenumber, int usename)
    case EXPLODING:
    case INFOING:
    case BATCHING:
-    if (!frames_done)
+    if (!frames_done) {
+      /* input_stream gave the input's first frame the pending comment,
+         but def_frame still holds it so the selected frame gets it
+         instead. Don't free it with the discarded frames. */
+      if (first_input_frame < frames->count
+          && FRAME(frames, first_input_frame).comment == def_frame.comment)
+        FRAME(frames, first_input_frame).comment = 0;
       clear_frameset(frames, first_input_frame);
+    }
     frame = add_frame(frames, input, gfi);
     if (usename)
       frame->explode_by_name = 1;
