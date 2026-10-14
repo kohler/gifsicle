@@ -1448,6 +1448,7 @@ Options:
   -p, --path DIR             Prepend DIR to PATH.
   -t, --timeout T            Set timeout to T [45 sec].
   -v, --version              Print version information and exit.
+  -x, --exclude DIR          Ignore subdirectories matching DIR.
   --help                     Print this message and exit.
 
 Report bugs and suggestions to <kohler@seas.harvard.edu>.
@@ -1492,20 +1493,33 @@ sub argcmp ($$$;\$) {
 
 # directory searching
 
+my (@exclude);
+
+sub exclude_match ($) {
+    my($s) = @_;
+    foreach my $xpat (@exclude) {
+        return 1 if index($s, $xpat) >= 0;
+    }
+    0;
+}
+
 sub search_dir ($$) {
     my($dir, $aref) = @_;
     $dir =~ s/\/+$//;
     if (!opendir(DIR, $dir)) {
-	print STDERR "$dir: $!\n";
-	return;
+       print STDERR "$dir: $!\n";
+       return;
     }
     my(@f) = grep { !/^\.\.?$/ } readdir(DIR);
     closedir(DIR);
     foreach my $f (sort { $a cmp $b } @f) {
-	if (-d "$dir/$f") {
-	    &search_dir("$dir/$f", $aref);
+        my $df = "$dir/$f";
+        if (@exclude && exclude_match($df)) {
+            # skip
+        } elsif (-d $df) {
+	    &search_dir($df, $aref);
 	} elsif ($f =~ /^[^#\.].*\.testie$/) {
-	    push @$aref, "$dir/$f";
+	    push @$aref, $df;
 	}
     }
 }
@@ -1538,12 +1552,17 @@ while (@ARGV) {
 	$::verbose = 1;
     } elsif (/^-VV$/ || argcmp($_, '--superverbose', 2)) {
 	$::verbose = 2;
-    } elsif (/^-e$/ || argcmp($_, '--expand', 1)) {
+    } elsif (/^-e$/ || argcmp($_, '--expand', 3)) {
 	$expand_mode = 1;
 	$preserve_temporaries = 1;
 	$dir = ".";
     } elsif (argcmp($_, '--help', 1)) {
 	help;
+    } elsif (/^-x$/ || argcmp($_, '--exclude', 3)) {
+        usage if @ARGV == 0;
+        push @exclude, shift @ARGV;
+    } elsif (/^-x(.+)$/) {
+        push @exclude, $1;
     } elsif (argcmp($_, '--preserve-temporaries', 2)
 	     || argcmp($_, '--preserve-temps', 2)) {
 	$preserve_temporaries = 1;
@@ -1732,6 +1751,11 @@ debugging a test.
 
 Prepend I<DIR> to the C<PATH> environment variable before running the
 test script.
+
+=item B<-x>, B<--exclude> I<PAT>
+
+Exclude tests found through directory search that contain I<PAT> as a
+substring.
 
 =item B<-V>, B<--verbose>
 

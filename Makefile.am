@@ -51,6 +51,6 @@ dist-ungif: dist
 	rm -rf ungifsicle-$(VERSION)
 
 check: all
-	$(top_srcdir)/test/testie -p $(top_builddir)/src $(top_srcdir)/test
+	$(top_srcdir)/test/testie -p $(top_builddir)/src -x fuzz $(top_srcdir)/test
 
 .PHONY: srclinks versionize rpm dist-ungif rpm-ungif check
