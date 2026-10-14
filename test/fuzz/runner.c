@@ -221,6 +221,11 @@ static size_t scan_gif(const uint8_t* p, size_t n, gif_scan* s) {
     while (pos < n && p[pos] != ';') {
         if (p[pos] == ',') {
             unsigned long w = u16(p, n, pos + 5), h = u16(p, n, pos + 7);
+            /* gifsicle reads a zero dimension as the screen's */
+            if (w == 0)
+                w = u16(p, n, 6);
+            if (h == 0)
+                h = u16(p, n, 8);
             if (s->nimages == 0) {
                 unsigned long r = u16(p, n, pos + 1) + w, b = u16(p, n, pos + 3) + h;
                 s->sw = r > s->sw ? r : s->sw;
