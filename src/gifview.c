@@ -670,10 +670,10 @@ parse_geometry(const char *const_g, XSizeHints *sh, int screen_width,
   char *g = (char *)const_g;
   sh->flags = 0;
 
-  if (isdigit(*g)) {
+  if (isdigit((unsigned char) *g)) {
     sh->flags |= USSize;
     sh->width = strtol(g, &g, 10);
-    if (g[0] == 'x' && isdigit(g[1]))
+    if (g[0] == 'x' && isdigit((unsigned char) g[1]))
       sh->height = strtol(g + 1, &g, 10);
     else
       goto error;
@@ -1050,7 +1050,7 @@ frame_argument(Gt_Viewer *viewer, const char *arg)
   int n1 = 0;
 
   /* Get a number range (#x, #x-y, #x-, or #-y). First, read x. */
-  if (isdigit(c[0]))
+  if (isdigit((unsigned char) c[0]))
     n1 = strtol(arg, (char **)&c, 10);
 
   /* It really was a number range only if c is now at the end of the

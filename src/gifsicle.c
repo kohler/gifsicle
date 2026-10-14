@@ -1334,11 +1334,14 @@ handle_extension(Clp_Parser *clp, int is_app)
     strncpy(appname_buf, extension_type, sizeof(appname_buf) - 1);
     appname = appname_buf;
     kind = 255;
-  } else if (!isdigit(extension_type[0]) && extension_type[1] == 0) {
+  } else if (extension_type[0]
+             && !isdigit((unsigned char) extension_type[0])
+             && extension_type[1] == 0) {
     kind = (unsigned char) extension_type[0];
   } else {
+    const char *start = extension_type;
     long l = strtol(extension_type, (char**) &extension_type, 0);
-    if (*extension_type != 0 || l < 0 || l >= 255) {
+    if (extension_type == start || *extension_type != 0 || l < 0 || l >= 255) {
       Clp_OptionError(clp, "%O: extension type must be number between 0 and 254");
       return 0;
     }

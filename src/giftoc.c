@@ -193,9 +193,9 @@ or:    giftoc -makename [OPTIONS] FILE [FILE...]\n\
       sin = strrchr(file_name, PATHNAME_SEPARATOR) + 1;
       if (!sin) sin = file_name;
       sout = rec_name = (char *)fmalloc(strlen(sin) + 2);
-      if (isdigit(*sin)) *sout++ = 'N';
+      if (isdigit((unsigned char) *sin)) *sout++ = 'N';
       for (; *sin; sin++, sout++)
-        if (isalnum(*sin))
+        if (isalnum((unsigned char) *sin))
           *sout = *sin;
         else
           *sout = '_';

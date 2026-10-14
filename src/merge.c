@@ -294,6 +294,12 @@ merge_image(Gif_Stream *dest, Gif_Stream *src, Gif_Image *srci,
               localcm->col[localcm->ncol] = imagecm->col[i];
               ++localcm->ncol;
           }
+      /* Undefined colors map to 0, so make sure color 0 exists. */
+      for (i = imagecm_ncol; i != 256 && localcm->ncol == 0; ++i)
+          if (inused[i]) {
+              GIF_SETCOLOR(&localcm->col[0], 0, 0, 0);
+              localcm->ncol = 1;
+          }
   }
 
   trivial_map = 1;

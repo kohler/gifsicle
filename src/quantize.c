@@ -899,7 +899,8 @@ static void colormap_image_ordered(Gif_Image* gfi, uint8_t* all_new_data,
                                    uint32_t* histogram,
                                    const uint8_t* matrix) {
     int mw = matrix[0], mh = matrix[1], nplan = matrix[2];
-    uint8_t* plan = Gif_NewArray(uint8_t, nplan * old_cm->ncol);
+    /* plans are indexed by pixel value, which can exceed old_cm->ncol */
+    uint8_t* plan = Gif_NewArray(uint8_t, nplan * 256);
     int i, x, y;
 
     /* Written with reference to Joel Ylilouma's versions. */

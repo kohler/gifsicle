@@ -590,18 +590,18 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   c = (char *)arg;
 
   /* Get a number range (#x, #x-y, or #x-). First, read x. */
-  if (isdigit(c[0]))
+  if (isdigit((unsigned char) c[0]))
     gtfspec->frame1 = gtfspec->frame2 = strtol(c, &c, 10);
-  else if (c[0] == '-' && isdigit(c[1]))
+  else if (c[0] == '-' && isdigit((unsigned char) c[1]))
     gtfspec->frame1 = gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
 
   /* Then, if the next character is a dash, read y. Be careful to prevent
      #- from being interpreted as a frame range. */
   if (c[0] == '-' && (gtfspec->frame2 >= 0 || c[1] != 0)) {
     c++;
-    if (isdigit(c[0]))
+    if (isdigit((unsigned char) c[0]))
       gtfspec->frame2 = strtol(c, &c, 10);
-    else if (c[0] == '-' && isdigit(c[1]))
+    else if (c[0] == '-' && isdigit((unsigned char) c[1]))
       gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
     else
       gtfspec->frame2 = Gif_ImageCount(input) - 1;
@@ -845,7 +845,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
     blue  = parse_hex_color_channel(&arg[ 2 * len ], len);
     goto gotrgb;
 
-  } else if (!isdigit(*arg))
+  } else if (!isdigit((unsigned char) *arg))
     goto error;
 
   red = strtol(arg, &str, 10);
