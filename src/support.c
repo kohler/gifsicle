@@ -1697,21 +1697,11 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       }
       w = w > 65535 ? 65535 : w;
       h = h > 65535 ? 65535 : h;
-      if (w > output_data->max_screen_width
-          || h > output_data->max_screen_height) {
-        error(1, "output screen size %dx%d too large\n"
-              "  (The limit is %dx%d. Change it with %<--max-screen%>, or\n"
-              "  set the screen size with %<--logical-screen%>.)",
-              w, h, output_data->max_screen_width,
-              output_data->max_screen_height);
-        goto error;
-      } else {
-        if (w > dest->screen_width) {
-          dest->screen_width = w;
-        }
-        if (h > dest->screen_height) {
-          dest->screen_height = h;
-        }
+      if (w > dest->screen_width) {
+        dest->screen_width = w;
+      }
+      if (h > dest->screen_height) {
+        dest->screen_height = h;
       }
     }
 
@@ -1763,6 +1753,32 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   if (output_data->screen_mode == 1) {
     dest->screen_width = output_data->screen_width;
     dest->screen_height = output_data->screen_height;
+  }
+
+  /* Check the screen size limit. Later steps grow the screen to fit the
+     first image, so check the grown screen. An explicit --logical-screen
+     is allowed, but growth beyond it is checked. */
+  {
+    int max_w = output_data->max_screen_width;
+    int max_h = output_data->max_screen_height;
+    if (output_data->screen_mode == 1) {
+      max_w = output_data->screen_width > max_w ? output_data->screen_width : max_w;
+      max_h = output_data->screen_height > max_h ? output_data->screen_height : max_h;
+    }
+    Gif_CalculateScreenSize(dest, 0);
+    if (dest->screen_width > max_w || dest->screen_height > max_h) {
+      if (output_data->screen_mode == 1)
+        error(1, "output screen size %dx%d too large\n"
+              "  (Frames extend past the logical screen, and the limit is %dx%d.\n"
+              "  Change it with %<--max-screen%>.)",
+              dest->screen_width, dest->screen_height, max_w, max_h);
+      else
+        error(1, "output screen size %dx%d too large\n"
+              "  (The limit is %dx%d. Change it with %<--max-screen%>, or\n"
+              "  set the screen size with %<--logical-screen%>.)",
+              dest->screen_width, dest->screen_height, max_w, max_h);
+      goto error;
+    }
   }
 
   /* Find the background color in the colormap, or add it if we can */

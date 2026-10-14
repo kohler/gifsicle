@@ -315,9 +315,10 @@ and
 .Op \-\-unoptimize ,
 allocate memory in proportion to the screen. When an output's logical
 screen would exceed the limit, gifsicle reports an error and doesn't write
-that output; it also won't unoptimize such an input. An explicit
+that output; it also won't unoptimize such an input. The limit doesn't apply to an explicit
 .Op \-\-logical\-screen
-or resize option overrides the limit.
+size or to resize options, but it does apply to frames that extend beyond
+an explicit logical screen.
 '
 .Sp
 .TP

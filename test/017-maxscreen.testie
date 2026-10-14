@@ -8,12 +8,21 @@ gifsicle --max-screen 4x4 sq.gif -o out.gif 2>&1 || echo failed
 gifsicle --max-screen 8x8 sq.gif | gifsicle -I | grep screen
 gifsicle --max-screen 4x4 --logical-screen 8x8 sq.gif | gifsicle -I | grep screen
 gifsicle --max-screen 0x5 sq.gif -o out.gif 2>&1 || echo failed
+# growth beyond an explicit --logical-screen is checked; the screen isn't
+gifsicle --logical-screen 8x8 wide.gif -o out.gif 2>&1 || echo failed
+gifsicle --logical-screen 20000x1 wide.gif | gifsicle -I | grep screen
+# a selected frame can grow the screen, too
+gifsicle two.gif | gifsicle -I | grep -e screen -e image
+gifsicle two.gif '#1' -o out.gif 2>&1 || echo failed
 
 %file -e wide.gif
 R0lGODlhAQABAPAAAAAAAP///ywAQAAAAQABAAACAkwBADs=
 
 %file -e sq.gif
 R0lGODlhCAAIAPAAAAAAAP///ywAAAAACAAIAAACDESMcYuZzNyCjSoJCgA7
+
+%file -e two.gif
+R0lGODlhAQABAPAAAAAAAP///ywAAAAAAQABAAACAkwBACwAQAAAAQABAAACAkQBADs=
 
 %expect stdout
 gifsicle: output screen size 16385x1 too large
@@ -33,4 +42,17 @@ failed
 gifsicle: argument to --max-screen must be a positive WxH
 Usage: gifsicle [OPTION | FILE | FRAME]...
 Try 'gifsicle --help' for more information.
+failed
+gifsicle: output screen size 16385x8 too large
+  (Frames extend past the logical screen, and the limit is 16384x16384.
+  Change it with '--max-screen'.)
+failed
+  logical screen 20000x1
+* <stdin> 2 images
+  logical screen 1x1
+  + image #0 1x1
+  + image #1 1x1 at 16384,0
+gifsicle: output screen size 16385x1 too large
+  (The limit is 16384x16384. Change it with '--max-screen', or
+  set the screen size with '--logical-screen'.)
 failed
