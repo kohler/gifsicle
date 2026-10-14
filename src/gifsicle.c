@@ -1071,6 +1071,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
   warn_local_colormaps = !colormap_change;
+  kc_set_gamma(active_output_data.colormap_gamma_type,
+               active_output_data.colormap_gamma);
 
   if (!(active_output_data.scaling
         || (active_output_data.optimizing & GT_OPT_MASK)
@@ -1094,8 +1096,6 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       w = active_output_data.resize_width;
       h = active_output_data.resize_height;
     }
-    kc_set_gamma(active_output_data.colormap_gamma_type,
-                 active_output_data.colormap_gamma);
     if (active_output_data.scaling != GT_SCALING_NONE)
       resize_stream(out, w, h, active_output_data.resize_flags,
                     active_output_data.scale_method,
