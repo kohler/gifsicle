@@ -102,6 +102,7 @@ typedef struct {
   const char *output_name;
   const char *active_output_name;
 
+
   int screen_mode;
   int screen_width;
   int screen_height;
@@ -134,9 +135,6 @@ typedef struct {
   int conserve_memory;
 
 } Gt_OutputData;
-
-extern Gt_OutputData active_output_data;
-extern Clp_Parser* clp;
 
 #define GT_SCALING_NONE         0
 #define GT_SCALING_RESIZE       1
@@ -174,14 +172,38 @@ constrain(int low, int x, int high)
 /*****
  * error & verbose
  **/
-extern const char *program_name;
-extern int verbosing;
-extern int error_count;
-extern int no_warnings;
-extern int thread_count;
+
+typedef struct Gt_MessageState {
+  int verbosing;
+  int verbose_pos;
+  int error_count;
+  uint8_t no_warnings;
+  uint8_t no_ignore_errors;
+  uint8_t warn_local_colormaps;
+  uint8_t warn_local_colormaps_context;
+  uint8_t irrelevant_background_context;
+  uint8_t conflicting_background_context;
+  uint8_t unoptimize_complexity_context;
+  uint8_t redundant_option_context;
+  int stopping;
+} Gt_MessageState;
+
+extern Gt_OutputData active_output_data;
+extern Clp_Parser* clp;
+extern const char* program_name;
+extern Gt_MessageState gtmsgs;
 extern Gif_CompressInfo gif_write_info;
 
+extern Gif_Stream *input;
+extern const char *input_name;
+
+extern Gt_Frame def_frame;
+
+extern int mode;
+extern int nested_mode;
+
 void fatal_error(const char* format, ...) NORETURN;
+void stop_error(const char* format, ...);
 void warning(int need_file, const char* format, ...);
 void lwarning(const char* landmark, const char* format, ...);
 void error(int need_file, const char* format, ...);
@@ -222,7 +244,6 @@ void    mark_used_colors(Gif_Stream *gfs, Gif_Image *gfi, Gt_Crop *crop,
 int     find_color_index(Gif_Color *c, int nc, Gif_Color *);
 int     merge_colormap_if_possible(Gif_Colormap *, Gif_Colormap *);
 
-extern int warn_local_colormaps;
 void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_extensions_flag);
 Gif_Image* merge_image(Gif_Stream* dest, Gif_Stream* src, Gif_Image* srci,
                        Gt_Frame* srcfr, int same_compressed_ok);
@@ -252,10 +273,10 @@ void    crop_image(Gif_Image* gfi, Gt_Frame* fr);
 
 void    flip_image(Gif_Image* gfi, Gt_Frame* fr, int is_vert);
 void    rotate_image(Gif_Image* gfi, Gt_Frame* fr, int rotation);
-void    resize_dimensions(int* w, int* h, double new_width, double new_height,
+int     resize_dimensions(int* w, int* h, double new_width, double new_height,
                           int flags);
-void    resize_stream(Gif_Stream* gfs, double new_width, double new_height,
-                      int flags, int method, int scale_colors);
+int     resize_stream(Gif_Stream* gfs, double new_width, double new_height,
+                      int flags, int method, int scale_colors, int nthreads);
 
 /*****
  * quantization
@@ -286,17 +307,12 @@ Gif_Colormap* colormap_median_cut(struct kchist* kch, Gt_OutputData* od);
 /*****
  * parsing stuff
  **/
-extern int      frame_spec_1;
-extern int      frame_spec_2;
-extern char *   frame_spec_name;
-extern int      dimensions_x;
-extern int      dimensions_y;
-extern int      position_x;
-extern int      position_y;
-extern Gif_Color parsed_color;
-extern Gif_Color parsed_color2;
-extern double   parsed_scale_factor_x;
-extern double   parsed_scale_factor_y;
+
+typedef struct Gt_FrameSpec {
+  int frame1;
+  int frame2;
+  const char* name;
+} Gt_FrameSpec;
 
 int             parse_frame_spec(Clp_Parser*, const char*, int, void*);
 int             parse_dimensions(Clp_Parser*, const char*, int, void*);
@@ -307,17 +323,22 @@ int             parse_color(Clp_Parser*, const char*, int, void*);
 int             parse_rectangle(Clp_Parser*, const char*, int, void*);
 int             parse_two_colors(Clp_Parser*, const char*, int, void*);
 
-extern Gif_Stream *input;
-extern const char *input_name;
-
 void            input_stream(const char*);
 void            input_done(void);
 void            output_frames(void);
 
 /*****
+ * main
+ **/
+int     gifsicle_main(int argc, char *argv[]);
+/* Free the memory and files held by gifsicle's state, so gifsicle_main can
+   run again; gifsicle_main initializes everything else when it starts.
+   gifsicle_main calls this before it returns. Calling it twice is safe. */
+void    gifsicle_reset(void);
+
+/*****
  * stuff with frames
  **/
-extern Gt_Frame def_frame;
 #define         FRAME(fs, i)    ((fs)->f[i])
 
 Gt_Frameset *   new_frameset(int initial_cap);
@@ -326,6 +347,7 @@ void            clear_def_frame_once_options(void);
 
 Gif_Stream *    merge_frame_interval(Gt_Frameset*, int f1, int f2,
                                      Gt_OutputData*, int compress, int *huge);
+void            merger_reset(void);
 void            clear_frameset(Gt_Frameset*, int from);
 void            blank_frameset(Gt_Frameset*, int from, int to, int delete_ob);
 
@@ -340,9 +362,6 @@ void            blank_frameset(Gt_Frameset*, int from, int to, int delete_ob);
 #define DELETING        5
 #define INSERTING       6
 #define FRAME_SELECTION_MODE_MASK 0x1F
-
-extern int mode;
-extern int nested_mode;
 
 
 #define NOEXF_NAME      1

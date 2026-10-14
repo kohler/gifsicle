@@ -200,6 +200,7 @@ struct Clp_Parser {
         unsigned char ucs[Clp_ValSize];
         int is[Clp_ValIntSize];
         unsigned us[Clp_ValIntSize];
+        double ds[Clp_ValIntSize / 2];
     } val;                      /**< The parsed value provided with the last
                                      option. */
 

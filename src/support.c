@@ -18,9 +18,6 @@
 #include <math.h>
 
 const char *program_name = "gifsicle";
-static int verbose_pos = 0;
-int error_count = 0;
-int no_warnings = 0;
 
 
 static void
@@ -68,10 +65,10 @@ verror(const char* landmark, int need_file,
         xi = (xi + xd > sizeof(xbuf) ? sizeof(xbuf) : xi + xd);
     }
 
-    if (seriousness == 1 && no_warnings)
+    if (seriousness == 1 && gtmsgs.no_warnings)
         return;
     else if (seriousness > 1)
-        error_count++;
+        gtmsgs.error_count++;
 
     verbose_endline();
     fwrite(xbuf, 1, xi, stderr);
@@ -83,6 +80,16 @@ void fatal_error(const char* format, ...) {
     verror((const char*) 0, 0, 3, format, val);
     va_end(val);
     exit(EXIT_USER_ERR);
+}
+
+/* Report a fatal error without exiting. The caller should return promptly;
+   gifsicle_main then stops and returns EXIT_USER_ERR. */
+void stop_error(const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror((const char*) 0, 0, 3, format, val);
+    va_end(val);
+    gtmsgs.stopping = 1;
 }
 
 void lerror(const char* landmark, const char* format, ...) {
@@ -259,17 +266,17 @@ void
 verbose_open(char open, const char *name)
 {
   int l = strlen(name);
-  if (verbose_pos && verbose_pos + 3 + l > 79) {
+  if (gtmsgs.verbose_pos && gtmsgs.verbose_pos + 3 + l > 79) {
     fputc('\n', stderr);
-    verbose_pos = 0;
+    gtmsgs.verbose_pos = 0;
   }
-  if (verbose_pos) {
+  if (gtmsgs.verbose_pos) {
     fputc(' ', stderr);
-    verbose_pos++;
+    gtmsgs.verbose_pos++;
   }
   fputc(open, stderr);
   fputs(name, stderr);
-  verbose_pos += 1 + l;
+  gtmsgs.verbose_pos += 1 + l;
 }
 
 
@@ -277,17 +284,17 @@ void
 verbose_close(char close)
 {
   fputc(close, stderr);
-  verbose_pos++;
+  gtmsgs.verbose_pos++;
 }
 
 
 void
 verbose_endline(void)
 {
-  if (verbose_pos) {
+  if (gtmsgs.verbose_pos) {
     fputc('\n', stderr);
     fflush(stderr);
-    verbose_pos = 0;
+    gtmsgs.verbose_pos = 0;
   }
 }
 
@@ -525,14 +532,15 @@ image_info(FILE *where, Gif_Stream *gfs, Gif_Image *gfi, int flags)
 }
 
 
+/* Return the output filename for an exploded frame. The caller must free
+   the result with Gif_DeleteArray. */
 char *
 explode_filename(const char *filename, int number, const char *name, int max_nimages)
 {
-  static char *s;
+  char *s;
   int l = strlen(filename);
   l += name ? strlen(name) : 10;
 
-  Gif_Delete(s);
   s = Gif_NewArray(char, l + 3);
   if (name)
     snprintf(s, l + 3, "%s.%s", filename, name);
@@ -555,27 +563,16 @@ explode_filename(const char *filename, int number, const char *name, int max_nim
  * parsing functions
  **/
 
-int frame_spec_1;
-int frame_spec_2;
-char *frame_spec_name;
-int dimensions_x;
-int dimensions_y;
-int position_x;
-int position_y;
-Gif_Color parsed_color;
-Gif_Color parsed_color2;
-double parsed_scale_factor_x;
-double parsed_scale_factor_y;
-
 int
 parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   char *c;
+  Gt_FrameSpec* gtfspec = (Gt_FrameSpec*) clp->val.cs;
   (void)thunk;
 
-  frame_spec_1 = 0;
-  frame_spec_2 = -1;
-  frame_spec_name = 0;
+  gtfspec->frame1 = 0;
+  gtfspec->frame2 = -1;
+  gtfspec->name = 0;
 
   if (!input && !input_name)
     input_stream(0);
@@ -592,20 +589,20 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   /* Get a number range (#x, #x-y, or #x-). First, read x. */
   if (isdigit(c[0]))
-    frame_spec_1 = frame_spec_2 = strtol(c, &c, 10);
+    gtfspec->frame1 = gtfspec->frame2 = strtol(c, &c, 10);
   else if (c[0] == '-' && isdigit(c[1]))
-    frame_spec_1 = frame_spec_2 = Gif_ImageCount(input) + strtol(c, &c, 10);
+    gtfspec->frame1 = gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
 
   /* Then, if the next character is a dash, read y. Be careful to prevent
      #- from being interpreted as a frame range. */
-  if (c[0] == '-' && (frame_spec_2 >= 0 || c[1] != 0)) {
+  if (c[0] == '-' && (gtfspec->frame2 >= 0 || c[1] != 0)) {
     c++;
     if (isdigit(c[0]))
-      frame_spec_2 = strtol(c, &c, 10);
+      gtfspec->frame2 = strtol(c, &c, 10);
     else if (c[0] == '-' && isdigit(c[1]))
-      frame_spec_2 = Gif_ImageCount(input) + strtol(c, &c, 10);
+      gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
     else
-      frame_spec_2 = Gif_ImageCount(input) - 1;
+      gtfspec->frame2 = Gif_ImageCount(input) - 1;
   }
 
   /* It really was a number range (and not a frame name)
@@ -613,25 +610,26 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (c[0] != 0) {
     Gif_Image *gfi = Gif_GetNamedImage(input, arg);
     if (gfi) {
-      frame_spec_name = (char *)arg;
-      frame_spec_1 = frame_spec_2 = Gif_ImageNumber(input, gfi);
+      gtfspec->name = (const char*) arg;
+      gtfspec->frame1 = gtfspec->frame2 = Gif_ImageNumber(input, gfi);
       return 1;
-    } else if (complain < 0)    /* -1 is special value meaning 'don't complain
+    }
+    if (complain < 0)    /* -1 is special value meaning 'don't complain
                                    about frame NAMES, but do complain about
                                    frame numbers.' */
       return -97;               /* Return -97 on bad frame name. */
     else if (complain)
       Clp_OptionError(clp, "no frame named %<#%s%>", arg);
     return 0;
-
-  } else {
-    if (frame_spec_1 >= 0 && frame_spec_1 < Gif_ImageCount(input)
-        && frame_spec_2 >= 0 && frame_spec_2 < Gif_ImageCount(input))
-      return 1;
-    if (complain)
-      Clp_OptionError(clp, "frame %<#%s%> out of range, image has %d frames", arg, Gif_ImageCount(input));
-    return 0;
   }
+  if (gtfspec->frame1 >= 0
+      && gtfspec->frame1 < Gif_ImageCount(input)
+      && gtfspec->frame2 >= 0
+      && gtfspec->frame2 < Gif_ImageCount(input))
+    return 1;
+  if (complain)
+    Clp_OptionError(clp, "frame %<#%s%> out of range, image has %d frames", arg, Gif_ImageCount(input));
+  return 0;
 }
 
 /* Parse a decimal coordinate or dimension. Values outside +/-65535, the GIF
@@ -654,16 +652,16 @@ parse_dimensions(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   (void)thunk;
 
   if (*arg == '_' && arg[1] == 'x') {
-    dimensions_x = 0;
+    clp->val.is[0] = 0;
     val = (char *)(arg + 1);
   } else
-    dimensions_x = strtol_coord(arg, &val);
+    clp->val.is[0] = strtol_coord(arg, &val);
   if (*val == 'x') {
     if (val[1] == '_' && val[2] == 0) {
-      dimensions_y = 0;
+      clp->val.is[1] = 0;
       val = val + 2;
     } else
-      dimensions_y = strtol_coord(val + 1, &val);
+      clp->val.is[1] = strtol_coord(val + 1, &val);
     if (*val == 0)
       return 1;
   }
@@ -679,9 +677,9 @@ parse_position(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   char *val;
   (void)thunk;
 
-  position_x = strtol_coord(arg, &val);
+  clp->val.is[0] = strtol_coord(arg, &val);
   if (*val == ',') {
-    position_y = strtol_coord(val + 1, &val);
+    clp->val.is[1] = strtol_coord(val + 1, &val);
     if (*val == 0)
       return 1;
   }
@@ -727,16 +725,16 @@ parse_scale_factor(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   char *val;
   (void)thunk;
 
-  parsed_scale_factor_x = strtod_fraction(arg, &val);
+  clp->val.ds[0] = strtod_fraction(arg, &val);
   if (*val == 'x')
-    parsed_scale_factor_y = strtod_fraction(val + 1, &val);
+    clp->val.ds[1] = strtod_fraction(val + 1, &val);
   else
-    parsed_scale_factor_y = parsed_scale_factor_x;
+    clp->val.ds[1] = clp->val.ds[0];
 
   /* reject NaN and infinity */
   if (*val == 0
-      && isfinite(parsed_scale_factor_x)
-      && isfinite(parsed_scale_factor_y))
+      && isfinite(clp->val.ds[0])
+      && isfinite(clp->val.ds[1]))
     return 1;
 
   if (complain)
@@ -749,12 +747,13 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   const char *input_arg = arg;
   char *val;
-  int x = position_x = strtol_coord(arg, &val);
+  int x = strtol_coord(arg, &val);
   (void)thunk;
 
   if (*val == ',') {
-    int y = position_y = strtol_coord(val + 1, &val);
+    int y = strtol_coord(val + 1, &val);
     if (*val == '-' && parse_position(clp, val + 1, 0, 0)) {
+      int position_x = clp->val.is[0], position_y = clp->val.is[1];
       if (x >= 0 && y >= 0
           && (position_x <= 0 || x < position_x)
           && (position_y <= 0 || y < position_y)) {
@@ -762,19 +761,24 @@ parse_rectangle(Clp_Parser *clp, const char *arg, int complain, void *thunk)
            Therefore changed it so that X,Y-0,0 acts like X,Y+0,0, and similar
            for negative dimensions.  Probably safe to change this behavior
            since only X,Y+0,0 was documented. */
-        dimensions_x = (position_x <= 0 ? -position_x : position_x - x);
-        dimensions_y = (position_y <= 0 ? -position_y : position_y - y);
-        position_x = x;
-        position_y = y;
+        clp->val.is[0] = x;
+        clp->val.is[1] = y;
+        clp->val.is[2] = position_x <= 0 ? -position_x : position_x - x;
+        clp->val.is[3] = position_y <= 0 ? -position_y : position_y - y;
         return 1;
       }
-    } else if (*val == '+' && parse_dimensions(clp, val + 1, 0, 0))
+    } else if (*val == '+' && parse_dimensions(clp, val + 1, 0, 0)) {
+      clp->val.is[2] = clp->val.is[0];
+      clp->val.is[3] = clp->val.is[1];
+      clp->val.is[0] = x;
+      clp->val.is[1] = y;
       return 1;
+    }
   } else if (*val == 'x') {
-    dimensions_x = position_x;
-    dimensions_y = strtol_coord(val + 1, &val);
+    clp->val.is[2] = x;
+    clp->val.is[3] = strtol_coord(val + 1, &val);
     if (*val == 0) {
-      position_x = position_y = 0;
+      clp->val.is[0] = clp->val.is[1] = 0;
       return 1;
     }
   }
@@ -820,6 +824,7 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   const char *input_arg = arg;
   char *str;
   int red, green, blue;
+  Gif_Color* pcolor = (Gif_Color*) clp->val.cs;
   (void)thunk;
 
   if (*arg == '#') {
@@ -845,8 +850,8 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (*str == 0) {
     if (red < 0 || red > 255)
       goto error;
-    parsed_color.haspixel = 1;
-    parsed_color.pixel = red;
+    pcolor->haspixel = 1;
+    pcolor->pixel = red;
     return 1;
 
   } else if (*str != ',' && *str != '/')
@@ -864,10 +869,10 @@ parse_color(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (red < 0 || green < 0 || blue < 0
       || red > 255 || green > 255 || blue > 255)
     goto error;
-  parsed_color.gfc_red = red;
-  parsed_color.gfc_green = green;
-  parsed_color.gfc_blue = blue;
-  parsed_color.haspixel = 0;
+  pcolor->gfc_red = red;
+  pcolor->gfc_green = green;
+  pcolor->gfc_blue = blue;
+  pcolor->haspixel = 0;
   return 1;
 
  error:
@@ -880,9 +885,10 @@ int
 parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
   Gif_Color old_color;
+  Gif_Color* pcolor = (Gif_Color*) clp->val.cs;
   if (parse_color(clp, arg, complain, thunk) <= 0)
     return 0;
-  old_color = parsed_color;
+  old_color = *pcolor;
 
   arg = Clp_Shift(clp, 0);
   if (!arg) {
@@ -894,8 +900,8 @@ parse_two_colors(Clp_Parser *clp, const char *arg, int complain, void *thunk)
   if (parse_color(clp, arg, complain, thunk) <= 0)
     return 0;
 
-  parsed_color2 = parsed_color;
-  parsed_color = old_color;
+  pcolor[1] = pcolor[0];
+  pcolor[0] = old_color;
   return 1;
 }
 
@@ -999,7 +1005,7 @@ read_colormap_file(const char *name, FILE *f)
   }
 
   name = name ? name : "<stdin>";
-  if (verbosing) verbose_open('<', name);
+  if (gtmsgs.verbosing) verbose_open('<', name);
 
   c = getc(f);
   ungetc(c, f);
@@ -1021,7 +1027,7 @@ read_colormap_file(const char *name, FILE *f)
     cm = read_text_colormap(f, name);
 
   if (my_file) fclose(f);
-  if (verbosing) verbose_close('>');
+  if (gtmsgs.verbosing) verbose_close('>');
   return cm;
 }
 
@@ -1093,6 +1099,14 @@ add_frame(Gt_Frameset *fset, Gif_Stream *gfs, Gif_Image *gfi)
 static Gt_Frame **merger = 0;
 static int nmerger = 0;
 static int mergercap = 0;
+
+void
+merger_reset(void)
+{
+  Gif_DeleteArray(merger);
+  merger = 0;
+  nmerger = mergercap = 0;
+}
 
 static void
 merger_add(Gt_Frame *fp)
@@ -1187,12 +1201,11 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
     /* Otherwise, if they specified a color, search for it. */
     if (output_data->background.haspixel) {
         if (gfs->images[0]->transparent >= 0) {
-            static int context = 0;
-            if (!context) {
+            if (!gtmsgs.irrelevant_background_context) {
                 warning(1, "irrelevant background color\n"
                         "  (The background will appear transparent because"
                         "  the first image contains transparency.)");
-                context = 1;
+                gtmsgs.irrelevant_background_context = 1;
             } else
                 warning(1, "irrelevant background color");
         }
@@ -1230,11 +1243,10 @@ set_background(Gif_Stream *gfs, Gt_OutputData *output_data)
 
     /* Report conflicts. */
     if (conflict || (want_transparent && gfs->images[0]->transparent < 0)) {
-        static int context = 0;
-        if (!context) {
+        if (!gtmsgs.conflicting_background_context) {
             warning(1, "input images have conflicting background colors\n"
                     "  (This means some animation frames may appear incorrect.)");
-            context = 1;
+            gtmsgs.conflicting_background_context = 1;
         } else
             warning(1, "input images have conflicting background colors");
     }
@@ -1498,6 +1510,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
 {
   Gif_Stream *dest = Gif_NewStream();
   Gif_Colormap *global = Gif_NewFullColormap(256, 256);
+  Gif_Image *crop_copy = 0;
   int i, same_compressed_ok, all_same_compressed_ok;
 
   global->ncol = 0;
@@ -1513,7 +1526,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   merger_flatten(fset, f1, f2);
   if (nmerger == 0) {
     error(1, "empty output GIF not written");
-    return 0;
+    goto error;
   }
 
   /* decide whether stream is huge */
@@ -1591,7 +1604,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     /* Make a copy of the image and crop it if we're cropping */
     fr->left_offset = fr->top_offset = 0;
     if (fr->crop) {
-      srci = Gif_CopyImage(fr->image);
+      srci = crop_copy = Gif_CopyImage(fr->image);
       Gif_UncompressImage(fr->stream, srci);
       crop_image(srci, fr);
     } else {
@@ -1637,7 +1650,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       int left = fr->left + (fr->position_is_offset ? desti->left : 0);
       if (left + desti->width > 65535) {
         error(1, "left position %d out of range", left);
-        return 0;
+        goto error;
       }
       desti->left = left;
     }
@@ -1645,7 +1658,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       int top = fr->top + (fr->position_is_offset ? desti->top : 0);
       if (top + desti->height > 65535) {
         error(1, "top position %d out of range", top);
-        return 0;
+        goto error;
       }
       desti->top = top;
     }
@@ -1714,9 +1727,8 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
     }
 
     /* Destroy the copied, cropped image if necessary */
-    if (fr->crop) {
-      Gif_DeleteImage(srci);
-    }
+    Gif_DeleteImage(crop_copy);
+    crop_copy = 0;
 
     /* if we can, delete the image's data right now to save memory */
     srci = fr->image;
@@ -1758,6 +1770,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   }
 
   return dest;
+
+ error:
+  /* Frames not yet merged keep their references; blank_frameset()
+     releases them. */
+  Gif_DeleteImage(crop_copy);
+  Gif_DeleteStream(dest);
+  return 0;
 }
 
 

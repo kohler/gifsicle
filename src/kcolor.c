@@ -130,7 +130,7 @@ const uint16_t* gamma_tables[2] = {
 };
 
 #if ENABLE_THREADS
-pthread_mutex_t kd3_sort_lock;
+pthread_mutex_t kd3_sort_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 

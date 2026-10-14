@@ -179,15 +179,14 @@ merge_colormap_if_possible(Gif_Colormap *dest, Gif_Colormap *src)
 
   /* failure: a local colormap is required */
  local_colormap_required:
-    if (warn_local_colormaps == 1) {
-        static int context = 0;
-        if (!context) {
+    if (gtmsgs.warn_local_colormaps == 1) {
+        if (!gtmsgs.warn_local_colormaps_context) {
             warning(1, "too many colors, using local colormaps\n"
                     "  (You may want to try %<--colors 256%>.)");
-            context = 1;
+            gtmsgs.warn_local_colormaps_context = 1;
         } else
             warning(1, "too many colors, using local colormaps");
-        warn_local_colormaps = 2;
+        gtmsgs.warn_local_colormaps = 2;
     }
 
   /* 9.Dec.1998 - This must have been a longstanding bug! We MUST clear

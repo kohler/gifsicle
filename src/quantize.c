@@ -39,8 +39,7 @@ Gif_Colormap* colormap_median_cut(kchist* kch, Gt_OutputData* od)
     /* This code was written with reference to ppmquant by Jef Poskanzer,
        part of the pbmplus package. */
 
-    if (adapt_size < 2 || adapt_size > 256)
-        fatal_error("adaptive palette size must be between 2 and 256");
+    assert(adapt_size >= 2 && adapt_size <= 256); /* checked by --colors */
     if (adapt_size >= kch->n && !od->colormap_fixed)
         warning(1, "trivial adaptive palette (only %d %s in source)",
                 kch->n, kch->n == 1 ? "color" : "colors");
@@ -293,8 +292,7 @@ colormap_diversity(kchist* kch, Gt_OutputData* od, int blend)
        with reference to XV's implementation of that algorithm by John Bradley
        <bradley@cis.upenn.edu> and Tom Lane <Tom.Lane@g.gp.cs.cmu.edu>. */
 
-    if (adapt_size < 2 || adapt_size > 256)
-        fatal_error("adaptive palette size must be between 2 and 256");
+    assert(adapt_size >= 2 && adapt_size <= 256); /* checked by --colors */
     if (adapt_size > kch->n && !od->colormap_fixed)
         warning(1, "trivial adaptive palette (only %d colors in source)", kch->n);
     if (adapt_size > kch->n)

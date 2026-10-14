@@ -26,51 +26,81 @@
 #define static_assert(x, msg) switch ((int) (x)) case 0: case !!((int) (x)):
 #endif
 
+struct StoredFile {
+  FILE *f;
+  struct StoredFile *next;
+  char name[1];
+};
+
+typedef struct Gt_State {
+  int first_input_frame;
+  Gt_Frameset* input_frames;
+  Gt_Frameset* frames;
+  Gt_Frameset* nested_frames;
+
+
+  int unoptimizing;
+  int thread_count;
+
+  int gif_read_flags;
+  int nextfile;
+
+  struct {
+    int last_is_error;
+    char last_landmark[256];
+    char last_message[256];
+    int different_error_count;
+    int same_error_count;
+  } rderr;
+
+  struct StoredFile *stored_files;
+
+  int frames_done;
+  int files_given;
+
+  Gt_ColorTransform* input_transforms;
+  Gt_ColorTransform* output_transforms;
+
+  Gt_Crop** all_crops;
+  int nall_crops;
+
+  int infoing;
+
+  int next_frame;
+  int next_input;
+  int next_output;
+  int active_next_output;
+  int any_output_successful;
+} Gt_State;
+
+static Gt_State gtst;
+Gt_MessageState gtmsgs;
+
 Gt_Frame def_frame;
-
-Gt_Frameset *frames = 0;
-int first_input_frame = 0;
-static Gt_Frameset *input_frames = 0; /* frameset holding the input's frames */
-Gt_Frameset *nested_frames = 0;
-
 Gif_Stream *input = 0;
 const char *input_name = 0;
-static int unoptimizing = 0;
 
-const int GIFSICLE_DEFAULT_THREAD_COUNT = 8;
-int thread_count = 0;
-
-static int gif_read_flags = 0;
-static int nextfile = 0;
 Gif_CompressInfo gif_write_info;
-
-static int frames_done = 0;
-static int files_given = 0;
-
-int warn_local_colormaps = 1;
-
-static Gt_ColorTransform *input_transforms;
-static Gt_ColorTransform *output_transforms;
 
 int mode = BLANK_MODE;
 int nested_mode = 0;
 
-static int infoing = 0;
-int verbosing = 0;
-static int no_ignore_errors = 0;
+static Gt_OutputData def_output_data;
+Gt_OutputData active_output_data;
+
+const int GIFSICLE_DEFAULT_THREAD_COUNT = 8;
 
 
 #define CHANGED(next, flag)     (((next) & (1<<(flag))) != 0)
 #define UNCHECKED_MARK_CH(where, what)                  \
-  next_##where |= 1<<what;
+  gtst.next_##where |= 1<<what;
 #define MARK_CH(where, what)    do {                        \
-    if (CHANGED(next_##where, what))                        \
+    if (CHANGED(gtst.next_##where, what))                   \
       redundant_option_warning(where##_option_types[what]); \
     UNCHECKED_MARK_CH(where, what);                         \
   } while (0)
 
 /* frame option types */
-static int next_frame = 0;
 #define CH_INTERLACE            0
 #define CH_DISPOSAL             1
 #define CH_DELAY                2
@@ -89,7 +119,6 @@ static const char *frame_option_types[] = {
 };
 
 /* input option types */
-static int next_input = 0;
 #define CH_UNOPTIMIZE           0
 #define CH_CHANGE_COLOR         1
 static const char *input_option_types[] = {
@@ -97,11 +126,6 @@ static const char *input_option_types[] = {
 };
 
 /* output option types */
-static Gt_OutputData def_output_data;
-Gt_OutputData active_output_data;
-static int next_output = 0;
-static int active_next_output = 0;
-static int any_output_successful = 0;
 #define CH_LOOPCOUNT            0
 #define CH_LOGICAL_SCREEN       1
 #define CH_OPTIMIZE             2
@@ -405,49 +429,58 @@ void resize_check(void)
 #endif
 
 
-static void
+/* Returns -1 (after stop_error) if the mode can't change. */
+static int
 set_mode(int newmode)
 {
   if (mode == BLANK_MODE) {
     if (newmode != BLANK_MODE)
       mode = newmode;
-    else if (infoing == 1)
+    else if (gtst.infoing == 1)
       mode = INFOING;
     else
       mode = MERGING;
   }
 
-  if (mode != INFOING && infoing == 1)
-    fatal_error("%<--info%> suppresses normal output, can%,t use with an\n  output mode like %<--merge%> or %<--batch%>.\n  (Try %<-II%>, which doesn%,t suppress normal output.)");
-  if (newmode != BLANK_MODE && newmode != mode)
-    fatal_error("too late to change modes");
+  if (mode != INFOING && gtst.infoing == 1) {
+    stop_error("%<--info%> suppresses normal output, can%,t use with an\n  output mode like %<--merge%> or %<--batch%>.\n  (Try %<-II%>, which doesn%,t suppress normal output.)");
+    return -1;
+  }
+  if (newmode != BLANK_MODE && newmode != mode) {
+    stop_error("too late to change modes");
+    return -1;
+  }
+  return 0;
 }
 
 
 void
-set_frame_change(int kind)
+set_frame_change(Clp_Parser* clp, int kind)
 {
   int i;
   Gt_Frameset *fset;
+  Gt_FrameSpec* gtfspec = (Gt_FrameSpec*) clp->val.cs;
 
-  set_mode(BLANK_MODE);
-  if (frames_done & FRAME_SELECTION_MODE_MASK) {
-    fatal_error("frame selection and frame changes don%,t mix");
+  if (set_mode(BLANK_MODE) < 0)
+    return;
+  if (gtst.frames_done & FRAME_SELECTION_MODE_MASK) {
+    stop_error("frame selection and frame changes don%,t mix");
     return;
   }
   assert(!nested_mode);
   nested_mode = mode;
-  if (frame_spec_1 > frame_spec_2) {
-    i = frame_spec_1;
-    frame_spec_1 = frame_spec_2;
-    frame_spec_2 = i;
+  if (gtfspec->frame1 > gtfspec->frame2) {
+    i = gtfspec->frame1;
+    gtfspec->frame1 = gtfspec->frame2;
+    gtfspec->frame2 = i;
   }
   /* frame specs are relative to the most recent input */
   if (kind == REPLACE_OPT || kind == INSERT_OPT) {
-    frame_spec_1 += first_input_frame;
-    frame_spec_2 += first_input_frame;
-    if (frame_spec_1 < first_input_frame || frame_spec_2 >= frames->count) {
-      fatal_error("frame out of range");
+    gtfspec->frame1 += gtst.first_input_frame;
+    gtfspec->frame2 += gtst.first_input_frame;
+    if (gtfspec->frame1 < gtst.first_input_frame
+        || gtfspec->frame2 >= gtst.frames->count) {
+      stop_error("frame out of range");
       return;
     }
   }
@@ -459,23 +492,23 @@ set_frame_change(int kind)
     break;
 
    case REPLACE_OPT:
-    for (i = frame_spec_1; i < frame_spec_2; i++)
-      FRAME(frames, i).use = 0;
+    for (i = gtfspec->frame1; i < gtfspec->frame2; i++)
+      FRAME(gtst.frames, i).use = 0;
     /* We want to use the last frame's delay, but nothing else about it. */
-    FRAME(frames, i).use = -1;
+    FRAME(gtst.frames, i).use = -1;
     /* FALLTHRU */
 
    case INSERT_OPT:
     /* Define a nested frameset (or use an existing one). */
-    fset = FRAME(frames, frame_spec_2).nest;
+    fset = FRAME(gtst.frames, gtfspec->frame2).nest;
     if (!fset)
       fset = new_frameset(8);
-    FRAME(frames, frame_spec_2).nest = fset;
+    FRAME(gtst.frames, gtfspec->frame2).nest = fset;
 
     /* Later: Merge frames at the end of the nested frameset. */
     mode = INSERTING;
-    nested_frames = frames;
-    frames = fset;
+    gtst.nested_frames = gtst.frames;
+    gtst.frames = fset;
     break;
 
    case APPEND_OPT:
@@ -491,10 +524,10 @@ frame_change_done(void)
 {
   if (nested_mode)
     mode = nested_mode;
-  if (nested_frames)
-    frames = nested_frames;
+  if (gtst.nested_frames)
+    gtst.frames = gtst.nested_frames;
   nested_mode = 0;
-  nested_frames = 0;
+  gtst.nested_frames = 0;
 }
 
 
@@ -530,7 +563,7 @@ mark_extension_change(int noexf)
     ch = CH_EXTENSION;
     noexf = NOEXF_GENERIC | NOEXF_APP;
   }
-  if (!CHANGED(next_frame, ch))
+  if (!CHANGED(gtst.next_frame, ch))
     delete_matching_extensions(&def_frame, noexf);
   UNCHECKED_MARK_CH(frame, ch);
 }
@@ -552,22 +585,22 @@ show_frame(int imagenumber, int usename)
    case EXPLODING:
    case INFOING:
    case BATCHING:
-    if (!frames_done && frames == input_frames)
-      clear_frameset(frames, first_input_frame);
-    frame = add_frame(frames, input, gfi);
+    if (!gtst.frames_done && gtst.frames == gtst.input_frames)
+      clear_frameset(gtst.frames, gtst.first_input_frame);
+    frame = add_frame(gtst.frames, input, gfi);
     if (usename)
       frame->explode_by_name = 1;
     break;
 
    case DELETING:
-    frame = &FRAME(frames, first_input_frame + imagenumber);
+    frame = &FRAME(gtst.frames, gtst.first_input_frame + imagenumber);
     frame->use = 0;
     break;
 
   }
 
-  next_frame = 0;
-  frames_done |= 1 << mode;
+  gtst.next_frame = 0;
+  gtst.frames_done |= 1 << mode;
 }
 
 
@@ -579,18 +612,14 @@ static void
 gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
               int is_error, const char* message)
 {
-  static int last_is_error = 0;
-  static char last_landmark[256];
-  static char last_message[256];
-  static int different_error_count = 0;
-  static int same_error_count = 0;
   char landmark[256];
   int which_image = Gif_ImageNumber(gfs, gfi);
   if (gfs && which_image < 0)
     which_image = gfs->nimages;
 
-  /* ignore warnings if "no_warning" */
-  if (no_warnings && is_error == 0)
+  /* ignore warnings if "no_warning", and everything after a fatal error */
+  if ((gtmsgs.no_warnings && is_error == 0)
+      || gtmsgs.stopping)
     return;
 
   if (message) {
@@ -602,61 +631,57 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
       snprintf(landmark, sizeof(landmark), "%s", filename);
   }
 
-  if (last_message[0]
-      && different_error_count <= 10
+  if (gtst.rderr.last_message[0]
+      && gtst.rderr.different_error_count <= 10
       && (!message
-          || strcmp(message, last_message) != 0
-          || strcmp(landmark, last_landmark) != 0)) {
-    const char* etype = last_is_error ? "read error: " : "";
-    void (*f)(const char*, const char*, ...) = last_is_error ? lerror : lwarning;
+          || strcmp(message, gtst.rderr.last_message) != 0
+          || strcmp(landmark, gtst.rderr.last_landmark) != 0)) {
+    const char* etype = gtst.rderr.last_is_error ? "read error: " : "";
+    void (*f)(const char*, const char*, ...) = gtst.rderr.last_is_error ? lerror : lwarning;
     if (gfi && gfi->user_flags)
       /* error already reported */;
-    else if (same_error_count == 1)
-      f(last_landmark, "%s%s", etype, last_message);
-    else if (same_error_count > 0)
-      f(last_landmark, "%s%s (%d times)", etype, last_message, same_error_count);
-    same_error_count = 0;
-    last_message[0] = 0;
+    else if (gtst.rderr.same_error_count == 1)
+      f(gtst.rderr.last_landmark, "%s%s", etype, gtst.rderr.last_message);
+    else if (gtst.rderr.same_error_count > 0)
+      f(gtst.rderr.last_landmark, "%s%s (%d times)", etype,
+        gtst.rderr.last_message, gtst.rderr.same_error_count);
+    gtst.rderr.same_error_count = 0;
+    gtst.rderr.last_message[0] = 0;
   }
 
   if (message) {
-    if (last_message[0] == 0)
-      different_error_count++;
-    same_error_count++;
-    strncpy(last_message, message, sizeof(last_message));
-    last_message[sizeof(last_message) - 1] = 0;
-    strncpy(last_landmark, landmark, sizeof(last_landmark));
-    last_landmark[sizeof(last_landmark) - 1] = 0;
-    last_is_error = is_error;
-    if (different_error_count == 11) {
+    if (gtst.rderr.last_message[0] == 0)
+      gtst.rderr.different_error_count++;
+    gtst.rderr.same_error_count++;
+    strncpy(gtst.rderr.last_message, message, sizeof(gtst.rderr.last_message));
+    gtst.rderr.last_message[sizeof(gtst.rderr.last_message) - 1] = 0;
+    strncpy(gtst.rderr.last_landmark, landmark, sizeof(gtst.rderr.last_landmark));
+    gtst.rderr.last_landmark[sizeof(gtst.rderr.last_landmark) - 1] = 0;
+    gtst.rderr.last_is_error = is_error;
+    if (gtst.rderr.different_error_count == 11) {
       if (!(gfi && gfi->user_flags))
         error(0, "(plus more errors; is this GIF corrupt?)");
-      different_error_count++;
+      gtst.rderr.different_error_count++;
     }
   } else
-    last_message[0] = 0;
+    gtst.rderr.last_message[0] = 0;
 
   {
     unsigned long missing;
-    if (message && sscanf(message, "missing %lu pixel", &missing) == 1
-        && missing > 10000 && no_ignore_errors) {
+    if (message
+        && sscanf(message, "missing %lu pixel", &missing) == 1
+        && missing > 10000
+        && gtmsgs.no_ignore_errors
+        && !gtmsgs.stopping) {
       gifread_error(gfs, 0, -1, 0);
       lerror(landmark, "fatal error: too many missing pixels, giving up");
-      exit(1);
+      gtmsgs.stopping = 1;      /* input_stream discards the stream */
     }
   }
 
   if (gfi && is_error < 0)
     gfi->user_flags |= 1;
 }
-
-struct StoredFile {
-  FILE *f;
-  struct StoredFile *next;
-  char name[1];
-};
-
-static struct StoredFile *stored_files = 0;
 
 static FILE *
 open_giffile(const char *name)
@@ -681,18 +706,18 @@ open_giffile(const char *name)
     return stdin;
   }
 
-  if (nextfile)
-    for (sf = stored_files; sf; sf = sf->next)
+  if (gtst.nextfile)
+    for (sf = gtst.stored_files; sf; sf = sf->next)
       if (strcmp(name, sf->name) == 0)
         return sf->f;
 
   f = fopen(name, "rb");
 
-  if (f && nextfile) {
+  if (f && gtst.nextfile) {
     sf = (struct StoredFile *) malloc(sizeof(struct StoredFile) + strlen(name));
     sf->f = f;
-    sf->next = stored_files;
-    stored_files = sf;
+    sf->next = gtst.stored_files;
+    gtst.stored_files = sf;
     strcpy(sf->name, name);
   } else if (!f)
     lerror(name, "%s", strerror(errno));
@@ -705,7 +730,7 @@ close_giffile(FILE *f, int final)
 {
   struct StoredFile **sf_pprev, *sf;
 
-  if (!final && nextfile) {
+  if (!final && gtst.nextfile) {
     int c = getc(f);
     if (c == EOF)
       final = 1;
@@ -713,7 +738,7 @@ close_giffile(FILE *f, int final)
       ungetc(c, f);
   }
 
-  for (sf_pprev = &stored_files; (sf = *sf_pprev); sf_pprev = &sf->next)
+  for (sf_pprev = &gtst.stored_files; (sf = *sf_pprev); sf_pprev = &sf->next)
     if (sf->f == f) {
       if (final) {
         fclose(f);
@@ -734,7 +759,7 @@ input_stream(const char *name)
   FILE *f;
   Gif_Stream *gfs;
   int i;
-  int saved_next_frame = next_frame;
+  int saved_next_frame = gtst.next_frame;
   int componentno = 0;
   const char *main_name = 0;
   int noexf;
@@ -742,14 +767,15 @@ input_stream(const char *name)
 
   input = 0;
   input_name = name;
-  frames_done = 0;
-  next_frame = 0;
-  next_input = 0;
-  if (next_output)
+  gtst.frames_done = 0;
+  gtst.next_frame = 0;
+  gtst.next_input = 0;
+  if (gtst.next_output)
     combine_output_options();
-  files_given++;
+  ++gtst.files_given;
 
-  set_mode(BLANK_MODE);
+  if (set_mode(BLANK_MODE) < 0)
+    return;
 
   f = open_giffile(name);
   if (!f)
@@ -774,48 +800,56 @@ input_stream(const char *name)
   /* check for empty file */
   i = getc(f);
   if (i == EOF) {
-    if (!(gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
+    if (!(gtst.gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK))
       lerror(name, "empty file");
-    else if (nextfile)
+    else if (gtst.nextfile)
       lerror(name, "no more images in file");
     goto error;
   }
   ungetc(i, f);
 
-  if (verbosing)
+  if (gtmsgs.verbosing)
     verbose_open('<', name);
 
   /* read file */
   {
-    int old_error_count = error_count;
-    gfs = Gif_FullReadFile(f, gif_read_flags | GIF_READ_COMPRESSED,
+    int old_error_count = gtmsgs.error_count;
+    gfs = Gif_FullReadFile(f, gtst.gif_read_flags | GIF_READ_COMPRESSED,
                            name, gifread_error);
     if ((!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0))
         && componentno != 1)
       lerror(name, "trailing garbage ignored");
-    if (!no_ignore_errors)
-      error_count = old_error_count;
+    if (!gtmsgs.no_ignore_errors)
+      gtmsgs.error_count = old_error_count;
   }
 
-  if (!gfs || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)) {
-    if (componentno == 1)
+  if (!gfs
+      || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)
+      || gtmsgs.stopping) {
+    if (componentno == 1 && !gtmsgs.stopping)
       lerror(name, "file not in GIF format");
     Gif_DeleteStream(gfs);
-    if (verbosing)
+    if (gtmsgs.verbosing)
       verbose_close('>');
     goto error;
   }
 
   /* special processing for components after the first */
   if (componentno > 1) {
-    if (mode == BATCHING || mode == INSERTING)
-      fatal_error("%s: %<--multifile%> is useful only in merge mode", name);
+    if (mode == BATCHING || mode == INSERTING) {
+      stop_error("%s: %<--multifile%> is useful only in merge mode", name);
+      Gif_DeleteStream(gfs);
+      if (gtmsgs.verbosing)
+        verbose_close('>');
+      goto error;
+    }
     input_done();
   }
 
   input = gfs;
 
-  /* Processing when we've got a new input frame */
+  /* Processing when we've got a new input frame; can't fail, since the
+     same call succeeded above */
   set_mode(BLANK_MODE);
 
   if (active_output_data.output_name == 0) {
@@ -871,33 +905,34 @@ input_stream(const char *name)
   def_frame.extensions.head = def_frame.extensions.tail = 0;
   if (!Gif_CopyExtensions(&def_frame.extensions, &old_def_frame.extensions))
     fatal_error("out of memory");
-  input_frames = frames;
-  first_input_frame = frames->count;
+  gtst.input_frames = gtst.frames;
+  gtst.first_input_frame = gtst.frames->count;
   def_frame.position_is_offset = 1;
   for (i = 0; i < gfs->nimages; i++)
-    add_frame(frames, gfs, gfs->images[i]);
+    add_frame(gtst.frames, gfs, gfs->images[i]);
   clear_def_frame_once_options();
   def_frame = old_def_frame;
 
-  if (unoptimizing)
+  if (gtst.unoptimizing) {
     if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
-      static int context = 0;
-      if (!context) {
+      if (!gtmsgs.unoptimize_complexity_context) {
         lwarning(name, "GIF too complex to unoptimize\n"
                  "  (The reason was local color tables or complex transparency.\n"
                  "  Try running the GIF through %<gifsicle --colors=255%> first.)");
-        context = 1;
-      } else
+        gtmsgs.unoptimize_complexity_context = 1;
+      } else {
         lwarning(name, "GIF too complex to unoptimize");
+      }
     }
+  }
 
-  apply_color_transforms(input_transforms, gfs);
+  apply_color_transforms(gtst.input_transforms, gfs);
   gfs->refcount++;
 
   /* Read more files. Once-only frame options apply to the first
      component only. */
   free(component_namebuf);
-  if ((gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !nextfile) {
+  if ((gtst.gif_read_flags & GIF_READ_TRAILING_GARBAGE_OK) && !gtst.nextfile) {
     saved_next_frame = 0;
     goto retry_file;
   }
@@ -915,7 +950,7 @@ input_done(void)
   if (!input)
     return;
 
-  if (verbosing)
+  if (gtmsgs.verbosing)
     verbose_close('>');
 
   Gif_DeleteStream(input);
@@ -1050,8 +1085,11 @@ write_stream(const char *output_name, Gif_Stream *gfs)
 
   if (f) {
     Gif_FullWriteFile(gfs, &gif_write_info, f);
-    fclose(f);
-    any_output_successful = 1;
+    if (f != stdout)
+      fclose(f);
+    else
+      fflush(f);                /* gifsicle_main may run again */
+    gtst.any_output_successful = 1;
   } else
     lerror(output_name, "%s", strerror(errno));
 }
@@ -1064,13 +1102,13 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   int colormap_change;
   int huge_stream;
   assert(!nested_mode);
-  if (verbosing)
+  if (gtmsgs.verbosing)
     verbose_open('[', outfile ? outfile : "#stdout#");
   active_output_data.active_output_name = outfile;
 
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
-  warn_local_colormaps = !colormap_change;
+  gtmsgs.warn_local_colormaps = !colormap_change;
   kc_set_gamma(active_output_data.colormap_gamma_type,
                active_output_data.colormap_gamma);
 
@@ -1081,7 +1119,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   else
     compress_immediately = active_output_data.conserve_memory;
 
-  out = merge_frame_interval(frames, f1, f2, &active_output_data,
+  out = merge_frame_interval(gtst.frames, f1, f2, &active_output_data,
                              compress_immediately, &huge_stream);
 
   if (out) {
@@ -1096,21 +1134,24 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
       w = active_output_data.resize_width;
       h = active_output_data.resize_height;
     }
-    if (active_output_data.scaling != GT_SCALING_NONE)
-      resize_stream(out, w, h, active_output_data.resize_flags,
-                    active_output_data.scale_method,
-                    active_output_data.scale_colors);
+    if (active_output_data.scaling != GT_SCALING_NONE
+        && resize_stream(out, w, h, active_output_data.resize_flags,
+                         active_output_data.scale_method,
+                         active_output_data.scale_colors,
+                         gtst.thread_count) < 0)
+      goto done;
     if (colormap_change)
       do_colormap_change(out);
-    if (output_transforms)
-      apply_color_transforms(output_transforms, out);
+    if (gtst.output_transforms)
+      apply_color_transforms(gtst.output_transforms, out);
     if (active_output_data.optimizing & GT_OPT_MASK)
       optimize_fragments(out, &active_output_data, huge_stream);
     write_stream(outfile, out);
-    Gif_DeleteStream(out);
   }
 
-  if (verbosing)
+ done:
+  Gif_DeleteStream(out);
+  if (gtmsgs.verbosing)
     verbose_close(']');
   active_output_data.active_output_name = 0;
 }
@@ -1123,7 +1164,7 @@ output_information(const char *outfile)
   Gt_Frame *fr;
   Gif_Stream *gfs;
 
-  if (infoing == 2)
+  if (gtst.infoing == 2)
     f = stderr;
   else if (outfile == 0)
     f = stdout;
@@ -1135,18 +1176,18 @@ output_information(const char *outfile)
     }
   }
 
-  for (i = 0; i < frames->count; i++)
-    FRAME(frames, i).stream->user_flags = 97;
+  for (i = 0; i < gtst.frames->count; i++)
+    FRAME(gtst.frames, i).stream->user_flags = 97;
 
-  for (i = 0; i < frames->count; i++)
-    if (FRAME(frames, i).stream->user_flags == 97) {
-      fr = &FRAME(frames, i);
+  for (i = 0; i < gtst.frames->count; i++)
+    if (FRAME(gtst.frames, i).stream->user_flags == 97) {
+      fr = &FRAME(gtst.frames, i);
       gfs = fr->stream;
       gfs->user_flags = 0;
       stream_info(f, gfs, fr->input_filename, fr->info_flags);
-      for (j = i; j < frames->count; j++)
-        if (FRAME(frames, j).stream == gfs) {
-          fr = &FRAME(frames, j);
+      for (j = i; j < gtst.frames->count; j++)
+        if (FRAME(gtst.frames, j).stream == gfs) {
+          fr = &FRAME(gtst.frames, j);
           image_info(f, gfs, fr->image, fr->info_flags);
         }
     }
@@ -1167,11 +1208,11 @@ output_frames(void)
   active_output_data.output_name = 0;
 
   /* Output information only now. */
-  if (infoing)
+  if (gtst.infoing)
     output_information(outfile);
 
   /* An input with no images produces no output, which is an error. */
-  if (infoing != 1)
+  if (gtst.infoing != 1)
     switch (mode) {
 
      case MERGING:
@@ -1185,19 +1226,19 @@ output_frames(void)
           we can't explode different frames to different names. Not a big deal
           anyway; they can always repeat the gif on the cmd line. */
        int max_nimages = 0;
-       for (i = 0; i < frames->count; i++) {
-         Gt_Frame *fr = &FRAME(frames, i);
+       for (i = 0; i < gtst.frames->count; i++) {
+         Gt_Frame *fr = &FRAME(gtst.frames, i);
          if (fr->stream->nimages > max_nimages)
            max_nimages = fr->stream->nimages;
        }
 
        if (!outfile) /* Watch out! */
          outfile = "-";
-       if (frames->count == 0)
+       if (gtst.frames->count == 0)
          error(1, "empty output GIF not written");
 
-       for (i = 0; i < frames->count; i++) {
-         Gt_Frame *fr = &FRAME(frames, i);
+       for (i = 0; i < gtst.frames->count; i++) {
+         Gt_Frame *fr = &FRAME(gtst.frames, i);
          int imagenumber = Gif_ImageNumber(fr->stream, fr->image);
          char *explodename;
 
@@ -1212,6 +1253,7 @@ output_frames(void)
          explodename = explode_filename(outfile, imagenumber, imagename,
                                         max_nimages);
          merge_and_write_frames(explodename, i, i);
+         Gif_DeleteArray(explodename);
        }
        break;
      }
@@ -1222,8 +1264,8 @@ output_frames(void)
 
     }
 
-  active_next_output = 0;
-  clear_frameset(frames, 0);
+  gtst.active_next_output = 0;
+  clear_frameset(gtst.frames, 0);
 
   /* cropping: clear the 'crop->ready' information, which depended on the last
      input image. */
@@ -1242,14 +1284,15 @@ frame_argument(Clp_Parser *clp, const char *arg)
   /* Returns 0 iff you should try a file named 'arg', and -1 if 'arg' was
      an invalid frame specification. */
   int val = parse_frame_spec(clp, arg, -1, 0), i, delta;
+  Gt_FrameSpec* gtfspec = (Gt_FrameSpec*) clp->val.cs;
   if (val == -97)
     return 0;
   if (val <= 0)
     return -1;
-  delta = (frame_spec_1 <= frame_spec_2 ? 1 : -1);
-  for (i = frame_spec_1; i != frame_spec_2 + delta; i += delta)
-    show_frame(i, frame_spec_name != 0);
-  if (next_output)
+  delta = (gtfspec->frame1 <= gtfspec->frame2 ? 1 : -1);
+  for (i = gtfspec->frame1; i != gtfspec->frame2 + delta; i += delta)
+    show_frame(i, gtfspec->name != 0);
+  if (gtst.next_output)
     combine_output_options();
   return 1;
 }
@@ -1307,6 +1350,9 @@ handle_extension(Clp_Parser *clp, int is_app)
 static void
 initialize_def_frame(void)
 {
+  memset(&def_frame, 0, sizeof(def_frame));
+  memset(&def_output_data, 0, sizeof(def_output_data));
+
   /* frame defaults */
   def_frame.stream = 0;
   def_frame.image = 0;
@@ -1365,8 +1411,8 @@ initialize_def_frame(void)
 static void
 combine_output_options(void)
 {
-  int recent = next_output;
-  next_output = active_next_output;
+  int recent = gtst.next_output;
+  gtst.next_output = gtst.active_next_output;
 #define COMBINE_ONE_OUTPUT_OPTION(value, field)         \
   if (CHANGED(recent, value)) {                         \
     MARK_CH(output, value);                             \
@@ -1431,19 +1477,18 @@ combine_output_options(void)
   def_output_data.colormap_fixed_exact = 0;
   def_output_data.output_name = 0;
 
-  active_next_output |= next_output;
-  next_output = 0;
+  gtst.active_next_output |= gtst.next_output;
+  gtst.next_output = 0;
 }
 
 static void
 redundant_option_warning(const char* opttype)
 {
-  static int context = 0;
-  if (!context) {
+  if (!gtmsgs.redundant_option_context) {
     warning(0, "redundant %s option\n"
             "  (The %s option was overridden by another %s option\n"
             "  before it had any effect.)", opttype, opttype, opttype);
-    context = 1;
+    gtmsgs.redundant_option_context = 1;
   } else
     warning(0, "redundant %s option", opttype);
 }
@@ -1464,17 +1509,34 @@ print_useless_options(const char *type_name, int value, const char *names[])
     }
 }
 
-static Gt_Crop *
-copy_crop(Gt_Crop *oc)
+/* Frames share crops (analyze_crop() treats frames with the same crop
+   together), so crops live until gifsicle_main returns. */
+
+static Gt_Crop*
+copy_crop(Gt_Crop* oc)
 {
-  Gt_Crop *nc = Gif_New(Gt_Crop);
-  /* Memory leak on crops, but this just is NOT a problem. */
+  Gt_Crop* nc = Gif_New(Gt_Crop);
   if (oc)
     *nc = *oc;
   else
     memset(nc, 0, sizeof(Gt_Crop));
   nc->ready = 0;
+  if ((gtst.nall_crops & (gtst.nall_crops - 1)) == 0)
+    Gif_ReArray(gtst.all_crops, Gt_Crop*, gtst.nall_crops ? gtst.nall_crops * 2 : 4);
+  gtst.all_crops[gtst.nall_crops++] = nc;
   return nc;
+}
+
+static void
+delete_crops(void)
+{
+  int i;
+  for (i = 0; i < gtst.nall_crops; ++i)
+    Gif_Delete(gtst.all_crops[i]);
+  Gif_DeleteArray(gtst.all_crops);
+  gtst.all_crops = 0;
+  gtst.nall_crops = 0;
+  def_frame.crop = 0;
 }
 
 static int
@@ -1539,14 +1601,22 @@ error:
  **/
 
 int
-main(int argc, char *argv[])
+gifsicle_main(int argc, char *argv[])
 {
+  int status;
+
   /* Check SIZEOF constants (useful for Windows). If these assertions fail,
      you've used the wrong Makefile. You should've used Makefile.w32 for
      32-bit Windows and Makefile.w64 for 64-bit Windows. */
   static_assert(sizeof(unsigned int) == SIZEOF_UNSIGNED_INT, "unsigned int has the wrong size.");
   static_assert(sizeof(unsigned long) == SIZEOF_UNSIGNED_LONG, "unsigned long has the wrong size.");
   static_assert(sizeof(void*) == SIZEOF_VOID_P, "void* has the wrong size.");
+  static_assert((int) (uint16_t) 0xFFFFU > 0, "int can't hold USHORT_MAX.");
+
+  /* initialize state */
+  gtmsgs.warn_local_colormaps = 1;
+  mode = BLANK_MODE;
+  nested_mode = 0;
 
   clp = Clp_NewParser(argc, (const char * const *)argv, sizeof(options) / sizeof(options[0]), options);
 
@@ -1601,28 +1671,18 @@ main(int argc, char *argv[])
 
   program_name = Clp_ProgramName(clp);
 
-  frames = new_frameset(16);
+  gtst.frames = new_frameset(16);
   initialize_def_frame();
   Gif_InitCompressInfo(&gif_write_info);
   Gif_SetErrorHandler(gifread_error);
 
-#if ENABLE_THREADS
-  pthread_mutex_init(&kd3_sort_lock, 0);
-#endif
-
-  /* Yep, I'm an idiot.
-     GIF dimensions are unsigned 16-bit integers. I assume that these
-     numbers will fit in an 'int'. This assertion tests that assumption.
-     Really I should go through & change everything over, but it doesn't
-     seem worth my time. */
-  {
-    uint16_t m = 0xFFFFU;
-    int i = m;
-    assert(i > 0 && "configuration/lameness failure! bug the author!");
-  }
-
   while (1) {
-    int opt = Clp_Next(clp);
+    int opt;
+    if (gtmsgs.stopping) {
+      status = EXIT_USER_ERR;
+      goto cleanup;
+    }
+    opt = Clp_Next(clp);
     switch (opt) {
 
       /* MODE OPTIONS */
@@ -1649,11 +1709,11 @@ main(int argc, char *argv[])
 
      case INFO_OPT:
       if (clp->negated)
-        infoing = 0;
+        gtst.infoing = 0;
       else
         /* switch between infoing == 1 (suppress regular output) and 2 (don't
            suppress) */
-        infoing = (infoing == 1 ? 2 : 1);
+        gtst.infoing = gtst.infoing == 1 ? 2 : 1;
       break;
 
      case COLOR_INFO_OPT:
@@ -1661,8 +1721,8 @@ main(int argc, char *argv[])
         def_frame.info_flags &= ~INFO_COLORMAPS;
       else {
         def_frame.info_flags |= INFO_COLORMAPS;
-        if (!infoing)
-          infoing = 1;
+        if (!gtst.infoing)
+          gtst.infoing = 1;
       }
       break;
 
@@ -1671,8 +1731,8 @@ main(int argc, char *argv[])
         def_frame.info_flags &= ~INFO_EXTENSIONS;
       else {
         def_frame.info_flags |= INFO_EXTENSIONS;
-        if (!infoing)
-          infoing = 1;
+        if (!gtst.infoing)
+          gtst.infoing = 1;
       }
       break;
 
@@ -1681,13 +1741,13 @@ main(int argc, char *argv[])
         def_frame.info_flags &= ~INFO_SIZES;
       else {
         def_frame.info_flags |= INFO_SIZES;
-        if (!infoing)
-          infoing = 1;
+        if (!gtst.infoing)
+          gtst.infoing = 1;
       }
       break;
 
      case VERBOSE_OPT:
-      verbosing = clp->negated ? 0 : 1;
+      gtmsgs.verbosing = clp->negated ? 0 : 1;
       break;
 
       /* FRAME CHANGE OPTIONS */
@@ -1697,7 +1757,7 @@ main(int argc, char *argv[])
      case INSERT_OPT:
      case APPEND_OPT:
       frame_change_done();
-      set_frame_change(opt);
+      set_frame_change(clp, opt);
       break;
 
      case ALTER_DONE_OPT:
@@ -1708,7 +1768,7 @@ main(int argc, char *argv[])
 
      case NAME_OPT:
       if (clp->negated) goto no_names;
-      if (CHANGED(next_frame, CH_NAME)
+      if (CHANGED(gtst.next_frame, CH_NAME)
           && Gif_ExtensionListName(&def_frame.extensions))
         redundant_option_warning(frame_option_types[CH_NAME]);
       UNCHECKED_MARK_CH(frame, CH_NAME);
@@ -1770,8 +1830,8 @@ main(int argc, char *argv[])
 
      case POSITION_OPT:
       MARK_CH(frame, CH_POSITION);
-      def_frame.left = clp->negated ? 0 : position_x;
-      def_frame.top = clp->negated ? 0 : position_y;
+      def_frame.left = clp->negated ? 0 : clp->val.is[0];
+      def_frame.top = clp->negated ? 0 : clp->val.is[1];
       break;
 
      case SAME_POSITION_OPT:
@@ -1784,8 +1844,9 @@ main(int argc, char *argv[])
       if (clp->negated)
         def_frame.transparent.haspixel = 255;
       else {
-        def_frame.transparent = parsed_color;
-        def_frame.transparent.haspixel = parsed_color.haspixel ? 2 : 1;
+        Gif_Color* pcolor = (Gif_Color*) clp->val.cs;
+        def_frame.transparent = *pcolor;
+        def_frame.transparent.haspixel = pcolor->haspixel ? 2 : 1;
       }
       break;
 
@@ -1799,8 +1860,9 @@ main(int argc, char *argv[])
         def_output_data.background.haspixel = 2;
         def_output_data.background.pixel = 0;
       } else {
-        def_output_data.background = parsed_color;
-        def_output_data.background.haspixel = parsed_color.haspixel ? 2 : 1;
+        Gif_Color* pcolor = (Gif_Color*) clp->val.cs;
+        def_output_data.background = *pcolor;
+        def_output_data.background.haspixel = pcolor->haspixel ? 2 : 1;
       }
       break;
 
@@ -1816,8 +1878,8 @@ main(int argc, char *argv[])
         def_output_data.screen_width = def_output_data.screen_height = 0;
       } else {
         def_output_data.screen_mode = 1;
-        def_output_data.screen_width = dimensions_x;
-        def_output_data.screen_height = dimensions_y;
+        def_output_data.screen_width = clp->val.is[0];
+        def_output_data.screen_height = clp->val.is[1];
       }
       break;
 
@@ -1833,11 +1895,10 @@ main(int argc, char *argv[])
       MARK_CH(frame, CH_CROP);
       {
         Gt_Crop *crop = copy_crop(def_frame.crop);
-        /* Memory leak on crops, but this just is NOT a problem. */
-        crop->spec_x = position_x;
-        crop->spec_y = position_y;
-        crop->spec_w = dimensions_x;
-        crop->spec_h = dimensions_y;
+        crop->spec_x = clp->val.is[0];
+        crop->spec_y = clp->val.is[1];
+        crop->spec_w = clp->val.is[2];
+        crop->spec_h = clp->val.is[3];
         def_frame.crop = crop;
       }
       break;
@@ -1985,16 +2046,16 @@ main(int argc, char *argv[])
 
      case UNOPTIMIZE_OPT:
       UNCHECKED_MARK_CH(input, CH_UNOPTIMIZE);
-      unoptimizing = clp->negated ? 0 : 1;
+      gtst.unoptimizing = clp->negated ? 0 : 1;
       break;
 
      case THREADS_OPT:
       if (clp->negated)
-          thread_count = 0;
+          gtst.thread_count = 0;
       else if (clp->have_val)
-          thread_count = clp->val.i;
+          gtst.thread_count = clp->val.i;
       else
-          thread_count = GIFSICLE_DEFAULT_THREAD_COUNT;
+          gtst.thread_count = GIFSICLE_DEFAULT_THREAD_COUNT;
       break;
 
       /* WHOLE-GIF OPTIONS */
@@ -2008,26 +2069,27 @@ main(int argc, char *argv[])
      }
 
      case CHANGE_COLOR_OPT: {
-       next_input |= 1 << CH_CHANGE_COLOR;
+       Gif_Color* pcolor = (Gif_Color*) clp->val.cs;
+       gtst.next_input |= 1 << CH_CHANGE_COLOR;
        if (clp->negated)
-         input_transforms = delete_color_transforms
-           (input_transforms, &color_change_transformer);
-       else if (parsed_color2.haspixel)
+         gtst.input_transforms = delete_color_transforms
+           (gtst.input_transforms, &color_change_transformer);
+       else if (pcolor[1].haspixel)
          error(0, "COLOR2 must be in RGB format in %<--change-color COLOR1 COLOR2%>");
        else
-         input_transforms = append_color_change
-           (input_transforms, parsed_color, parsed_color2);
+         gtst.input_transforms = append_color_change
+           (gtst.input_transforms, *pcolor, pcolor[1]);
        break;
      }
 
     case COLOR_TRANSFORM_OPT:
-      next_output |= 1 << CH_COLOR_TRANSFORM;
+      gtst.next_output |= 1 << CH_COLOR_TRANSFORM;
       if (clp->negated)
-        output_transforms = delete_color_transforms
-          (output_transforms, &pipe_color_transformer);
+        gtst.output_transforms = delete_color_transforms
+          (gtst.output_transforms, &pipe_color_transformer);
       else
-        output_transforms = append_color_transform
-          (output_transforms, &pipe_color_transformer, (void *)clp->vstr);
+        gtst.output_transforms = append_color_transform
+          (gtst.output_transforms, &pipe_color_transformer, (void *)clp->vstr);
       break;
 
      case COLORMAP_OPT:
@@ -2146,13 +2208,13 @@ main(int argc, char *argv[])
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
-      else if (dimensions_x <= 0 && dimensions_y <= 0) {
+      else if (clp->val.is[0] <= 0 && clp->val.is[1] <= 0) {
         error(0, "one of W and H must be positive in %<%s WxH%>", Clp_CurOptionName(clp));
         def_output_data.scaling = GT_SCALING_NONE;
       } else {
         def_output_data.scaling = GT_SCALING_RESIZE;
-        def_output_data.resize_width = dimensions_x;
-        def_output_data.resize_height = dimensions_y;
+        def_output_data.resize_width = clp->val.is[0];
+        def_output_data.resize_height = clp->val.is[1];
         def_output_data.resize_flags = 0;
         if (opt != RESIZE_OPT)
             def_output_data.resize_flags |= GT_RESIZE_FIT;
@@ -2191,13 +2253,13 @@ main(int argc, char *argv[])
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
-      else if (parsed_scale_factor_x <= 0 || parsed_scale_factor_y <= 0) {
+      else if (clp->val.ds[0] <= 0 || clp->val.ds[1] <= 0) {
         error(0, "%s X and Y factors must be positive", Clp_CurOptionName(clp));
         def_output_data.scaling = GT_SCALING_NONE;
       } else {
         def_output_data.scaling = GT_SCALING_SCALE;
-        def_output_data.scale_x = parsed_scale_factor_x;
-        def_output_data.scale_y = parsed_scale_factor_y;
+        def_output_data.scale_x = clp->val.ds[0];
+        def_output_data.scale_y = clp->val.ds[1];
         def_output_data.resize_flags = 0;
       }
       break;
@@ -2234,15 +2296,15 @@ main(int argc, char *argv[])
       /* RANDOM OPTIONS */
 
      case NO_WARNINGS_OPT:
-      no_warnings = !clp->negated;
+      gtmsgs.no_warnings = !clp->negated;
       break;
 
      case WARNINGS_OPT:
-      no_warnings = clp->negated;
+      gtmsgs.no_warnings = clp->negated;
       break;
 
      case IGNORE_ERRORS_OPT:
-      no_ignore_errors = clp->negated;
+      gtmsgs.no_ignore_errors = clp->negated;
       break;
 
      case CONSERVE_MEMORY_OPT:
@@ -2252,19 +2314,19 @@ main(int argc, char *argv[])
 
      case MULTIFILE_OPT:
       if (clp->negated)
-        gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
+        gtst.gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
       else {
-        gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
-        nextfile = 0;
+        gtst.gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+        gtst.nextfile = 0;
       }
       break;
 
      case NEXTFILE_OPT:
       if (clp->negated)
-        gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
+        gtst.gif_read_flags &= ~GIF_READ_TRAILING_GARBAGE_OK;
       else {
-        gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
-        nextfile = 1;
+        gtst.gif_read_flags |= GIF_READ_TRAILING_GARBAGE_OK;
+        gtst.nextfile = 1;
       }
       break;
 
@@ -2278,13 +2340,13 @@ main(int argc, char *argv[])
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
-      exit(EXIT_OK);
-      break;
+      status = EXIT_OK;
+      goto cleanup;
 
      case HELP_OPT:
       usage(clp);
-      exit(EXIT_OK);
-      break;
+      status = EXIT_OK;
+      goto cleanup;
 
      case OUTPUT_OPT:
       MARK_CH(output, CH_OUTPUT);
@@ -2313,8 +2375,8 @@ particular purpose.\n");
      bad_option:
      case Clp_BadOption:
       short_usage(clp);
-      exit(EXIT_USER_ERR);
-      break;
+      status = EXIT_USER_ERR;
+      goto cleanup;
 
      default:
       break;
@@ -2324,22 +2386,76 @@ particular purpose.\n");
 
  done:
 
-  if (next_output)
+  if (gtst.next_output)
     combine_output_options();
-  if (!files_given)
+  if (!gtst.files_given)
     input_stream(0);
+  if (gtmsgs.stopping) {
+    status = EXIT_USER_ERR;
+    goto cleanup;
+  }
 
   frame_change_done();
   input_done();
-  if ((mode == MERGING && !error_count) || mode == INFOING)
+  if ((mode == MERGING && !gtmsgs.error_count)
+      || mode == INFOING)
     output_frames();
 
   verbose_endline();
-  print_useless_options("frame", next_frame, frame_option_types);
-  print_useless_options("input", next_input, input_option_types);
-  if (any_output_successful)
-    print_useless_options("output", active_next_output, output_option_types);
-  blank_frameset(frames, 0, 0, 1);
-  Clp_DeleteParser(clp);
-  return (error_count ? EXIT_ERR : EXIT_OK);
+  print_useless_options("frame", gtst.next_frame, frame_option_types);
+  print_useless_options("input", gtst.next_input, input_option_types);
+  if (gtst.any_output_successful)
+    print_useless_options("output", gtst.active_next_output, output_option_types);
+  status = gtmsgs.error_count ? EXIT_ERR : EXIT_OK;
+
+ cleanup:
+  gifsicle_reset();
+  return status;
+}
+
+static void
+release_output_data(Gt_OutputData* od)
+{
+  Gif_DeleteColormap(od->colormap_fixed);
+  od->colormap_fixed = 0;
+  set_dither_type(od, "none");  /* releases any dither matrix */
+}
+
+void gifsicle_reset(void) {
+  /* finish any frame change, blank top-level frameset */
+  frame_change_done();
+  if (gtst.frames)
+    blank_frameset(gtst.frames, 0, 0, 1);
+
+  /* streams, outputs, and the objects they share */
+  Gif_DeleteStream(input);
+  input = 0;
+  input_name = 0;
+  Gif_DeleteExtensions(&def_frame.extensions);
+  delete_crops();
+  merger_reset();
+  release_output_data(&def_output_data);
+  release_output_data(&active_output_data);
+
+  while (gtst.stored_files) {
+    struct StoredFile* sf = gtst.stored_files->next;
+    fclose(gtst.stored_files->f);
+    free(gtst.stored_files);
+    gtst.stored_files = sf;
+  }
+  gtst.input_transforms = delete_color_transforms(gtst.input_transforms, 0);
+  gtst.output_transforms = delete_color_transforms(gtst.output_transforms, 0);
+
+  if (clp)
+    Clp_DeleteParser(clp);
+  clp = 0;
+  memset(&gtst, 0, sizeof(gtst));
+  memset(&gtmsgs, 0, sizeof(gtmsgs));
+
+  /* gifsicle_main initializes everything else */
+  program_name = "gifsicle";    /* don't point into the caller's argv */
+}
+
+int main(int argc, char *argv[]) {
+  return gifsicle_main(argc, argv);
 }

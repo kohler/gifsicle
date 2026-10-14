@@ -333,8 +333,8 @@ Gif_CopyStreamSkeleton(Gif_Stream *gfs)
   if (gfs->global && !ngfs->global) {
     Gif_DeleteStream(ngfs);
     return 0;
-  } else
-    return ngfs;
+  }
+  return ngfs;
 }
 
 

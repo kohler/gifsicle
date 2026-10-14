@@ -49,23 +49,27 @@ append_color_transform(Gt_ColorTransform *list,
   if (trav) {
     trav->next = xform;
     return list;
-  } else
-    return xform;
+  }
+  return xform;
 }
 
+static void delete_color_changes(void *thunk);
+
+/* Delete the transforms in `list` that use `func`, or all transforms if
+   `func` is null. Returns the new list. */
 Gt_ColorTransform *
 delete_color_transforms(Gt_ColorTransform *list, color_transform_func func)
 {
-  Gt_ColorTransform *prev = 0, *trav = list;
-  while (trav) {
-    Gt_ColorTransform *next = trav->next;
-    if (trav->func == func) {
-      if (prev) prev->next = next;
-      else list = next;
-      Gif_Delete(trav);
+  Gt_ColorTransform** pprev = &list;
+  while (*pprev) {
+    Gt_ColorTransform* cur = *pprev;
+    if (!func || cur->func == func) {
+        *pprev = cur->next;
+        if (cur->func == &color_change_transformer)
+            delete_color_changes(cur->data);
+        Gif_Delete(cur);
     } else
-      prev = trav;
-    trav = next;
+        pprev = &cur->next;
   }
   return list;
 }
@@ -90,6 +94,17 @@ typedef struct Gt_ColorChange {
   Gif_Color old_color;
   Gif_Color new_color;
 } Gt_ColorChange;
+
+static void
+delete_color_changes(void *thunk)
+{
+  Gt_ColorChange *change = (Gt_ColorChange *)thunk;
+  while (change) {
+    Gt_ColorChange *next = change->next;
+    Gif_Delete(change);
+    change = next;
+  }
+}
 
 void
 color_change_transformer(Gif_Colormap *gfcm, void *thunk)
@@ -159,22 +174,30 @@ pipe_color_transformer(Gif_Colormap *gfcm, void *thunk)
 #ifdef HAVE_MKSTEMP
   {
     mode_t old_mode = umask(077);
-    if (mkstemp(tmp_file) < 0)
-      fatal_error("can%,t create temporary file!");
+    int fd = mkstemp(tmp_file);
     umask(old_mode);
+    if (fd < 0) {
+      error(1, "can%,t create temporary file: %s", strerror(errno));
+      return;
+    }
+    close(fd);
   }
 #else
-  if (!tmp_file)
-    fatal_error("can%,t create temporary file!");
+  if (!tmp_file) {
+    error(1, "can%,t create temporary file");
+    return;
+  }
 #endif
 
   new_command_sz = strlen(command) + strlen(tmp_file) + 4;
   new_command = Gif_NewArray(char, new_command_sz);
   snprintf(new_command, new_command_sz, "%s  >%s", command, tmp_file);
   f = popen(new_command, "w");
-  if (!f)
-    fatal_error("can%,t run color transformation command: %s", strerror(errno));
   Gif_DeleteArray(new_command);
+  if (!f) {
+    error(1, "can%,t run color transformation command: %s", strerror(errno));
+    goto done;
+  }
 
   for (i = 0; i < gfcm->ncol; i++)
     fprintf(f, "%d %d %d\n", col[i].gfc_red, col[i].gfc_green, col[i].gfc_blue);
@@ -1294,13 +1317,15 @@ void* scale_image_threaded(void* args) {
 }
 #endif
 
-void
+/* Set *w and *h to the dimensions of a *w x *h image resized as requested.
+   Return -1 if the result would be larger than a GIF allows. */
+int
 resize_dimensions(int* w, int* h, double new_width, double new_height,
                   int flags)
 {
     if (new_width < 0.5 && new_height < 0.5)
         /* do nothing */
-        return;
+        return 0;
     else if (new_width < 0.5)
         new_width = *w * new_height / *h;
     else if (new_height < 0.5)
@@ -1316,14 +1341,14 @@ resize_dimensions(int* w, int* h, double new_width, double new_height,
             factor = yfactor;
         if (((flags & GT_RESIZE_FIT_DOWN) && factor >= 1)
             || ((flags & GT_RESIZE_FIT_UP) && factor <= 1))
-            return;
+            return 0;
         new_width = *w * factor;
         new_height = *h * factor;
     }
 
     if (new_width >= GIF_MAX_SCREEN_WIDTH + 0.5
         || new_height >= GIF_MAX_SCREEN_HEIGHT + 0.5)
-        fatal_error("new image is too large (max size 65535x65535)");
+        return -1;
 
     *w = (int) (new_width + 0.5);
     *h = (int) (new_height + 0.5);
@@ -1333,26 +1358,33 @@ resize_dimensions(int* w, int* h, double new_width, double new_height,
         *w = 1;
     if (*h == 0)
         *h = 1;
+    return 0;
 }
 
-void
+/* Resize gfs. Return -1, after reporting an error, if the result would be
+   larger than a GIF allows. */
+int
 resize_stream(Gif_Stream* gfs,
               double new_width, double new_height,
-              int flags, int method, int scale_colors)
+              int flags, int method, int scale_colors,
+              int nthreads)
 {
-    int nw, nh, nthreads = thread_count, i;
+    int nw, nh, i;
     scale_context sctx;
     (void) i;
 
     Gif_CalculateScreenSize(gfs, 0);
     assert(gfs->nimages > 0);
     if (gfs->screen_width == 0 || gfs->screen_height == 0)
-        return;
+        return 0;
     nw = gfs->screen_width;
     nh = gfs->screen_height;
-    resize_dimensions(&nw, &nh, new_width, new_height, flags);
+    if (resize_dimensions(&nw, &nh, new_width, new_height, flags) < 0) {
+        error(1, "new image is too large (max size 65535x65535)");
+        return -1;
+    }
     if (nw == gfs->screen_width && nh == gfs->screen_height)
-        return;
+        return 0;
 
     /* no point to MIX or BOX method if we're expanding the image in
        both dimens */
@@ -1428,4 +1460,5 @@ resize_stream(Gif_Stream* gfs,
 
     gfs->screen_width = nw;
     gfs->screen_height = nh;
+    return 0;
 }
