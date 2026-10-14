@@ -2217,7 +2217,7 @@ Clp_vbsprintf(Clp_Parser *clp, Clp_BuildString *bs,
 }
 
 static const char* build_string_text(Clp_BuildString* bs, int report_oom) {
-    if (bs->pos) {
+    if (bs->pos && ENSURE_BUILD_STRING(bs, 1)) {
         *bs->pos = 0;
         return bs->data;
     } else if (report_oom)
