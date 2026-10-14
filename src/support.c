@@ -1779,6 +1779,13 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
               dest->screen_width, dest->screen_height, max_w, max_h);
       goto error;
     }
+    if (output_data->screen_mode == 1
+        && (dest->screen_width > output_data->screen_width
+            || dest->screen_height > output_data->screen_height)) {
+      warning(1, "logical screen grown from %dx%d to %dx%d to fit first frame",
+              output_data->screen_width, output_data->screen_height,
+              dest->screen_width, dest->screen_height);
+    }
   }
 
   /* Find the background color in the colormap, or add it if we can */
