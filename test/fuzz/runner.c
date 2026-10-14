@@ -187,8 +187,13 @@ int fuzz_is_gif(const char* data, size_t len) {
     return len >= 3 && memcmp(data, "GIF", 3) == 0;
 }
 
-static unsigned u16(const uint8_t* p) {
-    return p[0] | (p[1] << 8);
+/* Bytes past the end read as 0, as in gifsicle's reader. */
+static unsigned byte_at(const uint8_t* p, size_t n, size_t i) {
+    return i < n ? p[i] : 0;
+}
+
+static unsigned u16(const uint8_t* p, size_t n, size_t i) {
+    return byte_at(p, n, i) | (byte_at(p, n, i + 1) << 8);
 }
 
 /* What scan_gif learns about one GIF. */
@@ -209,22 +214,22 @@ static size_t scan_gif(const uint8_t* p, size_t n, gif_scan* s) {
     memset(s, 0, sizeof(*s));
     if (n < 13 || memcmp(p, "GIF", 3) != 0)
         return 0;
-    s->sw = u16(p + 6);
-    s->sh = u16(p + 8);
+    s->sw = u16(p, n, 6);
+    s->sh = u16(p, n, 8);
     if (p[10] & 0x80)
         pos += 3 * (2 << (p[10] & 7));
     while (pos < n && p[pos] != ';') {
-        if (p[pos] == ',' && pos + 10 <= n) {
-            unsigned long w = u16(p + pos + 5), h = u16(p + pos + 7);
+        if (p[pos] == ',') {
+            unsigned long w = u16(p, n, pos + 5), h = u16(p, n, pos + 7);
             if (s->nimages == 0) {
-                unsigned long r = u16(p + pos + 1) + w, b = u16(p + pos + 3) + h;
+                unsigned long r = u16(p, n, pos + 1) + w, b = u16(p, n, pos + 3) + h;
                 s->sw = r > s->sw ? r : s->sw;
                 s->sh = b > s->sh ? b : s->sh;
             }
             s->max_frame = w * h > s->max_frame ? w * h : s->max_frame;
             s->total += w * h;
             ++s->nimages;
-            if (p[pos+9] & 0x80)
+            if (byte_at(p, n, pos + 9) & 0x80)
                 pos += 3 * (2 << (p[pos+9] & 7));
             pos += 11;                  /* descriptor and min code size */
         } else if (p[pos] == '!')
