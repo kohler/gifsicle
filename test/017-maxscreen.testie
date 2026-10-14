@@ -1,0 +1,36 @@
+%script
+# --max-screen limits logical screens; --logical-screen overrides it
+export LANG=C
+gifsicle wide.gif -o out.gif 2>&1 || echo failed
+gifsicle --no-max-screen wide.gif | gifsicle -I | grep screen
+gifsicle -U wide.gif -o out.gif 2>&1 || echo failed
+gifsicle --max-screen 4x4 sq.gif -o out.gif 2>&1 || echo failed
+gifsicle --max-screen 8x8 sq.gif | gifsicle -I | grep screen
+gifsicle --max-screen 4x4 --logical-screen 8x8 sq.gif | gifsicle -I | grep screen
+gifsicle --max-screen 0x5 sq.gif -o out.gif 2>&1 || echo failed
+
+%file -e wide.gif
+R0lGODlhAQABAPAAAAAAAP///ywAQAAAAQABAAACAkwBADs=
+
+%file -e sq.gif
+R0lGODlhCAAIAPAAAAAAAP///ywAAAAACAAIAAACDESMcYuZzNyCjSoJCgA7
+
+%expect stdout
+gifsicle: output screen size 16385x1 too large
+  (The limit is 16384x16384. Change it with '--max-screen', or
+  set the screen size with '--logical-screen'.)
+failed
+  logical screen 16385x1
+gifsicle:wide.gif: screen size 16385x1 too large to unoptimize
+  (The limit is 16384x16384. Change it with '--max-screen'.)
+failed
+gifsicle: output screen size 8x8 too large
+  (The limit is 4x4. Change it with '--max-screen', or
+  set the screen size with '--logical-screen'.)
+failed
+  logical screen 8x8
+  logical screen 8x8
+gifsicle: argument to --max-screen must be a positive WxH
+Usage: gifsicle [OPTION | FILE | FRAME]...
+Try 'gifsicle --help' for more information.
+failed

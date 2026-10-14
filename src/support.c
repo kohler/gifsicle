@@ -173,6 +173,8 @@ General options (also --no-OPTION for info and verbose):\n\
   -o, --output FILE             Write output to FILE\n\
   -w, --no-warnings             Don%st report warnings\n\
   --no-ignore-errors            Quit on very erroneous input GIFs\n\
+  --max-screen WxH              Reject logical screens bigger than WxH\n\
+                                [16384x16384]\n\
   --conserve-memory             Conserve memory at the expense of speed\n\
   --nextfile, --multifile       Support concatenated GIF files\n\n",
     q1);
@@ -1695,11 +1697,21 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
       }
       w = w > 65535 ? 65535 : w;
       h = h > 65535 ? 65535 : h;
-      if (w > dest->screen_width) {
-        dest->screen_width = w;
-      }
-      if (h > dest->screen_height) {
-        dest->screen_height = h;
+      if (w > output_data->max_screen_width
+          || h > output_data->max_screen_height) {
+        error(1, "output screen size %dx%d too large\n"
+              "  (The limit is %dx%d. Change it with %<--max-screen%>, or\n"
+              "  set the screen size with %<--logical-screen%>.)",
+              w, h, output_data->max_screen_width,
+              output_data->max_screen_height);
+        goto error;
+      } else {
+        if (w > dest->screen_width) {
+          dest->screen_width = w;
+        }
+        if (h > dest->screen_height) {
+          dest->screen_height = h;
+        }
       }
     }
 

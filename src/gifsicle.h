@@ -102,6 +102,8 @@ typedef struct {
   const char *output_name;
   const char *active_output_name;
 
+  int max_screen_width;
+  int max_screen_height;
 
   int screen_mode;
   int screen_width;

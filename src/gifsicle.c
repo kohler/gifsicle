@@ -38,6 +38,8 @@ typedef struct Gt_State {
   Gt_Frameset* frames;
   Gt_Frameset* nested_frames;
 
+  int max_screen_width;
+  int max_screen_height;
 
   int unoptimizing;
   int thread_count;
@@ -229,6 +231,7 @@ static const char *output_option_types[] = {
 #define RESIZE_TOUCH_HEIGHT_OPT 379
 #define LOSSY_OPT               380
 #define USE_EXACT_COLORMAP_OPT  381
+#define MAX_SCREEN_OPT          382
 
 #define LOOP_TYPE               (Clp_ValFirstUser)
 #define DISPOSAL_TYPE           (Clp_ValFirstUser + 1)
@@ -298,6 +301,7 @@ const Clp_Option options[] = {
   { "loopcount", 'l', 'l', LOOP_TYPE, Clp_Optional | Clp_Negate },
   { "lossy", 0, LOSSY_OPT, Clp_ValInt, Clp_Optional },
 
+  { "max-screen", 0, MAX_SCREEN_OPT, DIMENSIONS_TYPE, Clp_Negate },
   { "merge", 'm', 'm', 0, 0 },
   { "method", 0, COLORMAP_ALGORITHM_OPT, COLORMAP_ALG_TYPE, 0 },
   { "multifile", 0, MULTIFILE_OPT, 0, Clp_Negate },
@@ -914,7 +918,14 @@ input_stream(const char *name)
   def_frame = old_def_frame;
 
   if (gtst.unoptimizing) {
-    if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
+    Gif_CalculateScreenSize(gfs, 0);
+    if (gfs->screen_width > gtst.max_screen_width
+        || gfs->screen_height > gtst.max_screen_height) {
+      lerror(name, "screen size %dx%d too large to unoptimize\n"
+             "  (The limit is %dx%d. Change it with %<--max-screen%>.)",
+             gfs->screen_width, gfs->screen_height,
+             gtst.max_screen_width, gtst.max_screen_height);
+    } else if (!Gif_FullUnoptimize(gfs, GIF_UNOPTIMIZE_SIMPLEST_DISPOSAL)) {
       if (!gtmsgs.unoptimize_complexity_context) {
         lwarning(name, "GIF too complex to unoptimize\n"
                  "  (The reason was local color tables or complex transparency.\n"
@@ -1105,6 +1116,8 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
   if (gtmsgs.verbosing)
     verbose_open('[', outfile ? outfile : "#stdout#");
   active_output_data.active_output_name = outfile;
+  active_output_data.max_screen_width = gtst.max_screen_width;
+  active_output_data.max_screen_height = gtst.max_screen_height;
 
   colormap_change = active_output_data.colormap_size > 0
     || active_output_data.colormap_fixed;
@@ -1614,6 +1627,8 @@ gifsicle_main(int argc, char *argv[])
   static_assert((int) (uint16_t) 0xFFFFU > 0, "int can't hold USHORT_MAX.");
 
   /* initialize state */
+  gtst.max_screen_width = 16384;
+  gtst.max_screen_height = 16384;
   gtmsgs.warn_local_colormaps = 1;
   mode = BLANK_MODE;
   nested_mode = 0;
@@ -1869,6 +1884,19 @@ gifsicle_main(int argc, char *argv[])
      case SAME_BACKGROUND_OPT:
       MARK_CH(output, CH_BACKGROUND);
       def_output_data.background.haspixel = 0;
+      break;
+
+     case MAX_SCREEN_OPT:
+      if (clp->negated) {
+        gtst.max_screen_width = GIF_MAX_SCREEN_WIDTH;
+        gtst.max_screen_height = GIF_MAX_SCREEN_HEIGHT;
+      } else if (clp->val.is[0] <= 0 || clp->val.is[1] <= 0) {
+        Clp_OptionError(clp, "argument to %O must be a positive WxH");
+        goto bad_option;
+      } else {
+        gtst.max_screen_width = clp->val.is[0];
+        gtst.max_screen_height = clp->val.is[1];
+      }
       break;
 
      case LOGICAL_SCREEN_OPT:
