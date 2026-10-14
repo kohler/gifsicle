@@ -472,8 +472,8 @@ Gif_DeleteStream(Gif_Stream *gfs)
   Gif_DeleteArray(gfs->images);
 
   Gif_DeleteColormap(gfs->global);
-
   Gif_DeleteExtensions(&gfs->end_extensions);
+  Gif_DeleteArray(gfs->landmark);
 
   for (hook = all_hooks; hook; hook = hook->next)
     if (hook->kind == GIF_T_STREAM)

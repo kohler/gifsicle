@@ -783,7 +783,7 @@ read_gif(Gif_Reader *grr, int read_flags,
 
   if (!gfs || !gfi || !gfc.prefix || !gfc.suffix || !gfc.length)
     goto done;
-  gfs->landmark = landmark;
+  gfs->landmark = Gif_CopyString(landmark);
 
   GIF_DEBUG(("\nGIF "));
   if (!read_logical_screen_descriptor(gfs, grr))

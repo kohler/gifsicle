@@ -1503,7 +1503,7 @@ merge_frame_interval(Gt_Frameset *fset, int f1, int f2,
   global->ncol = 0;
   dest->global = global;
   if (output_data->active_output_name)
-      dest->landmark = output_data->active_output_name;
+      dest->landmark = Gif_CopyString(output_data->active_output_name);
   /* 11/23/98 A new stream's screen size is 0x0; we'll use the max of the
      merged-together streams' screen sizes by default (in merge_stream()) */
 

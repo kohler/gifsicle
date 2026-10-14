@@ -62,7 +62,7 @@ struct Gif_Stream {
     unsigned errors;
     uint32_t user_flags;
 
-    const char* landmark;
+    char* landmark;             /* owned; freed with Gif_DeleteArray */
     int refcount;
 };
 
