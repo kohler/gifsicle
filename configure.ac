@@ -120,14 +120,14 @@ fi
 AC_SUBST(GIFWRITE_O)
 
 dnl
-dnl random or rand, strerror, strtoul, mkstemp, snprintf
+dnl random or rand, strerror, mkstemp, snprintf
 dnl
 
 AC_CHECK_FUNC([random], [random_func=random], [random_func=rand])
 AC_DEFINE_UNQUOTED(RANDOM, ${random_func}, [Define to a function that returns a random number.])
 
 AC_REPLACE_FUNCS([strerror])
-AC_CHECK_FUNCS([strtoul mkstemp snprintf])
+AC_CHECK_FUNCS([mkstemp snprintf])
 AC_SEARCH_LIBS([pow], [m], [AC_DEFINE([HAVE_POW], [1], [Define to 1 if you have the `pow' function.])])
 AC_SEARCH_LIBS([cbrtf], [m], [AC_DEFINE([HAVE_CBRTF], [1], [Define to 1 if you have the `cbrtf' function.])])
 

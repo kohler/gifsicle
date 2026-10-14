@@ -23,24 +23,18 @@
 # include <config.h>
 #endif
 #include <lcdf/clp.h>
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <assert.h>
-#include <stdarg.h>
-#include <ctype.h>
 #if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
 #if HAVE_INTTYPES_H || !defined(HAVE_CONFIG_H)
-# include <inttypes.h>
-#endif
-
-/* By default, assume we have inttypes.h, strtoul, and uintptr_t. */
-#if !defined(HAVE_STRTOUL) && !defined(HAVE_CONFIG_H)
-# define HAVE_STRTOUL 1
-#endif
-#if defined(HAVE_INTTYPES_H) || !defined(HAVE_CONFIG_H)
 # include <inttypes.h>
 #endif
 #if !defined(HAVE_UINTPTR_T) && defined(HAVE_CONFIG_H)
@@ -1101,34 +1095,46 @@ parse_int(Clp_Parser* clp, const char* arg, int complain, void* user_data)
 {
     const char *val;
     uintptr_t type = (uintptr_t) user_data;
-    if (*arg == 0 || isspace((unsigned char) *arg)
+    unsigned long ul = 0;
+    long l = 0;
+    errno = 0;
+    if (*arg == 0
+        || isspace((unsigned char) *arg)
         || ((type & 1) && *arg == '-'))
         val = arg;
     else if (type & 1) { /* unsigned */
-#if HAVE_STRTOUL
-        clp->val.ul = strtoul(arg, (char **) &val, 0);
-#else
-        /* don't bother really trying to do it right */
-        if (arg[0] == '-')
-            val = arg;
+        ul = strtoul(arg, (char **) &val, 0);
+        if (type == 1 && ul > UINT_MAX)
+            errno = ERANGE;
+    } else {
+        l = strtol(arg, (char **) &val, 0);
+        if (type == 0 && (l < INT_MIN || l > INT_MAX))
+            errno = ERANGE;
+    }
+    if (*val == 0 && val != arg && errno == 0) {
+        clp->val.ul = 0;
+        /* Write the member the caller will read (for C++ hygiene) */
+        if (type == 0)
+            clp->val.i = (int) l;
+        else if (type == 1)
+            clp->val.u = (unsigned) ul;
+        else if (type == 2)
+            clp->val.l = l;
         else
-            clp->val.l = strtol(arg, (char **) &val, 0);
-#endif
-    } else
-        clp->val.l = strtol(arg, (char **) &val, 0);
-    if (type <= 1)
-        clp->val.u = (unsigned) clp->val.ul;
-    if (*arg != 0 && *val == 0)
+            clp->val.ul = ul;
         return 1;
-    else {
-        if (complain) {
-            const char *message = (type & 1)
+    }
+    if (complain) {
+        const char* message;
+        if (*val != 0 || val == arg) {
+            message = (type & 1)
                 ? "%<%O%> expects a nonnegative integer, not %<%s%>"
                 : "%<%O%> expects an integer, not %<%s%>";
-            Clp_OptionError(clp, message, arg);
-        }
-        return 0;
+        } else
+            message = "%<%O%> argument %<%s%> out of range";
+        Clp_OptionError(clp, message, arg);
     }
+    return 0;
 }
 
 static int
@@ -1197,9 +1203,10 @@ parse_string_list(Clp_Parser *clp, const char *arg, int complain, void *user_dat
         (0, arg, sl->nitems, sl->items, sl->iopt,
          &ambiguous, ambiguous_values);
     if (idx >= 0) {
-        clp->val.i = sl->items[idx].option_id;
         if (sl->val_long)
-            clp->val.l = clp->val.i;
+            clp->val.l = sl->items[idx].option_id;
+        else
+            clp->val.i = sl->items[idx].option_id;
         return 1;
     }
 
