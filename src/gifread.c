@@ -518,9 +518,11 @@ uncompress_image(Gif_Context *gfc, Gif_Image *gfi, Gif_Reader *grr)
     gfc->height = gfi->height;
     gfc->image = gfi->image_data;
     gfc->maximage = gfi->image_data + (unsigned) gfi->width * (unsigned) gfi->height;
-    old_nerrors = gfc->errors[1];
+    /* Count warnings too (such as superfluous pixels): data with any
+       problem must be recompressed, never copied to output. */
+    old_nerrors = gfc->errors[0] + gfc->errors[1];
     read_image_data(gfc, grr);
-    gfi->compressed_errors = gfc->errors[1] - old_nerrors;
+    gfi->compressed_errors = gfc->errors[0] + gfc->errors[1] - old_nerrors;
     return 1;
 }
 
