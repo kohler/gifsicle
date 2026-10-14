@@ -830,7 +830,7 @@ input_stream(const char *name)
   if (!gfs
       || (Gif_ImageCount(gfs) == 0 && gfs->errors > 0)
       || gtmsgs.stopping) {
-    if (componentno == 1 && !gtmsgs.stopping)
+    if (!gfs && componentno == 1 && !gtmsgs.stopping)
       lerror(name, "file not in GIF format");
     Gif_DeleteStream(gfs);
     if (gtmsgs.verbosing)

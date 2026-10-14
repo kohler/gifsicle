@@ -1,0 +1,22 @@
+%script
+# --resize-geometry accepts dimensions up to 65535
+export LANG=C
+for g in '4x2!' 4x2 _x2 200% '65535x1!'; do
+  gifsicle --resize-geometry "$g" sq.gif | gifsicle -I | grep "logical screen"
+done
+for g in 65536x1 1x9999999999999999999 9999999999999999999%; do
+  gifsicle --resize-geometry "$g" sq.gif -o out.gif 2>&1 | head -n 1
+done
+
+%file -e sq.gif
+R0lGODlhCAAIAPAAAAAAAP///ywAAAAACAAIAAACDESMcYuZzNyCjSoJCgA7
+
+%expect stdout
+  logical screen 4x2
+  logical screen 2x2
+  logical screen 2x2
+  logical screen 16x16
+  logical screen 65535x1
+gifsicle: argument to --resize-geometry must be a valid geometry specification
+gifsicle: argument to --resize-geometry must be a valid geometry specification
+gifsicle: argument to --resize-geometry must be a valid geometry specification

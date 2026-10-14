@@ -1,0 +1,79 @@
+%script
+# truncated GIFs report one error; frames without image data are dropped,
+# as are truncated extensions
+export LANG=C
+for f in screen colormap descriptor loop comment trailer; do
+  gifsicle -I $f.gif 2>&1 || echo failed
+done
+# a frame truncated in its image data is kept
+gifsicle data.gif -o out.gif 2>&1 || echo failed
+gifsicle -I out.gif
+
+%file -e screen.gif
+R0lGODlhAgACAA==
+
+%file -e colormap.gif
+R0lGODlhAgACAPEAAAAAAP////8=
+
+%file -e descriptor.gif
+R0lGODlhAgACAPEAAAAAAP////8AAAD/ACH/C05FVFNDQVBFMi4wAwEFAAAh/gVoZWxsbwAh+QQECgD/ACwAAAAAAgACAAACA0QEBQAh+QQECgD/ACwAAAAAAgACAA==
+
+%file -e data.gif
+R0lGODlhAgACAPEAAAAAAP////8AAAD/ACH/C05FVFNDQVBFMi4wAwEFAAAh/gVoZWxsbwAh+QQECgD/ACwAAAAAAgACAAACA0QEBQAh+QQECgD/ACwAAAAAAgACAAACA5w=
+
+%file -e trailer.gif
+R0lGODlhAgACAPEAAAAAAP////8AAAD/ACH/C05FVFNDQVBFMi4wAwEFAAAh/gVoZWxsbwAh+QQECgD/ACwAAAAAAgACAAACA0QEBQAh+QQECgD/ACwAAAAAAgACAAACA5wSBQA=
+
+%file -e loop.gif
+R0lGODlhAgACAPEAAAAAAP////8AAAD/ACwAAAAAAgACAAACA0QEBQAh/wtORVRTQ0FQRTIuMAMBBQ==
+
+%file -e comment.gif
+R0lGODlhAgACAPEAAAAAAP////8AAAD/ACwAAAAAAgACAAACA0QEBQAh/gVoZWw=
+
+%expect stdout
+gifsicle:screen.gif: read error: GIF truncated
+gifsicle:colormap.gif: read error: GIF truncated
+gifsicle:descriptor.gif: read error: GIF truncated
+* descriptor.gif 1 image
+  logical screen 2x2
+  global color table [4]
+  background 0
+  loop count 5
+  + image #0 2x2
+    comment hello
+    disposal asis delay 0.10s
+gifsicle:loop.gif: read error: GIF truncated
+* loop.gif 1 image
+  logical screen 2x2
+  global color table [4]
+  background 0
+  + image #0 2x2
+gifsicle:comment.gif: read error: GIF truncated
+* comment.gif 1 image
+  logical screen 2x2
+  global color table [4]
+  background 0
+  + image #0 2x2
+* trailer.gif 2 images
+  logical screen 2x2
+  global color table [4]
+  background 0
+  loop count 5
+  + image #0 2x2
+    comment hello
+    disposal asis delay 0.10s
+  + image #1 2x2
+    disposal asis delay 0.10s
+gifsicle:data.gif: read error: GIF truncated
+gifsicle:data.gif:#1: read error: missing 3 pixels of image data
+failed
+* out.gif 2 images
+  logical screen 2x2
+  global color table [4]
+  background 0
+  loop count 5
+  + image #0 2x2
+    comment hello
+    disposal asis delay 0.10s
+  + image #1 2x2
+    disposal asis delay 0.10s
