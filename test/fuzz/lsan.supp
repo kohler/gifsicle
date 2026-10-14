@@ -1,0 +1,5 @@
+# LeakSanitizer suppressions for the fuzzing harness. See README.md.
+# libFuzzer itself leaks a few objects at exit (seen on macOS): its
+# RSS-monitor thread, and in -fork mode, its worker threads.
+leak:fuzzer::StartRssThread
+leak:fuzzer::FuzzWithFork

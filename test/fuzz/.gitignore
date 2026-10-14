@@ -1,0 +1,8 @@
+/build/
+/findings/
+__pycache__/
+crash-*
+leak-*
+oom-*
+timeout-*
+slow-unit-*
