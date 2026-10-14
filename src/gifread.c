@@ -246,6 +246,9 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   } else if (min_code_size < 2) {
     gif_read_error(gfc, 1, "image corrupted, min_code_size too small");
     min_code_size = 2;
+  } else if (min_code_size > 8) {
+    /* nonstandard; strict decoders reject it, so record a silent warning */
+    ++gfc->errors[0];
   }
   clear_code = 1 << min_code_size;
   for (code = 0; code < clear_code; code++) {

@@ -3,9 +3,10 @@
 gifsicle -I appzero.gif 2>&1 || echo failed
 gifsicle -I gcezero.gif 2>&1 || echo failed
 gifsicle -I skipped.gif 2>&1 || echo failed
-# bad LZW data (data after EOI, no EOI, an extra pixel) isn't copied to output
+# bad LZW data (data after EOI, no EOI, an extra pixel, min code size > 8)
+# isn't copied to output
 gifsicle --no-warnings --conserve-memory --colors=256 good.gif -o good.out
-for f in trail trailblock noeoi extrapix; do
+for f in trail trailblock noeoi extrapix mcs9; do
   gifsicle --no-warnings --conserve-memory --colors=256 $f.gif -o $f.out
   if cmp -s $f.out good.out; then echo "$f: rewritten"; else echo "$f: copied"; fi
 done
@@ -24,6 +25,9 @@ R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACAkQMADs=
 
 %file -e extrapix.gif
 R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACA0QMBQA7
+
+%file -e mcs9.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAAJCAACEAAAAQQIADs=
 
 %file -e skipped.gif
 R0lGODlhBAABAIAAAAAAAP///yz//wAABAABAAACAkRcACwAAAAABAABAAACAkRcADs=
@@ -58,3 +62,4 @@ trail: rewritten
 trailblock: rewritten
 noeoi: rewritten
 extrapix: rewritten
+mcs9: rewritten
