@@ -279,8 +279,12 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
     if (bit_position + bits_needed > bit_length)
       /* Read in the next data block. */
       if (!read_image_block(grr, buffer, &bit_position, &bit_length,
-                            bits_needed))
+                            bits_needed)) {
+        /* no EOI; record a silent warning so compressed_errors is set and we
+           don’t echo bogus data later */
+        ++gfc->errors[0];
         goto zero_length_block;
+      }
 
     i = bit_position / 8;
     accum = buffer[i] + (buffer[i+1] << 8);
@@ -299,10 +303,15 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
       next_code = clear_code + 1;
       continue;
 
-    } else if (code == clear_code + 1)
+    } else if (code == clear_code + 1) {
+      /* superfluous data after EOI may be rejected by strict decoders; record
+         silent warning */
+      if (bit_length - bit_position >= 8) {
+        ++gfc->errors[0];
+      }
       break;
 
-    else if (code > next_code && next_code && next_code != clear_code) {
+    } else if (code > next_code && next_code && next_code != clear_code) {
       /* code > next_code: a (hopefully recoverable) error.
 
          Bug fix, 5/27: Do this even if old_code == clear_code, and set code
@@ -358,6 +367,8 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
   i = gifgetbyte(grr);
   GIF_DEBUG(("\nafter_image(%d)\n", i));
   while (i > 0) {
+    /* superfluous data; record a silent warning */
+    ++gfc->errors[0];
     gifgetblock(buffer, i, grr);
     i = gifgetbyte(grr);
     GIF_DEBUG(("\nafter_image(%d)\n", i));
@@ -377,6 +388,9 @@ read_image_data(Gif_Context *gfc, Gif_Reader *grr)
              code == next_code case. */
           snprintf(buf, sizeof(buf), "%ld superfluous pixels of image data", -delta);
           gif_read_error(gfc, 0, buf);
+      } else if (delta == -1) {
+          /* Exactly one superfluous pixel; record a silent warning */
+          ++gfc->errors[0];
       }
   }
 }
@@ -623,9 +637,11 @@ read_image(Gif_Reader *grr, Gif_Context *gfc, Gif_Image *gfi, int read_flags)
       return 0;
 
   } else {
-    /* skip over the image */
+    /* skip over the image: minimum code size, then data sub-blocks */
     uint8_t buffer[GIF_MAX_BLOCK];
-    int i = gifgetbyte(grr);
+    int i;
+    (void) gifgetbyte(grr);
+    i = gifgetbyte(grr);
     while (i > 0) {
       gifgetblock(buffer, i, grr);
       i = gifgetbyte(grr);
@@ -644,6 +660,11 @@ read_graphic_control_extension(Gif_Context *gfc, Gif_Image *gfi,
   uint8_t crap[GIF_MAX_BLOCK];
 
   len = gifgetbyte(grr);
+  if (len == 0) {
+    /* a zero-length block ends the extension */
+    gif_read_error(gfc, 1, "bad graphic extension");
+    return;
+  }
 
   if (len == 4) {
     uint8_t packed = gifgetbyte(grr);
@@ -720,6 +741,11 @@ read_application_extension(Gif_Context *gfc, Gif_Reader *grr)
   Gif_Stream *gfs = gfc->stream;
   uint8_t buffer[GIF_MAX_BLOCK + 1];
   uint8_t len = gifgetbyte(grr);
+  if (len == 0) {
+    /* a zero-length block ends the extension */
+    gif_read_error(gfc, 0, "bad application extension identifier");
+    return 1;
+  }
   gifgetblock(buffer, len, grr);
 
   /* Complain about invalid application length */

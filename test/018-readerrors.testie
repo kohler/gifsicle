@@ -1,0 +1,60 @@
+%script
+# zero-length extension blocks and ignored frames don't desynchronize the reader
+gifsicle -I appzero.gif 2>&1 || echo failed
+gifsicle -I gcezero.gif 2>&1 || echo failed
+gifsicle -I skipped.gif 2>&1 || echo failed
+# bad LZW data (data after EOI, no EOI, an extra pixel) isn't copied to output
+gifsicle --no-warnings --conserve-memory --colors=256 good.gif -o good.out
+for f in trail trailblock noeoi extrapix; do
+  gifsicle --no-warnings --conserve-memory --colors=256 $f.gif -o $f.out
+  if cmp -s $f.out good.out; then echo "$f: rewritten"; else echo "$f: copied"; fi
+done
+
+%file -e good.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACAkRcADs=
+
+%file -e trail.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACBERcAAAAOw==
+
+%file -e trailblock.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACAkRcAQAAOw==
+
+%file -e noeoi.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACAkQMADs=
+
+%file -e extrapix.gif
+R0lGODlhBAABAIAAAAAAAP///ywAAAAABAABAAACA0QMBQA7
+
+%file -e skipped.gif
+R0lGODlhBAABAIAAAAAAAP///yz//wAABAABAAACAkRcACwAAAAABAABAAACAkRcADs=
+
+%file -e appzero.gif
+R0lGODlhBAABAIAAAAAAAP///yH/ACwAAAAABAABAAACAkRcADs=
+
+%file -e gcezero.gif
+R0lGODlhBAABAIAAAAAAAP///yH5ACwAAAAABAABAAACAkRcADs=
+
+%expect stdout
+gifsicle:appzero.gif: warning: bad application extension identifier
+* appzero.gif 1 image
+  logical screen 4x1
+  global color table [2]
+  background 0
+  + image #0 4x1
+gifsicle:gcezero.gif: read error: bad graphic extension
+* gcezero.gif 1 image
+  logical screen 4x1
+  global color table [2]
+  background 0
+  + image #0 4x1
+gifsicle:skipped.gif: read error: ignoring frame, violates 65535x65535 screen size limit
+* skipped.gif 2 images
+  logical screen 4x1
+  global color table [2]
+  background 0
+  + image #0 1x1 at 65534,0 transparent 0
+  + image #1 4x1
+trail: rewritten
+trailblock: rewritten
+noeoi: rewritten
+extrapix: rewritten

@@ -26,7 +26,8 @@ EXTRA_DIST = COPYING README.md NEWS.md \
 	test/014-offscreen.testie \
 	test/015-extensions.testie \
 	test/016-insertselect.testie \
-	test/017-maxscreen.testie
+	test/017-maxscreen.testie \
+	test/018-readerrors.testie
 
 gifsicle: config.h
 	@cd src && $(MAKE) gifsicle
