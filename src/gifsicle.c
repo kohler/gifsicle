@@ -1579,6 +1579,9 @@ parse_resize_geometry_opt(Gt_OutputData* odata, const char* str, Clp_Parser* clp
     } else
         y = x;
 
+    if (x > 65535 || y > 65535)
+        goto error;
+
     for (; *str != 0; ++str)
         if (*str == '%')
             scale = 1;
