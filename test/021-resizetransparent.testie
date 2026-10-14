@@ -1,0 +1,18 @@
+%script
+# --resize-colors adds no opaque color at the transparent index, which
+# here starts out past the end of the colormap
+gifsicle --resize 4x1 --resize-colors=8 tpast.gif -o out.gif
+gifsicle --resize 4x1 --resize-colors=8 --no-transparent tpast.gif -o opaque.gif
+gifdiff out.gif opaque.gif && echo same
+gifsicle --cinfo out.gif | grep -v '^\*'
+
+%file -e tpast.gif
+R0lGODlhCAABAIAAAP8AAAAA/yH5BAEAAAIALAAAAAAIAAEAAAIDRIxRADs=
+
+%expect stdout
+same
+  logical screen 4x1
+  global color table [4]
+  |   0: #FF0000       1: #0000FF       2: #BC00BC       3: #BC00BC
+  background 0
+  + image #0 4x1 transparent 2

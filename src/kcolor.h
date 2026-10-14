@@ -223,11 +223,7 @@ static inline int kd3_closest8g(kd3_tree* kd3, int a0, int a1, int a2) {
 
 /* disable color index `i` in `*kd3`: it will never be returned by
    `kd3_closest*` */
-static inline void kd3_disable(kd3_tree* kd3, int i) {
-    assert((unsigned) i < (unsigned) kd3->nitems);
-    assert(kd3->disabled < 0 || kd3->disabled == i);
-    kd3->disabled = i;
-}
+void kd3_disable(kd3_tree* kd3, int i);
 
 /* enable all color indexes in `*kd3` */
 static inline void kd3_enable_all(kd3_tree* kd3) {

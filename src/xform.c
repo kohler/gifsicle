@@ -773,6 +773,15 @@ static int scale_image_add_colors(scale_context* sctx, Gif_Image* gfo) {
            again. */
         if (Gif_FindColor(gfcm, &gfc) >= 0)
             continue;
+        /* The transparent index can't hold an opaque color; give it a
+           disabled placeholder. */
+        if (gfcm->ncol == sctx->gfi->transparent) {
+            Gif_AddColor(gfcm, &gfc, gfcm->ncol);
+            kd3_add8g(sctx->kd3, gfc.gfc_red, gfc.gfc_green, gfc.gfc_blue);
+            kd3_disable(sctx->kd3, sctx->gfi->transparent);
+            if (gfcm->ncol == sctx->scale_colors)
+                break;
+        }
         Gif_AddColor(gfcm, &gfc, gfcm->ncol);
         kd3_add8g(sctx->kd3, gfc.gfc_red, gfc.gfc_green, gfc.gfc_blue);
         ++nadded;
@@ -822,6 +831,8 @@ static void scale_image_complete(scale_context* sctx, Gif_Image* gfo) {
         GLOBAL_COLORMAP_LOCK();
         if (gfcm->ncol > sctx->kd3->nitems) {
             scale_image_update_global_kd3(sctx);
+            if (transparent >= 0 && transparent < sctx->kd3->nitems)
+                kd3_disable(sctx->kd3, transparent);
             GLOBAL_COLORMAP_UNLOCK();
             goto retry;
         }

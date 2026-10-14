@@ -466,6 +466,24 @@ void kd3_add_transformed(kd3_tree* kd3, kcolor k) {
     }
 }
 
+void kd3_disable(kd3_tree* kd3, int i) {
+    int j;
+    assert((unsigned) i < (unsigned) kd3->nitems);
+    assert(kd3->disabled < 0 || kd3->disabled == i);
+    if (kd3->disabled == i)
+        return;
+    kd3->disabled = i;
+    /* if `i` has a duplicate, rebuild the tree so the duplicate stays
+       findable */
+    if (kd3->tree)
+        for (j = 0; j != kd3->nitems; ++j)
+            if (j != i && memcmp(&kd3->ks[j], &kd3->ks[i], sizeof(kcolor)) == 0) {
+                Gif_DeleteArray(kd3->tree);
+                kd3->tree = NULL;
+                break;
+            }
+}
+
 static kd3_tree* kd3_sorter;
 
 static int kd3_item_compare_0(const void* a, const void* b) {
@@ -489,7 +507,11 @@ static int (*kd3_item_compares[])(const void*, const void*) = {
 
 static int kd3_item_compare_all(const void* a, const void* b) {
     const int* aa = (const int*) a, *bb = (const int*) b;
-    return memcmp(&kd3_sorter->ks[*aa], &kd3_sorter->ks[*bb], sizeof(kcolor));
+    int cmp = memcmp(&kd3_sorter->ks[*aa], &kd3_sorter->ks[*bb], sizeof(kcolor));
+    /* sort a disabled color after its duplicates, so kd3_build drops it */
+    if (cmp == 0)
+        cmp = (*aa == kd3_sorter->disabled) - (*bb == kd3_sorter->disabled);
+    return cmp;
 }
 
 static int kd3_build_range(int* perm, int nperm, int n, int depth) {
