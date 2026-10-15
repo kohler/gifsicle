@@ -158,6 +158,27 @@ def app_extension(rng):
     return [rng.choice(["--app-extension", "-x", "--app-ext"]), rng.choice(APP_NAMES), body]
 
 
+def text_colormap(rng):
+    """A text colormap: lines of "R G B" (as integers or floats, possibly out
+    of range), "#RGB", or "#RRGGBB", with comments and junk."""
+    lines = []
+    for _ in range(rng.randint(1, 300 if rng.random() < .1 else 20)):
+        k = rng.randrange(6)
+        if k == 0:
+            lines.append("%d %d %d" % tuple(rng.randint(-20, 300) for _ in range(3)))
+        elif k == 1:
+            lines.append("%g %g %g" % tuple(rng.uniform(-5, 260) for _ in range(3)))
+        elif k == 2:
+            lines.append("#%03x" % rng.randrange(1 << 12))
+        elif k == 3:
+            lines.append("#%06X" % rng.randrange(1 << 24))
+        elif k == 4:
+            lines.append(rng.choice(["# comment", "", "  ", "#12345", "#1234567", "red", "1 2"]))
+        else:
+            lines.append("%d %d %d" % tuple(rng.randrange(256) for _ in range(3)))
+    return ("\n".join(lines) + rng.choice(["\n", ""])).encode()
+
+
 SAME_OPTIONS = ["--same-app-extensions", "--same-background", "--same-clip",
                 "--same-comments", "--same-crop", "--same-extensions", "--same-interlace",
                 "--same-logical-screen", "--same-loopcount", "--same-disposal",
@@ -173,6 +194,9 @@ def random_options(rng, ninputs):
             pre.extend(opts)
 
     maybe(.03, rng.choice(["-I", "--cinfo", "--xinfo", "--sinfo"]))
+    maybe(.02, rng.choice(["--cinfo", "--xinfo", "--sinfo", "-I"]),
+          rng.choice(["--no-info", "--no-color-info", "--no-extension-info",
+                      "--no-size-info", "--no-verbose"]))
     maybe(.15, "-O%d" % rng.randint(1, 3))
     maybe(.10, "--lossy=%d" % rng.choice([1, 20, 80, 200, 400]))
     maybe(.10, "-U")
@@ -200,13 +224,14 @@ def random_options(rng, ninputs):
     maybe(.05, "--gamma=%s" % rng.choice(["1", "2.2", "srgb", "oklab", "0.5"]))
     if rng.random() < .10:
         pre.append(rng.choice(["--use-colormap", "--use-exact-colormap"]))
-        pre.append(rng.choice(["web", "gray", "bw", "palette.gif"]))
+        pre.append(rng.choice(["web", "gray", "bw", "palette.gif", "palette.gif"]))
     if rng.random() < .15:
         kind = rng.randrange(7)
         if kind == 0:
             pre.append("--resize=" + dims(rng, 0, 120))
         elif kind == 1:
-            pre.append("--scale=%s" % rng.choice(["0.1", "0.5", "1", "1.5", "2", "0.5x2", "3x0.25"]))
+            pre.append("--scale=%s" % rng.choice(["0.1", "0.5", "1", "1.5", "2", "0.5x2", "3x0.25", "1/2",
+                                                 "3/2x1/3", "2/3x0.5", "1/0", "1/2/3"]))
         elif kind == 2:
             pre.append("--resize-%s=%d" % (rng.choice(["width", "height"]), rng.randint(0, 120)))
         elif kind == 3:
@@ -250,7 +275,7 @@ def random_options(rng, ninputs):
         imaybe(.03, "--extension", "254", "data")
         imaybe(.04, *app_extension(rng))
         imaybe(.04, rng.choice(["--no-comments", "--no-names", "--no-extensions",
-                                "--no-app-extensions"]))
+                                "--no-app-extensions", "--no-name"]))
         imaybe(.03, rng.choice(["--no-flip", "--no-rotate", "--no-crop", "--no-position",
                                 "--no-logical-screen", "--no-delay", "--no-disposal"]))
         imaybe(.03, "--clip", "%d,%d-%d,%d" % (rng.randint(0, 20), rng.randint(0, 20),
@@ -315,6 +340,8 @@ def main_corpus(args, rng, gifs):
         argv += post
         if any("palette.gif" in w for w in argv):
             files["palette.gif"] = rng.choice(gifs)[1]
+            if "palette.gif" in pre and rng.random() < .6:
+                files["palette.gif"] = text_colormap(rng)
         mode = rng.random()
         if mode < .08:
             argv = ["--explode"] + argv
@@ -352,7 +379,7 @@ def write_main_dict(path):
                                "^", "<", ">", "!", "%",
                                "drop-empty", "no-keep-empty", "atkinson", "posterize",
                                "sqhalftone", "halftone,10,3", "o,8,4", "#a", "#-2-",
-                               "1,1-5,5", "0x0"])
+                               "1,1-5,5", "0x0", "1/2", "--no-info"])
     with open(path, "w") as f:
         f.write("# gifsicle options and values, for fuzz-gifsicle-main\n")
         f.write('sep="\\x0A#FILE#\\x0A"\n')

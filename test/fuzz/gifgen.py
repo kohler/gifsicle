@@ -264,7 +264,7 @@ def special_gif(rng):
     optimization, or extension edge cases."""
     kind = rng.choice(["transparent-past-end", "duplicates", "full-256",
                        "animation", "names", "extensions", "tiny-interlaced",
-                       "identical-frames"])
+                       "identical-frames", "many-colors", "all-transparent"])
     sw, sh = rng.randint(1, 48), rng.randint(1, 48)
     nframes = rng.randint(1, 6)
 
@@ -382,6 +382,35 @@ def special_gif(rng):
                                              "pixels": random_pixels(rng, w, h, 4)}],
                           trailer=b"")[13:]
         return bytes(d + b";")
+
+    if kind == "many-colors":
+        # overlapping frames with different 256-color local colormaps, so
+        # the optimizer's frames can need more than 256 colors
+        sw, sh = rng.randint(10, 24), rng.randint(10, 24)
+        frames = []
+        for _ in range(rng.randint(2, 5)):
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            px = random_pixels(rng, w, h, 256)
+            px[:256] = list(range(256))[:len(px)]
+            f = {"left": rng.randint(0, sw - w), "top": rng.randint(0, sh - h),
+                 "width": w, "height": h, "pixels": px, "local": random_colors(rng, 256),
+                 "disposal": rng.choice([1, 2, 2, 3]), "delay": 5}
+            if rng.random() < .6:
+                f["transparent"] = rng.randrange(256)
+            frames.append(f)
+        return make_gif((sw, sh), None if rng.random() < .7 else random_colors(rng, 4), frames)
+
+    if kind == "all-transparent":
+        # frames whose every pixel is transparent, so no color is used
+        gct = random_colors(rng, rng.choice([2, 4]))
+        frames = []
+        for _ in range(nframes):
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            t = rng.randrange(len(gct))
+            frames.append({"left": rng.randint(0, sw - w), "top": rng.randint(0, sh - h),
+                           "width": w, "height": h, "pixels": [t] * (w * h),
+                           "transparent": t, "disposal": rng.randrange(4)})
+        return make_gif((sw, sh), gct, frames, background=rng.randrange(len(gct)))
 
     if kind == "tiny-interlaced":
         gct = random_colors(rng, 16)

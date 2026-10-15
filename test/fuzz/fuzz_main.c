@@ -9,7 +9,8 @@
    named in0.gif, in1.gif, and palette.gif, and the target runs `gifsicle
    ARGS` with them, checking the results (see runner.c). Inputs with
    arguments that contain `/` are skipped, so gifsicle can only touch files
-   in its scratch directory. So are inputs with arguments that name a loop
+   in its scratch directory, unless the `/` is in a fraction like
+   `--scale=1/2`. So are inputs with arguments that name a loop
    extension (gifsicle writes any `--app-extension` as given, but reads
    NETSCAPE2.0 and ANIMEXTS1.0 extensions as loop counts), and inputs whose
    files are huge GIFs, since gifsicle's time on those isn't interesting. */
@@ -26,6 +27,21 @@
 static const char* const input_names[NFILES] = {
     "in0.gif", "in1.gif", "palette.gif"
 };
+
+/* Returns 1 if the argument [s, e) may contain `/`: its value, after any
+   `--option=`, consists of digits, `.`, `/`, and `x`, and isn't a path
+   leaving the scratch directory. */
+static int fraction_arg(const uint8_t* s, const uint8_t* e) {
+    const uint8_t* eq = (const uint8_t*) memchr(s, '=', e - s);
+    if (eq && s[0] == '-')
+        s = eq + 1;
+    if (s == e || *s == '/')
+        return 0;
+    for (; s != e; ++s)
+        if (!strchr("0123456789./x", *s) || (s[0] == '.' && s + 1 != e && s[1] == '.'))
+            return 0;
+    return 1;
+}
 
 static const uint8_t* find_sep(const uint8_t* p, const uint8_t* end) {
     while ((size_t) (end - p) >= SEPLEN) {
@@ -60,7 +76,7 @@ static int decode(const uint8_t* data, size_t size, run_spec* spec) {
         while (p < args_end && *p > ' ')
             ++p;
         if (spec->argc > MAX_ARGS || p - start > MAX_ARG_LEN
-            || memchr(start, '/', p - start))
+            || (memchr(start, '/', p - start) && !fraction_arg(start, p)))
             return -1;          /* also covers absolute and parent paths */
         spec_arg(spec, "%.*s", (int) (p - start), (const char*) start);
         if (strstr(spec->argv[spec->argc - 1], "NETSCAPE2.0")

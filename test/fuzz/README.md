@@ -124,8 +124,9 @@ cleanly.
 
 Each input to `fuzz-gifsicle-main` is a command line, then up to three
 files separated by `\n#FILE#\n`, named `in0.gif`, `in1.gif`, and
-`palette.gif`. The target skips inputs whose arguments contain `/`, so
-gifsicle touches only its scratch directory. It also skips inputs whose
+`palette.gif`. The target skips inputs whose arguments contain `/`, except
+in numeric fractions like `--scale=1/2`, so gifsicle touches only its
+scratch directory. It also skips inputs whose
 arguments contain `NETSCAPE2.0` or `ANIMEXTS1.0`: gifsicle writes any
 `--app-extension` as given, but reads extensions with those names as loop
 counts, so such commands can legitimately change the output's loop count.
