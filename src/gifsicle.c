@@ -17,7 +17,6 @@
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
-#include <limits.h>
 #include <math.h>
 #if HAVE_UNISTD_H
 # include <unistd.h>
@@ -2088,7 +2087,7 @@ gifsicle_main(int argc, char *argv[])
       if (clp->negated)
           gtst.thread_count = 0;
       else if (clp->have_val)
-          gtst.thread_count = clp->val.u > INT_MAX ? INT_MAX : clp->val.u;
+          gtst.thread_count = clp->val.u > 128 ? 128 : clp->val.u;
       else
           gtst.thread_count = GIFSICLE_DEFAULT_THREAD_COUNT;
       break;

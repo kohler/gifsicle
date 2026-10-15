@@ -238,12 +238,12 @@ dnl threads
 dnl
 
 AC_SEARCH_LIBS([pthread_create], [pthread], [have_threads=yes], [have_threads=no])
-AC_MSG_CHECKING([for __sync_add_and_fetch])
+AC_MSG_CHECKING([for __sync_fetch_and_add])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
     [AC_INCLUDES_DEFAULT
     extern volatile int x;],
-    [[printf("%d", __sync_add_and_fetch(&x, 1));]])],
-    [AC_DEFINE([HAVE___SYNC_ADD_AND_FETCH], 1, [Define to 1 if you have the `__sync_add_and_fetch' function.])
+    [[printf("%d", __sync_fetch_and_add(&x, 1));]])],
+    [AC_DEFINE([HAVE___SYNC_FETCH_AND_ADD], 1, [Define to 1 if you have the `__sync_fetch_and_add' function.])
     result=yes], [result=no])
 AC_MSG_RESULT([$result])
 

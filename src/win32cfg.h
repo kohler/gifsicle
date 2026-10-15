@@ -91,8 +91,8 @@
 /* Define to 1 if you have the `__builtin_shufflevector' function. */
 /* #undef HAVE___BUILTIN_SHUFFLEVECTOR */
 
-/* Define to 1 if you have the `__sync_add_and_fetch' function. */
-/* #undef HAVE___SYNC_ADD_AND_FETCH */
+/* Define to 1 if you have the `__sync_fetch_and_add' function. */
+/* #undef HAVE___SYNC_FETCH_AND_ADD */
 
 /* Define to write GIFs to stdout even when stdout is a terminal. */
 /* #undef OUTPUT_GIF_TO_TERMINAL */

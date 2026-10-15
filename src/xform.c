@@ -1292,37 +1292,38 @@ static void scale_image(scale_context* sctx, int method) {
 
 #if ENABLE_THREADS
 typedef struct {
-    pthread_t threadid;
     Gif_Stream* gfs;
-    int imageno;
-    int* next_imageno;
+    int next_imageno;
     int nw;
     int nh;
     int scale_colors;
     int method;
 } scale_thread_context;
 
-#if !HAVE___SYNC_ADD_AND_FETCH
+#if !HAVE___SYNC_FETCH_AND_ADD
 static pthread_mutex_t next_imageno_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void* scale_image_threaded(void* args) {
     scale_thread_context* ctx = (scale_thread_context*) args;
     scale_context sctx;
+    int imageno;
     sctx_init(&sctx, ctx->gfs, ctx->nw, ctx->nh);
     sctx.scale_colors = ctx->scale_colors;
-    do {
-        sctx.imageno = ctx->imageno;
-        sctx.gfi = ctx->gfs->images[ctx->imageno];
-        scale_image(&sctx, ctx->method);
-#if HAVE___SYNC_ADD_AND_FETCH
-        ctx->imageno = __sync_add_and_fetch(ctx->next_imageno, 1);
+    while (1) {
+#if HAVE___SYNC_FETCH_AND_ADD
+        imageno = __sync_fetch_and_add(&ctx->next_imageno, 1);
 #else
         pthread_mutex_lock(&next_imageno_lock);
-        ctx->imageno = ++*ctx->next_imageno;
+        imageno = ctx->next_imageno++;
         pthread_mutex_unlock(&next_imageno_lock);
 #endif
-    } while (ctx->imageno < ctx->gfs->nimages);
+        if (imageno >= ctx->gfs->nimages)
+            break;
+        sctx.gfi = ctx->gfs->images[imageno];
+        sctx.imageno = imageno;
+        scale_image(&sctx, ctx->method);
+    }
     sctx_cleanup(&sctx);
     return 0;
 }
@@ -1444,22 +1445,27 @@ resize_stream(Gif_Stream* gfs,
             nthreads = gfs->nimages - sctx.imageno;
     }
     if (nthreads > 1) {
-        int next_imageno = sctx.imageno + nthreads - 1, i;
-        scale_thread_context* ctx = Gif_NewArray(scale_thread_context, nthreads);
-        for (i = 0; i < nthreads; ++i) {
-            ctx[i].gfs = gfs;
-            ctx[i].imageno = sctx.imageno + i;
-            ctx[i].next_imageno = &next_imageno;
-            ctx[i].nw = nw;
-            ctx[i].nh = nh;
-            ctx[i].scale_colors = scale_colors;
-            ctx[i].method = method;
-            pthread_create(&ctx[i].threadid, NULL, scale_image_threaded, &ctx[i]);
+        int i;
+        scale_thread_context stctx;
+        pthread_t* tids = Gif_NewArray(pthread_t, nthreads);
+        if (tids) {
+            stctx.gfs = gfs;
+            stctx.next_imageno = sctx.imageno;
+            stctx.nw = nw;
+            stctx.nh = nh;
+            stctx.scale_colors = scale_colors;
+            stctx.method = method;
+            for (i = 0; i < nthreads; ++i) {
+                if (pthread_create(&tids[i], NULL, scale_image_threaded, &stctx) != 0) {
+                    nthreads = i;
+                    break;
+                }
+            }
+            for (i = 0; i < nthreads; ++i)
+                pthread_join(tids[i], NULL);
+            Gif_DeleteArray(tids);
+            sctx.imageno = stctx.next_imageno;
         }
-        for (i = 0; i < nthreads; ++i)
-            pthread_join(ctx[i].threadid, NULL);
-        Gif_DeleteArray(ctx);
-        sctx.imageno = gfs->nimages;
     }
 #endif
 
