@@ -273,7 +273,13 @@ def write_main_dict(path):
                                "10x10", "_x10", "0,0+5x5", "1.5", "srgb", "oklab",
                                "floyd-steinberg", "ro64", "o8", "halftone", "box",
                                "mix", "catrom", "lanczos3", "mitchell", "sample",
-                               "median-cut", "blend-diversity", "keep-empty"])
+                               "median-cut", "blend-diversity", "keep-empty",
+                               # large and overflowing numbers
+                               "-1", "65536", "2147483647", "2147483648", "-2147483648",
+                               "4294967295", "4294967296", "99999999999999999999",
+                               "1e9", "1e308", "0x7fffffff", "65535x65535", "65536x1",
+                               "100000x100000", "0.0001", "inf", "nan",
+                               "^", "<", ">", "!", "%"])
     with open(path, "w") as f:
         f.write("# gifsicle options and values, for fuzz-gifsicle-main\n")
         f.write('sep="\\x0A#FILE#\\x0A"\n')

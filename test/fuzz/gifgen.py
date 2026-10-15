@@ -226,7 +226,7 @@ def random_gif(rng, max_screen=64, max_frames=5):
             f["disposal"] = rng.randrange(8)
             f["delay"] = rng.choice([0, 0, 1, 10, 65535])
             if rng.random() < .6:
-                f["transparent"] = rng.randrange(ncolors + 2)
+                f["transparent"] = rng.randrange(ncolors + 2 if rng.random() < .8 else 256)
         if rng.random() < .2:
             f["interlace"] = True
         if rng.random() < .05:
@@ -244,6 +244,9 @@ def random_gif(rng, max_screen=64, max_frames=5):
                     loopcount=rng.choice([None, None, 0, 1, 65535]),
                     comment=b"fuzz" if rng.random() < .1 else None,
                     trailer=b";" if rng.random() < .9 else rng.choice([b"", b";garbage", b";;"]))
+    # occasionally truncate the GIF
+    if rng.random() < .08:
+        data = data[:rng.randint(13, len(data) - 1)]
     return data
 
 
