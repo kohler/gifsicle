@@ -18,6 +18,8 @@ Gifsicle NEWS
     “superfluous pixels”, or that has an LZW minimum code size above 8.
   * Report truncated GIFs. Frames cut off before their image data, and
     truncated extensions, are ignored.
+  * Errors found when reading GIFs do not affect exit status unless
+    `--no-ignore-errors` is given.
 
 * Bug fixes
 
@@ -31,7 +33,7 @@ Gifsicle NEWS
   * Fix memory-safety bugs found by auditing and fuzzing, including
     use-after-free bugs and undefined behavior. Parse arguments more strictly.
 
-* Add fuzz testing harness.
+* Source repository gains fuzz testing harness.
 
 
 ## Version 1.97 – 12.Oct.2026
