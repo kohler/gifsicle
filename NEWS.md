@@ -1,6 +1,16 @@
 Gifsicle NEWS
 =============
 
+## Version 1.99
+
+* Bug fixes
+
+  * Multithreaded resizing (`-j`) gives the same results as single-threaded
+    resizing.
+  * Resizing no longer writes invalid pixels when a frame’s transparent
+    color is the only color in its colormap.
+
+
 ## Version 1.98 – 15.Oct.2026
 
 * Add `--max-screen` option, which limits the size of logical screens to

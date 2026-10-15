@@ -1,0 +1,16 @@
+%script
+# threaded resizing matches unthreaded: frame 2 is transparent and follows
+# a frame with background disposal, so it composites over a cleared screen
+gifsicle --resize 7x7 thr.gif -o serial.gif
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+  gifsicle -j2 --resize 7x7 thr.gif -o threaded.gif
+  cmp -s serial.gif threaded.gif || echo "run $i differs"
+done
+echo done
+
+%file -e thr.gif
+R0lGODlhBAAEAPEAAP8AAAAA/wD/AAAAACwAAAAABAAEAAAICQABCBxIsCCAgAAh+QQIAAAAACwA
+AAAABAAEAAAICQADCBxIsGCAgAAh+QQBAAADACwAAAAABAAEAAAICwAFDBBIcKDBggEBADs=
+
+%expect stdout
+done

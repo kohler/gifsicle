@@ -416,19 +416,24 @@ static void kcscreen_clear(kcscreen* kcs) {
     kcs->data = kcs->scratch = NULL;
 }
 
+/* set every pixel of `kcs` to the background */
+static void kcscreen_reset(kcscreen* kcs) {
+    unsigned i, sz = kcs->width * kcs->height;
+    if (kcs->data)
+        for (i = 0; i != sz; ++i)
+            kcs->data[i] = kcs->bg;
+}
+
 /* initialize `kcs` for stream `gfs`. Screen size is `sw`x`sh`; if either
    component is <= 0, the value of `gfs->screen_*` is taken. */
 static void kcscreen_init(kcscreen* kcs, Gif_Stream* gfs, int sw, int sh) {
-    unsigned i, sz;
     assert(!kcs->data && !kcs->scratch);
     kcs->width = sw <= 0 ? gfs->screen_width : sw;
     kcs->height = sh <= 0 ? gfs->screen_height : sh;
-    sz = kcs->width * kcs->height;
-    kcs->data = Gif_NewArray(kacolor, sz);
+    kcs->data = Gif_NewArray(kacolor, kcs->width * kcs->height);
     /* the background is transparent, as in browsers */
     kcs->bg.a[0] = kcs->bg.a[1] = kcs->bg.a[2] = kcs->bg.a[3] = 0;
-    for (i = 0; i != sz; ++i)
-        kcs->data[i] = kcs->bg;
+    kcscreen_reset(kcs);
 }
 
 /* free memory associated with `kcs` */
@@ -498,19 +503,24 @@ static void ksscreen_clear(ksscreen* kss) {
     kss->data = kss->scratch = NULL;
 }
 
+/* set every pixel of `kss` to the background */
+static void ksscreen_reset(ksscreen* kss) {
+    unsigned i, sz = kss->width * kss->height;
+    if (kss->data)
+        for (i = 0; i != sz; ++i)
+            kss->data[i] = kss->bg;
+}
+
 /* initialize `kss` for stream `gfs`. Screen size is `sw`x`sh`; if either
    component is <= 0, the value of `gfs->screen_*` is taken. */
 static void ksscreen_init(ksscreen* kss, Gif_Stream* gfs, int sw, int sh) {
-    unsigned i, sz;
     assert(!kss->data && !kss->scratch);
     kss->width = sw <= 0 ? gfs->screen_width : sw;
     kss->height = sh <= 0 ? gfs->screen_height : sh;
-    sz = kss->width * kss->height;
-    kss->data = Gif_NewArray(scale_color, sz);
+    kss->data = Gif_NewArray(scale_color, kss->width * kss->height);
     /* the background is transparent, as in browsers */
     sc_clear(&kss->bg);
-    for (i = 0; i != sz; ++i)
-        kss->data[i] = kss->bg;
+    ksscreen_reset(kss);
 }
 
 /* free memory associated with `kss` */
@@ -1307,7 +1317,7 @@ static pthread_mutex_t next_imageno_lock = PTHREAD_MUTEX_INITIALIZER;
 void* scale_image_threaded(void* args) {
     scale_thread_context* ctx = (scale_thread_context*) args;
     scale_context sctx;
-    int imageno;
+    int imageno, previous_disposal = GIF_DISPOSAL_BACKGROUND;
     sctx_init(&sctx, ctx->gfs, ctx->nw, ctx->nh);
     sctx.scale_colors = ctx->scale_colors;
     while (1) {
@@ -1320,9 +1330,20 @@ void* scale_image_threaded(void* args) {
 #endif
         if (imageno >= ctx->gfs->nimages)
             break;
+        /* Frames resized in threads don't depend on earlier frames (see
+           resize_stream), except that a transparent frame always follows
+           a frame with background disposal, but a frame followed by an
+           opaque frame may have ASIS disposal. We may process frames out
+           of order, so clear the screen if necessary. */
+        if (ctx->gfs->images[imageno]->transparent >= 0
+            && previous_disposal != GIF_DISPOSAL_BACKGROUND) {
+            ksscreen_reset(&sctx.iscr);
+            kcscreen_reset(&sctx.oscr);
+        }
         sctx.gfi = ctx->gfs->images[imageno];
         sctx.imageno = imageno;
         scale_image(&sctx, ctx->method);
+        previous_disposal = sctx.gfi->disposal;
     }
     sctx_cleanup(&sctx);
     return 0;
@@ -1383,7 +1404,6 @@ resize_stream(Gif_Stream* gfs,
 {
     int nw, nh, i;
     scale_context sctx;
-    (void) i;
 
     Gif_CalculateScreenSize(gfs, 0);
     assert(gfs->nimages > 0);
@@ -1412,6 +1432,16 @@ resize_stream(Gif_Stream* gfs,
         && method != SCALE_METHOD_CATROM && method != SCALE_METHOD_LANCZOS2
         && method != SCALE_METHOD_LANCZOS3 && method != SCALE_METHOD_MITCHELL)
         method = SCALE_METHOD_POINT;
+
+    /* Opaque output pixels need a color other than the transparent one. */
+    for (i = 0; i < gfs->nimages; ++i) {
+        Gif_Image* gfi = gfs->images[i];
+        Gif_Colormap* gfcm = gfi->local ? gfi->local : gfs->global;
+        if (gfcm && gfcm->ncol == 1 && gfi->transparent == 0) {
+            Gif_Color gfc = gfcm->col[0];
+            Gif_AddColor(gfcm, &gfc, -1);
+        }
+    }
 
     if (nthreads > gfs->nimages)
         nthreads = gfs->nimages;

@@ -1,0 +1,22 @@
+%script
+# frame 2's transparent index is the colormap's only color, but resizing
+# blends opaque pixels into it, so the colormap gains an opaque copy
+gifsicle --resize 1x2 one.gif -o out.gif
+gifsicle --careful --resize 1x2 one.gif -o careful.gif
+gifdiff out.gif careful.gif && echo same
+gifsicle --cinfo out.gif 2>&1 | grep -v '^\*'
+
+%file -e one.gif
+R0lGODlhAQAEAPAAAP8AAAAAACwAAAAAAQAEAAACAoRRACH5BAkAAAAALAAAAQABAAMAAAIChAsA
+IfkEAQAAAAAsAAAAAAEABAAAAgKEUQA7
+
+%expect stdout
+same
+  logical screen 1x2
+  global color table [2]
+  |   0: #FF0000       1: #FF0000
+  background 0
+  + image #0 1x2
+  + image #1 1x2 transparent 0
+    disposal background
+  + image #2 1x2 transparent 0
