@@ -9,8 +9,10 @@
    named in0.gif, in1.gif, and palette.gif, and the target runs `gifsicle
    ARGS` with them, checking the results (see runner.c). Inputs with
    arguments that contain `/` are skipped, so gifsicle can only touch files
-   in its scratch directory. So are inputs whose files are huge GIFs, since
-   gifsicle's time on those isn't interesting. */
+   in its scratch directory. So are inputs with arguments that name a loop
+   extension (gifsicle writes any `--app-extension` as given, but reads
+   NETSCAPE2.0 and ANIMEXTS1.0 extensions as loop counts), and inputs whose
+   files are huge GIFs, since gifsicle's time on those isn't interesting. */
 
 #include "runner.h"
 #include <string.h>
@@ -61,6 +63,9 @@ static int decode(const uint8_t* data, size_t size, run_spec* spec) {
             || memchr(start, '/', p - start))
             return -1;          /* also covers absolute and parent paths */
         spec_arg(spec, "%.*s", (int) (p - start), (const char*) start);
+        if (strstr(spec->argv[spec->argc - 1], "NETSCAPE2.0")
+            || strstr(spec->argv[spec->argc - 1], "ANIMEXTS1.0"))
+            return -1;
     }
 
     /* files */

@@ -128,7 +128,40 @@ def dims(rng, lo=0, hi=200):
 def frame_sel(rng):
     n = rng.randint(-3, 6)
     return rng.choice(["#%d" % n, "#%d-" % n, "#%d-%d" % (n, n + rng.randint(-1, 3)),
-                       "#0", "#-1"])
+                       "#0", "#-1", "#-2-", "#a", "#b", "#frame1", "#1-#a"])
+
+
+DITHERS = ["floyd-steinberg", "fs", "atkinson", "ro64", "o3", "o4", "o8", "ordered",
+           "halftone", "squarehalftone", "diagonal", "none", "posterize", "default"]
+
+
+def dither(rng):
+    """A dither name, sometimes with parameters."""
+    name = rng.choice(DITHERS)
+    if rng.random() < .3:
+        name = rng.choice(["halftone", "sqhalftone", "trihalftone", "o", "ro64", "o8", "fs"])
+        name += "," + ",".join(str(rng.choice([0, 1, 2, 3, 4, 8, 16, 64, 147, 148, 255, 256]))
+                               for _ in range(rng.randint(1, 3)))
+    return name
+
+
+# Application extension names. Gifsicle reads NETSCAPE2.0 and ANIMEXTS1.0
+# extensions as loop counts, so fuzz_main.c skips commands that name them.
+APP_NAMES = ["FUZZAPP0", "FUZZAPP01.0", "MGKIPTC0000", "MGK8BIM0000", "ICCRGBG1012",
+             "NETSCAPE", "NETSCAPE2.1", "X", "12345678901", "123456789012"]
+
+
+def app_extension(rng):
+    """An --app-extension option with a name and body."""
+    body = rng.choice(["data", "x", str(rng.randrange(10)),
+                       "A" * rng.choice([254, 255, 256])])
+    return [rng.choice(["--app-extension", "-x", "--app-ext"]), rng.choice(APP_NAMES), body]
+
+
+SAME_OPTIONS = ["--same-app-extensions", "--same-background", "--same-clip",
+                "--same-comments", "--same-crop", "--same-extensions", "--same-interlace",
+                "--same-logical-screen", "--same-loopcount", "--same-disposal",
+                "--same-delay", "--same-names", "--same-position", "--same-transparent"]
 
 
 def random_options(rng, ninputs):
@@ -153,9 +186,17 @@ def random_options(rng, ninputs):
     maybe(.05, "--background", color(rng))
     maybe(.12, "--colors=%d" % rng.choice([2, 3, 16, 64, 200, 256]))
     maybe(.08, "--color-method=%s" % rng.choice(["diversity", "blend-diversity", "median-cut"]))
-    maybe(.10, "--dither=%s" % rng.choice(
-        ["floyd-steinberg", "ro64", "o3", "o4", "o8", "ordered", "halftone",
-         "squarehalftone", "diagonal", "none"]))
+    maybe(.10, "--dither=%s" % dither(rng))
+    maybe(.02, "--dither")
+    maybe(.04, "--gray")
+    maybe(.04, rng.choice(["--optimize=keep-empty", "-O2", "--optimize=no-keep-empty",
+                           "--optimize=drop-empty", "-O3"]))
+    maybe(.03, "--lossy")
+    maybe(.04, "--max-screen=%s" % dims(rng, 0, 80))
+    maybe(.03, "--no-max-screen")
+    maybe(.02, "-V")
+    maybe(.03, "--ignore-errors")
+    maybe(.03, "--threads=%d" % rng.randint(0, 4))
     maybe(.05, "--gamma=%s" % rng.choice(["1", "2.2", "srgb", "oklab", "0.5"]))
     if rng.random() < .10:
         pre.append(rng.choice(["--use-colormap", "--use-exact-colormap"]))
@@ -170,6 +211,10 @@ def random_options(rng, ninputs):
             pre.append("--resize-%s=%d" % (rng.choice(["width", "height"]), rng.randint(0, 120)))
         elif kind == 3:
             pre.append("--resize-%s=%s" % (rng.choice(["fit", "touch"]), dims(rng, 0, 120)))
+        elif kind == 4:
+            pre.append("--resize-%s-%s=%d" % (rng.choice(["fit", "touch"]),
+                                              rng.choice(["width", "height"]),
+                                              rng.randint(0, 120)))
         else:
             pre.append("--resize-geometry=%s%s" % (dims(rng, 1, 120),
                                                    rng.choice(["", ">", "<", "^", "!"])))
@@ -203,21 +248,32 @@ def random_options(rng, ninputs):
         imaybe(.04, "--comment", "fuzz")
         imaybe(.04, "--name", "fuzzname")
         imaybe(.03, "--extension", "254", "data")
-        imaybe(.03, "--app-extension", "FUZZAPP0", "data")
-        imaybe(.04, rng.choice(["--no-comments", "--no-names", "--no-extensions"]))
+        imaybe(.04, *app_extension(rng))
+        imaybe(.04, rng.choice(["--no-comments", "--no-names", "--no-extensions",
+                                "--no-app-extensions"]))
+        imaybe(.03, rng.choice(["--no-flip", "--no-rotate", "--no-crop", "--no-position",
+                                "--no-logical-screen", "--no-delay", "--no-disposal"]))
+        imaybe(.03, "--clip", "%d,%d-%d,%d" % (rng.randint(0, 20), rng.randint(0, 20),
+                                               rng.randint(0, 60), rng.randint(0, 60)))
+        imaybe(.04, "--unoptimize")
+        imaybe(.03, "--no-loopcount")
+        imaybe(.04, rng.choice(SAME_OPTIONS))
         per_input.append(opts)
 
     if ninputs == 1 and rng.random() < .15:
         # frame changes apply to the most recent input
-        change = rng.randrange(4)
+        change = rng.randrange(5)
         if change == 0:
             post += ["--delete", frame_sel(rng)]
         elif change == 1:
             post += ["--append", "palette.gif"]
         elif change == 2:
             post += ["--insert-before", frame_sel(rng), "palette.gif"]
-        else:
+        elif change == 3:
             post += ["--replace", frame_sel(rng), "palette.gif"]
+        else:
+            post += ["--delete", frame_sel(rng), frame_sel(rng), "--done",
+                     "--append", "palette.gif"]
     return pre, per_input, post
 
 
@@ -241,15 +297,29 @@ def main_corpus(args, rng, gifs):
         argv = ["--no-warnings"] if rng.random() < .5 else []
         argv += pre
         files = {}
+        multifile = rng.random() < .06
+        if multifile:
+            argv.append(rng.choice(["--multifile", "--nextfile"]))
+        elif ninputs > 1 and rng.random() < .3:
+            argv.append("--merge")
         for i, opts in enumerate(per_input):
             argv += opts + ["in%d.gif" % i]
-            files["in%d.gif" % i] = rng.choice(gifs)[1]
+            if rng.random() < .15:
+                argv += [frame_sel(rng) for _ in range(rng.randint(1, 3))]
+            if multifile and i == 0:
+                files["in0.gif"] = gifgen.concatenated_gif(rng)
+                if "--nextfile" in argv:
+                    argv += ["in0.gif"] * rng.randint(0, 2)
+            else:
+                files["in%d.gif" % i] = rng.choice(gifs)[1]
         argv += post
         if any("palette.gif" in w for w in argv):
             files["palette.gif"] = rng.choice(gifs)[1]
         mode = rng.random()
-        if mode < .1:
+        if mode < .08:
             argv = ["--explode"] + argv
+        elif mode < .1:
+            argv = ["--explode-by-name"] + argv
         elif mode < .2:
             argv = ["--batch"] + argv
         else:
@@ -279,7 +349,10 @@ def write_main_dict(path):
                                "4294967295", "4294967296", "99999999999999999999",
                                "1e9", "1e308", "0x7fffffff", "65535x65535", "65536x1",
                                "100000x100000", "0.0001", "inf", "nan",
-                               "^", "<", ">", "!", "%"])
+                               "^", "<", ">", "!", "%",
+                               "drop-empty", "no-keep-empty", "atkinson", "posterize",
+                               "sqhalftone", "halftone,10,3", "o,8,4", "#a", "#-2-",
+                               "1,1-5,5", "0x0"])
     with open(path, "w") as f:
         f.write("# gifsicle options and values, for fuzz-gifsicle-main\n")
         f.write('sep="\\x0A#FILE#\\x0A"\n')
@@ -321,6 +394,8 @@ def main():
     gifs += list(extra_gifs(args.paths))
     gifs += [("generated", gifgen.random_gif(random.Random(args.seed * 100003 + i)))
              for i in range(args.generated)]
+    gifs += [("special", gifgen.special_gif(random.Random(args.seed * 100019 + i)))
+             for i in range(args.generated // 2)]
     gifs = [g for g in gifs if len(g[1]) <= args.max_size]
 
     if args.main:

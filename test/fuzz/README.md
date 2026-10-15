@@ -51,8 +51,11 @@ command lines with random options. It also writes
 `build/main.dict`, a libFuzzer dictionary of gifsicle's options. The second
 writes `build/corpus/` for `fuzz-gifsicle`, pairing the GIFs embedded in
 `test/*.testie` and 200 generated GIFs (`gifgen.py`) with random option
-configurations. Pass more GIF files or directories as arguments to add
-seeds.
+configurations. The generated GIFs include 100 aimed at specific edge
+cases, such as transparent indexes past the end of the colormap, duplicate
+colors, and named frames. Pass more GIF files or directories as arguments
+to add seeds; `-n` changes the number of generated GIFs and `--seed` the
+random seed.
 
 ## Running
 
@@ -122,7 +125,10 @@ cleanly.
 Each input to `fuzz-gifsicle-main` is a command line, then up to three
 files separated by `\n#FILE#\n`, named `in0.gif`, `in1.gif`, and
 `palette.gif`. The target skips inputs whose arguments contain `/`, so
-gifsicle touches only its scratch directory.
+gifsicle touches only its scratch directory. It also skips inputs whose
+arguments contain `NETSCAPE2.0` or `ANIMEXTS1.0`: gifsicle writes any
+`--app-extension` as given, but reads extensions with those names as loop
+counts, so such commands can legitimately change the output's loop count.
 
 Each input to `fuzz-gifsicle` is a 16-byte configuration followed by a
 GIF. `decode_options` in `fuzz_gifsicle.c` maps the configuration to

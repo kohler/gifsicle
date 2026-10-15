@@ -6,6 +6,10 @@ This file is part of gifsicle's fuzzing harness. See README.md.
   edge cases: frames partly or entirely outside the logical screen, every
   minimum code size, LZW streams that fill the code table, transparency,
   every disposal, local colormaps, interlacing, extensions, and so on.
+- `special_gif(rng)` generates a GIF aimed at one specific edge case, such
+  as a transparent index past the end of the colormap, duplicate colors,
+  256 colors in use, an animation for the optimizer, or named frames.
+  `concatenated_gif(rng)` returns several GIFs back to back.
 - `mutate(data, rng)` applies byte-level mutations.
 - `strict_check(data)` parses a GIF strictly (like test/fuzz/gifcheck.c) and
   returns None or a description of the first problem.
@@ -14,7 +18,8 @@ This file is part of gifsicle's fuzzing harness. See README.md.
 import random
 import struct
 
-__all__ = ["random_gif", "mutate", "strict_check", "lzw_encode", "make_gif"]
+__all__ = ["random_gif", "special_gif", "concatenated_gif", "mutate", "strict_check",
+           "lzw_encode", "make_gif"]
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +253,162 @@ def random_gif(rng, max_screen=64, max_frames=5):
     if rng.random() < .08:
         data = data[:rng.randint(13, len(data) - 1)]
     return data
+
+
+def extension(label, payload):
+    return b"\x21" + bytes([label]) + subblocks(payload)
+
+
+def special_gif(rng):
+    """Return a GIF aimed at one of gifsicle's colormap, transparency,
+    optimization, or extension edge cases."""
+    kind = rng.choice(["transparent-past-end", "duplicates", "full-256",
+                       "animation", "names", "extensions", "tiny-interlaced",
+                       "identical-frames"])
+    sw, sh = rng.randint(1, 48), rng.randint(1, 48)
+    nframes = rng.randint(1, 6)
+
+    if kind == "transparent-past-end":
+        # power-of-two colormap, every color used, transparent index at or
+        # past its end
+        n = rng.choice([2, 4, 8, 16, 256])
+        gct = random_colors(rng, n)
+        frames = []
+        for _ in range(nframes):
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            px = random_pixels(rng, w, h, n)
+            px[:n] = list(range(n))[:len(px)]
+            f = {"left": rng.randint(0, sw - w), "top": rng.randint(0, sh - h),
+                 "width": w, "height": h, "mcb": max(2, (n - 1).bit_length())}
+            f["transparent"] = rng.choice([n, n, n + 1, 255])
+            f["pixels"] = px
+            f["disposal"] = rng.randrange(4)
+            frames.append(f)
+        return make_gif((sw, sh), gct, frames, background=rng.choice([0, n, 255]))
+
+    if kind == "duplicates":
+        # colormaps with repeated colors, including the transparent slot
+        base = random_colors(rng, rng.randint(1, 6))
+        gct = [rng.choice(base) for _ in range(rng.choice([4, 8, 16]))]
+        frames = []
+        for _ in range(nframes):
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            f = {"left": rng.randint(0, sw - w), "top": rng.randint(0, sh - h),
+                 "width": w, "height": h, "pixels": random_pixels(rng, w, h, len(gct))}
+            if rng.random() < .7:
+                f["transparent"] = rng.randrange(len(gct))
+                f["disposal"] = rng.randrange(4)
+            if rng.random() < .3:
+                f["local"] = [rng.choice(base) for _ in range(len(gct))]
+            frames.append(f)
+        return make_gif((sw, sh), gct, frames)
+
+    if kind == "full-256":
+        # 256 distinct colors in use, plus transparency: unoptimizing or
+        # merging may need 257 colors
+        gct = random_colors(rng, 256)
+        frames = []
+        for k in range(nframes):
+            w, h = rng.randint(16, 48), rng.randint(16, 48)
+            px = list(range(256)) * (w * h // 256 + 1)
+            rng.shuffle(px)
+            f = {"left": 0, "top": 0, "width": w, "height": h, "pixels": px[:w * h]}
+            if k > 0 or rng.random() < .5:
+                f["transparent"] = rng.randrange(256)
+                f["disposal"] = rng.choice([0, 1, 2, 3])
+            if rng.random() < .3:
+                f["local"] = random_colors(rng, 256)
+            frames.append(f)
+        return make_gif((48, 48), gct, frames)
+
+    if kind == "animation":
+        # a sprite moving over a background, which the optimizer can crop
+        # and make transparent
+        gct = random_colors(rng, rng.choice([4, 16, 64]))
+        n = len(gct)
+        bg = random_pixels(rng, sw, sh, n)
+        sprite_w, sprite_h = rng.randint(1, max(1, sw // 2)), rng.randint(1, max(1, sh // 2))
+        sprite = random_pixels(rng, sprite_w, sprite_h, n)
+        frames = []
+        x, y = rng.randint(0, sw - sprite_w), rng.randint(0, sh - sprite_h)
+        disposal = rng.choice([None, 0, 1, 2, 3])
+        for k in range(rng.randint(2, 12)):
+            px = list(bg)
+            for j in range(sprite_h):
+                for i in range(sprite_w):
+                    if 0 <= x + i < sw and 0 <= y + j < sh:
+                        px[(y + j) * sw + x + i] = sprite[j * sprite_w + i]
+            f = {"left": 0, "top": 0, "width": sw, "height": sh, "pixels": px,
+                 "delay": rng.choice([0, 2, 10])}
+            if disposal is not None:
+                f["disposal"] = disposal
+            frames.append(f)
+            x = max(0, min(sw - sprite_w, x + rng.randint(-3, 3)))
+            y = max(0, min(sh - sprite_h, y + rng.randint(-3, 3)))
+        return make_gif((sw, sh), gct, frames, loopcount=rng.choice([None, 0, 3]))
+
+    if kind == "names":
+        # named frames, for '#name' frame selections and --explode-by-name
+        gct = random_colors(rng, 4)
+        d = bytearray(make_gif((sw, sh), gct, [], trailer=b""))
+        for k in range(nframes):
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            name = rng.choice([b"a", b"b", b"frame%d" % k, b"", b"x" * 300, b"1", b"#2"])
+            d += extension(0xCE, name)
+            d += make_gif((sw, sh), None, [{"left": 0, "top": 0, "width": w, "height": h,
+                                             "pixels": random_pixels(rng, w, h, 4)}],
+                          trailer=b"")[13:]
+        return bytes(d + b";")
+
+    if kind == "extensions":
+        # unusual extensions around and between frames
+        gct = random_colors(rng, 4)
+        d = bytearray(make_gif((sw, sh), gct, [], trailer=b""))
+        for k in range(nframes):
+            for _ in range(rng.randint(0, 3)):
+                d += rng.choice([
+                    extension(0xFF, b"NETSCAPE2.0" + b"\x01\x05\x00" + b"\x02\x00"),
+                    b"\x21\xff\x0bNETSCAPE2.0\x05\x01\x00\x00\x00\x00\x00",
+                    b"\x21\xff\x0bANIMEXTS1.0\x03\x01\x00\x00\x00",
+                    b"\x21\xff\x0bXMP DataXMP" + subblocks(bytes(rng.randrange(256) for _ in range(40))),
+                    b"\x21\xff\x08SHORTAPP\x00",
+                    extension(rng.choice([0x01, 0x02, 0xCE, 0xFE, 0x99]),
+                              bytes(rng.randrange(256) for _ in range(rng.randint(0, 600)))),
+                    b"\x21\xf9\x04\x09\x00\x00\x02\x00",      # bare GCE
+                    b"\x21\xf9\x05\x01\x00\x00\x00\x00\x00",  # long GCE
+                ])
+            w, h = rng.randint(1, sw), rng.randint(1, sh)
+            d += make_gif((sw, sh), None, [{"left": 0, "top": 0, "width": w, "height": h,
+                                             "pixels": random_pixels(rng, w, h, 4)}],
+                          trailer=b"")[13:]
+        return bytes(d + b";")
+
+    if kind == "tiny-interlaced":
+        gct = random_colors(rng, 16)
+        frames = []
+        for _ in range(nframes):
+            w, h = rng.randint(1, 9), rng.randint(1, 9)
+            frames.append({"left": rng.randint(0, 4), "top": rng.randint(0, 4),
+                           "width": w, "height": h, "interlace": True,
+                           "pixels": random_pixels(rng, w, h, 16)})
+        return make_gif((12, 12), gct, frames)
+
+    # identical-frames: repeated frames, which -O makes empty
+    gct = random_colors(rng, 8)
+    px = random_pixels(rng, sw, sh, 8)
+    frames = []
+    for k in range(rng.randint(2, 8)):
+        f = {"left": 0, "top": 0, "width": sw, "height": sh, "pixels": px,
+             "delay": rng.choice([0, 5, 10]), "disposal": rng.choice([0, 1, 2, 3])}
+        if rng.random() < .4:
+            f["transparent"] = rng.randrange(9)
+        frames.append(f)
+    return make_gif((sw, sh), gct, frames)
+
+
+def concatenated_gif(rng):
+    """Return two or three GIFs back to back, for --multifile."""
+    return b"".join(rng.choice([random_gif, special_gif])(rng) for _ in range(rng.randint(2, 3)))
 
 
 # ---------------------------------------------------------------------------
