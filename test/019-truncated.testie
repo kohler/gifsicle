@@ -5,9 +5,11 @@ export LANG=C
 for f in screen colormap descriptor loop comment trailer; do
   gifsicle -I $f.gif 2>&1 || echo failed
 done
-# a frame truncated in its image data is kept
+# a frame truncated in its image data is kept; read errors affect the exit
+# status only with --no-ignore-errors
 gifsicle data.gif -o out.gif 2>&1 || echo failed
 gifsicle -I out.gif
+gifsicle --no-ignore-errors data.gif -o out.gif 2>/dev/null || echo failed with --no-ignore-errors
 
 %file -e screen.gif
 R0lGODlhAgACAA==
@@ -66,7 +68,6 @@ gifsicle:comment.gif: read error: GIF truncated
     disposal asis delay 0.10s
 gifsicle:data.gif: read error: GIF truncated
 gifsicle:data.gif:#1: read error: missing 3 pixels of image data
-failed
 * out.gif 2 images
   logical screen 2x2
   global color table [4]
@@ -77,3 +78,4 @@ failed
     disposal asis delay 0.10s
   + image #1 2x2
     disposal asis delay 0.10s
+failed with --no-ignore-errors

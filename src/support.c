@@ -120,6 +120,13 @@ void warning(int need_file, const char* format, ...) {
     va_end(val);
 }
 
+void context_message(int need_file, const char* format, ...) {
+    va_list val;
+    va_start(val, format);
+    verror((const char*) 0, need_file, 0, format, val);
+    va_end(val);
+}
+
 void
 clp_error_handler(Clp_Parser *clp, const char *message)
 {

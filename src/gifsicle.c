@@ -626,6 +626,9 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
       || gtmsgs.stopping)
     return;
 
+  if (message && is_error > 0 && gtmsgs.no_ignore_errors)
+    gtmsgs.error_count++;
+
   if (message) {
     const char *filename = gfs && gfs->landmark ? gfs->landmark : "<unknown>";
     if (gfi && (which_image != 0 || gfs->nimages > 1))
@@ -642,6 +645,9 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
           || strcmp(landmark, gtst.rderr.last_landmark) != 0)) {
     const char* etype = gtst.rderr.last_is_error ? "read error: " : "";
     void (*f)(const char*, const char*, ...) = gtst.rderr.last_is_error ? lerror : lwarning;
+    /* Printing a read error doesn't affect the exit status; with
+       --no-ignore-errors, errors count when they occur (above). */
+    int old_error_count = gtmsgs.error_count;
     if (gfi && gfi->user_flags)
       /* error already reported */;
     else if (gtst.rderr.same_error_count == 1)
@@ -649,6 +655,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
     else if (gtst.rderr.same_error_count > 0)
       f(gtst.rderr.last_landmark, "%s%s (%d times)", etype,
         gtst.rderr.last_message, gtst.rderr.same_error_count);
+    gtmsgs.error_count = old_error_count;
     gtst.rderr.same_error_count = 0;
     gtst.rderr.last_message[0] = 0;
   }
@@ -664,7 +671,7 @@ gifread_error(Gif_Stream* gfs, Gif_Image* gfi,
     gtst.rderr.last_is_error = is_error;
     if (gtst.rderr.different_error_count == 11) {
       if (!(gfi && gfi->user_flags))
-        error(0, "(plus more errors; is this GIF corrupt?)");
+        context_message(0, "(plus more errors; is this GIF corrupt?)");
       gtst.rderr.different_error_count++;
     }
   } else

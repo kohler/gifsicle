@@ -210,6 +210,7 @@ void warning(int need_file, const char* format, ...);
 void lwarning(const char* landmark, const char* format, ...);
 void error(int need_file, const char* format, ...);
 void lerror(const char* landmark, const char* format, ...);
+void context_message(int need_file, const char* format, ...);
 void clp_error_handler(Clp_Parser *clp, const char *clp_message);
 void usage(Clp_Parser* clp);
 void short_usage(Clp_Parser* clp);
