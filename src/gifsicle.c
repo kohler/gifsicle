@@ -2060,6 +2060,8 @@ gifsicle_main(int argc, char *argv[])
       MARK_CH(output, CH_LOOPCOUNT);
       if (clp->negated)
         def_output_data.loopcount = -1;
+      else if (clp->have_val && (clp->val.i < 0 || clp->val.i > 65535))
+        error(0, "loopcount must be between 0 and 65535");
       else
         def_output_data.loopcount = (clp->have_val ? clp->val.i : 0);
       break;
@@ -2273,6 +2275,8 @@ gifsicle_main(int argc, char *argv[])
       MARK_CH(output, CH_RESIZE);
       if (clp->negated)
         def_output_data.scaling = GT_SCALING_NONE;
+      else if (clp->val.u > 65535)
+        error(0, "%s argument must be at most 65535", Clp_CurOptionName(clp));
       else if (clp->val.u == 0) {
         error(0, "%s argument must be positive", Clp_CurOptionName(clp));
         def_output_data.scaling = GT_SCALING_NONE;
@@ -2321,14 +2325,19 @@ gifsicle_main(int argc, char *argv[])
     case RESIZE_COLORS_OPT:
       MARK_CH(output, CH_SCALE_COLORS);
       def_output_data.scale_colors = clp->negated ? 0 : clp->val.i;
-      if (def_output_data.scale_colors > 256) {
+      if (def_output_data.scale_colors < 0) {
+        error(0, "%s must be nonnegative", Clp_CurOptionName(clp));
+        def_output_data.scale_colors = 0;
+      } else if (def_output_data.scale_colors > 256) {
         error(0, "%s can be at most 256", Clp_CurOptionName(clp));
         def_output_data.scale_colors = 256;
       }
       break;
 
     case LOSSY_OPT:
-      if (clp->have_val)
+      if (clp->have_val && clp->val.i < 0)
+        error(0, "%s must be nonnegative", Clp_CurOptionName(clp));
+      else if (clp->have_val)
         gif_write_info.loss = clp->val.i;
       else
         gif_write_info.loss = 20;

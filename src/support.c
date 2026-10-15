@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+#include <limits.h>
 
 const char *program_name = "gifsicle";
 
@@ -572,6 +573,15 @@ explode_filename(const char *filename, int number, const char *name, int max_nim
  * parsing functions
  **/
 
+/* Parse a frame number, clamping it to +/-INT_MAX so out-of-range numbers
+   are reported as out of range rather than wrapping. */
+static int
+strtol_frame(char *s, char **end)
+{
+  long v = strtol(s, end, 10);
+  return v > INT_MAX ? INT_MAX : (v < -INT_MAX ? -INT_MAX : (int) v);
+}
+
 int
 parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 {
@@ -598,18 +608,18 @@ parse_frame_spec(Clp_Parser *clp, const char *arg, int complain, void *thunk)
 
   /* Get a number range (#x, #x-y, or #x-). First, read x. */
   if (isdigit((unsigned char) c[0]))
-    gtfspec->frame1 = gtfspec->frame2 = strtol(c, &c, 10);
+    gtfspec->frame1 = gtfspec->frame2 = strtol_frame(c, &c);
   else if (c[0] == '-' && isdigit((unsigned char) c[1]))
-    gtfspec->frame1 = gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
+    gtfspec->frame1 = gtfspec->frame2 = Gif_ImageCount(input) + strtol_frame(c, &c);
 
   /* Then, if the next character is a dash, read y. Be careful to prevent
      #- from being interpreted as a frame range. */
   if (c[0] == '-' && (gtfspec->frame2 >= 0 || c[1] != 0)) {
     c++;
     if (isdigit((unsigned char) c[0]))
-      gtfspec->frame2 = strtol(c, &c, 10);
+      gtfspec->frame2 = strtol_frame(c, &c);
     else if (c[0] == '-' && isdigit((unsigned char) c[1]))
-      gtfspec->frame2 = Gif_ImageCount(input) + strtol(c, &c, 10);
+      gtfspec->frame2 = Gif_ImageCount(input) + strtol_frame(c, &c);
     else
       gtfspec->frame2 = Gif_ImageCount(input) - 1;
   }

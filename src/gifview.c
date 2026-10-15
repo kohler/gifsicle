@@ -1327,12 +1327,12 @@ main(int argc, char *argv[])
       break;
 
      case WINDOW_OPT:
-      cur_use_window = clp->val.ul;
+      cur_use_window = clp->val.l;
       cur_use_window_new = 0;
       break;
 
      case NEW_WINDOW_OPT:
-      cur_use_window = clp->val.ul;
+      cur_use_window = clp->val.l;
       cur_use_window_new = 1;
       break;
 
