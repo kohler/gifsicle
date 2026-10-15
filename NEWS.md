@@ -1,14 +1,14 @@
 Gifsicle NEWS
 =============
 
-## Version 1.98
+## Version 1.98 – 15.Oct.2026
 
 * Add `--max-screen` option, which limits the size of logical screens to
   avoid memory exhaustion. The default limit is 16384x16384;
   `--no-max-screen` removes it.
 
 * Gifsicle and gifdiff always treat the background as transparent, as
-  browsers do. Gifdiff’s `--ignore-background` option now has no effect.
+  browsers do.
 
 * Improve warnings and invalid GIF handling
 
@@ -30,7 +30,8 @@ Gifsicle NEWS
   * Frame changes `--insert-before` and `--replace` use the most recent input.
   * Fix memory-safety bugs found by auditing and fuzzing, including
     use-after-free bugs and undefined behavior. Parse arguments more strictly.
-  * Add fuzz testing harness.
+
+* Add fuzz testing harness.
 
 
 ## Version 1.97 – 12.Oct.2026
