@@ -31,12 +31,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#if HAVE_INTTYPES_H || !defined(HAVE_CONFIG_H)
-# include <inttypes.h>
-#endif
 #if !defined(HAVE_UINTPTR_T) && defined(HAVE_CONFIG_H)
 typedef unsigned long uintptr_t;
 #endif

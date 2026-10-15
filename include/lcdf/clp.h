@@ -27,6 +27,12 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdarg.h>
+#if HAVE_INTTYPES_H || !defined(HAVE_CONFIG_H)
+# include <inttypes.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 
 typedef struct Clp_Option Clp_Option;
 typedef struct Clp_Parser Clp_Parser;
@@ -192,8 +198,10 @@ struct Clp_Parser {
         double d;
         const char *s;
         void *pv;
-#ifdef HAVE_INT64_TYPES
+#if HAVE_INT64_T
         int64_t i64;
+#endif
+#if HAVE_UINT64_T
         uint64_t u64;
 #endif
         char cs[Clp_ValSize];
