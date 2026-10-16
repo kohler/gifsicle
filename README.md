@@ -70,6 +70,10 @@ will need to edit one of these Makefiles to use a different compiler.
 You can edit it with any text editor (like Notepad). See the file for
 more information.
 
+React Native (Android and IOS)
+------------------------------
+
+you can run gifsicle in **Android** and **IOS** through [react-native](https://reactnative.dev/) javascript by using [react-native-gifsicle](https://github.com/numandev1/react-native-gifsicle) npm package.
 
 Contact
 -------
