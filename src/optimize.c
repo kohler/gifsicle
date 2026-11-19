@@ -463,6 +463,98 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
 }
 
 
+/* Frame preparation uses the preceding frame's pixels. Once a frame's
+   candidates are prepared, its LZW writer state is independent. */
+enum { OPT_BATCH_SIZE = 128 };
+
+typedef struct {
+    Gif_Image* image;
+    uint8_t* transparent_data;
+    uint8_t* alternate_data;
+} Gif_OptCompressionJob;
+
+static void
+compress_opt_frame(Gif_Stream* gfs, const Gif_OptCompressionJob* job,
+                   const Gif_CompressInfo* gcinfo)
+{
+    Gif_Image* gfi = job->image;
+    Gif_CompressInfo shrink = *gcinfo;
+    Gif_FullCompressImage(gfs, gfi, gcinfo);
+    shrink.flags |= GIF_WRITE_SHRINK;
+
+    if (job->transparent_data) {
+        Gif_SetUncompressedImage(gfi, job->transparent_data, Gif_Free, 0);
+        Gif_FullCompressImage(gfs, gfi, &shrink);
+    }
+    if (job->alternate_data) {
+        Gif_SetUncompressedImage(gfi, job->alternate_data, Gif_Free, 0);
+        Gif_FullCompressImage(gfs, gfi, &shrink);
+    }
+    Gif_ReleaseUncompressedImage(gfi);
+}
+
+#if ENABLE_THREADS
+typedef struct {
+    Gif_Stream* gfs;
+    const Gif_OptCompressionJob* jobs;
+    const Gif_CompressInfo* gcinfo;
+    int count;
+    int next;
+    pthread_mutex_t lock;
+} Gif_OptCompressionBatch;
+
+static void*
+compress_opt_worker(void* thunk)
+{
+    Gif_OptCompressionBatch* batch = (Gif_OptCompressionBatch*) thunk;
+    while (1) {
+        int i;
+        pthread_mutex_lock(&batch->lock);
+        i = batch->next++;
+        pthread_mutex_unlock(&batch->lock);
+        if (i >= batch->count)
+            return NULL;
+        compress_opt_frame(batch->gfs, &batch->jobs[i], batch->gcinfo);
+    }
+}
+#endif
+
+static void
+compress_opt_batch(Gif_Stream* gfs, const Gif_OptCompressionJob* jobs, int count,
+                   const Gif_CompressInfo* gcinfo, int workers)
+{
+    int i;
+#if ENABLE_THREADS
+    if (workers > count)
+        workers = count;
+    if (workers > 1) {
+        Gif_OptCompressionBatch batch;
+        pthread_t tids[OPT_BATCH_SIZE - 1];
+        int started;
+        batch.gfs = gfs;
+        batch.jobs = jobs;
+        batch.gcinfo = gcinfo;
+        batch.count = count;
+        batch.next = 0;
+        if (pthread_mutex_init(&batch.lock, NULL) == 0) {
+            for (started = 0; started < workers - 1; ++started)
+                if (pthread_create(&tids[started], NULL, compress_opt_worker, &batch) != 0)
+                    break;
+            compress_opt_worker(&batch);
+            for (i = 0; i < started; ++i)
+                pthread_join(tids[i], NULL);
+            pthread_mutex_destroy(&batch.lock);
+            return;
+        }
+    }
+#else
+    (void) workers;
+#endif
+    for (i = 0; i < count; ++i)
+        compress_opt_frame(gfs, &jobs[i], gcinfo);
+}
+
+
 /* two versions of the optimization template */
 #define palindex_type uint16_t
 #define X(t) t ## 16
@@ -477,9 +569,11 @@ finalize_optimizer(Gif_Stream *gfs, int optimize_flags)
 /* the interface function! */
 
 void
-optimize_fragments(Gif_Stream* gfs, const Gt_OutputData* od, int huge_stream)
+optimize_fragments(Gif_Stream* gfs, const Gt_OutputData* od, int huge_stream,
+                   int requested_workers)
 {
     int optimize_flags = od->optimizing;
+    int workers = od->conserve_memory ? 1 : requested_workers;
     int ok;
     if (od->colormap_fixed && od->colormap_fixed_exact) {
         optimize_flags |= GT_OPT_KEEPCOLORMAP;
@@ -491,14 +585,14 @@ optimize_fragments(Gif_Stream* gfs, const Gt_OutputData* od, int huge_stream)
         ok = create_subimages32(gfs, optimize_flags, !huge_stream);
         if (ok) {
             create_out_global_map32(gfs, optimize_flags);
-            create_new_image_data32(gfs, optimize_flags);
+            create_new_image_data32(gfs, optimize_flags, workers);
         }
         finalize_optimizer_data32();
     } else {
         ok = create_subimages16(gfs, optimize_flags, !huge_stream);
         if (ok) {
             create_out_global_map16(gfs, optimize_flags);
-            create_new_image_data16(gfs, optimize_flags);
+            create_new_image_data16(gfs, optimize_flags, workers);
         }
         finalize_optimizer_data16();
     }

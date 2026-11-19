@@ -1,0 +1,23 @@
+%script
+set -e
+# Repeat a transparent three-frame animation across compression batches.
+set --
+i=0
+while [ "$i" -lt 45 ]; do
+  set -- "$@" sample.gif
+  i=$((i+1))
+done
+gifsicle --loop "$@" -o many.gif
+gifsicle -j1 -O3 -Okeep-empty --lossy=80 many.gif -o serial.gif
+for threads in 2 4; do
+  gifsicle -j"$threads" -O3 -Okeep-empty --lossy=80 many.gif -o threaded.gif
+  cmp serial.gif threaded.gif
+done
+echo done
+
+%file -e sample.gif
+R0lGODlhBAAEAPEAAP8AAAAA/wD/AAAAACwAAAAABAAEAAAICQABCBxIsCCAgAAh+QQIAAAAACwA
+AAAABAAEAAAICQADCBxIsGCAgAAh+QQBAAADACwAAAAABAAEAAAICwAFDBBIcKDBggEBADs=
+
+%expect stdout
+done

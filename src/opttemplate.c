@@ -790,22 +790,21 @@ X(simple_frame_data)(Gif_Image *gfi, uint8_t *map)
    transparency occasionally according to a heuristic described below */
 
 static void
-X(transp_frame_data)(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
-                     int optimize_flags, Gif_CompressInfo *gcinfo)
+X(transp_frame_data)(Gif_Image *gfi, uint8_t *map, int optimize_flags,
+                     Gif_OptCompressionJob *job)
 {
   Gif_OptBounds ob = safe_bounds(gfi);
   int x, y, transparent = gfi->transparent;
   palindex_type *last = 0;
   palindex_type *cur = 0;
   uint8_t *data, *begin_same;
+  size_t frame_size = (size_t) gfi->width * (size_t) gfi->height;
+  uint8_t *transparent_data = Gif_NewArray(uint8_t, frame_size);
   uint8_t *t2_data = 0, *last_for_t2;
   int nsame;
 
-  /* First, try w/o transparency. Compare this to the result using
-     transparency and pick the better of the two. */
+  /* Keep the non-transparent candidate in the image buffer. */
   X(simple_frame_data)(gfi, map);
-  Gif_FullCompressImage(gfs, gfi, gcinfo);
-  gcinfo->flags |= GIF_WRITE_SHRINK;
 
   /* Actually copy data to frame.
 
@@ -846,7 +845,7 @@ X(transp_frame_data)(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
      previous heuristic, so try both at optimize level 3 or above (the cost is
      ~30%). (2/11) */
 
-    data = begin_same = last_for_t2 = gfi->image_data;
+    data = begin_same = last_for_t2 = transparent_data;
     nsame = 0;
 
     for (y = 0; y < ob.height; ++y) {
@@ -857,10 +856,10 @@ X(transp_frame_data)(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
                 if (nsame == 1 && data[-1] != transparent
                     && (optimize_flags & GT_OPT_MASK) > 2) {
                     if (!t2_data)
-                        t2_data = Gif_NewArray(uint8_t, (size_t) ob.width * (size_t) ob.height);
-                    memcpy(t2_data + (last_for_t2 - gfi->image_data),
+                        t2_data = Gif_NewArray(uint8_t, frame_size);
+                    memcpy(t2_data + (last_for_t2 - transparent_data),
                            last_for_t2, begin_same - last_for_t2);
-                    memset(t2_data + (begin_same - gfi->image_data),
+                    memset(t2_data + (begin_same - transparent_data),
                            transparent, data - begin_same);
                     last_for_t2 = data;
                 }
@@ -881,20 +880,11 @@ X(transp_frame_data)(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
     }
 
     if (t2_data)
-        memcpy(t2_data + (last_for_t2 - gfi->image_data),
+        memcpy(t2_data + (last_for_t2 - transparent_data),
                last_for_t2, data - last_for_t2);
 
-
-    /* Now, try compressed transparent version(s) and pick the better of the
-       two (or three). */
-    Gif_FullCompressImage(gfs, gfi, gcinfo);
-    if (t2_data) {
-        Gif_SetUncompressedImage(gfi, t2_data, Gif_Free, 0);
-        Gif_FullCompressImage(gfs, gfi, gcinfo);
-    }
-    Gif_ReleaseUncompressedImage(gfi);
-
-    gcinfo->flags &= ~GIF_WRITE_SHRINK;
+    job->transparent_data = transparent_data;
+    job->alternate_data = t2_data;
 }
 
 
@@ -912,7 +902,7 @@ X(transp_frame_data)(Gif_Stream *gfs, Gif_Image *gfi, uint8_t *map,
    === apply U1 + dispose U1 + ... + apply Uk */
 
 static void
-X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
+X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags, int requested_workers)
 {
   Gif_Image cur_unopt_gfi;      /* placeholder; maintains pre-optimization
                                    image size so we can apply background
@@ -920,6 +910,19 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
   unsigned screen_size = (unsigned) screen_width * (unsigned) screen_height;
   palindex_type *previous_data = 0;
   Gif_CompressInfo gcinfo = gif_write_info;
+  Gif_OptCompressionJob jobs[OPT_BATCH_SIZE];
+  int job_count = 0, workers = 1;
+  size_t batch_bytes = 0;
+  const size_t batch_limit = 64U * 1024U * 1024U;
+#if ENABLE_THREADS
+  /* Careful mode consults other frames' transparency. Preserve serial
+     ordering for that option. */
+  if (gcinfo.loss > 0 && requested_workers > 1
+      && !(gcinfo.flags & GIF_WRITE_CAREFUL_MIN_CODE_SIZE))
+      workers = requested_workers;
+#else
+  (void) requested_workers;
+#endif
   if ((optimize_flags & GT_OPT_MASK) >= 3)
       gcinfo.flags |= GIF_WRITE_OPTIMIZE;
 
@@ -960,24 +963,35 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
 
     /* find the new image's colormap and then make new data */
     {
+      Gif_OptCompressionJob job = {cur_gfi, 0, 0};
       uint8_t *map = prepare_colormap(cur_gfi, opt->needed_colors);
-      uint8_t *data = Gif_NewArray(uint8_t, (size_t) cur_gfi->width * (size_t) cur_gfi->height);
+      size_t frame_size = (size_t) cur_gfi->width * (size_t) cur_gfi->height;
+      uint8_t *data = Gif_NewArray(uint8_t, frame_size);
       Gif_SetUncompressedImage(cur_gfi, data, Gif_Free, 0);
 
       /* don't use transparency on first frame */
       if ((optimize_flags & GT_OPT_MASK) > 1 && image_index > 0
           && cur_gfi->transparent >= 0)
-          X(transp_frame_data)(gfs, cur_gfi, map, optimize_flags, &gcinfo);
+          X(transp_frame_data)(cur_gfi, map, optimize_flags, &job);
       else
           X(simple_frame_data)(cur_gfi, map);
 
-      if (cur_gfi->img) {
-        if (was_compressed || (optimize_flags & GT_OPT_MASK) > 1) {
-          Gif_FullCompressImage(gfs, cur_gfi, &gcinfo);
-          Gif_ReleaseUncompressedImage(cur_gfi);
-        } else                  /* bug fix 22.May.2001 */
-          Gif_ReleaseCompressedImage(cur_gfi);
-      }
+      if (was_compressed || (optimize_flags & GT_OPT_MASK) > 1) {
+        if (workers == 1) {
+          compress_opt_frame(gfs, &job, &gcinfo);
+        } else {
+          size_t job_bytes = frame_size * (1 + (job.transparent_data != 0) + (job.alternate_data != 0));
+          if (job_count == OPT_BATCH_SIZE
+              || (job_count > 0 && batch_bytes + job_bytes > batch_limit)) {
+            compress_opt_batch(gfs, jobs, job_count, &gcinfo, workers);
+            job_count = 0;
+            batch_bytes = 0;
+          }
+          jobs[job_count++] = job;
+          batch_bytes += job_bytes;
+        }
+      } else
+        Gif_ReleaseCompressedImage(cur_gfi);
 
       Gif_DeleteArray(map);
     }
@@ -1001,6 +1015,8 @@ X(create_new_image_data)(Gif_Stream *gfs, int optimize_flags)
         X(copy_data_area)(X(this_data), previous_data, &cur_unopt_gfi);
   }
 
+  if (job_count > 0)
+      compress_opt_batch(gfs, jobs, job_count, &gcinfo, workers);
   if (previous_data)
       Gif_DeleteArray(previous_data);
 }

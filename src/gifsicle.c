@@ -1165,7 +1165,7 @@ merge_and_write_frames(const char *outfile, int f1, int f2)
     if (gtst.output_transforms)
       apply_color_transforms(gtst.output_transforms, out);
     if (active_output_data.optimizing & GT_OPT_MASK)
-      optimize_fragments(out, &active_output_data, huge_stream);
+      optimize_fragments(out, &active_output_data, huge_stream, gtst.thread_count);
     write_stream(outfile, out);
   }
 
