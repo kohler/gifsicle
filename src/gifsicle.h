@@ -251,7 +251,7 @@ void    merge_stream(Gif_Stream *dest, Gif_Stream *src, int no_extensions_flag);
 Gif_Image* merge_image(Gif_Stream* dest, Gif_Stream* src, Gif_Image* srci,
                        Gt_Frame* srcfr, int same_compressed_ok);
 
-void    optimize_fragments(Gif_Stream*, const Gt_OutputData*, int huge_stream);
+void    optimize_fragments(Gif_Stream*, const Gt_OutputData*, int huge_stream, int requested_workers);
 
 /*****
  * image/colormap transformations

@@ -845,6 +845,14 @@ Other optimization flags provide finer-grained control.
 Preserve empty transparent frames (they are dropped by default).
 .Sp
 .PP
+Use
+.Op \-j "[\fInthreads\fR]"
+to compress independent animation frames in parallel when combining
+.Op \-O
+with
+.Op \-\-lossy .
+This requires a build with thread support.
+.PP
 You may also be interested in other options for shrinking GIFs, such as
 .Op \-k ,
 .Op \-\-lossy ,
