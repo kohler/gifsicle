@@ -39,6 +39,16 @@ FILE* gifsicle_fuzz_popen(const char* command, const char* mode);
 #define popen gifsicle_fuzz_popen
 #define main gifsicle_cli_main      /* gifsicle.c's; the fuzzer has its own */
 
+/* gifsicle.c is compiled with GIFSICLE_FUZZ_HOOK_CALLS. Its calls to the
+   operations whose cost grows with the screen size go to wrappers that keep
+   runs within the fuzzing budget (see budget.c). The definitions, in other
+   files, keep their names. */
+#ifdef GIFSICLE_FUZZ_HOOK_CALLS
+#define resize_stream gifsicle_fuzz_resize_stream
+#define optimize_fragments gifsicle_fuzz_optimize_fragments
+#define Gif_FullUnoptimize gifsicle_fuzz_full_unoptimize
+#endif
+
 #ifdef __cplusplus
 }
 #endif

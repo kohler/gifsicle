@@ -50,11 +50,6 @@
 int gifsicle_main(int argc, char* argv[]);
 void gifsicle_reset(void);
 
-/* Resource budget for GIFs given to gifsicle */
-#define MAX_IMAGES              64
-#define MAX_FRAME_PIXELS        (1UL << 20)     /* also screens */
-#define MAX_TOTAL_PIXELS        (1UL << 22)
-
 static const char* prog = "gifsicle-fuzz";
 
 
@@ -269,9 +264,9 @@ int fuzz_within_budget(const uint8_t* p, size_t n) {
     while (n >= 13 && memcmp(p, "GIF", 3) == 0) {
         gif_scan s;
         size_t len = scan_gif(p, n, &s);
-        if (s.sw * s.sh > MAX_FRAME_PIXELS || s.max_frame > MAX_FRAME_PIXELS
-            || (total += s.total) > MAX_TOTAL_PIXELS
-            || (nimages += s.nimages) > MAX_IMAGES)
+        if (s.sw * s.sh > FUZZ_MAX_FRAME_PIXELS || s.max_frame > FUZZ_MAX_FRAME_PIXELS
+            || (total += s.total) > FUZZ_MAX_TOTAL_PIXELS
+            || (nimages += s.nimages) > FUZZ_MAX_IMAGES)
             return 0;
         if (!len)
             break;
@@ -420,6 +415,7 @@ static void run_once(const run_spec* spec, snapshot* snap) {
     gifsicle_fuzz_stdout = open_memstream(&snap->out, &snap->out_len);
     gifsicle_fuzz_stderr = open_memstream(&snap->err, &snap->err_len);
     clearerr(gifsicle_fuzz_stdin);
+    fuzz_over_budget = 0;
 
     if (setjmp(fatal_jmp)) {
         /* exit() from gifsicle, after running out of memory */
@@ -437,6 +433,7 @@ static void run_once(const run_spec* spec, snapshot* snap) {
     for (i = 0; i < spec->argc; ++i)
         free(argv[i]);
     snap->status = status;
+    snap->over_budget = fuzz_over_budget;
     read_workdir(snap);
     clean_workdir();
     if (fchdir(home_fd) != 0)
@@ -765,12 +762,14 @@ static void check_reprocessing(const run_spec* spec, const snapshot* snap,
     cur_check_spec = &check;
     run_once(&check, &result);
     cur_snapshot = &result;
-    check_snapshot(&check, &result);
-    if (result.status != 0)
-        fuzz_failed("gifsicle failed on its own output");
-    if (!(out = find_entry(&result, "check-out.gif")))
-        fuzz_failed("gifsicle wrote nothing for its own output");
-    check_same_appearance("check-out.gif", gif, len, out->data, out->len);
+    if (!result.over_budget) {
+        check_snapshot(&check, &result);
+        if (result.status != 0)
+            fuzz_failed("gifsicle failed on its own output");
+        if (!(out = find_entry(&result, "check-out.gif")))
+            fuzz_failed("gifsicle wrote nothing for its own output");
+        check_same_appearance("check-out.gif", gif, len, out->data, out->len);
+    }
     cur_check_spec = NULL;
     free_snapshot(&result);
     spec_free(&check);
@@ -788,12 +787,16 @@ static void check_variant(const run_spec* spec, const snapshot* first,
     cur_check_spec = &variant;
     run_once(&variant, &result);
     cur_snapshot = &result;
-    check_snapshot(&variant, &result);
-    if (exact)
-        /* messages may differ: -j2 can warn that it can't use threads */
-        check_same(first, &result, what, 0);
-    else
-        check_same_outputs(first, &result, spec, what);
+    /* --conserve-memory, for instance, can change which operation
+       exceeds the budget first */
+    if (!result.over_budget) {
+        check_snapshot(&variant, &result);
+        if (exact)
+            /* messages may differ: -j2 can warn that it can't use threads */
+            check_same(first, &result, what, 0);
+        else
+            check_same_outputs(first, &result, spec, what);
+    }
     cur_check_spec = NULL;
     free_snapshot(&result);
     spec_free(&variant);
@@ -808,11 +811,22 @@ static char** fixed_argv;     /* kept for the life of the process */
 
 /* Make -artifact_prefix absolute, adding one if necessary: crashes during a
    run happen in the scratch directory. Both libFuzzer and standalone.c parse
-   their flags after calling LLVMFuzzerInitialize. */
+   their flags after calling LLVMFuzzerInitialize.
+
+   Other fuzzing engines' drivers, such as AFL++'s, also call
+   LLVMFuzzerInitialize, but give the arguments other meanings: AFL++'s reads
+   a lone "-N" as an iteration count. So add -artifact_prefix only if the
+   arguments include libFuzzer-style "-flag=value" options. (standalone.c's
+   default artifact prefix is absolute already.) */
 static void fix_artifact_prefix(int* argc, char*** argv) {
     char cwd[PATH_MAX], **nargv;
-    int i, found = 0;
+    int i, found = 0, libfuzzer_flags = 0;
     if (!getcwd(cwd, sizeof(cwd)))
+        return;
+    for (i = 1; i < *argc; ++i)
+        if ((*argv)[i][0] == '-' && strchr((*argv)[i], '='))
+            libfuzzer_flags = 1;
+    if (!libfuzzer_flags)
         return;
     nargv = (char**) calloc(*argc + 2, sizeof(char*));
     for (i = 0; i < *argc; ++i) {
@@ -856,7 +870,7 @@ void fuzz_initialize(int* argc, char*** argv, const char* name) {
     gifsicle_fuzz_stdin = fopen("/dev/null", "r");
 }
 
-void fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra) {
+int fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra) {
     static const char* const resizing[] = {"--re", "--sc", 0};
     static const char* const lossy[] = {"--lo", 0};
     static const char* const threads[] = {"-j2"};
@@ -868,6 +882,11 @@ void fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra) {
         write_repro(spec);
     cur_spec = spec;
     run_once(spec, &first);
+    if (first.over_budget) {
+        cur_spec = NULL;
+        free_snapshot(&first);
+        return -1;
+    }
     cur_snapshot = &first;
     check_snapshot(spec, &first);
     if (extra)
@@ -890,4 +909,5 @@ void fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra) {
     cur_spec = NULL;
     cur_snapshot = NULL;
     free_snapshot(&first);
+    return 0;
 }

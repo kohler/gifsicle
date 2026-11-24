@@ -49,9 +49,12 @@ CPPFLAGS="-DHAVE_CONFIG_H -I$TOP -I$TOP/include -I$SRC"
 LIBS="-lm -lpthread"
 
 # gifsicle sources linked into the in-process targets (with gifsicle.c,
-# whose main() inprocess.h renames), and the harness sources.
+# whose main() inprocess.h renames, and whose expensive calls go through
+# budget.c), and the harness sources.
 INPROC_SRCS="clp fmalloc giffunc gifread gifunopt gifwrite kcolor merge optimize quantize support xform"
-HARNESS_SRCS="$FUZZ/runner.c $FUZZ/gifcheck.c $FUZZ/fuzz_gifsicle.c $FUZZ/fuzz_main.c"
+INPROC_INCLUDE="-include $FUZZ/inprocess.h"
+INPROC_HOOKS="-DGIFSICLE_FUZZ_HOOK_CALLS"
+HARNESS_SRCS="$FUZZ/runner.c $FUZZ/budget.c $FUZZ/gifcheck.c $FUZZ/fuzz_gifsicle.c $FUZZ/fuzz_main.c"
 
 mkdir -p "$BUILD"
 
@@ -83,11 +86,12 @@ compile "$BUILD/obj-cli" "$CC" "" $GIFSICLE_SRCS
 $CC $CFLAGS -o "$BUILD/gifsicle" $(objs "$BUILD/obj-cli" $GIFSICLE_SRCS) $LIBS
 
 echo "== in-process targets with standalone driver ($CC)"
-compile "$BUILD/obj-run" "$CC" "-include $FUZZ/inprocess.h" $INPROC_SRCS gifsicle
+compile "$BUILD/obj-run" "$CC" "$INPROC_INCLUDE" $INPROC_SRCS
+compile "$BUILD/obj-run" "$CC" "$INPROC_INCLUDE $INPROC_HOOKS" gifsicle
 compile "$BUILD/obj-run" "$CC" "" $HARNESS_SRCS "$FUZZ/standalone.c"
 for t in fuzz_gifsicle:fuzz-gifsicle-run fuzz_main:fuzz-gifsicle-main-run; do
     $CC $CFLAGS -o "$BUILD/${t#*:}" \
-        $(objs "$BUILD/obj-run" $INPROC_SRCS gifsicle runner gifcheck ${t%%:*} standalone) $LIBS
+        $(objs "$BUILD/obj-run" $INPROC_SRCS gifsicle runner budget gifcheck ${t%%:*} standalone) $LIBS
 done
 
 # Find a compiler with libFuzzer.
@@ -105,11 +109,12 @@ rm -f "$probe" "$BUILD/probe"
 
 if [ -n "$FUZZ_CC_FOUND" ]; then
     echo "== in-process targets with libFuzzer ($FUZZ_CC_FOUND)"
-    compile "$BUILD/obj-libfuzzer" "$FUZZ_CC_FOUND" "-fsanitize=fuzzer-no-link -include $FUZZ/inprocess.h" $INPROC_SRCS gifsicle
+    compile "$BUILD/obj-libfuzzer" "$FUZZ_CC_FOUND" "-fsanitize=fuzzer-no-link $INPROC_INCLUDE" $INPROC_SRCS
+    compile "$BUILD/obj-libfuzzer" "$FUZZ_CC_FOUND" "-fsanitize=fuzzer-no-link $INPROC_INCLUDE $INPROC_HOOKS" gifsicle
     compile "$BUILD/obj-libfuzzer" "$FUZZ_CC_FOUND" "-fsanitize=fuzzer-no-link" $HARNESS_SRCS
     for t in fuzz_gifsicle:fuzz-gifsicle fuzz_main:fuzz-gifsicle-main; do
         $FUZZ_CC_FOUND $CFLAGS -fsanitize=fuzzer -o "$BUILD/${t#*:}" \
-            $(objs "$BUILD/obj-libfuzzer" $INPROC_SRCS gifsicle runner gifcheck ${t%%:*}) $LIBS
+            $(objs "$BUILD/obj-libfuzzer" $INPROC_SRCS gifsicle runner budget gifcheck ${t%%:*}) $LIBS
     done
 else
     echo "== no compiler with libFuzzer found; skipping the libFuzzer targets"

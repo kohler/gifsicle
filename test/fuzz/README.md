@@ -28,11 +28,11 @@ then:
 
 This builds into `test/fuzz/build/`:
 
-| Binary | What it is |
-|---|---|
-| `gifsicle` | Sanitized gifsicle, for reproducing failures |
+| Binary                                        | Purpose                           |
+|-----------------------------------------------|-----------------------------------|
+| `gifsicle`                                    | Sanitized gifsicle, for reproducing failures |
 | `fuzz-gifsicle-main-run`, `fuzz-gifsicle-run` | The in-process targets with a standalone driver; works with any clang |
-| `fuzz-gifsicle-main`, `fuzz-gifsicle` | The in-process targets with libFuzzer, if a clang with libFuzzer is found |
+| `fuzz-gifsicle-main`, `fuzz-gifsicle`         | The in-process targets with libFuzzer, if a clang with libFuzzer is found |
 
 Apple's clang lacks libFuzzer and LeakSanitizer; `brew install llvm`
 provides a clang with both, which `build.sh` uses automatically (or set
@@ -59,25 +59,27 @@ random seed.
 
 ## Running
 
-**Mind memory.** gifsicle can legitimately allocate a lot of memory for
-large GIFs, and parallel fuzzers multiply that. The commands below cap each
-process; keep the number of parallel jobs low on a laptop.
+Gifsicle can legitimately allocate a lot of memory for large GIFs, and parallel
+fuzzers multiply that. The commands below cap each process; keep the number of
+parallel jobs low on a laptop.
 
     export ASAN_OPTIONS=hard_rss_limit_mb=1024:quarantine_size_mb=64:detect_leaks=1
     export LSAN_OPTIONS=suppressions=$PWD/test/fuzz/lsan.supp
     export UBSAN_OPTIONS=print_stacktrace=1
 
-gifsicle should never leak memory, so leak detection stays on. Use
+Gifsicle should never leak memory, so leak detection stays on. Use
 `detect_leaks=0` if the binaries were built with Apple's clang, which
 doesn't support it. `lsan.supp` suppresses leaks in libFuzzer itself. A
 smaller quarantine keeps ASan's memory use well under the RSS limit.
 
 Command lines can legitimately ask for enormous images (`--resize
-60000x60000`). libFuzzer's `-malloc_limit_mb`, below, reports such
-allocations as out-of-memory, which `-ignore_ooms` skips; so don't also set
-ASan's `max_allocation_size_mb`, which would report them as crashes. With
-the standalone driver, which has no such limit, add
-`max_allocation_size_mb=512` to `ASAN_OPTIONS`.
+60000x60000`). The targets skip runs that would resize, optimize, or
+unoptimize screens beyond their budget (see below), so such commands no
+longer allocate much. As a safety net, libFuzzer's `-malloc_limit_mb`,
+below, reports any remaining huge allocations as out-of-memory, which
+`-ignore_ooms` skips; so don't also set ASan's `max_allocation_size_mb`,
+which would report them as crashes. With the standalone driver, which has
+no such limit, add `max_allocation_size_mb=512` to `ASAN_OPTIONS`.
 
 Command-line fuzzing with libFuzzer, collecting failures and continuing
 after each one:
@@ -139,11 +141,19 @@ colormaps and dithering, gamma, logical screen, and frame selection.
 
 Both targets skip inputs whose GIFs exceed a resource budget (64 frames,
 2^20 pixels per frame or screen, 2^22 pixels in total), since huge valid
-GIFs aren't bugs. `runner.c` writes the input files into a private scratch
-directory and calls `gifsicle_main()` there. `inprocess.h` gives gifsicle
-an empty stdin, captures its stdout and stderr, and stops
-`--transform-colormap` from running commands. Besides sanitizer errors, a
-run fails if:
+GIFs aren't bugs. Command lines can also legitimately ask for huge outputs
+(`--resize 60000x60000`, or `--logical-screen 65535x65535 -O2`), so
+`gifsicle.c` is compiled with `GIFSICLE_FUZZ_HOOK_CALLS`, which routes its
+calls to `resize_stream`, `optimize_fragments`, and `Gif_FullUnoptimize`
+through `budget.c`. If the screen such an operation works on would exceed
+2^20 pixels, or 2^24 pixels summed over the frames, the wrapper skips the
+operation and the target ignores the run. Runs within the budget behave
+exactly as before.
+
+`runner.c` writes the input files into a private scratch directory and calls
+`gifsicle_main()` there. `inprocess.h` gives gifsicle an empty stdin, captures
+its stdout and stderr, and stops `--transform-colormap` from running commands.
+Besides sanitizer errors, a run fails if:
 
 * `gifsicle_main` returns a status other than 0 or 1;
 * gifsicle writes a GIF (to a file or stdout) that `gifcheck.c`, an
@@ -171,17 +181,41 @@ fail if the runs differ in any way, which catches state that
 `gifsicle_reset()` missed. A failure report shows the command, any checking
 command, and gifsicle's messages.
 
+## OSS-Fuzz
+
+`oss-fuzz.sh` builds both targets for [OSS-Fuzz], using its compilers and
+flags, and writes them to `$OUT` with seed corpora
+(`fuzz-gifsicle-main_seed_corpus.zip`, `fuzz-gifsicle_seed_corpus.zip`)
+and a dictionary (`fuzz-gifsicle-main.dict`). The `oss-fuzz` directory
+holds the project files for OSS-Fuzz's `projects/gifsicle`: `project.yaml`,
+a `Dockerfile` that clones this repository, and a `build.sh` that runs
+`oss-fuzz.sh`. To test them with OSS-Fuzz's helper (Docker required), copy
+them into an OSS-Fuzz checkout and run, from there:
+
+    python3 infra/helper.py build_image gifsicle
+    python3 infra/helper.py build_fuzzers --sanitizer address gifsicle /path/to/gifsicle
+    python3 infra/helper.py check_build --sanitizer address gifsicle
+    python3 infra/helper.py run_fuzzer gifsicle fuzz-gifsicle-main
+
+Pass a source directory that hasn't been configured: `oss-fuzz.sh` reuses
+an existing `config.h`, which wouldn't suit OSS-Fuzz's Linux containers.
+
+[OSS-Fuzz]: https://google.github.io/oss-fuzz/
+
 ## Files
 
-| File | Purpose |
-|---|---|
-| `build.sh` | Builds everything into `build/` |
-| `lsan.supp` | LeakSanitizer suppressions (for libFuzzer's own leaks) |
+| File          | Purpose     |
+|---------------|-------------|
+| `build.sh`    | Builds everything into `build/` |
+| `lsan.supp`   | LeakSanitizer suppressions (for libFuzzer's own leaks) |
 | `fuzz_main.c` | The free-form target, `fuzz-gifsicle-main` |
 | `fuzz_gifsicle.c` | The structured target, `fuzz-gifsicle` |
 | `runner.c`, `runner.h` | Runs commands in-process for both targets, and checks them |
-| `inprocess.h` | Included into gifsicle's sources for the in-process targets: redirects `exit`, `popen`, and the standard streams |
+| `budget.c`    | Skips runs whose resizing or (un)optimizing would exceed the resource budget |
+| `inprocess.h` | Included into gifsicle's sources for the in-process targets: redirects `exit`, `popen`, and the standard streams, and the expensive calls in `gifsicle.c` |
+| `oss-fuzz.sh` | Builds the targets, seed corpora, and dictionary for OSS-Fuzz |
+| `oss-fuzz/`   | Project files for OSS-Fuzz's `projects/gifsicle` |
 | `standalone.c` | Driver for the targets without libFuzzer |
 | `gifcheck.c`, `gifcheck.h` | Independent strict GIF decoder |
-| `gifgen.py` | Random GIF generator, mutator, and strict checker (Python) |
+| `gifgen.py`   | Random GIF generator, mutator, and strict checker (Python) |
 | `make_corpus.py` | Builds the seed corpora and the dictionary |

@@ -107,9 +107,8 @@ int LLVMFuzzerInitialize(int* argc, char*** argv) {
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     run_spec spec;
-    int ok = decode(data, size, &spec) == 0;
-    if (ok)
-        fuzz_run(&spec, fuzz_hash(data, size), 0);
+    int ok = decode(data, size, &spec) == 0
+        && fuzz_run(&spec, fuzz_hash(data, size), 0) == 0;
     spec_free(&spec);
     return ok ? 0 : -1;         /* -1: not worth adding to the corpus */
 }

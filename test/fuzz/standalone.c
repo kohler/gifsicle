@@ -242,7 +242,14 @@ int main(int argc, char** argv) {
     unsigned timeout = 10;
     int a;
     time_t start;
+    static char cwd_prefix[4096];
 
+    /* Runs happen in a scratch directory, so the default artifact prefix
+       must be absolute. (LLVMFuzzerInitialize makes explicit ones so.) */
+    if (getcwd(cwd_prefix, sizeof(cwd_prefix) - 1)) {
+        strcat(cwd_prefix, "/");
+        artifact_prefix = cwd_prefix;
+    }
     LLVMFuzzerInitialize(&argc, &argv);
     for (a = 1; a < argc; ++a) {
         if (strncmp(argv[a], "-runs=", 6) == 0)

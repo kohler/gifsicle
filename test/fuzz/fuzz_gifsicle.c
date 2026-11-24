@@ -326,6 +326,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     const uint8_t* gif = data + CONFIG_SIZE;
     size_t gif_size = size - CONFIG_SIZE;
     unsigned long sw, sh;
+    int ran;
     if (size < CONFIG_SIZE || !fuzz_within_budget(gif, gif_size))
         return -1;
     decode_options(data, &o);
@@ -334,7 +335,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         && sw * o.scale_x * sh * o.scale_y > MAX_OUTPUT_PIXELS)
         return -1;
     build_command(&o, gif, gif_size, &spec);
-    fuzz_run(&spec, fuzz_hash(data, size), check_colormaps);
+    ran = fuzz_run(&spec, fuzz_hash(data, size), check_colormaps);
     spec_free(&spec);
-    return 0;
+    return ran;
 }

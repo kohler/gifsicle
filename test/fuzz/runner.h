@@ -18,6 +18,18 @@ extern "C" {
 #define RUN_MAX_ARGS    64
 #define RUN_MAX_FILES   4
 
+/* Resource budget. Input GIFs must fit (fuzz_within_budget). So must the
+   screens that gifsicle resizes, optimizes, or unoptimizes (budget.c):
+   resizing produces, and unoptimizing reaches, nimages screen-sized
+   frames. */
+#define FUZZ_MAX_IMAGES         64
+#define FUZZ_MAX_FRAME_PIXELS   (1UL << 20)     /* also screens */
+#define FUZZ_MAX_TOTAL_PIXELS   (1UL << 22)
+#define FUZZ_MAX_SCREEN_WORK    (1UL << 24)     /* screen pixels * nimages */
+
+/* Set by budget.c when a run tried to exceed the budget. */
+extern int fuzz_over_budget;
+
 /* A gifsicle command and its input files. Owns its strings and data. */
 typedef struct {
     int argc;
@@ -48,6 +60,8 @@ typedef struct {
     size_t err_len;
     dir_entry* files;           /* the scratch directory afterwards, by name */
     int nfiles;
+    int over_budget;            /* 1 if the run exceeded the budget; its
+                                   results don't mean anything */
 } snapshot;
 
 /* An additional check for a target's runs. */
@@ -57,8 +71,9 @@ typedef void (*fuzz_check)(const run_spec* spec, const snapshot* snap);
 void fuzz_initialize(int* argc, char*** argv, const char* name);
 
 /* Run `spec` and check it; `seed` chooses among optional checks. Calls
-   `extra`, if nonnull, on the run's results. */
-void fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra);
+   `extra`, if nonnull, on the run's results. Returns 0, or -1 if the run
+   exceeded the budget and wasn't checked. */
+int fuzz_run(const run_spec* spec, uint64_t seed, fuzz_check extra);
 
 /* Report a failed check and abort. */
 void fuzz_failed(const char* format, ...)

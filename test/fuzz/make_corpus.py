@@ -403,6 +403,8 @@ def main():
     ap.add_argument("--main", action="store_true",
                     help="build the corpus for fuzz-gifsicle-main")
     ap.add_argument("-o", "--outdir")
+    ap.add_argument("--dict", help="with --main, where to write the dictionary "
+                    "(default build/main.dict)")
     ap.add_argument("-n", "--generated", type=int, default=200,
                     help="number of generated GIFs (default 200)")
     ap.add_argument("-k", "--configs", type=int, default=4,
@@ -430,7 +432,7 @@ def main():
         for blob in inputs:
             with open(os.path.join(args.outdir, hashlib.sha1(blob).hexdigest()), "wb") as f:
                 f.write(blob)
-        dict_path = os.path.join(HERE, "build", "main.dict")
+        dict_path = args.dict or os.path.join(HERE, "build", "main.dict")
         nwords = write_main_dict(dict_path)
         print("make_corpus.py: wrote %d inputs to %s, %d words to %s"
               % (len(inputs), args.outdir, nwords, dict_path))
