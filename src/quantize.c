@@ -431,7 +431,7 @@ colormap_image_floyd_steinberg(Gif_Image *gfi, uint8_t *all_new_data,
   }
   for (i = old_cm->ncol; i < 256; ++i) {
       Gif_Color* c = &old_cm->col[i];
-      old_kc[i] = kd3_makegfcg(kd3, c);
+      old_kc[i] = kd3_make8g(kd3, 0, 0, 0);
       c->pixel = 0;
       c->haspixel = 1;
   }
@@ -565,7 +565,7 @@ colormap_image_atkinson(Gif_Image *gfi, uint8_t *all_new_data,
   }
   for (i = old_cm->ncol; i < 256; ++i) {
       Gif_Color* c = &old_cm->col[i];
-      old_kc[i] = kd3_makegfcg(kd3, c);
+      old_kc[i] = kd3_make8g(kd3, 0, 0, 0);
       c->pixel = 0;
       c->haspixel = 1;
   }
@@ -976,7 +976,7 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
   if (transparent < 0)
     return 0;
 
-  if (old_cm)
+  if (old_cm && transparent < old_cm->ncol)
     transp_value = old_cm->col[transparent];
   else
     GIF_SETCOLOR(&transp_value, 0, 0, 0);
@@ -998,7 +998,9 @@ try_assign_transparency(Gif_Image *gfi, Gif_Colormap *old_cm, uint8_t *new_data,
   if (*new_ncol < 256) {
     assert(*new_ncol < new_cm->capacity);
     new_transparent = *new_ncol;
-    new_cm->col[new_transparent] = transp_value;
+    /* copy only the color: new_cm's `pixel` fields count uses */
+    GIF_SETCOLOR(&new_cm->col[new_transparent], transp_value.gfc_red,
+                 transp_value.gfc_green, transp_value.gfc_blue);
     (*new_ncol)++;
     goto found;
   }

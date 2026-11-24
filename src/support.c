@@ -1012,11 +1012,12 @@ read_colormap_file(const char *name, FILE *f)
   if (name && strcmp(name, "-") == 0)
     name = 0;
   if (!f) {
-    my_file = 1;
     if (!name)
       f = stdin;
-    else
+    else {
       f = fopen(name, "rb");
+      my_file = 1;
+    }
     if (!f) {
       lerror(name, "%s", strerror(errno));
       return 0;
