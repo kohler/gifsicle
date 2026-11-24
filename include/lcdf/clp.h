@@ -325,9 +325,6 @@ int Clp_fprintf(Clp_Parser* clp, FILE* f, const char* format, ...);
 int Clp_vfprintf(Clp_Parser* clp, FILE* f, const char* format, va_list val);
 
 /** @brief Extract the current option as a string. */
-int Clp_CurOptionNameBuf(Clp_Parser *clp, char *buf, int len);
-
-/** @brief Extract the current option as a string. */
 const char *Clp_CurOptionName(Clp_Parser *clp);
 
 /** @brief Test if the current option had long name @a name. */
